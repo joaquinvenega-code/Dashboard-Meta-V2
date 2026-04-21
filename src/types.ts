@@ -27,6 +27,7 @@ export interface AccountSettings {
   tracking: 'ecommerce' | 'messaging' | 'both';
   customName?: string;
   observations?: string;
+  visibleMetrics?: string[];
 }
 
 export interface Ad {

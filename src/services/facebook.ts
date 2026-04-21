@@ -269,13 +269,13 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
   for (const ad of ads) {
     const adRes: any = await new Promise((resolve) => {
       window.FB.api(`/${ad.id}`, 'GET', {
-        fields: 'creative{image_url,image_hash,thumbnail_url.width(600).height(600),object_story_spec,asset_feed_spec,effective_object_story_id,video_id}',
+        fields: 'creative{image_url,image_hash,thumbnail_url.width(1080).height(1080),object_story_spec,asset_feed_spec,effective_object_story_id,video_id}',
       }, (res: any) => resolve(res));
     });
 
     if (adRes && !adRes.error && adRes.creative) {
-      // Prioritize the high-res thumbnail we requested specifically
-      ad.thumbnail = adRes.creative.thumbnail_url || adRes.creative.image_url || null;
+      // Prioritize image_url (original image) over thumbnail
+      ad.thumbnail = adRes.creative.image_url || adRes.creative.thumbnail_url || null;
     }
 
     const prevRes: any = await new Promise((resolve) => {

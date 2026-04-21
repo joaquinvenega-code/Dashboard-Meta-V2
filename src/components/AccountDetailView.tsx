@@ -27,7 +27,8 @@ import {
   ChevronDown,
   ChevronUp,
   Eye,
-  EyeOff
+  EyeOff,
+  Settings
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -68,6 +69,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [isSavingObs, setIsSavingObs] = useState(false);
   const [showMetrics, setShowMetrics] = useState(true);
   const [showObservations, setShowObservations] = useState(true);
+  const [showMetricConfig, setShowMetricConfig] = useState(false);
 
   // Filter accounts for sidebar
   const sidebarAccounts = accounts.filter(acc => 
@@ -147,6 +149,60 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     const sAcc = settings[acc.id];
     if (!sAcc || !sAcc.objective || !acc.revenue) return null;
     return Math.round((acc.revenue / sAcc.objective) * 100);
+  };
+
+  const ALL_METRICS = [
+    { id: 'spend', label: 'Inversión' },
+    { id: 'revenue', label: 'Facturado' },
+    { id: 'roas', label: 'ROAS' },
+    { id: 'objective', label: 'Objetivo' },
+    { id: 'progress_revenue', label: '% Objetivo' },
+    { id: 'progress_budget', label: '% Presupuesto' },
+    { id: 'ctr', label: 'CTR' },
+    { id: 'clicks', label: 'Clics' },
+    { id: 'purchases', label: 'Compras' },
+    { id: 'atc', label: 'Agreg. carrito' },
+    { id: 'ic', label: 'Pagos iniciados' },
+    { id: 'cpp', label: 'Costo x compra' },
+    { id: 'messages', label: 'Mensajes' },
+    { id: 'cpm', label: 'Costo x mensaje' },
+    { id: 'messages_real', label: 'Mensajes Reales' },
+    { id: 'cpm_real', label: 'Costo Mensaje Real' },
+  ];
+
+  const defaultVisibleMetrics = ['spend', 'revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
+  const visibleMetrics = s?.visibleMetrics || defaultVisibleMetrics;
+
+  const toggleMetric = (metricId: string) => {
+    if (!selectedId || !s) return;
+    const current = s.visibleMetrics || defaultVisibleMetrics;
+    const next = current.includes(metricId) 
+      ? current.filter(id => id !== metricId)
+      : [...current, metricId];
+    onSaveSettings(selectedId, { ...s, visibleMetrics: next });
+  };
+
+  const renderMetric = (id: string, acc: AdAccount) => {
+    const sAcc = settings[acc.id];
+    switch(id) {
+      case 'spend': return <MetricBox key={id} label="Inversión" value={formatCurrency(acc.spend || 0, acc.currency)} />;
+      case 'revenue': return <MetricBox key={id} label="Facturado" value={formatCurrency(acc.revenue || 0, acc.currency)} />;
+      case 'roas': return <MetricBox key={id} label="ROAS" value={`×${formatDecimal((acc.revenue || 0) / (acc.spend || 1))}`} />;
+      case 'objective': return <MetricBox key={id} label="Objetivo" value={formatCurrency(sAcc?.objective || 0, acc.currency)} isPlaceholder={!sAcc?.objective} />;
+      case 'progress_revenue': return <MetricBox key={id} label="% Objetivo" value={`${getProgress(acc) || 0}%`} isPlaceholder={!getProgress(acc)} />;
+      case 'progress_budget': return <MetricBox key={id} label="% Presupuesto" value={`${sAcc?.budget ? Math.round(((acc.spend || 0) / sAcc.budget) * 100) : 0}%`} isPlaceholder={!sAcc?.budget} />;
+      case 'ctr': return <MetricBox key={id} label="CTR" value={`${formatDecimal(acc.ctr, 2)}%`} />;
+      case 'clicks': return <MetricBox key={id} label="Clics" value={formatDecimal(acc.clicks, 0)} />;
+      case 'purchases': return <MetricBox key={id} label="Compras" value={formatDecimal(acc.purchases, 0)} />;
+      case 'atc': return <MetricBox key={id} label="Agreg. carrito" value={formatDecimal(acc.addToCart, 0)} />;
+      case 'ic': return <MetricBox key={id} label="Pagos iniciados" value={formatDecimal(acc.checkouts, 0)} />;
+      case 'cpp': return <MetricBox key={id} label="Costo x compra" value={formatCurrency(acc.costPerPurchase || 0, acc.currency)} />;
+      case 'messages': return <MetricBox key={id} label="Mensajes" value={formatDecimal(acc.messages, 0)} />;
+      case 'cpm': return <MetricBox key={id} label="Costo x mensaje" value={formatCurrency(acc.costPerMessage || 0, acc.currency)} />;
+      case 'messages_real': return <MetricBox key={id} label="Mensajes Reales" value={formatDecimal(acc.messagesReal, 0)} />;
+      case 'cpm_real': return <MetricBox key={id} label="Costo Mensaje Real" value={formatCurrency(acc.costPerMessageReal || 0, acc.currency)} />;
+      default: return null;
+    }
   };
 
   return (
@@ -245,7 +301,49 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                  <h2 className="text-xl font-black text-white tracking-tight uppercase opacity-90 print:text-black">{settings[selectedAccount.id]?.customName || selectedAccount.name}</h2>
                  <div className="px-2 py-0.5 bg-white/5 border border-white/5 text-neutral-500 text-[9px] font-black rounded uppercase tracking-widest print:border-neutral-200 print:text-neutral-600">{selectedAccount.currency}</div>
               </div>
-              <div className="flex items-center gap-2 print:hidden">
+              <div className="flex items-center gap-2 print:hidden relative">
+                <button 
+                  onClick={() => setShowMetricConfig(!showMetricConfig)}
+                  className={`p-1.5 rounded-md border border-white/5 transition-all ${showMetricConfig ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-neutral-900 text-neutral-600 hover:text-neutral-400'}`}
+                  title="Configurar métricas"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                </button>
+
+                <AnimatePresence>
+                  {showMetricConfig && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                      className="absolute top-10 right-0 z-50 w-64 bg-[#111] border border-white/10 rounded-xl shadow-2xl p-4 overflow-hidden"
+                    >
+                      <div className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-3 px-1">Configurar Visualización</div>
+                      <div className="space-y-1 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                        {ALL_METRICS.map(metric => {
+                          const isVisible = visibleMetrics.includes(metric.id);
+                          return (
+                            <button
+                              key={metric.id}
+                              onClick={() => toggleMetric(metric.id)}
+                              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all border ${
+                                isVisible 
+                                  ? 'bg-blue-600/10 border-blue-600/20 text-blue-400' 
+                                  : 'bg-transparent border-transparent text-neutral-600 hover:bg-white/[0.02]'
+                              }`}
+                            >
+                              <span className="text-[10px] font-bold uppercase tracking-tight">{metric.label}</span>
+                              {isVisible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3 opacity-30" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="w-px h-4 bg-white/5 mx-1" />
+
                 <button 
                   onClick={() => setShowMetrics(!showMetrics)}
                   className={`p-1.5 rounded-md border border-white/5 transition-all ${showMetrics ? 'bg-blue-600/10 text-blue-500 overflow-hidden' : 'bg-neutral-900 text-neutral-600'}`}
@@ -272,21 +370,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                   exit={{ height: 0, opacity: 0 }}
                   className="space-y-3 overflow-hidden"
                 >
-                  <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
-                    <MetricBox label="Inversión" value={formatCurrency(selectedAccount.spend || 0, selectedAccount.currency)} />
-                    <MetricBox label="Facturado" value={formatCurrency(selectedAccount.revenue || 0, selectedAccount.currency)} />
-                    <MetricBox label="ROAS" value={`×${formatDecimal((selectedAccount.revenue || 0) / (selectedAccount.spend || 1))}`} />
-                    <MetricBox label="Objetivo" value={formatCurrency(s?.objective || 0, selectedAccount.currency)} isPlaceholder={!s?.objective} />
-                    <MetricBox label="% Objetivo" value={`${getProgress(selectedAccount) || 0}%`} isPlaceholder={!getProgress(selectedAccount)} />
-                    <MetricBox label="% Presupuesto" value={`${s?.budget ? Math.round(((selectedAccount.spend || 0) / s.budget) * 100) : 0}%`} isPlaceholder={!s?.budget} />
-                    <MetricBox label="CTR" value={`${formatDecimal(selectedAccount.ctr, 2)}%`} />
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                    <MetricBox label="Clics" value={formatDecimal(selectedAccount.clicks, 0)} />
-                    <MetricBox label="Compras" value={formatDecimal(selectedAccount.purchases, 0)} />
-                    <MetricBox label="Agreg. carrito" value={formatDecimal(selectedAccount.addToCart, 0)} />
-                    <MetricBox label="Pagos iniciados" value={formatDecimal(selectedAccount.checkouts, 0)} />
-                    <MetricBox label="Costo x compra" value={formatCurrency(selectedAccount.costPerPurchase || 0, selectedAccount.currency)} />
+                  <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-2">
+                    {visibleMetrics.map(id => renderMetric(id, selectedAccount))}
                   </div>
                 </motion.div>
               )}
