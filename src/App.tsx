@@ -270,26 +270,22 @@ export default function App() {
       const entities: AdAccount[] = [];
       const virtualSettings: Record<string, AccountSettings> = { ...(settings || {}) };
 
-      // Simplified Flat Logic for Debugging
-      activeAccounts.forEach(acc => {
-        const isSelected = currentVisibleIds.some(vId => matchId(vId, acc.id) || matchId(vId, acc.account_id));
-        if (isSelected) {
-          const s = settings[acc.id];
-          const entry = { ...acc };
-          if (s?.customName) entry.name = s.customName;
-          entities.push(entry);
-        }
-      });
+      const handledAccountIds = new Set<string>();
 
-      // Simple Group Logic (Non-blocking)
+      // 1. Process Groups
       currentGroups.forEach(g => {
         if (!g) return;
-        const gAccs = activeAccounts.filter(a => {
-          if (!a) return false;
-          return (g.accountIds || []).some(id => matchId(id, a.id));
-        });
+        // Member accounts currently loaded from Meta
+        const gAccs = activeAccounts.filter(a => 
+          (g.accountIds || []).some(id => matchId(id, a.id) || matchId(id, a.account_id))
+        );
+
         if (gAccs.length > 0) {
-          const isGroupVisible = currentVisibleIds.some(vId => matchId(vId, g.id));
+          // Group is visible if: its ID is selected OR any of its member accounts are selected
+          const isGroupVisible = currentVisibleIds.some(vId => 
+            matchId(vId, g.id) || gAccs.some(a => matchId(vId, a.id) || matchId(vId, a.account_id))
+          );
+
           if (isGroupVisible) {
              const sG = settings[g.id];
              entities.push({
@@ -303,7 +299,22 @@ export default function App() {
                purchases: gAccs.reduce((sum, a) => sum + (a?.purchases || 0), 0),
                messages: gAccs.reduce((sum, a) => sum + (a?.messages || 0), 0),
              });
+             // Mark accounts as handled so they don't appear twice
+             gAccs.forEach(a => handledAccountIds.add(a.id?.toString()));
           }
+        }
+      });
+
+      // 2. Process Individual Accounts
+      activeAccounts.forEach(acc => {
+        if (handledAccountIds.has(acc.id?.toString())) return;
+
+        const isSelected = currentVisibleIds.some(vId => matchId(vId, acc.id) || matchId(vId, acc.account_id));
+        if (isSelected) {
+          const s = settings[acc.id];
+          const entry = { ...acc };
+          if (s?.customName) entry.name = s.customName;
+          entities.push(entry);
         }
       });
 
