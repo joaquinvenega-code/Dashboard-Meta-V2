@@ -54,6 +54,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [activePage, setActivePage] = useState('overview');
   const [lastSync, setLastSync] = useState<string | null>(null);
+  const [calcError, setCalcError] = useState<string | null>(null);
   
   // Column Selection State
   const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
@@ -263,50 +264,10 @@ export default function App() {
       
       const entities: AdAccount[] = [];
       const virtualSettings: Record<string, AccountSettings> = { ...(settings || {}) };
-      const handledAccountIds = new Set<string>();
 
-      // 1. Process Groups FIRST
-      currentGroups.forEach(g => {
-        // Find accounts belonging to this group
-        const gAccs = activeAccounts.filter(a => 
-          (g.accountIds || []).some(id => matchId(id, a.id) || matchId(id, a.account_id))
-        );
-
-        if (gAccs.length > 0) {
-          // Check if this group itself should be visible
-          const isGroupVisible = currentVisibleIds.some(vId => 
-            matchId(vId, g.id) || gAccs.some(a => matchId(vId, a.id))
-          );
-
-          if (isGroupVisible) {
-            const sG = settings[g.id];
-            entities.push({
-              id: g.id,
-              account_id: 'GRUPO',
-              name: g.name || 'Grupo',
-              account_status: 1,
-              currency: sG?.currency || gAccs[0].currency || 'ARS',
-              spend: gAccs.reduce((sum, a) => sum + (a.spend || 0), 0),
-              revenue: gAccs.reduce((sum, a) => sum + (a.revenue || 0), 0),
-              purchases: gAccs.reduce((sum, a) => sum + (a.purchases || 0), 0),
-              messages: gAccs.reduce((sum, a) => sum + (a.messages || 0), 0),
-            });
-            // ONLY mark as handled if the group is visible and rendered
-            gAccs.forEach(a => handledAccountIds.add(a.id?.toString()));
-          }
-        }
-      });
-
-      // 2. Process Individual Accounts
+      // Simplified Flat Logic for Debugging
       activeAccounts.forEach(acc => {
-        const accIdStr = acc.id?.toString();
-        if (handledAccountIds.has(accIdStr)) return;
-
-        // Account is visible ONLY if its ID or account_id is in the selection
-        const isSelected = currentVisibleIds.some(vId => 
-          matchId(vId, acc.id) || matchId(vId, acc.account_id)
-        );
-
+        const isSelected = currentVisibleIds.some(vId => matchId(vId, acc.id) || matchId(vId, acc.account_id));
         if (isSelected) {
           const s = settings[acc.id];
           const entry = { ...acc };
@@ -315,9 +276,35 @@ export default function App() {
         }
       });
 
+      // Simple Group Logic (Non-blocking)
+      currentGroups.forEach(g => {
+        const gAccs = activeAccounts.filter(a => 
+          (g.accountIds || []).some(id => matchId(id, a.id))
+        );
+        if (gAccs.length > 0) {
+          const isGroupVisible = currentVisibleIds.some(vId => matchId(vId, g.id));
+          if (isGroupVisible) {
+             // We won't remove individuals for now to ensure visibility
+             const sG = settings[g.id];
+             entities.push({
+               id: g.id,
+               account_id: 'GRUPO',
+               name: g.name || 'Grupo',
+               account_status: 1,
+               currency: sG?.currency || gAccs[0].currency || 'ARS',
+               spend: gAccs.reduce((sum, a) => sum + (a.spend || 0), 0),
+               revenue: gAccs.reduce((sum, a) => sum + (a.revenue || 0), 0),
+               purchases: gAccs.reduce((sum, a) => sum + (a.purchases || 0), 0),
+               messages: gAccs.reduce((sum, a) => sum + (a.messages || 0), 0),
+             });
+          }
+        }
+      });
+
       return { overviewEntities: entities, overviewSettings: virtualSettings };
-    } catch (e) {
-      console.error("Critical error in overview calculation:", e);
+    } catch (e: any) {
+      console.error("Memo Error:", e);
+      if (calcError !== e.message) setCalcError(e.message);
       return { overviewEntities: [], overviewSettings: settings };
     }
   }, [accounts, groups, visibleAccountIds, settings]);
@@ -565,6 +552,11 @@ export default function App() {
                                           <p className="text-[9px] text-blue-500 font-bold uppercase tracking-widest mt-1">
                                             ¿Hay coincidencias en total?: {accounts.some(a => visibleAccountIds.some(v => matchId(v, a.id) || matchId(v, a.account_id))) ? 'SÍ' : 'NO'}
                                           </p>
+                                          {calcError && (
+                                            <p className="text-[9px] text-red-500 font-bold uppercase tracking-widest mt-1 bg-red-500/10 p-1 rounded">
+                                              ERROR MEMO: {calcError}
+                                            </p>
+                                          )}
                                         </div>
                                       )}
                                     </div>
