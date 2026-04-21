@@ -70,6 +70,8 @@ export default function App() {
   const [reportAccount, setReportAccount] = useState<AdAccount | null>(null);
   const [showColSelectors, setShowColSelectors] = useState(false);
   const [configEntity, setConfigEntity] = useState<AdAccount | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   // Visibility State
   const [visibleAccountIds, setVisibleAccountIds] = useState<string[]>(() => {
@@ -479,28 +481,47 @@ export default function App() {
 
                             return (
                               <tr key={acc.id} className="hover:bg-white/[0.02] transition-colors group">
-                                <td className="px-8 py-5">
+                                 <td className="px-8 py-5">
                                   <div className="flex items-center gap-3">
-                                    <div 
-                                      onDoubleClick={() => {
-                                        const currentTitle = acc.name;
-                                        const newName = prompt('Editar nombre:', currentTitle);
-                                        if (newName && newName !== currentTitle) {
-                                          if (acc.account_id === 'GRUPO') {
-                                            const nextGroups = groups.map(g => g.id === acc.id ? { ...g, name: newName } : g);
-                                            saveGroups(nextGroups);
-                                          } else {
-                                            updateSetting(acc.id, 'customName', newName);
-                                          }
-                                        }
-                                      }}
-                                      className="font-bold text-xs truncate max-w-[200px] text-neutral-200 group-hover:text-white transition-colors cursor-edit select-none"
-                                      title="Doble clic para editar nombre"
-                                    >
-                                      {acc.name}
+                                    <div className="relative group/name inline-block min-w-[120px]">
+                                      {editingId === acc.id ? (
+                                        <input
+                                          autoFocus
+                                          type="text"
+                                          value={editValue}
+                                          onChange={(e) => setEditValue(e.target.value)}
+                                          onBlur={() => {
+                                            if (editValue && editValue !== acc.name) {
+                                              if (acc.account_id === 'GRUPO') {
+                                                const nextGroups = groups.map(g => g.id === acc.id ? { ...g, name: editValue } : g);
+                                                saveGroups(nextGroups);
+                                              } else {
+                                                updateSetting(acc.id, 'customName', editValue);
+                                              }
+                                            }
+                                            setEditingId(null);
+                                          }}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') e.currentTarget.blur();
+                                            if (e.key === 'Escape') setEditingId(null);
+                                          }}
+                                          className="bg-neutral-800 border-none outline-none rounded px-2 py-1 text-xs font-bold text-white w-full"
+                                        />
+                                      ) : (
+                                        <div 
+                                          onDoubleClick={() => {
+                                            setEditingId(acc.id);
+                                            setEditValue(acc.name);
+                                          }}
+                                          className="font-bold text-xs truncate max-w-[200px] text-neutral-200 group-hover:text-white transition-colors cursor-text select-none py-1"
+                                          title="Doble clic para editar"
+                                        >
+                                          {acc.name}
+                                        </div>
+                                      )}
                                     </div>
-                                    <div className="px-2 py-0.5 bg-neutral-900 border border-white/5 rounded text-[8px] font-black text-neutral-600 uppercase leading-none">
-                                      {acc.account_id}
+                                    <div className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-600/20 rounded text-[7px] font-black text-blue-500 uppercase leading-none tracking-tighter">
+                                      {s.currency}
                                     </div>
                                   </div>
                                 </td>
