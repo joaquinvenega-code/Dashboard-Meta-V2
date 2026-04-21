@@ -278,13 +278,14 @@ export default function App() {
 
       // Simple Group Logic (Non-blocking)
       currentGroups.forEach(g => {
-        const gAccs = activeAccounts.filter(a => 
-          (g.accountIds || []).some(id => matchId(id, a.id))
-        );
+        if (!g) return;
+        const gAccs = activeAccounts.filter(a => {
+          if (!a) return false;
+          return (g.accountIds || []).some(id => matchId(id, a.id));
+        });
         if (gAccs.length > 0) {
           const isGroupVisible = currentVisibleIds.some(vId => matchId(vId, g.id));
           if (isGroupVisible) {
-             // We won't remove individuals for now to ensure visibility
              const sG = settings[g.id];
              entities.push({
                id: g.id,
@@ -292,15 +293,16 @@ export default function App() {
                name: g.name || 'Grupo',
                account_status: 1,
                currency: sG?.currency || gAccs[0].currency || 'ARS',
-               spend: gAccs.reduce((sum, a) => sum + (a.spend || 0), 0),
-               revenue: gAccs.reduce((sum, a) => sum + (a.revenue || 0), 0),
-               purchases: gAccs.reduce((sum, a) => sum + (a.purchases || 0), 0),
-               messages: gAccs.reduce((sum, a) => sum + (a.messages || 0), 0),
+               spend: gAccs.reduce((sum, a) => sum + (a?.spend || 0), 0),
+               revenue: gAccs.reduce((sum, a) => sum + (a?.revenue || 0), 0),
+               purchases: gAccs.reduce((sum, a) => sum + (a?.purchases || 0), 0),
+               messages: gAccs.reduce((sum, a) => sum + (a?.messages || 0), 0),
              });
           }
         }
       });
 
+      if (calcError) setCalcError(null);
       return { overviewEntities: entities, overviewSettings: virtualSettings };
     } catch (e: any) {
       console.error("Memo Error:", e);
