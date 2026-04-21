@@ -11,6 +11,7 @@ import { AdAccount, AccountSettings } from './types';
 import { Sidebar } from './components/Sidebar';
 import { AccountDetailExpansion } from './components/AccountDetailExpansion';
 import { IndividualReport } from './components/IndividualReport';
+import { Overview } from './components/Overview';
 import { formatCurrency, formatNumber, formatDecimal, cn } from './lib/utils';
 import { 
   ChevronDown, 
@@ -20,14 +21,15 @@ import {
   Facebook, 
   Settings2,
   Calendar,
-  BarChart3,
   LayoutDashboard,
+  BarChart3,
   Settings,
   History,
   Share2,
   ChevronRight,
   LogOut,
-  RefreshCcw
+  RefreshCcw,
+  CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, subDays, startOfMonth } from 'date-fns';
@@ -43,6 +45,9 @@ export default function App() {
   const [activePage, setActivePage] = useState('overview');
   const [lastSync, setLastSync] = useState<string | null>(null);
   
+  // Column Selection State
+  const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
+
   // Date Range State
   const [dateRange, setDateRange] = useState({
     since: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
@@ -139,64 +144,75 @@ export default function App() {
     localStorage.setItem('cr_settings', JSON.stringify(newSettings));
   };
 
+  const toggleCol = (col: string) => {
+    if (visibleCols.includes(col)) {
+      setVisibleCols(visibleCols.filter(c => c !== col));
+    } else {
+      setVisibleCols([...visibleCols, col]);
+    }
+  };
+
   if (!isLogged) {
     return (
-      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-4">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 p-8 shadow-xl"
+          className="w-full max-w-md bg-[#111] rounded-[2.5rem] border border-white/5 p-10 shadow-2xl overflow-hidden relative"
         >
-          <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-              <BarChart3 className="w-10 h-10 text-white" />
+          {/* Abstract glow */}
+          <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/20 blur-[80px] rounded-full"></div>
+          
+          <div className="flex flex-col items-center mb-10 relative">
+            <div className="w-20 h-20 bg-blue-600 rounded-[2rem] flex items-center justify-center mb-6 shadow-2xl shadow-blue-600/40 transform -rotate-6">
+              <BarChart3 className="w-12 h-12 text-white" />
             </div>
-            <h1 className="text-2xl font-bold">Control ROAS</h1>
-            <p className="text-neutral-500 text-center text-sm mt-1">Dashboard interno de métricas publicitarias</p>
+            <h1 className="text-3xl font-black tracking-tighter text-white">Control ROAS</h1>
+            <p className="text-neutral-500 text-center text-sm font-bold uppercase tracking-widest mt-2 px-10">Meta Ads Dashboard</p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-5 relative">
             <div>
-              <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1.5 ml-1">Meta App ID</label>
+              <label className="block text-[10px] font-black text-neutral-600 uppercase tracking-[0.2em] mb-2 ml-1">Meta App ID</label>
               <input 
                 type="text" 
                 value={appId}
                 onChange={(e) => setAppId(e.target.value)}
-                placeholder="ID de tu app de Meta..."
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                placeholder="ID de tu app..."
+                className="w-full px-5 py-4 bg-neutral-900 border border-white/5 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600 font-bold transition-all text-neutral-200 placeholder:text-neutral-700"
               />
             </div>
 
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-xl text-xs flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="bg-red-900/10 border border-red-900/20 text-red-500 p-4 rounded-2xl text-xs font-bold flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 opacity-70" />
                 {error}
               </div>
             )}
 
             <button 
               onClick={onLogin}
-              className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
+              className="w-full bg-blue-600 text-white h-16 rounded-[1.5rem] text-sm font-black flex items-center justify-center gap-3 hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/25 active:scale-[0.98]"
             >
               <Facebook className="w-5 h-5 fill-current" />
               Ingresar con Facebook
             </button>
           </div>
 
-          <div className="mt-8 pt-8 border-t border-neutral-100 dark:border-neutral-800">
-            <h3 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-4">¿Cómo obtener el App ID?</h3>
-            <ul className="space-y-3">
+          <div className="mt-12 pt-10 border-t border-white/5 relative">
+            <h3 className="text-[10px] font-black text-neutral-600 uppercase tracking-[0.2em] mb-6">Guía rápida</h3>
+            <div className="space-y-4">
               {[
-                { n: 1, t: "Ir a developers.facebook.com" },
-                { n: 2, t: "Crear app tipo 'Negocios'" },
-                { n: 3, t: "Configurar Producto: Marketing API" }
+                { n: "01", t: "Ve a developers.facebook.com" },
+                { n: "02", t: "Configura Producto: Marketing API" },
+                { n: "03", t: "Pega el App ID aquí arriba" }
               ].map(step => (
-                <li key={step.n} className="flex gap-3 items-center text-xs text-neutral-500">
-                  <span className="w-5 h-5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">{step.n}</span>
-                  {step.t}
-                </li>
+                <div key={step.n} className="flex gap-4 items-center">
+                  <span className="text-[10px] font-black text-blue-600">{step.n}</span>
+                  <span className="text-xs font-bold text-neutral-500">{step.t}</span>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         </motion.div>
       </div>
@@ -204,7 +220,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-neutral-950 flex">
+    <div className="min-h-screen bg-[#0a0a0a] flex selection:bg-blue-600 selection:text-white">
       <Sidebar 
         activePage={activePage} 
         onPageChange={setActivePage} 
@@ -214,18 +230,20 @@ export default function App() {
         lastSync={lastSync}
       />
       
-      <main className="flex-1 min-w-0 p-8">
-        <div className="max-w-7xl mx-auto">
+      <main className="flex-1 min-w-0 p-10 overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-10">
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
-              <h2 className="text-2xl font-bold capitalize">{activePage === 'overview' ? 'Vista general' : 'Detalle de cuentas'}</h2>
-              <p className="text-neutral-500 text-sm">Monitoreo de rendimiento en tiempo real</p>
+              <h2 className="text-3xl font-black tracking-tighter text-white capitalize">
+                {activePage === 'overview' ? 'Vista general' : 'Detalle de cuentas'}
+              </h2>
+              <p className="text-neutral-500 text-sm font-bold uppercase tracking-widest mt-1">Dash — live metrics</p>
             </div>
 
-            <div className="flex items-center gap-2 bg-neutral-50 dark:bg-neutral-900 p-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800">
-              <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-neutral-600 dark:text-neutral-400">
-                <Calendar className="w-4 h-4" />
+            <div className="flex items-center gap-3 bg-[#111] p-2 rounded-2xl border border-white/5">
+              <Calendar className="w-4 h-4 text-neutral-600 ml-2" />
+              <div className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mr-4">
                 {dateRange.since} — {dateRange.until}
               </div>
               <select 
@@ -236,142 +254,262 @@ export default function App() {
                     setDateRange({ since: format(startOfMonth(now), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
                   } else if (val === 'last_7') {
                     setDateRange({ since: format(subDays(now, 7), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
-                  } else if (val === 'last_30') {
-                    setDateRange({ since: format(subDays(now, 30), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
                   }
                 }}
-                className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-xs outline-none"
+                className="bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-2 text-[10px] font-black text-neutral-100 uppercase tracking-widest outline-none focus:border-blue-600 transition-all cursor-pointer hover:bg-[#222]"
               >
                 <option value="this_month">Este mes</option>
                 <option value="last_7">Últimos 7 días</option>
-                <option value="last_30">Últimos 30 días</option>
               </select>
             </div>
           </div>
 
           {loading && !accounts.length ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4 text-neutral-400">
-              <RefreshCw className="w-10 h-10 animate-spin" />
-              <p className="font-medium">Sincronizando con Meta...</p>
+            <div className="flex flex-col items-center justify-center py-32 gap-6 text-neutral-700">
+              <RefreshCw className="w-12 h-12 animate-spin text-blue-600/30" />
+              <p className="text-xs font-black uppercase tracking-[0.3em]">Sincronizando con Meta...</p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Summary Cards would go here in Overview */}
-              {activePage === 'overview' && <OverviewGrid accounts={accounts} settings={settings} />}
-              
-              {/* Accounts Table */}
-              <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-3xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-neutral-50 dark:bg-neutral-900/50 border-b border-neutral-200 dark:border-neutral-800">
-                        <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest w-64">Cuenta</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-center">Inversión</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-center">Revenue</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-center">ROAS</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-center">Estado</th>
-                        <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-center">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {accounts.map((acc) => {
-                        const isExpanded = expandedId === acc.id;
-                        const s = settings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', tracking: 'ecommerce' };
-                        const roas = acc.spend && acc.spend > 0 ? (acc.revenue || 0) / acc.spend : 0;
-                        const progress = s.objective > 0 ? Math.round(((acc.revenue || 0) / s.objective) * 100) : null;
-                        
-                        // Simple semaphore logic
-                        let statusColor = "bg-neutral-200 text-neutral-600";
-                        if (progress !== null) {
-                          if (progress >= 100) statusColor = "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400";
-                          else if (progress >= 70) statusColor = "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400";
-                          else statusColor = "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400";
-                        }
+            <>
+              {activePage === 'overview' && (
+                <div className="space-y-10 animate-in fade-in duration-1000">
+                  <Overview accounts={accounts} settings={settings} />
+                  
+                  {/* Column Toggles */}
+                  <div className="flex items-center gap-3 py-2 border-y border-white/5">
+                    <span className="text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] mr-2">Columnas</span>
+                    {['objetivo', 'facturado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado'].map(col => (
+                      <button
+                        key={col}
+                        onClick={() => toggleCol(col)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border",
+                          visibleCols.includes(col) 
+                            ? "bg-blue-600/10 border-blue-600/30 text-blue-500" 
+                            : "bg-transparent border-white/5 text-neutral-600 grayscale opacity-50 hover:opacity-100"
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={cn("w-1.5 h-1.5 rounded-full", visibleCols.includes(col) ? "bg-blue-500" : "bg-neutral-800")}></div>
+                          {col}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
 
-                        return (
-                          <React.Fragment key={acc.id}>
-                            <tr 
-                              onClick={() => toggleExpand(acc.id)}
-                              className={cn(
-                                "border-b border-neutral-100 dark:border-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-900/30 transition-colors cursor-pointer",
-                                isExpanded && "bg-neutral-50 dark:bg-neutral-900/30"
-                              )}
-                            >
-                              <td className="px-6 py-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="font-bold text-sm truncate max-w-[200px]">{acc.name}</div>
-                                  <span className="text-[9px] font-bold bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded text-neutral-400 uppercase">
-                                    {acc.currency}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 text-center text-sm font-medium">
-                                {formatCurrency(acc.spend || 0, acc.currency)}
-                              </td>
-                              <td className="px-6 py-4 text-center text-sm font-medium">
-                                {formatCurrency(acc.revenue || 0, acc.currency)}
-                              </td>
-                              <td className="px-6 py-4 text-center">
-                                <span className={cn(
-                                  "inline-block px-3 py-1 rounded-full font-bold text-sm",
-                                  roas >= 4 ? "text-green-600 dark:text-green-400" : 
-                                  roas >= 2 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
-                                )}>
-                                  ×{formatDecimal(roas)}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 text-center">
-                                <div className={cn("inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider", statusColor)}>
-                                  <div className={cn("w-1.5 h-1.5 rounded-full", statusColor.split(' ')[1].replace('text-', 'bg-'))}></div>
-                                  {progress !== null ? `${progress}% Objetivo` : 'Sin objetivo'}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 text-center">
-                                <div className="flex items-center justify-center gap-2">
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const obj = prompt('Objetivo de facturación mensual:', s.objective.toString());
-                                      if (obj !== null) updateSetting(acc.id, 'objective', parseFloat(obj));
-                                    }}
-                                    className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-400 transition-colors"
-                                  >
-                                    <Settings2 className="w-4 h-4" />
-                                  </button>
-                                  {isExpanded ? <ChevronUp className="w-5 h-5 text-neutral-300" /> : <ChevronDown className="w-5 h-5 text-neutral-300" />}
-                                </div>
-                              </td>
-                            </tr>
-                            <AnimatePresence>
-                              {isExpanded && (
-                                <tr>
-                                  <td colSpan={6} className="p-0 border-b border-neutral-200 dark:border-neutral-800">
-                                    <motion.div
-                                      initial={{ height: 0, opacity: 0 }}
-                                      animate={{ height: 'auto', opacity: 1 }}
-                                      exit={{ height: 0, opacity: 0 }}
-                                      transition={{ duration: 0.3, ease: 'easeInOut' }}
-                                      className="overflow-hidden"
-                                    >
-                                      <AccountDetailExpansion 
-                                        account={acc} 
-                                        settings={s} 
-                                        dateRange={dateRange}
-                                        onOpenReport={(a) => setReportAccount(a)}
-                                      />
-                                    </motion.div>
+                  {/* Accounts Table Styled for Overview */}
+                  <div className="bg-[#111] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse table-fixed">
+                        <thead>
+                          <tr className="border-b border-white/5">
+                            <th className="px-8 py-5 text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em] w-64">Cuenta</th>
+                            {visibleCols.includes('objetivo') && <th className="px-4 py-5 text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em] text-center">Objetivo</th>}
+                            {visibleCols.includes('facturado') && <th className="px-4 py-5 text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em] text-center">Facturado</th>}
+                            {visibleCols.includes('roas') && <th className="px-4 py-5 text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em] text-center">ROAS</th>}
+                            {visibleCols.includes('progreso') && <th className="px-4 py-5 text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em] text-center">Progreso</th>}
+                            {visibleCols.includes('invertido') && <th className="px-4 py-5 text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em] text-center w-32">Invertido</th>}
+                            {visibleCols.includes('presupuesto') && <th className="px-4 py-5 text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em] text-center w-32">Presupuesto</th>}
+                            {visibleCols.includes('prespct') && <th className="px-4 py-5 text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em] text-center w-40">% Presupuesto</th>}
+                            {visibleCols.includes('estado') && <th className="px-4 py-5 text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em] text-center w-40">Estado</th>}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/[0.02]">
+                          {accounts.map((acc) => {
+                            const isExpanded = expandedId === acc.id;
+                            const s = settings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', tracking: 'ecommerce' };
+                            const roas = acc.spend && acc.spend > 0 ? (acc.revenue || 0) / acc.spend : 0;
+                            const progress = s.objective > 0 ? Math.min((acc.revenue || 0) / s.objective, 1.2) : 0;
+                            const budgetProgress = s.budget > 0 ? Math.min((acc.spend || 0) / s.budget, 1.2) : 0;
+                            
+                            // Semaphore Logic
+                            const getStatusInfo = () => {
+                              const p = (acc.revenue || 0) / (s.objective || 1);
+                              if (p >= 1) return { label: 'En objetivo', color: 'text-success', bg: 'bg-success', glow: 'shadow-success/20' };
+                              if (p >= 0.7) return { label: 'En riesgo', color: 'text-warning', bg: 'bg-warning', glow: 'shadow-warning/20' };
+                              return { label: 'Fuera de objetivo', color: 'text-danger', bg: 'bg-danger', glow: 'shadow-danger/20' };
+                            };
+                            const status = getStatusInfo();
+
+                            return (
+                              <React.Fragment key={acc.id}>
+                                <tr 
+                                  onClick={() => toggleExpand(acc.id)}
+                                  className={cn(
+                                    "hover:bg-white/[0.02] transition-colors cursor-pointer group",
+                                    isExpanded && "bg-white/[0.03]"
+                                  )}
+                                >
+                                  <td className="px-8 py-5">
+                                    <div className="flex items-center gap-3">
+                                      <div className="font-bold text-xs truncate max-w-[200px] text-neutral-200 group-hover:text-white transition-colors">{acc.name}</div>
+                                      <div className="px-2 py-0.5 bg-neutral-900 border border-white/5 rounded text-[8px] font-black text-neutral-600 uppercase leading-none">
+                                        {acc.currency}
+                                      </div>
+                                    </div>
                                   </td>
+                                  
+                                  {visibleCols.includes('objetivo') && (
+                                    <td className="px-4 py-5 text-center text-[11px] font-bold text-neutral-400">
+                                      {s.objective ? formatCurrency(s.objective, s.currency) : '—'}
+                                    </td>
+                                  )}
+
+                                  {visibleCols.includes('facturado') && (
+                                    <td className="px-4 py-5 text-center text-[11px] font-black text-neutral-200">
+                                      {formatCurrency(acc.revenue || 0, s.currency)}
+                                    </td>
+                                  )}
+
+                                  {visibleCols.includes('roas') && (
+                                    <td className="px-4 py-5 text-center">
+                                      <span className={cn("text-[11px] font-black", status.color)}>
+                                        ×{formatDecimal(roas)}
+                                      </span>
+                                    </td>
+                                  )}
+
+                                  {visibleCols.includes('progreso') && (
+                                    <td className="px-4 py-5">
+                                      <div className="flex items-center gap-3 justify-center">
+                                        <div className="w-16 h-1.5 bg-neutral-900 rounded-full overflow-hidden border border-white/5">
+                                          <div 
+                                            className={cn("h-full rounded-full transition-all duration-1000", status.bg)} 
+                                            style={{ width: `${Math.min(progress * 100, 100)}%` }}
+                                          ></div>
+                                        </div>
+                                        <span className="text-[10px] font-black text-neutral-500 w-8">{Math.round(progress * 100)}%</span>
+                                      </div>
+                                    </td>
+                                  )}
+
+                                  {visibleCols.includes('invertido') && (
+                                    <td className="px-4 py-5 text-center text-[11px] font-bold text-neutral-400">
+                                      {formatCurrency(acc.spend || 0, s.currency)}
+                                    </td>
+                                  )}
+
+                                  {visibleCols.includes('presupuesto') && (
+                                    <td className="px-4 py-5 text-center text-[11px] font-bold text-neutral-400">
+                                      {s.budget ? formatCurrency(s.budget, s.currency) : '—'}
+                                    </td>
+                                  )}
+
+                                  {visibleCols.includes('prespct') && (
+                                    <td className="px-4 py-5">
+                                      <div className="flex items-center gap-3 justify-center">
+                                        <div className="w-16 h-1.5 bg-neutral-900 rounded-full overflow-hidden border border-white/5">
+                                          <div 
+                                            className={cn("h-full rounded-full transition-all duration-1000", budgetProgress > 1 ? "bg-danger" : "bg-neutral-600")} 
+                                            style={{ width: `${Math.min(budgetProgress * 100, 100)}%` }}
+                                          ></div>
+                                        </div>
+                                        <span className={cn("text-[10px] font-black w-8", budgetProgress > 1 ? "text-danger" : "text-neutral-500")}>
+                                          {Math.round(budgetProgress * 100)}%
+                                        </span>
+                                      </div>
+                                    </td>
+                                  )}
+
+                                  {visibleCols.includes('estado') && (
+                                    <td className="px-4 py-5 text-center">
+                                      <div className={cn("inline-flex items-center gap-2 group-hover:scale-105 transition-all")}>
+                                        <div className={cn("w-1.5 h-1.5 rounded-full shadow-lg", status.bg, status.glow)}></div>
+                                        <span className={cn("text-[8px] font-black uppercase tracking-widest leading-none", status.color)}>
+                                          {status.label}
+                                        </span>
+                                      </div>
+                                    </td>
+                                  )}
                                 </tr>
-                              )}
-                            </AnimatePresence>
-                          </React.Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                                
+                                <AnimatePresence>
+                                  {isExpanded && (
+                                    <tr>
+                                      <td colSpan={visibleCols.length + 1} className="p-0">
+                                        <motion.div
+                                          initial={{ height: 0, opacity: 0 }}
+                                          animate={{ height: 'auto', opacity: 1 }}
+                                          exit={{ height: 0, opacity: 0 }}
+                                          className="overflow-hidden bg-[#151515]"
+                                        >
+                                          <AccountDetailExpansion 
+                                            account={acc} 
+                                            settings={s} 
+                                            dateRange={dateRange}
+                                            onOpenReport={(a) => setReportAccount(a)}
+                                          />
+                                        </motion.div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </AnimatePresence>
+                              </React.Fragment>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              )}
+
+              {activePage === 'detail' && (
+                <div className="space-y-6 animate-in slide-in-from-bottom-5 duration-500">
+                  {/* Detailed list simple table or cards */}
+                  <div className="grid grid-cols-1 gap-4">
+                    {accounts.map(acc => {
+                      const s = settings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', tracking: 'ecommerce' };
+                      return (
+                        <div key={acc.id} className="bg-[#111] border border-white/5 rounded-3xl overflow-hidden shadow-lg">
+                          <button 
+                            onClick={() => toggleExpand(acc.id)}
+                            className="w-full flex items-center justify-between p-6 hover:bg-white/[0.01] transition-all"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 bg-neutral-900 rounded-xl flex items-center justify-center font-black text-blue-500 border border-white/5">
+                                {acc.name[0].toUpperCase()}
+                              </div>
+                              <div className="text-left">
+                                <div className="font-black text-neutral-100 tracking-tight">{acc.name}</div>
+                                <div className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest mt-0.5">{acc.currency} — ID: {acc.account_id}</div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-6">
+                              <div className="hidden md:block text-right">
+                                <div className="text-[10px] font-black text-neutral-600 uppercase tracking-widest mb-1">ROAS</div>
+                                <div className={cn("text-lg font-black", (acc.revenue||0)/(acc.spend||1) > 3 ? "text-success" : "text-neutral-300")}>
+                                  ×{formatDecimal((acc.revenue || 0) / (acc.spend || 1), 1)}
+                                </div>
+                              </div>
+                              {expandedId === acc.id ? <ChevronUp className="w-6 h-6 text-neutral-700" /> : <ChevronDown className="w-6 h-6 text-neutral-700" />}
+                            </div>
+                          </button>
+                          
+                          <AnimatePresence>
+                            {expandedId === acc.id && (
+                              <motion.div
+                                initial={{ height: 0 }}
+                                animate={{ height: 'auto' }}
+                                exit={{ height: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <AccountDetailExpansion 
+                                  account={acc} 
+                                  settings={s} 
+                                  dateRange={dateRange}
+                                  onOpenReport={(a) => setReportAccount(a)}
+                                />
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
@@ -385,31 +523,6 @@ export default function App() {
           onClose={() => setReportAccount(null)}
         />
       )}
-    </div>
-  );
-}
-
-function OverviewGrid({ accounts, settings }: { accounts: AdAccount[], settings: Record<string, AccountSettings> }) {
-  const totalSpend = accounts.reduce((a, c) => a + (c.spend || 0), 0);
-  const totalRevenue = accounts.reduce((a, c) => a + (c.revenue || 0), 0);
-  const avgRoas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
-  
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <StatCard label="Inversión Total" value={formatCurrency(totalSpend)} sub="Gasto acumulado" />
-      <StatCard label="Revenue Total" value={formatCurrency(totalRevenue)} sub="Ventas reportadas" />
-      <StatCard label="ROAS Promedio" value={`×${formatDecimal(avgRoas)}`} sub="Retorno sobre inversión" highlight />
-      <StatCard label="Cuentas Activas" value={accounts.length.toString()} sub="Bajo monitoreo" />
-    </div>
-  );
-}
-
-function StatCard({ label, value, sub, highlight }: { label: string, value: string, sub: string, highlight?: boolean }) {
-  return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-6 rounded-3xl shadow-sm">
-      <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1.5">{label}</div>
-      <div className={cn("text-2xl font-black mb-1", highlight && "text-blue-600 dark:text-blue-400")}>{value}</div>
-      <div className="text-xs text-neutral-500">{sub}</div>
     </div>
   );
 }

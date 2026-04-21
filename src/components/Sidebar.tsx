@@ -25,43 +25,43 @@ export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, l
     <button
       onClick={() => onPageChange(id)}
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left",
+        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold tracking-tight transition-all w-full text-left",
         activePage === id 
-          ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" 
-          : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+          ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
+          : "text-neutral-500 hover:text-neutral-100 hover:bg-white/5"
       )}
     >
-      <Icon className="w-4 h-4 shrink-0" />
+      <Icon className={cn("w-4 h-4 shrink-0", activePage === id ? "opacity-100" : "opacity-50")} />
       {label}
     </button>
   );
 
   return (
-    <aside className="w-64 border-r border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 flex flex-col h-screen sticky top-0 shrink-0">
-      <div className="p-5 border-bottom border-neutral-100 dark:border-neutral-900 flex items-center gap-3">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
-          <BarChart3 className="w-5 h-5 text-white" />
+    <aside className="w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col h-screen sticky top-0 shrink-0">
+      <div className="p-6 flex items-center gap-3">
+        <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center shrink-0 border border-white/5">
+          <BarChart3 className="w-6 h-6 text-blue-500" />
         </div>
         <div>
-          <div className="font-bold text-sm leading-tight">Control ROAS</div>
-          <div className="text-[10px] text-neutral-400">Meta Ads Dashboard</div>
+          <div className="font-black text-sm leading-tight tracking-tighter text-white">Control ROAS</div>
+          <div className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest leading-none mt-1">Meta Ads Dashboard</div>
         </div>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-3 mb-2 mt-4">Vistas</div>
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <div className="text-[10px] font-black text-neutral-700 uppercase tracking-[0.2em] px-3 mb-3 mt-4">Vistas</div>
         <NavItem id="overview" icon={LayoutDashboard} label="Vista general" />
         <NavItem id="detail" icon={BarChart3} label="Detalle de cuentas" />
 
-        <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-3 mb-2 mt-6">Configuración</div>
+        <div className="text-[10px] font-black text-neutral-700 uppercase tracking-[0.2em] px-3 mb-3 mt-8">Configuración</div>
         <NavItem id="accounts" icon={Settings} label="Cuentas visibles" />
         <NavItem id="history" icon={History} label="Historial" />
         <NavItem id="share" icon={Share2} label="Snapshot" />
       </nav>
 
-      <div className="p-3 border-t border-neutral-100 dark:border-neutral-900">
-        <div className="bg-neutral-50 dark:bg-neutral-900/50 rounded-lg p-2.5 flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 rounded-full bg-blue-600 overflow-hidden flex items-center justify-center text-white text-xs font-bold">
+      <div className="p-4 border-t border-white/5 space-y-4">
+        <div className="bg-[#111] rounded-2xl p-3 border border-white/5 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-blue-600 overflow-hidden flex items-center justify-center text-white text-xs font-black shadow-inner">
             {user?.picture?.data?.url ? (
               <img src={user.picture.data.url} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -69,31 +69,32 @@ export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, l
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-medium truncate">{user?.name || 'Usuario'}</div>
+            <div className="text-xs font-black truncate text-neutral-100">{user?.name || 'Usuario'}</div>
+            {lastSync && (
+              <div className="text-[9px] font-bold text-neutral-600 mt-0.5 uppercase tracking-wider">
+                Sync: {lastSync}
+              </div>
+            )}
           </div>
         </div>
         
-        {lastSync && (
-          <div className="text-[10px] text-neutral-400 text-center mb-2">
-            Sync: {lastSync}
-          </div>
-        )}
-        
-        <button 
-          onClick={onRefresh}
-          className="flex items-center justify-center gap-2 w-full py-1.5 px-3 rounded-lg text-xs font-medium border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-900 mb-1"
-        >
-          <RefreshCcw className="w-3 h-3" />
-          Sincronizar
-        </button>
-        
-        <button 
-          onClick={onLogout}
-          className="flex items-center justify-center gap-2 w-full py-1.5 px-3 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-        >
-          <LogOut className="w-3 h-3" />
-          Cerrar sesión
-        </button>
+        <div className="grid grid-cols-1 gap-2">
+          <button 
+            onClick={onRefresh}
+            className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-[11px] font-bold text-neutral-400 hover:text-neutral-100 hover:bg-white/5 transition-all"
+          >
+            <RefreshCcw className="w-3 h-3" />
+            Sincronizar
+          </button>
+          
+          <button 
+            onClick={onLogout}
+            className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-[11px] font-bold text-red-500 hover:text-red-400 hover:bg-red-500/5 transition-all"
+          >
+            <LogOut className="w-3 h-3" />
+            Cerrar sesión
+          </button>
+        </div>
       </div>
     </aside>
   );
