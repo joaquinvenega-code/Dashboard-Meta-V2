@@ -156,15 +156,27 @@ export default function App() {
       setAccounts(detailedAccs);
       setError(null);
       
-      // Auto-initialize visibility IF we have accounts but VISIBILITY IS LITERALLY EMPTY OR HAS NO MATCHES
-      // Use setVisibleAccountIds with functional update to avoid dependency on visibleAccountIds state itself
+      // Auto-initialize visibility ONLY if it has never been set
       setVisibleAccountIds(currentVisible => {
-        const hasMatches = detailedAccs.some(a => currentVisible.includes(a.id));
-        if (detailedAccs.length > 0 && (currentVisible.length === 0 || !hasMatches)) {
+        const stored = localStorage.getItem('cr_visible_accounts');
+        if (stored === null && detailedAccs.length > 0) {
           const allIds = detailedAccs.map(a => a.id);
           localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
           return allIds;
         }
+        
+        // If we have accounts but none matches our visible list, and we aren't intentionally showing nothing
+        const hasVisibleMatches = detailedAccs.some(a => 
+          currentVisible.some(vId => matchId(vId, a.id) || matchId(vId, a.account_id))
+        );
+        
+        if (detailedAccs.length > 0 && currentVisible.length > 0 && !hasVisibleMatches) {
+          // This happens if the user changed the App ID or similar and the visible list is stale
+          const allIds = detailedAccs.map(a => a.id);
+          localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
+          return allIds;
+        }
+        
         return currentVisible;
       });
       
@@ -241,6 +253,7 @@ export default function App() {
   };
 
   const { overviewEntities, overviewSettings } = React.useMemo(() => {
+    // DEBUG: console.log('Recalculating Overview', { accounts: accounts.length, visible: visibleAccountIds.length });
     try {
       const activeAccounts = accounts || [];
       const currentVisibleIds = Array.isArray(visibleAccountIds) ? visibleAccountIds : [];
@@ -280,8 +293,8 @@ export default function App() {
         // If it's already in a group, skip it here
         if (renderedInGroup.has(aid)) return;
 
-        // Check if it's visible. If no accounts are selected yet, we show all (initial state)
-        const isVisible = currentVisibleIds.length === 0 || currentVisibleIds.some(vId => 
+        // Check if it's visible.
+        const isVisible = currentVisibleIds.some(vId => 
           matchId(vId, acc.id) || matchId(vId, acc.account_id)
         );
 
@@ -303,7 +316,9 @@ export default function App() {
     }
   }, [accounts, groups, visibleAccountIds, settings]);
 
-  const filteredAccounts = accounts.filter(acc => visibleAccountIds.includes(acc.id));
+  const filteredAccounts = accounts.filter(acc => 
+    visibleAccountIds.some(vId => matchId(vId, acc.id) || matchId(vId, acc.account_id))
+  );
 
   if (!isLogged) {
     return (
@@ -402,7 +417,16 @@ export default function App() {
                  activePage === 'detail' ? 'Detalle de cuentas' : 
                  activePage === 'accounts' ? 'Cuentas visibles' : activePage}
               </h2>
-              <p className="text-neutral-500 text-sm font-bold uppercase tracking-widest mt-1">Dash — live metrics</p>
+              <div className="flex items-center gap-4 mt-1">
+                <p className="text-neutral-500 text-sm font-bold uppercase tracking-widest leading-none">Dash — live metrics</p>
+                <div className="flex items-center gap-2 text-[9px] font-black text-neutral-600 bg-white/5 px-2 py-0.5 rounded border border-white/5 uppercase">
+                  <span>Totales: {accounts.length}</span>
+                  <span className="opacity-20">/</span>
+                  <span>Seleccionados: {visibleAccountIds.length}</span>
+                  <span className="opacity-20">/</span>
+                  <span>En Tabla: {overviewEntities.length}</span>
+                </div>
+              </div>
             </div>
 
             {activePage !== 'accounts' && (
