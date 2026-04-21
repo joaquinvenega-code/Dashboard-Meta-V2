@@ -35,6 +35,14 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { format, subDays, startOfMonth } from 'date-fns';
 
+// Global ID Match Utility
+const matchId = (id1: any, id2: any) => {
+  if (id1 === null || id1 === undefined || id2 === null || id2 === undefined) return false;
+  const s1 = id1.toString().replace('act_', '').trim();
+  const s2 = id2.toString().replace('act_', '').trim();
+  return s1 === s2 && s1.length > 0;
+};
+
 export default function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [appId, setAppId] = useState(localStorage.getItem('cr_appid') || '');
@@ -49,13 +57,7 @@ export default function App() {
   // Column Selection State
   const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
 
-  // Global ID Match Utility
-  const matchId = (id1: any, id2: any) => {
-    if (!id1 || !id2) return false;
-    const s1 = id1.toString().replace('act_', '').trim();
-    const s2 = id2.toString().replace('act_', '').trim();
-    return s1 === s2 && s1.length > 0;
-  };
+  // Global ID Match Utility (moved outside)
 
   // Date Range State
   const [dateRange, setDateRange] = useState({
@@ -253,7 +255,6 @@ export default function App() {
   };
 
   const { overviewEntities, overviewSettings } = React.useMemo(() => {
-    // DEBUG: console.log('Recalculating Overview', { accounts: accounts.length, visible: visibleAccountIds.length });
     try {
       const activeAccounts = accounts || [];
       const currentVisibleIds = Array.isArray(visibleAccountIds) ? visibleAccountIds : [];
@@ -261,44 +262,52 @@ export default function App() {
       
       const entities: AdAccount[] = [];
       const virtualSettings: Record<string, AccountSettings> = { ...(settings || {}) };
-      const renderedInGroup = new Set<string>();
+      const handledAccountIds = new Set<string>();
 
-      // 1. Process Groups
+      // 1. Process Groups FIRST
       currentGroups.forEach(g => {
+        // Find accounts belonging to this group
         const gAccs = activeAccounts.filter(a => 
           (g.accountIds || []).some(id => matchId(id, a.id) || matchId(id, a.account_id))
         );
 
         if (gAccs.length > 0) {
-          const sG = settings[g.id];
-          entities.push({
-            id: g.id,
-            account_id: 'GRUPO',
-            name: g.name || 'Grupo sin nombre',
-            account_status: 1,
-            currency: sG?.currency || gAccs[0].currency || 'ARS',
-            spend: gAccs.reduce((sum, a) => sum + (a.spend || 0), 0),
-            revenue: gAccs.reduce((sum, a) => sum + (a.revenue || 0), 0),
-            purchases: gAccs.reduce((sum, a) => sum + (a.purchases || 0), 0),
-            messages: gAccs.reduce((sum, a) => sum + (a.messages || 0), 0),
-          });
-          gAccs.forEach(a => renderedInGroup.add(a.id?.toString()));
+          // Check if this group itself should be visible
+          // A group is visible if its ID is in visibleAccountIds OR if any of its accounts are in visibleAccountIds
+          const isGroupVisible = currentVisibleIds.some(vId => 
+            matchId(vId, g.id) || gAccs.some(a => matchId(vId, a.id))
+          );
+
+          if (isGroupVisible) {
+            const sG = settings[g.id];
+            entities.push({
+              id: g.id,
+              account_id: 'GRUPO',
+              name: g.name || 'Grupo',
+              account_status: 1,
+              currency: sG?.currency || gAccs[0].currency || 'ARS',
+              spend: gAccs.reduce((sum, a) => sum + (a.spend || 0), 0),
+              revenue: gAccs.reduce((sum, a) => sum + (a.revenue || 0), 0),
+              purchases: gAccs.reduce((sum, a) => sum + (a.purchases || 0), 0),
+              messages: gAccs.reduce((sum, a) => sum + (a.messages || 0), 0),
+            });
+          }
+          // Mark accounts as handled so they don't show up individually
+          gAccs.forEach(a => handledAccountIds.add(a.id?.toString()));
         }
       });
 
       // 2. Process Individual Accounts
       activeAccounts.forEach(acc => {
-        const aid = acc.id?.toString();
-        
-        // If it's already in a group, skip it here
-        if (renderedInGroup.has(aid)) return;
+        const accIdStr = acc.id?.toString();
+        if (handledAccountIds.has(accIdStr)) return;
 
-        // Check if it's visible.
-        const isVisible = currentVisibleIds.some(vId => 
+        // Account is visible ONLY if its ID or account_id is in the selection
+        const isSelected = currentVisibleIds.some(vId => 
           matchId(vId, acc.id) || matchId(vId, acc.account_id)
         );
 
-        if (isVisible) {
+        if (isSelected) {
           const s = settings[acc.id];
           const entry = { ...acc };
           if (s?.customName) entry.name = s.customName;
@@ -306,13 +315,10 @@ export default function App() {
         }
       });
 
-      // REMOVED FORCED FALLBACK: We trust our matching now. 
-      // If entities is empty but user has selections, it will show as empty (but matching should work now)
-      
       return { overviewEntities: entities, overviewSettings: virtualSettings };
     } catch (e) {
-      console.error("Error in overview calculation:", e);
-      return { overviewEntities: accounts || [], overviewSettings: settings };
+      console.error("Critical error in overview calculation:", e);
+      return { overviewEntities: [], overviewSettings: settings };
     }
   }, [accounts, groups, visibleAccountIds, settings]);
 
