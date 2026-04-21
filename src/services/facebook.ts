@@ -269,7 +269,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
   for (const ad of ads) {
     const adRes: any = await new Promise((resolve) => {
       window.FB.api(`/${ad.id}`, 'GET', {
-        fields: 'creative{image_url,image_hash,thumbnail_url,object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id}',
+        fields: 'creative{id,image_url,image_hash,thumbnail_url.width(1200).height(1200),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id}'
       }, (res: any) => resolve(res));
     });
 
@@ -277,23 +277,36 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       const creative = adRes.creative;
       let thumb = null;
 
-      // 1. Try to get the highest resolution possible from the source post (Story)
-      // This is usually the "full_picture" which is much higher quality than regular thumbnails
-      const storyId = creative.effective_object_story_id || creative.object_story_id;
-      if (storyId) {
-        try {
-          const storyRes: any = await new Promise((resolve) => {
-            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,picture' }, (res: any) => resolve(res));
-          });
-          if (storyRes && !storyRes.error && storyRes.full_picture) {
-            thumb = storyRes.full_picture;
+      // 1. Try to get full_picture from the Creative itself (supported by some types)
+      try {
+        const creativeDetail: any = await new Promise((resolve) => {
+          window.FB.api(`/${creative.id}`, 'GET', { fields: 'full_picture' }, (res: any) => resolve(res));
+        });
+        if (creativeDetail && creativeDetail.full_picture) {
+          thumb = creativeDetail.full_picture;
+        }
+      } catch (e) {
+        // Fallback to next step
+      }
+
+      // 2. Try the Source Post (Story) - Usually the highest resolution
+      if (!thumb) {
+        const storyId = creative.effective_object_story_id || creative.object_story_id;
+        if (storyId) {
+          try {
+            const storyRes: any = await new Promise((resolve) => {
+              window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,picture' }, (res: any) => resolve(res));
+            });
+            if (storyRes && storyRes.full_picture) {
+              thumb = storyRes.full_picture;
+            }
+          } catch (e) {
+            console.error("Error fetching story picture:", e);
           }
-        } catch (e) {
-          console.error("Error fetching story picture:", e);
         }
       }
 
-      // 2. If it's a video and we didn't get a good story picture, or if we want a fresh frame
+      // 3. Fallback for Videos (Direct high-res extraction)
       if (!thumb && creative.video_id) {
         try {
           const videoThumbRes: any = await new Promise((resolve) => {
@@ -312,7 +325,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         }
       }
 
-      // 3. Last resort fallbacks
+      // 4. Default fallbacks
       ad.thumbnail = thumb || creative.image_url || creative.thumbnail_url || null;
     }
 
