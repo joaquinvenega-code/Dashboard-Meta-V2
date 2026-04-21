@@ -471,7 +471,24 @@ export default function App() {
                               <tr key={acc.id} className="hover:bg-white/[0.02] transition-colors group">
                                 <td className="px-8 py-5">
                                   <div className="flex items-center gap-3">
-                                    <div className="font-bold text-xs truncate max-w-[200px] text-neutral-200 group-hover:text-white transition-colors">{acc.name}</div>
+                                    <div 
+                                      onDoubleClick={() => {
+                                        const currentTitle = acc.name;
+                                        const newName = prompt('Editar nombre:', currentTitle);
+                                        if (newName && newName !== currentTitle) {
+                                          if (acc.account_id === 'GRUPO') {
+                                            const nextGroups = groups.map(g => g.id === acc.id ? { ...g, name: newName } : g);
+                                            saveGroups(nextGroups);
+                                          } else {
+                                            updateSetting(acc.id, 'customName', newName);
+                                          }
+                                        }
+                                      }}
+                                      className="font-bold text-xs truncate max-w-[200px] text-neutral-200 group-hover:text-white transition-colors cursor-edit select-none"
+                                      title="Doble clic para editar nombre"
+                                    >
+                                      {acc.name}
+                                    </div>
                                     <div className="px-2 py-0.5 bg-neutral-900 border border-white/5 rounded text-[8px] font-black text-neutral-600 uppercase leading-none">
                                       {acc.account_id}
                                     </div>
@@ -583,15 +600,6 @@ export default function App() {
                               </div>
                             </button>
                             <div className="flex items-center gap-6">
-                              <button 
-                                onClick={() => {
-                                  const n = prompt('Nuevo nombre para esta cuenta:', displayName);
-                                  if (n !== null) updateSetting(acc.id, 'customName', n);
-                                }}
-                                className="opacity-0 group-hover:opacity-100 p-2 hover:bg-white/5 rounded-lg text-neutral-600 hover:text-white transition-all order-first"
-                              >
-                                <Settings2 className="w-4 h-4" />
-                              </button>
                               <div className="hidden md:block text-right">
                                 <div className="text-[10px] font-black text-neutral-600 uppercase tracking-widest mb-1">ROAS</div>
                                 <div className={cn("text-lg font-black", (acc.revenue||0)/(acc.spend||1) > 3 ? "text-success" : "text-neutral-300")}>
