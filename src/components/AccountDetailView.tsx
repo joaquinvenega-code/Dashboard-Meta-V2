@@ -490,7 +490,7 @@ const AdCard: React.FC<{ ad: Ad; rank: number }> = ({ ad, rank }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 items-center">
         {/* Ad Identity */}
         <div className="md:col-span-1 xl:col-span-2">
-           <div className="bg-[#050505] rounded-xl overflow-hidden aspect-square border border-white/10 relative shadow-2xl print:border-neutral-200">
+           <div className="bg-[#050505] rounded-xl overflow-hidden aspect-[4/5] border border-white/10 relative shadow-2xl print:border-neutral-200">
               <div className="absolute top-2 left-2 z-10 px-2 py-0.5 bg-black/95 backdrop-blur-md rounded-md text-[8px] font-black text-white uppercase tracking-widest border border-white/10 print:hidden">
                  #{rank}
               </div>
@@ -498,10 +498,11 @@ const AdCard: React.FC<{ ad: Ad; rank: number }> = ({ ad, rank }) => {
                 <img 
                   src={ad.thumbnail} 
                   alt={ad.name} 
-                  className="w-full h-full object-contain transition-transform duration-700 group-hover/card:scale-105" 
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" 
                   referrerPolicy="no-referrer"
                   style={{ 
                     WebkitFontSmoothing: 'antialiased',
+                    imageRendering: 'auto'
                   }}
                 />
               ) : (
