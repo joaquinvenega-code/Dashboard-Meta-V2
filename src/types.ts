@@ -25,6 +25,7 @@ export interface AccountSettings {
   budget: number;
   currency: string;
   tracking: 'ecommerce' | 'messaging' | 'both';
+  customName?: string;
 }
 
 export interface Ad {

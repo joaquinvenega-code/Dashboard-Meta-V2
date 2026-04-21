@@ -67,6 +67,7 @@ export default function App() {
   
   // Report State
   const [reportAccount, setReportAccount] = useState<AdAccount | null>(null);
+  const [showColSelectors, setShowColSelectors] = useState(false);
 
   // Visibility State
   const [visibleAccountIds, setVisibleAccountIds] = useState<string[]>(() => {
@@ -232,7 +233,8 @@ export default function App() {
             objective: groupObjective,
             budget: groupBudget,
             currency: gAccs[0].currency || 'ARS',
-            tracking: 'ecommerce'
+            tracking: 'ecommerce',
+            customName: g.name
           };
           
           entities.push(aggregated);
@@ -242,7 +244,10 @@ export default function App() {
       // Standalone visible accounts
       visibleAccounts.forEach(acc => {
         if (!accountsInGroups.has(acc.id)) {
-          entities.push(acc);
+          const s = settings[acc.id];
+          const entry = { ...acc };
+          if (s?.customName) entry.name = s.customName;
+          entities.push(entry);
         }
       });
 
@@ -382,27 +387,52 @@ export default function App() {
                 <div className="space-y-10 animate-in fade-in duration-1000">
                   <Overview accounts={overviewEntities} settings={overviewSettings} />
                   
-                  {/* Column Toggles */}
-                  <div className="flex items-center gap-3 py-2 border-y border-white/5">
-                    <span className="text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] mr-2">Columnas</span>
-                    {['objetivo', 'facturado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado'].map(col => (
-                      <button
-                        key={col}
-                        onClick={() => toggleCol(col)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border",
-                          visibleCols.includes(col) 
-                            ? "bg-blue-600/10 border-blue-600/30 text-blue-500" 
-                            : "bg-transparent border-white/5 text-neutral-600 grayscale opacity-50 hover:opacity-100"
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className={cn("w-1.5 h-1.5 rounded-full", visibleCols.includes(col) ? "bg-blue-500" : "bg-neutral-800")}></div>
-                          {col}
-                        </div>
-                      </button>
-                    ))}
+                  {/* Column Toggles Toggle */}
+                  <div className="flex justify-end">
+                    <button 
+                      onClick={() => setShowColSelectors(!showColSelectors)}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
+                        showColSelectors ? "bg-white/10 border-white/20 text-white" : "bg-transparent border-white/5 text-neutral-600 hover:text-neutral-400"
+                      )}
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                      {showColSelectors ? 'Ocultar columnas' : 'Personalizar columnas'}
+                    </button>
                   </div>
+
+                  {/* Column Toggles */}
+                  <AnimatePresence>
+                    {showColSelectors && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="flex flex-wrap items-center gap-3 py-4 border-y border-white/5">
+                          <span className="text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] mr-2">Visibilidad de columnas</span>
+                          {['objetivo', 'facturado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado'].map(col => (
+                            <button
+                              key={col}
+                              onClick={() => toggleCol(col)}
+                              className={cn(
+                                "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border",
+                                visibleCols.includes(col) 
+                                  ? "bg-blue-600/10 border-blue-600/30 text-blue-500" 
+                                  : "bg-transparent border-white/5 text-neutral-600 grayscale opacity-50 hover:opacity-100"
+                              )}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className={cn("w-1.5 h-1.5 rounded-full", visibleCols.includes(col) ? "bg-blue-500" : "bg-neutral-800")}></div>
+                                {col}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {/* Accounts Table Styled for Overview */}
                   <div className="bg-[#111] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl">
@@ -536,31 +566,43 @@ export default function App() {
                   <div className="grid grid-cols-1 gap-4">
                     {filteredAccounts.map(acc => {
                       const s = settings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', tracking: 'ecommerce' };
+                      const displayName = s.customName || acc.name;
                       return (
                         <div key={acc.id} className="bg-[#111] border border-white/5 rounded-3xl overflow-hidden shadow-lg">
-                          <button 
-                            onClick={() => toggleExpand(acc.id)}
-                            className="w-full flex items-center justify-between p-6 hover:bg-white/[0.01] transition-all"
-                          >
-                            <div className="flex items-center gap-4">
+                          <div className="w-full flex items-center justify-between p-6 hover:bg-white/[0.01] transition-all group">
+                            <button 
+                              onClick={() => toggleExpand(acc.id)}
+                              className="flex items-center gap-4 flex-1 text-left"
+                            >
                               <div className="w-10 h-10 bg-neutral-900 rounded-xl flex items-center justify-center font-black text-blue-500 border border-white/5">
-                                {acc.name[0].toUpperCase()}
+                                {displayName[0].toUpperCase()}
                               </div>
                               <div className="text-left">
-                                <div className="font-black text-neutral-100 tracking-tight">{acc.name}</div>
+                                <div className="font-black text-neutral-100 tracking-tight">{displayName}</div>
                                 <div className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest mt-0.5">{acc.currency} — ID: {acc.account_id}</div>
                               </div>
-                            </div>
+                            </button>
                             <div className="flex items-center gap-6">
+                              <button 
+                                onClick={() => {
+                                  const n = prompt('Nuevo nombre para esta cuenta:', displayName);
+                                  if (n !== null) updateSetting(acc.id, 'customName', n);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 p-2 hover:bg-white/5 rounded-lg text-neutral-600 hover:text-white transition-all order-first"
+                              >
+                                <Settings2 className="w-4 h-4" />
+                              </button>
                               <div className="hidden md:block text-right">
                                 <div className="text-[10px] font-black text-neutral-600 uppercase tracking-widest mb-1">ROAS</div>
                                 <div className={cn("text-lg font-black", (acc.revenue||0)/(acc.spend||1) > 3 ? "text-success" : "text-neutral-300")}>
                                   ×{formatDecimal((acc.revenue || 0) / (acc.spend || 1), 1)}
                                 </div>
                               </div>
-                              {expandedId === acc.id ? <ChevronUp className="w-6 h-6 text-neutral-700" /> : <ChevronDown className="w-6 h-6 text-neutral-700" />}
+                              <button onClick={() => toggleExpand(acc.id)}>
+                                {expandedId === acc.id ? <ChevronUp className="w-6 h-6 text-neutral-700" /> : <ChevronDown className="w-6 h-6 text-neutral-700" />}
+                              </button>
                             </div>
-                          </button>
+                          </div>
                           
                           <AnimatePresence>
                             {expandedId === acc.id && (
@@ -644,7 +686,18 @@ export default function App() {
                       {groups.map(group => (
                         <div key={group.id} className="bg-[#1c1c1c] p-6 rounded-2xl border border-white/5 space-y-4">
                           <div className="flex items-center justify-between">
-                            <div className="font-black text-neutral-100">{group.name}</div>
+                            <div className="flex items-center gap-2">
+                              <div className="font-black text-neutral-100">{group.name}</div>
+                              <button 
+                                onClick={() => {
+                                  const n = prompt('Nuevo nombre para el grupo:', group.name);
+                                  if (n) saveGroups(groups.map(g => g.id === group.id ? { ...g, name: n } : g));
+                                }}
+                                className="p-1 hover:bg-neutral-800 rounded text-neutral-600 hover:text-white transition-all"
+                              >
+                                <Settings2 className="w-3 h-3" />
+                              </button>
+                            </div>
                             <button 
                               onClick={() => {
                                 if (confirm('¿Eliminar este grupo?')) {
