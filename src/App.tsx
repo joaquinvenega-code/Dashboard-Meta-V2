@@ -133,9 +133,11 @@ export default function App() {
         return { ...acc, ...insights };
       }));
       setAccounts(detailedAccs);
+      setError(null);
       
-      // Initialize visibility if empty
-      if (visibleAccountIds.length === 0 && detailedAccs.length > 0) {
+      // Initialize or reset visibility if none of the current accounts are visible
+      const visibleInCurrent = detailedAccs.filter(a => visibleAccountIds.includes(a.id));
+      if (detailedAccs.length > 0 && (visibleAccountIds.length === 0 || visibleInCurrent.length === 0)) {
         const allIds = detailedAccs.map(a => a.id);
         setVisibleAccountIds(allIds);
         localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
@@ -147,7 +149,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [dateRange]);
+  }, [dateRange, visibleAccountIds]);
 
   const onLogin = async () => {
     if (!appId) {
@@ -346,11 +348,20 @@ export default function App() {
         user={user} 
         onLogout={onLogout}
         onRefresh={loadData}
+        loading={loading}
         lastSync={lastSync}
       />
       
       <main className="flex-1 min-w-0 p-10 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-10">
+          {error && (
+            <div className="bg-danger/10 border border-danger/20 p-4 rounded-2xl flex items-center gap-3 text-danger animate-in fade-in slide-in-from-top-2">
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              <div className="text-xs font-black uppercase tracking-widest">{error}</div>
+              <button onClick={() => setError(null)} className="ml-auto p-1 hover:bg-danger/10 rounded-lg">×</button>
+            </div>
+          )}
+
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>

@@ -18,10 +18,11 @@ interface SidebarProps {
   user: any;
   onLogout: () => void;
   onRefresh: () => void;
+  loading?: boolean;
   lastSync: string | null;
 }
 
-export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, lastSync }: SidebarProps) {
+export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, loading, lastSync }: SidebarProps) {
   const NavItem = ({ id, icon: Icon, label }: { id: string, icon: any, label: string }) => (
     <button
       onClick={() => onPageChange(id)}
@@ -83,10 +84,11 @@ export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, l
         <div className="grid grid-cols-1 gap-2">
           <button 
             onClick={onRefresh}
-            className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-[11px] font-bold text-neutral-400 hover:text-neutral-100 hover:bg-white/5 transition-all"
+            disabled={loading}
+            className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-[11px] font-bold text-neutral-400 hover:text-neutral-100 hover:bg-white/5 transition-all disabled:opacity-50"
           >
-            <RefreshCcw className="w-3 h-3" />
-            Sincronizar
+            <RefreshCcw className={cn("w-3 h-3", loading && "animate-spin")} />
+            {loading ? 'Sincronizando...' : 'Sincronizar'}
           </button>
           
           <button 
