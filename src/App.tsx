@@ -38,8 +38,9 @@ import { format, subDays, startOfMonth } from 'date-fns';
 // Global ID Match Utility
 const matchId = (id1: any, id2: any) => {
   if (id1 === null || id1 === undefined || id2 === null || id2 === undefined) return false;
-  const s1 = id1.toString().replace('act_', '').trim();
-  const s2 = id2.toString().replace('act_', '').trim();
+  const clean = (val: any) => val.toString().toLowerCase().replace(/^act_/g, '').trim();
+  const s1 = clean(id1);
+  const s2 = clean(id2);
   return s1 === s2 && s1.length > 0;
 };
 
@@ -556,7 +557,12 @@ export default function App() {
                                       <p className="text-[9px] text-neutral-400 font-bold">• Cuentas cargadas de Meta: {accounts.length}</p>
                                       <p className="text-[9px] text-neutral-400 font-bold">• Cuentas seleccionadas: {visibleAccountIds.length}</p>
                                       <p className="text-[9px] text-neutral-400 font-bold">• Entidades Dashboard: {overviewEntities.length}</p>
-                                      <p className="text-[9px] text-neutral-400 font-bold">• ID Sesión: {user?.id || 'No hay ID'}</p>
+                                      {accounts.length > 0 && (
+                                        <p className="text-[9px] text-neutral-500 font-medium mt-2 break-all opacity-50">
+                                          Ref (Meta): {accounts[0].id}<br/>
+                                          Ref (Selección): {visibleAccountIds[0] || 'N/A'}
+                                        </p>
+                                      )}
                                     </div>
                                     <div className="flex flex-col gap-2 mt-6">
                                       {accounts.length > 0 && (
