@@ -63,6 +63,12 @@ export default function App() {
   // Report State
   const [reportAccount, setReportAccount] = useState<AdAccount | null>(null);
 
+  // Visibility State
+  const [visibleAccountIds, setVisibleAccountIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('cr_visible_accounts');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   useEffect(() => {
     if (appId) {
       initFacebookSdk(appId).then(() => {
@@ -101,6 +107,14 @@ export default function App() {
         return { ...acc, ...insights };
       }));
       setAccounts(detailedAccs);
+      
+      // Initialize visibility if empty
+      if (visibleAccountIds.length === 0 && detailedAccs.length > 0) {
+        const allIds = detailedAccs.map(a => a.id);
+        setVisibleAccountIds(allIds);
+        localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
+      }
+      
       setLastSync(new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }));
     } catch (err: any) {
       setError(err.message);
@@ -151,6 +165,16 @@ export default function App() {
       setVisibleCols([...visibleCols, col]);
     }
   };
+
+  const toggleAccountVisibility = (id: string) => {
+    const next = visibleAccountIds.includes(id)
+      ? visibleAccountIds.filter(v => v !== id)
+      : [...visibleAccountIds, id];
+    setVisibleAccountIds(next);
+    localStorage.setItem('cr_visible_accounts', JSON.stringify(next));
+  };
+
+  const filteredAccounts = accounts.filter(acc => visibleAccountIds.includes(acc.id));
 
   if (!isLogged) {
     return (
@@ -236,32 +260,36 @@ export default function App() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
               <h2 className="text-3xl font-black tracking-tighter text-white capitalize">
-                {activePage === 'overview' ? 'Vista general' : 'Detalle de cuentas'}
+                {activePage === 'overview' ? 'Vista general' : 
+                 activePage === 'detail' ? 'Detalle de cuentas' : 
+                 activePage === 'accounts' ? 'Cuentas visibles' : activePage}
               </h2>
               <p className="text-neutral-500 text-sm font-bold uppercase tracking-widest mt-1">Dash — live metrics</p>
             </div>
 
-            <div className="flex items-center gap-3 bg-[#111] p-2 rounded-2xl border border-white/5">
-              <Calendar className="w-4 h-4 text-neutral-600 ml-2" />
-              <div className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mr-4">
-                {dateRange.since} — {dateRange.until}
+            {activePage !== 'accounts' && (
+              <div className="flex items-center gap-3 bg-[#111] p-2 rounded-2xl border border-white/5">
+                <Calendar className="w-4 h-4 text-neutral-600 ml-2" />
+                <div className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mr-4">
+                  {dateRange.since} — {dateRange.until}
+                </div>
+                <select 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const now = new Date();
+                    if (val === 'this_month') {
+                      setDateRange({ since: format(startOfMonth(now), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
+                    } else if (val === 'last_7') {
+                      setDateRange({ since: format(subDays(now, 7), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
+                    }
+                  }}
+                  className="bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-2 text-[10px] font-black text-neutral-100 uppercase tracking-widest outline-none focus:border-blue-600 transition-all cursor-pointer hover:bg-[#222]"
+                >
+                  <option value="this_month">Este mes</option>
+                  <option value="last_7">Últimos 7 días</option>
+                </select>
               </div>
-              <select 
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const now = new Date();
-                  if (val === 'this_month') {
-                    setDateRange({ since: format(startOfMonth(now), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
-                  } else if (val === 'last_7') {
-                    setDateRange({ since: format(subDays(now, 7), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
-                  }
-                }}
-                className="bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-2 text-[10px] font-black text-neutral-100 uppercase tracking-widest outline-none focus:border-blue-600 transition-all cursor-pointer hover:bg-[#222]"
-              >
-                <option value="this_month">Este mes</option>
-                <option value="last_7">Últimos 7 días</option>
-              </select>
-            </div>
+            )}
           </div>
 
           {loading && !accounts.length ? (
@@ -273,7 +301,7 @@ export default function App() {
             <>
               {activePage === 'overview' && (
                 <div className="space-y-10 animate-in fade-in duration-1000">
-                  <Overview accounts={accounts} settings={settings} />
+                  <Overview accounts={filteredAccounts} settings={settings} />
                   
                   {/* Column Toggles */}
                   <div className="flex items-center gap-3 py-2 border-y border-white/5">
@@ -315,7 +343,7 @@ export default function App() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/[0.02]">
-                          {accounts.map((acc) => {
+                          {filteredAccounts.map((acc) => {
                             const isExpanded = expandedId === acc.id;
                             const s = settings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', tracking: 'ecommerce' };
                             const roas = acc.spend && acc.spend > 0 ? (acc.revenue || 0) / acc.spend : 0;
@@ -458,7 +486,7 @@ export default function App() {
                 <div className="space-y-6 animate-in slide-in-from-bottom-5 duration-500">
                   {/* Detailed list simple table or cards */}
                   <div className="grid grid-cols-1 gap-4">
-                    {accounts.map(acc => {
+                    {filteredAccounts.map(acc => {
                       const s = settings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', tracking: 'ecommerce' };
                       return (
                         <div key={acc.id} className="bg-[#111] border border-white/5 rounded-3xl overflow-hidden shadow-lg">
@@ -506,6 +534,43 @@ export default function App() {
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              )}
+              {activePage === 'accounts' && (
+                <div className="animate-in fade-in duration-500 max-w-2xl">
+                  <div className="bg-[#111] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl p-8">
+                    <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Seleccionar cuentas visibles</h3>
+                    <div className="space-y-3">
+                      {accounts.map(acc => {
+                        const isVisible = visibleAccountIds.includes(acc.id);
+                        return (
+                          <button
+                            key={acc.id}
+                            onClick={() => toggleAccountVisibility(acc.id)}
+                            className={cn(
+                              "w-full flex items-center justify-between p-4 rounded-2xl border transition-all",
+                              isVisible 
+                                ? "bg-blue-600/10 border-blue-600/30 text-white" 
+                                : "bg-transparent border-white/5 text-neutral-500 hover:bg-white/[0.02]"
+                            )}
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className={cn("w-5 h-5 rounded-md border flex items-center justify-center transition-all", isVisible ? "bg-blue-600 border-blue-600" : "bg-transparent border-neutral-700")}>
+                                {isVisible && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                              </div>
+                              <div className="text-left">
+                                <div className="text-sm font-bold">{acc.name}</div>
+                                <div className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest">{acc.account_id}</div>
+                              </div>
+                            </div>
+                            <div className="text-[10px] font-black uppercase tracking-widest bg-neutral-900 px-2 py-1 rounded">
+                              {acc.currency}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}
