@@ -233,72 +233,55 @@ export default function App() {
   const { overviewEntities, overviewSettings } = React.useMemo(() => {
     try {
       const activeAccounts = accounts || [];
+      const currentVisibleIds = (visibleAccountIds || []).map(id => id?.toString());
       const currentGroups = Array.isArray(groups) ? groups : [];
-      const currentVisibleIds = visibleAccountIds || [];
       
       const entities: AdAccount[] = [];
       const virtualSettings: Record<string, AccountSettings> = { ...(settings || {}) };
-      
-      // Track which accounts actually get rendered inside a group
       const renderedInGroup = new Set<string>();
 
-      // 1. Process Groups
+      // 1. Groups
       currentGroups.forEach(g => {
-        // Find matching accounts using both id and account_id for maximum compatibility
-        const gAccs = activeAccounts.filter(a => 
-          (g.accountIds || []).includes(a.id) || (g.accountIds || []).includes(a.account_id)
-        );
+        const gAccs = activeAccounts.filter(a => {
+          const aid = a.id?.toString();
+          const rid = a.account_id?.toString();
+          return (g.accountIds || []).some(id => {
+            const sid = id?.toString();
+            return sid === aid || sid === rid || `act_${sid}` === aid || sid === `act_${rid}`;
+          });
+        });
 
         if (gAccs.length > 0) {
-          const existingGroupSettings = settings[g.id];
-          
-          const aggregated: AdAccount = {
+          const sG = settings[g.id];
+          entities.push({
             id: g.id,
             account_id: 'GRUPO',
             name: g.name || 'Grupo sin nombre',
             account_status: 1,
-            currency: existingGroupSettings?.currency || gAccs[0].currency || 'ARS',
+            currency: sG?.currency || gAccs[0].currency || 'ARS',
             spend: gAccs.reduce((sum, a) => sum + (a.spend || 0), 0),
             revenue: gAccs.reduce((sum, a) => sum + (a.revenue || 0), 0),
             purchases: gAccs.reduce((sum, a) => sum + (a.purchases || 0), 0),
             messages: gAccs.reduce((sum, a) => sum + (a.messages || 0), 0),
-          };
-          
-          if (existingGroupSettings) {
-            virtualSettings[g.id] = { ...existingGroupSettings, customName: g.name };
-          } else {
-            const groupObjective = (g.accountIds || []).reduce((sum, id) => sum + (settings[id]?.objective || 0), 0);
-            const groupBudget = (g.accountIds || []).reduce((sum, id) => sum + (settings[id]?.budget || 0), 0);
-            
-            virtualSettings[g.id] = {
-              objective: groupObjective,
-              budget: groupBudget,
-              currency: gAccs[0].currency || 'ARS',
-              tracking: 'ecommerce',
-              customName: g.name
-            };
-          }
-          
-          entities.push(aggregated);
-          // Mark these accounts as belonging to an active group
-          gAccs.forEach(a => renderedInGroup.add(a.id));
+          });
+          gAccs.forEach(a => renderedInGroup.add(a.id?.toString()));
         }
       });
 
-      // 2. Process Standalone Accounts (Visible ones that are NOT in a group rendered above)
-      const visibleAccounts = activeAccounts.filter(acc => {
-        const id = acc.id?.toString() || '';
-        const rawId = acc.account_id?.toString() || '';
-        return currentVisibleIds.some(vId => 
-          vId?.toString() === id || 
-          vId?.toString() === rawId || 
-          vId?.toString() === `act_${rawId}` || 
-          id === `act_${vId?.toString()}`
-        );
-      });
+      // 2. Individual Accounts
+      activeAccounts.forEach(acc => {
+        const aid = acc.id?.toString();
+        const rid = acc.account_id?.toString();
+        
+        // If it's already in a group, skip it here
+        if (renderedInGroup.has(aid)) return;
 
-      visibleAccounts.forEach(acc => {
-        if (!renderedInGroup.has(acc.id)) {
+        // Check if it's visible or if we should just show it as fallback
+        const isVisible = currentVisibleIds.length === 0 || currentVisibleIds.some(vId => 
+          vId === aid || vId === rid || `act_${vId}` === aid || vId === `act_${rid}`
+        );
+
+        if (isVisible) {
           const s = settings[acc.id];
           const entry = { ...acc };
           if (s?.customName) entry.name = s.customName;
@@ -306,10 +289,15 @@ export default function App() {
         }
       });
 
+      // FALLBACK MAESTRO: Si hay cuentas cargadas pero nada pasó el filtro, mostramos todo lo que haya
+      if (entities.length === 0 && activeAccounts.length > 0) {
+        return { overviewEntities: activeAccounts, overviewSettings: virtualSettings };
+      }
+
       return { overviewEntities: entities, overviewSettings: virtualSettings };
     } catch (e) {
-      console.error("Error in overview calculation:", e);
-      return { overviewEntities: [], overviewSettings: settings };
+      console.error("Error calculating overview entities:", e);
+      return { overviewEntities: accounts || [], overviewSettings: settings };
     }
   }, [accounts, groups, visibleAccountIds, settings]);
 
@@ -535,6 +523,7 @@ export default function App() {
                                       <p className="text-[8px] font-black uppercase text-neutral-600 tracking-widest mb-1">Diagnóstico:</p>
                                       <p className="text-[9px] text-neutral-400 font-bold">• Cuentas cargadas de Meta: {accounts.length}</p>
                                       <p className="text-[9px] text-neutral-400 font-bold">• Cuentas seleccionadas: {visibleAccountIds.length}</p>
+                                      <p className="text-[9px] text-neutral-400 font-bold">• Entidades Dashboard: {overviewEntities.length}</p>
                                       <p className="text-[9px] text-neutral-400 font-bold">• ID Sesión: {user?.id || 'No hay ID'}</p>
                                     </div>
                                     <div className="flex flex-col gap-2 mt-6">
