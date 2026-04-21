@@ -415,7 +415,13 @@ const AdCard: React.FC<{ ad: Ad; rank: number }> = ({ ad, rank }) => {
                  #{rank}
               </div>
               {ad.thumbnail ? (
-                <img src={ad.thumbnail} alt={ad.name} className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-105" referrerPolicy="no-referrer" />
+                <img 
+                  src={ad.thumbnail} 
+                  alt={ad.name} 
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110 brightness-110 contrast-[1.05]" 
+                  referrerPolicy="no-referrer"
+                  style={{ imageRendering: 'auto' }}
+                />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center opacity-10 gap-2 text-white">
                   <Package className="w-6 h-6" />
@@ -427,8 +433,10 @@ const AdCard: React.FC<{ ad: Ad; rank: number }> = ({ ad, rank }) => {
         {/* Info & Stats */}
         <div className="md:col-span-1 xl:col-span-4 flex flex-col gap-4">
            <div className="space-y-0.5">
-              <div className="text-[8px] font-black text-neutral-600 uppercase tracking-[0.2em]">{ad.name.split(' - ')[0]}</div>
-              <div className="text-[11px] font-bold text-neutral-400 truncate opacity-80">{ad.name.split(' - ')[1] || 'Meta Ads Creative'}</div>
+              <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest whitespace-nowrap overflow-hidden text-ellipsis" title={ad.name}>
+                {ad.name}
+              </div>
+              <div className="text-[8px] font-bold text-neutral-600 uppercase tracking-[0.2em] opacity-60">Meta Ads Creative</div>
            </div>
 
            <div className="grid grid-cols-3 gap-1.5">
@@ -476,10 +484,18 @@ const AdCard: React.FC<{ ad: Ad; rank: number }> = ({ ad, rank }) => {
         </div>
 
         {/* Action Button */}
-        <div className="xl:col-span-1 flex flex-col items-center pt-2 md:pt-0">
-          <button className="p-2 bg-white/5 rounded-lg text-neutral-600 hover:bg-blue-600 hover:text-white transition-all shadow-xl active:scale-90">
-             <ArrowUpRight className="w-4 h-4" />
-          </button>
+        <div className="xl:col-span-1 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0">
+          <a 
+            href={ad.previewUrl || '#'} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className={`flex flex-col items-center gap-1.5 group/link transition-all ${!ad.previewUrl && 'pointer-events-none opacity-20'}`}
+          >
+            <div className="p-2.5 bg-white/5 rounded-lg text-neutral-600 group-hover/link:bg-blue-600 group-hover/link:text-white transition-all shadow-xl active:scale-90">
+               <ArrowUpRight className="w-4 h-4" />
+            </div>
+            <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover/link:text-neutral-400 whitespace-nowrap">Ver anuncio</span>
+          </a>
         </div>
       </div>
     </div>
