@@ -49,6 +49,14 @@ export default function App() {
   // Column Selection State
   const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
 
+  // Global ID Match Utility
+  const matchId = (id1: any, id2: any) => {
+    if (!id1 || !id2) return false;
+    const s1 = id1.toString().replace('act_', '').trim();
+    const s2 = id2.toString().replace('act_', '').trim();
+    return s1 === s2 && s1.length > 0;
+  };
+
   // Date Range State
   const [dateRange, setDateRange] = useState({
     since: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
@@ -218,9 +226,11 @@ export default function App() {
   };
 
   const toggleAccountVisibility = (id: string) => {
-    const next = visibleAccountIds.includes(id)
-      ? visibleAccountIds.filter(v => v !== id)
+    const exists = visibleAccountIds.some(v => matchId(v, id));
+    const next = exists 
+      ? visibleAccountIds.filter(v => !matchId(v, id)) 
       : [...visibleAccountIds, id];
+    
     setVisibleAccountIds(next);
     localStorage.setItem('cr_visible_accounts', JSON.stringify(next));
   };
@@ -233,23 +243,18 @@ export default function App() {
   const { overviewEntities, overviewSettings } = React.useMemo(() => {
     try {
       const activeAccounts = accounts || [];
-      const currentVisibleIds = (visibleAccountIds || []).map(id => id?.toString());
+      const currentVisibleIds = Array.isArray(visibleAccountIds) ? visibleAccountIds : [];
       const currentGroups = Array.isArray(groups) ? groups : [];
       
       const entities: AdAccount[] = [];
       const virtualSettings: Record<string, AccountSettings> = { ...(settings || {}) };
       const renderedInGroup = new Set<string>();
 
-      // 1. Groups
+      // 1. Process Groups
       currentGroups.forEach(g => {
-        const gAccs = activeAccounts.filter(a => {
-          const aid = a.id?.toString();
-          const rid = a.account_id?.toString();
-          return (g.accountIds || []).some(id => {
-            const sid = id?.toString();
-            return sid === aid || sid === rid || `act_${sid}` === aid || sid === `act_${rid}`;
-          });
-        });
+        const gAccs = activeAccounts.filter(a => 
+          (g.accountIds || []).some(id => matchId(id, a.id) || matchId(id, a.account_id))
+        );
 
         if (gAccs.length > 0) {
           const sG = settings[g.id];
@@ -268,17 +273,16 @@ export default function App() {
         }
       });
 
-      // 2. Individual Accounts
+      // 2. Process Individual Accounts
       activeAccounts.forEach(acc => {
         const aid = acc.id?.toString();
-        const rid = acc.account_id?.toString();
         
         // If it's already in a group, skip it here
         if (renderedInGroup.has(aid)) return;
 
-        // Check if it's visible or if we should just show it as fallback
+        // Check if it's visible. If no accounts are selected yet, we show all (initial state)
         const isVisible = currentVisibleIds.length === 0 || currentVisibleIds.some(vId => 
-          vId === aid || vId === rid || `act_${vId}` === aid || vId === `act_${rid}`
+          matchId(vId, acc.id) || matchId(vId, acc.account_id)
         );
 
         if (isVisible) {
@@ -289,14 +293,12 @@ export default function App() {
         }
       });
 
-      // FALLBACK MAESTRO: Si hay cuentas cargadas pero nada pasó el filtro, mostramos todo lo que haya
-      if (entities.length === 0 && activeAccounts.length > 0) {
-        return { overviewEntities: activeAccounts, overviewSettings: virtualSettings };
-      }
-
+      // REMOVED FORCED FALLBACK: We trust our matching now. 
+      // If entities is empty but user has selections, it will show as empty (but matching should work now)
+      
       return { overviewEntities: entities, overviewSettings: virtualSettings };
     } catch (e) {
-      console.error("Error calculating overview entities:", e);
+      console.error("Error in overview calculation:", e);
       return { overviewEntities: accounts || [], overviewSettings: settings };
     }
   }, [accounts, groups, visibleAccountIds, settings]);
@@ -760,10 +762,33 @@ export default function App() {
               {activePage === 'accounts' && (
                 <div className="animate-in fade-in duration-500 max-w-2xl">
                   <div className="bg-[#111] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl p-8">
-                    <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Seleccionar cuentas visibles</h3>
-                    <div className="space-y-3">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-sm font-black text-white uppercase tracking-widest">Seleccionar cuentas visibles</h3>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => {
+                            const allIds = accounts.map(a => a.id);
+                            setVisibleAccountIds(allIds);
+                            localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
+                          }}
+                          className="text-[9px] font-black text-blue-500 uppercase tracking-widest hover:bg-blue-500/10 px-2 py-1 rounded"
+                        >
+                          Todas
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setVisibleAccountIds([]);
+                            localStorage.setItem('cr_visible_accounts', JSON.stringify([]));
+                          }}
+                          className="text-[9px] font-black text-neutral-600 uppercase tracking-widest hover:bg-white/5 px-2 py-1 rounded"
+                        >
+                          Ninguna
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                       {accounts.map(acc => {
-                        const isVisible = visibleAccountIds.includes(acc.id);
+                        const isVisible = visibleAccountIds.some(v => matchId(v, acc.id));
                         return (
                           <button
                             key={acc.id}
