@@ -12,6 +12,7 @@ import { Sidebar } from './components/Sidebar';
 import { AccountDetailExpansion } from './components/AccountDetailExpansion';
 import { IndividualReport } from './components/IndividualReport';
 import { Overview } from './components/Overview';
+import { AccountDetailView } from './components/AccountDetailView';
 import { formatCurrency, formatNumber, formatDecimal, cn } from './lib/utils';
 import { 
   ChevronDown, 
@@ -234,6 +235,12 @@ export default function App() {
         [field]: value
       }
     };
+    setSettings(newSettings);
+    localStorage.setItem('cr_settings', JSON.stringify(newSettings));
+  };
+
+  const handleSaveSettings = (id: string, s: AccountSettings) => {
+    const newSettings = { ...settings, [id]: s };
     setSettings(newSettings);
     localStorage.setItem('cr_settings', JSON.stringify(newSettings));
   };
@@ -752,62 +759,14 @@ export default function App() {
               )}
 
               {activePage === 'detail' && (
-                <div className="space-y-6 animate-in slide-in-from-bottom-5 duration-500">
-                  {/* Detailed list simple table or cards */}
-                  <div className="grid grid-cols-1 gap-4">
-                    {filteredAccounts.map(acc => {
-                      const s = settings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', tracking: 'ecommerce' };
-                      const displayName = s.customName || acc.name;
-                      return (
-                        <div key={acc.id} className="bg-[#111] border border-white/5 rounded-3xl overflow-hidden shadow-lg">
-                          <div className="w-full flex items-center justify-between p-6 hover:bg-white/[0.01] transition-all group">
-                            <button 
-                              onClick={() => toggleExpand(acc.id)}
-                              className="flex items-center gap-4 flex-1 text-left"
-                            >
-                              <div className="w-10 h-10 bg-neutral-900 rounded-xl flex items-center justify-center font-black text-blue-500 border border-white/5">
-                                {displayName[0].toUpperCase()}
-                              </div>
-                              <div className="text-left">
-                                <div className="font-black text-neutral-100 tracking-tight">{displayName}</div>
-                                <div className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest mt-0.5">{acc.currency} — ID: {acc.account_id}</div>
-                              </div>
-                            </button>
-                            <div className="flex items-center gap-6">
-                              <div className="hidden md:block text-right">
-                                <div className="text-[10px] font-black text-neutral-600 uppercase tracking-widest mb-1">ROAS</div>
-                                <div className={cn("text-lg font-black", (acc.revenue||0)/(acc.spend||1) > 3 ? "text-success" : "text-neutral-300")}>
-                                  ×{formatDecimal((acc.revenue || 0) / (acc.spend || 1), 1)}
-                                </div>
-                              </div>
-                              <button onClick={() => toggleExpand(acc.id)}>
-                                {expandedId === acc.id ? <ChevronUp className="w-6 h-6 text-neutral-700" /> : <ChevronDown className="w-6 h-6 text-neutral-700" />}
-                              </button>
-                            </div>
-                          </div>
-                          
-                          <AnimatePresence>
-                            {expandedId === acc.id && (
-                              <motion.div
-                                initial={{ height: 0 }}
-                                animate={{ height: 'auto' }}
-                                exit={{ height: 0 }}
-                                className="overflow-hidden"
-                              >
-                                <AccountDetailExpansion 
-                                  account={acc} 
-                                  settings={s} 
-                                  dateRange={dateRange}
-                                  onOpenReport={(a) => setReportAccount(a)}
-                                />
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <AccountDetailView 
+                  accounts={accounts}
+                  visibleAccountIds={visibleAccountIds}
+                  settings={settings}
+                  onSaveSettings={handleSaveSettings}
+                  dateRange={dateRange}
+                  onRefresh={loadData}
+                />
               )}
               {activePage === 'accounts' && (
                 <div className="animate-in fade-in duration-500 max-w-2xl">
