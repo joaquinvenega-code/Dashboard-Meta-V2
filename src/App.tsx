@@ -64,7 +64,7 @@ export default function App() {
 
   // Date Range State
   const [dateRange, setDateRange] = useState({
-    since: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+    since: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
     until: format(new Date(), 'yyyy-MM-dd')
   });
 
@@ -428,11 +428,11 @@ export default function App() {
           )}
 
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 print:hidden">
             <div>
               <h2 className="text-xl font-black tracking-widest text-white uppercase opacity-80">
                 {activePage === 'overview' ? 'Vista general' : 
-                 activePage === 'detail' ? 'Detalle de cuentas' : 
+                 activePage === 'detail' ? 'Dashboard De Creativos' : 
                  activePage === 'accounts' ? 'Cuentas visibles' : activePage}
               </h2>
               <div className="flex items-center gap-4 mt-2">

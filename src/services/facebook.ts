@@ -274,32 +274,33 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
     });
 
     if (adRes && !adRes.error && adRes.creative) {
-      // Prioritize image_url (original image) for Image Ads
-      let thumb = adRes.creative.image_url;
-
-      // For Video Ads, image_url is often small or null, so we fetch high-quality thumbnails from the video source
-      if (!thumb && adRes.creative.video_id) {
+      // 1. Prioritize Video Native Thumbnails (Usually highest quality for videos)
+      let thumb = null;
+      if (adRes.creative.video_id) {
         try {
           const videoThumbRes: any = await new Promise((resolve) => {
             window.FB.api(`/${adRes.creative.video_id}/thumbnails`, 'GET', { limit: 50 }, (res: any) => resolve(res));
           });
           if (videoThumbRes && videoThumbRes.data && videoThumbRes.data.length > 0) {
-            // Find the thumbnail with the largest dimension or highest priority
+            // Find the best quality thumbnail among all frames
             const bestThumb = videoThumbRes.data.reduce((prev: any, current: any) => {
               const prevW = prev.width || 0;
               const currW = current.width || 0;
               return currW > prevW ? current : prev;
             });
-            thumb = bestThumb.is_preferred === true ? bestThumb.uri : (bestThumb.uri || thumb);
-            // If we found a preferred or high-res one, use it
-            if (bestThumb.uri) thumb = bestThumb.uri;
+            thumb = bestThumb.uri;
           }
         } catch (e) {
           console.error("Error fetching video thumbnail:", e);
         }
       }
 
-      ad.thumbnail = thumb || adRes.creative.thumbnail_url || null;
+      // 2. Fallback to image_url or thumbnail_url (with requested size)
+      if (!thumb) {
+        thumb = adRes.creative.image_url || adRes.creative.thumbnail_url;
+      }
+      
+      ad.thumbnail = thumb || null;
     }
 
     const prevRes: any = await new Promise((resolve) => {

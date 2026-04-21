@@ -209,27 +209,11 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     <div className="space-y-4">
       {/* Top Toolbar */}
       <div className="flex items-center gap-4 print:hidden">
-        <div className="flex items-center gap-2 bg-[#111] p-1.5 rounded-lg border border-white/5 shadow-sm">
-          <div className="relative">
-            <select className="appearance-none bg-transparent text-[10px] font-black text-neutral-300 outline-none pl-3 pr-8 py-1 cursor-pointer uppercase tracking-widest">
-              <option>Este mes</option>
-              <option>Mes pasado</option>
-            </select>
-            <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-neutral-600 pointer-events-none" />
-          </div>
-          <button 
-            onClick={onRefresh}
-            className="bg-blue-600 text-white p-1 rounded-md hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-95"
-          >
-            <RefreshCw className="w-3 h-3" />
-          </button>
-        </div>
-
         <div className="flex-1 relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600 group-focus-within:text-blue-500 transition-colors" />
           <input 
             type="text" 
-            placeholder="Buscar cliente..."
+            placeholder="Buscar cuenta en el listado..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full max-w-sm bg-[#111] border border-white/5 rounded-xl py-2.5 pl-11 pr-4 text-xs text-white placeholder-neutral-700 outline-none focus:border-blue-500/50 transition-all shadow-inner"
@@ -239,17 +223,15 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
         <div className="flex items-center gap-2">
            <button 
              onClick={handlePrint}
-             className="bg-[#111] border border-white/5 px-3 py-2 rounded-lg text-[10px] font-black text-neutral-200 uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2 shadow-sm"
+             className="bg-neutral-900 border border-white/10 px-4 py-2.5 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2 shadow-lg"
            >
-             <ArrowUpRight className="w-3 h-3 rotate-180" />
-             PDF
+             <ArrowUpRight className="w-3.5 h-3.5 rotate-180" />
+             PDF Report
            </button>
-           {['Excel', 'Texto'].map(fmt => (
-             <button key={fmt} className="bg-[#111] border border-white/5 px-3 py-2 rounded-lg text-[10px] font-black text-neutral-200 uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2 shadow-sm">
-               <TableIcon className="w-3 h-3" />
-               {fmt}
-             </button>
-           ))}
+           <button className="bg-neutral-900 border border-white/5 px-3 py-2.5 rounded-xl text-[10px] font-black text-neutral-400 uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2">
+             <TableIcon className="w-3.5 h-3.5" />
+             Excel
+           </button>
         </div>
       </div>
 
@@ -516,9 +498,12 @@ const AdCard: React.FC<{ ad: Ad; rank: number }> = ({ ad, rank }) => {
                 <img 
                   src={ad.thumbnail} 
                   alt={ad.name} 
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110 brightness-110 contrast-[1.05]" 
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" 
                   referrerPolicy="no-referrer"
-                  style={{ imageRendering: 'auto' }}
+                  style={{ 
+                    imageRendering: 'auto',
+                    WebkitFontSmoothing: 'antialiased'
+                  }}
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center opacity-10 gap-2 text-white">
