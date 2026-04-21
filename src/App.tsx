@@ -101,7 +101,12 @@ export default function App() {
     try {
       const saved = localStorage.getItem('cr_groups');
       const parsed = saved ? JSON.parse(saved) : [];
-      return Array.isArray(parsed) ? parsed : [];
+      if (!Array.isArray(parsed)) return [];
+      // Robust filtering: keep only objects with id and ensure accountIds is array
+      return parsed.filter(g => g && typeof g === 'object' && g.id).map(g => ({
+        ...g,
+        accountIds: Array.isArray(g.accountIds) ? g.accountIds : []
+      }));
     } catch {
       return [];
     }
@@ -872,7 +877,7 @@ export default function App() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {groups.map(group => (
+                      {groups.filter(g => g && g.id).map(group => (
                         <div key={group.id} className="bg-[#1c1c1c] p-6 rounded-2xl border border-white/5 space-y-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -880,7 +885,7 @@ export default function App() {
                               <button 
                                 onClick={() => {
                                   const n = prompt('Nuevo nombre para el grupo:', group.name);
-                                  if (n) saveGroups(groups.map(g => g.id === group.id ? { ...g, name: n } : g));
+                                  if (n) saveGroups(groups.map(g => g?.id === group.id ? { ...g, name: n } : g));
                                 }}
                                 className="p-1 hover:bg-neutral-800 rounded text-neutral-600 hover:text-white transition-all"
                               >
@@ -890,7 +895,7 @@ export default function App() {
                             <button 
                               onClick={() => {
                                 if (confirm('¿Eliminar este grupo?')) {
-                                  saveGroups(groups.filter(g => g.id !== group.id));
+                                  saveGroups(groups.filter(g => g && g.id !== group.id));
                                 }
                               }}
                               className="text-red-500 hover:text-red-400"
@@ -901,15 +906,15 @@ export default function App() {
                           
                           <div className="space-y-2">
                              <div className="text-[9px] font-black text-neutral-600 uppercase tracking-widest">Cuentas vinculadas:</div>
-                             {group.accountIds.length === 0 && <div className="text-xs text-neutral-500 italic">Sin cuentas asignadas</div>}
-                             {group.accountIds.map(accId => {
+                             {(group.accountIds || []).length === 0 && <div className="text-xs text-neutral-500 italic">Sin cuentas asignadas</div>}
+                             {(group.accountIds || []).map(accId => {
                                const acc = accounts.find(a => a.id === accId);
                                return (
                                  <div key={accId} className="flex items-center justify-between text-xs text-neutral-400 bg-black/20 p-2 rounded-lg">
                                    <span className="truncate">{acc?.name || accId}</span>
                                    <button 
                                      onClick={() => {
-                                       saveGroups(groups.map(g => g.id === group.id ? { ...g, accountIds: g.accountIds.filter(id => id !== accId) } : g));
+                                       saveGroups(groups.map(g => g?.id === group.id ? { ...g, accountIds: (g.accountIds || []).filter(id => id !== accId) } : g));
                                      }}
                                      className="text-neutral-700 hover:text-white"
                                    >
@@ -924,13 +929,13 @@ export default function App() {
                             onChange={(e) => {
                               const accId = e.target.value;
                               if (accId) {
-                                saveGroups(groups.map(g => g.id === group.id ? { ...g, accountIds: [...new Set([...g.accountIds, accId])] } : g));
+                                saveGroups(groups.map(g => g?.id === group.id ? { ...g, accountIds: [...new Set([...(g.accountIds || []), accId])] } : g));
                               }
                             }}
                             className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-[10px] font-bold text-neutral-400 outline-none"
                           >
                             <option value="">Añadir cuenta...</option>
-                            {accounts.filter(a => !group.accountIds.includes(a.id)).map(a => (
+                            {accounts.filter(a => !(group.accountIds || []).includes(a.id)).map(a => (
                               <option key={a.id} value={a.id}>{a.name}</option>
                             ))}
                           </select>
