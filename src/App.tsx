@@ -274,7 +274,6 @@ export default function App() {
 
         if (gAccs.length > 0) {
           // Check if this group itself should be visible
-          // A group is visible if its ID is in visibleAccountIds OR if any of its accounts are in visibleAccountIds
           const isGroupVisible = currentVisibleIds.some(vId => 
             matchId(vId, g.id) || gAccs.some(a => matchId(vId, a.id))
           );
@@ -292,9 +291,9 @@ export default function App() {
               purchases: gAccs.reduce((sum, a) => sum + (a.purchases || 0), 0),
               messages: gAccs.reduce((sum, a) => sum + (a.messages || 0), 0),
             });
+            // ONLY mark as handled if the group is visible and rendered
+            gAccs.forEach(a => handledAccountIds.add(a.id?.toString()));
           }
-          // Mark accounts as handled so they don't show up individually
-          gAccs.forEach(a => handledAccountIds.add(a.id?.toString()));
         }
       });
 
@@ -558,10 +557,15 @@ export default function App() {
                                       <p className="text-[9px] text-neutral-400 font-bold">• Cuentas seleccionadas: {visibleAccountIds.length}</p>
                                       <p className="text-[9px] text-neutral-400 font-bold">• Entidades Dashboard: {overviewEntities.length}</p>
                                       {accounts.length > 0 && (
-                                        <p className="text-[9px] text-neutral-500 font-medium mt-2 break-all opacity-50">
-                                          Ref (Meta): {accounts[0].id}<br/>
-                                          Ref (Selección): {visibleAccountIds[0] || 'N/A'}
-                                        </p>
+                                        <div className="mt-2 space-y-1">
+                                          <p className="text-[9px] text-neutral-500 font-medium break-all opacity-50">
+                                            Ref (Meta): {accounts[0].id}<br/>
+                                            Ref (Selección): {visibleAccountIds[0] || 'N/A'}
+                                          </p>
+                                          <p className="text-[9px] text-blue-500 font-bold uppercase tracking-widest mt-1">
+                                            ¿Hay coincidencias en total?: {accounts.some(a => visibleAccountIds.some(v => matchId(v, a.id) || matchId(v, a.account_id))) ? 'SÍ' : 'NO'}
+                                          </p>
+                                        </div>
                                       )}
                                     </div>
                                     <div className="flex flex-col gap-2 mt-6">
