@@ -49,7 +49,7 @@ export interface DailyMetric {
 }
 
 export interface ClientGroup {
+  id: string;
   name: string;
-  mode: 'unified' | 'grouped';
   accountIds: string[];
 }

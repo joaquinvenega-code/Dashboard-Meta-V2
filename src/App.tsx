@@ -7,7 +7,7 @@ import {
   getAdAccounts, 
   fetchInsights 
 } from './services/facebook';
-import { AdAccount, AccountSettings } from './types';
+import { AdAccount, AccountSettings, ClientGroup } from './types';
 import { Sidebar } from './components/Sidebar';
 import { AccountDetailExpansion } from './components/AccountDetailExpansion';
 import { IndividualReport } from './components/IndividualReport';
@@ -66,6 +66,12 @@ export default function App() {
   // Visibility State
   const [visibleAccountIds, setVisibleAccountIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('cr_visible_accounts');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Groups State
+  const [groups, setGroups] = useState<ClientGroup[]>(() => {
+    const saved = localStorage.getItem('cr_groups');
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -173,6 +179,58 @@ export default function App() {
     setVisibleAccountIds(next);
     localStorage.setItem('cr_visible_accounts', JSON.stringify(next));
   };
+
+  const saveGroups = (newGroups: ClientGroup[]) => {
+    setGroups(newGroups);
+    localStorage.setItem('cr_groups', JSON.stringify(newGroups));
+  };
+
+  const { overviewEntities, overviewSettings } = React.useMemo(() => {
+    const visibleAccounts = accounts.filter(acc => visibleAccountIds.includes(acc.id));
+    const entities: AdAccount[] = [];
+    const virtualSettings: Record<string, AccountSettings> = { ...settings };
+    const accountsInGroups = new Set(groups.flatMap(g => g.accountIds));
+
+    // Groups as entities
+    groups.forEach(g => {
+      const gAccs = accounts.filter(a => g.accountIds.includes(a.id));
+      if (gAccs.length > 0) {
+        const aggregated: AdAccount = {
+          id: g.id,
+          account_id: 'GRUPO',
+          name: g.name,
+          account_status: 1,
+          currency: gAccs[0].currency,
+          spend: gAccs.reduce((sum, a) => sum + (a.spend || 0), 0),
+          revenue: gAccs.reduce((sum, a) => sum + (a.revenue || 0), 0),
+          purchases: gAccs.reduce((sum, a) => sum + (a.purchases || 0), 0),
+          messages: gAccs.reduce((sum, a) => sum + (a.messages || 0), 0),
+        };
+        
+        // Sum objectives and budgets
+        const groupObjective = g.accountIds.reduce((sum, id) => sum + (settings[id]?.objective || 0), 0);
+        const groupBudget = g.accountIds.reduce((sum, id) => sum + (settings[id]?.budget || 0), 0);
+        
+        virtualSettings[g.id] = {
+          objective: groupObjective,
+          budget: groupBudget,
+          currency: gAccs[0].currency,
+          tracking: 'ecommerce'
+        };
+        
+        entities.push(aggregated);
+      }
+    });
+
+    // Standalone visible accounts
+    visibleAccounts.forEach(acc => {
+      if (!accountsInGroups.has(acc.id)) {
+        entities.push(acc);
+      }
+    });
+
+    return { overviewEntities: entities, overviewSettings: virtualSettings };
+  }, [accounts, groups, visibleAccountIds, settings]);
 
   const filteredAccounts = accounts.filter(acc => visibleAccountIds.includes(acc.id));
 
@@ -301,7 +359,7 @@ export default function App() {
             <>
               {activePage === 'overview' && (
                 <div className="space-y-10 animate-in fade-in duration-1000">
-                  <Overview accounts={filteredAccounts} settings={settings} />
+                  <Overview accounts={overviewEntities} settings={overviewSettings} />
                   
                   {/* Column Toggles */}
                   <div className="flex items-center gap-3 py-2 border-y border-white/5">
@@ -343,9 +401,8 @@ export default function App() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/[0.02]">
-                          {filteredAccounts.map((acc) => {
-                            const isExpanded = expandedId === acc.id;
-                            const s = settings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', tracking: 'ecommerce' };
+                          {overviewEntities.map((acc) => {
+                            const s = overviewSettings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', tracking: 'ecommerce' };
                             const roas = acc.spend && acc.spend > 0 ? (acc.revenue || 0) / acc.spend : 0;
                             const progress = s.objective > 0 ? Math.min((acc.revenue || 0) / s.objective, 1.2) : 0;
                             const budgetProgress = s.budget > 0 ? Math.min((acc.spend || 0) / s.budget, 1.2) : 0;
@@ -360,119 +417,89 @@ export default function App() {
                             const status = getStatusInfo();
 
                             return (
-                              <React.Fragment key={acc.id}>
-                                <tr 
-                                  onClick={() => toggleExpand(acc.id)}
-                                  className={cn(
-                                    "hover:bg-white/[0.02] transition-colors cursor-pointer group",
-                                    isExpanded && "bg-white/[0.03]"
-                                  )}
-                                >
-                                  <td className="px-8 py-5">
-                                    <div className="flex items-center gap-3">
-                                      <div className="font-bold text-xs truncate max-w-[200px] text-neutral-200 group-hover:text-white transition-colors">{acc.name}</div>
-                                      <div className="px-2 py-0.5 bg-neutral-900 border border-white/5 rounded text-[8px] font-black text-neutral-600 uppercase leading-none">
-                                        {acc.currency}
+                              <tr key={acc.id} className="hover:bg-white/[0.02] transition-colors group">
+                                <td className="px-8 py-5">
+                                  <div className="flex items-center gap-3">
+                                    <div className="font-bold text-xs truncate max-w-[200px] text-neutral-200 group-hover:text-white transition-colors">{acc.name}</div>
+                                    <div className="px-2 py-0.5 bg-neutral-900 border border-white/5 rounded text-[8px] font-black text-neutral-600 uppercase leading-none">
+                                      {acc.account_id}
+                                    </div>
+                                  </div>
+                                </td>
+                                
+                                {visibleCols.includes('objetivo') && (
+                                  <td className="px-4 py-5 text-center text-[11px] font-bold text-neutral-400">
+                                    {s.objective ? formatCurrency(s.objective, s.currency) : '—'}
+                                  </td>
+                                )}
+
+                                {visibleCols.includes('facturado') && (
+                                  <td className="px-4 py-5 text-center text-[11px] font-black text-neutral-200">
+                                    {formatCurrency(acc.revenue || 0, s.currency)}
+                                  </td>
+                                )}
+
+                                {visibleCols.includes('roas') && (
+                                  <td className="px-4 py-5 text-center">
+                                    <span className={cn("text-[11px] font-black", status.color)}>
+                                      ×{formatDecimal(roas)}
+                                    </span>
+                                  </td>
+                                )}
+
+                                {visibleCols.includes('progreso') && (
+                                  <td className="px-4 py-5">
+                                    <div className="flex items-center gap-3 justify-center">
+                                      <div className="w-16 h-1.5 bg-neutral-900 rounded-full overflow-hidden border border-white/5">
+                                        <div 
+                                          className={cn("h-full rounded-full transition-all duration-1000", status.bg)} 
+                                          style={{ width: `${Math.min(progress * 100, 100)}%` }}
+                                        ></div>
                                       </div>
+                                      <span className="text-[10px] font-black text-neutral-500 w-8">{Math.round(progress * 100)}%</span>
                                     </div>
                                   </td>
-                                  
-                                  {visibleCols.includes('objetivo') && (
-                                    <td className="px-4 py-5 text-center text-[11px] font-bold text-neutral-400">
-                                      {s.objective ? formatCurrency(s.objective, s.currency) : '—'}
-                                    </td>
-                                  )}
+                                )}
 
-                                  {visibleCols.includes('facturado') && (
-                                    <td className="px-4 py-5 text-center text-[11px] font-black text-neutral-200">
-                                      {formatCurrency(acc.revenue || 0, s.currency)}
-                                    </td>
-                                  )}
+                                {visibleCols.includes('invertido') && (
+                                  <td className="px-4 py-5 text-center text-[11px] font-bold text-neutral-400">
+                                    {formatCurrency(acc.spend || 0, s.currency)}
+                                  </td>
+                                )}
 
-                                  {visibleCols.includes('roas') && (
-                                    <td className="px-4 py-5 text-center">
-                                      <span className={cn("text-[11px] font-black", status.color)}>
-                                        ×{formatDecimal(roas)}
+                                {visibleCols.includes('presupuesto') && (
+                                  <td className="px-4 py-5 text-center text-[11px] font-bold text-neutral-400">
+                                    {s.budget ? formatCurrency(s.budget, s.currency) : '—'}
+                                  </td>
+                                )}
+
+                                {visibleCols.includes('prespct') && (
+                                  <td className="px-4 py-5">
+                                    <div className="flex items-center gap-3 justify-center">
+                                      <div className="w-16 h-1.5 bg-neutral-900 rounded-full overflow-hidden border border-white/5">
+                                        <div 
+                                          className={cn("h-full rounded-full transition-all duration-1000", budgetProgress > 1 ? "bg-danger" : "bg-neutral-600")} 
+                                          style={{ width: `${Math.min(budgetProgress * 100, 100)}%` }}
+                                        ></div>
+                                      </div>
+                                      <span className={cn("text-[10px] font-black w-8", budgetProgress > 1 ? "text-danger" : "text-neutral-500")}>
+                                        {Math.round(budgetProgress * 100)}%
                                       </span>
-                                    </td>
-                                  )}
+                                    </div>
+                                  </td>
+                                )}
 
-                                  {visibleCols.includes('progreso') && (
-                                    <td className="px-4 py-5">
-                                      <div className="flex items-center gap-3 justify-center">
-                                        <div className="w-16 h-1.5 bg-neutral-900 rounded-full overflow-hidden border border-white/5">
-                                          <div 
-                                            className={cn("h-full rounded-full transition-all duration-1000", status.bg)} 
-                                            style={{ width: `${Math.min(progress * 100, 100)}%` }}
-                                          ></div>
-                                        </div>
-                                        <span className="text-[10px] font-black text-neutral-500 w-8">{Math.round(progress * 100)}%</span>
-                                      </div>
-                                    </td>
-                                  )}
-
-                                  {visibleCols.includes('invertido') && (
-                                    <td className="px-4 py-5 text-center text-[11px] font-bold text-neutral-400">
-                                      {formatCurrency(acc.spend || 0, s.currency)}
-                                    </td>
-                                  )}
-
-                                  {visibleCols.includes('presupuesto') && (
-                                    <td className="px-4 py-5 text-center text-[11px] font-bold text-neutral-400">
-                                      {s.budget ? formatCurrency(s.budget, s.currency) : '—'}
-                                    </td>
-                                  )}
-
-                                  {visibleCols.includes('prespct') && (
-                                    <td className="px-4 py-5">
-                                      <div className="flex items-center gap-3 justify-center">
-                                        <div className="w-16 h-1.5 bg-neutral-900 rounded-full overflow-hidden border border-white/5">
-                                          <div 
-                                            className={cn("h-full rounded-full transition-all duration-1000", budgetProgress > 1 ? "bg-danger" : "bg-neutral-600")} 
-                                            style={{ width: `${Math.min(budgetProgress * 100, 100)}%` }}
-                                          ></div>
-                                        </div>
-                                        <span className={cn("text-[10px] font-black w-8", budgetProgress > 1 ? "text-danger" : "text-neutral-500")}>
-                                          {Math.round(budgetProgress * 100)}%
-                                        </span>
-                                      </div>
-                                    </td>
-                                  )}
-
-                                  {visibleCols.includes('estado') && (
-                                    <td className="px-4 py-5 text-center">
-                                      <div className={cn("inline-flex items-center gap-2 group-hover:scale-105 transition-all")}>
-                                        <div className={cn("w-1.5 h-1.5 rounded-full shadow-lg", status.bg, status.glow)}></div>
-                                        <span className={cn("text-[8px] font-black uppercase tracking-widest leading-none", status.color)}>
-                                          {status.label}
-                                        </span>
-                                      </div>
-                                    </td>
-                                  )}
-                                </tr>
-                                
-                                <AnimatePresence>
-                                  {isExpanded && (
-                                    <tr>
-                                      <td colSpan={visibleCols.length + 1} className="p-0">
-                                        <motion.div
-                                          initial={{ height: 0, opacity: 0 }}
-                                          animate={{ height: 'auto', opacity: 1 }}
-                                          exit={{ height: 0, opacity: 0 }}
-                                          className="overflow-hidden bg-[#151515]"
-                                        >
-                                          <AccountDetailExpansion 
-                                            account={acc} 
-                                            settings={s} 
-                                            dateRange={dateRange}
-                                            onOpenReport={(a) => setReportAccount(a)}
-                                          />
-                                        </motion.div>
-                                      </td>
-                                    </tr>
-                                  )}
-                                </AnimatePresence>
-                              </React.Fragment>
+                                {visibleCols.includes('estado') && (
+                                  <td className="px-4 py-5 text-center">
+                                    <div className={cn("inline-flex items-center gap-2 group-hover:scale-105 transition-all")}>
+                                      <div className={cn("w-1.5 h-1.5 rounded-full shadow-lg", status.bg, status.glow)}></div>
+                                      <span className={cn("text-[8px] font-black uppercase tracking-widest leading-none", status.color)}>
+                                        {status.label}
+                                      </span>
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
                             );
                           })}
                         </tbody>
@@ -570,6 +597,82 @@ export default function App() {
                           </button>
                         );
                       })}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {activePage === 'groups' && (
+                <div className="animate-in fade-in duration-500 max-w-4xl space-y-6">
+                  <div className="bg-[#111] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl p-8">
+                    <div className="flex items-center justify-between mb-8">
+                      <h3 className="text-sm font-black text-white uppercase tracking-widest">Gestionar grupos de cliente</h3>
+                      <button 
+                        onClick={() => {
+                          const name = prompt('Nombre del nuevo grupo:');
+                          if (name) {
+                            saveGroups([...groups, { id: Math.random().toString(36).substr(2, 9), name, accountIds: [] }]);
+                          }
+                        }}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all"
+                      >
+                        Nuevo Grupo
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {groups.map(group => (
+                        <div key={group.id} className="bg-[#1c1c1c] p-6 rounded-2xl border border-white/5 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="font-black text-neutral-100">{group.name}</div>
+                            <button 
+                              onClick={() => {
+                                if (confirm('¿Eliminar este grupo?')) {
+                                  saveGroups(groups.filter(g => g.id !== group.id));
+                                }
+                              }}
+                              className="text-red-500 hover:text-red-400"
+                            >
+                              <LogOut className="w-4 h-4 rotate-90" />
+                            </button>
+                          </div>
+                          
+                          <div className="space-y-2">
+                             <div className="text-[9px] font-black text-neutral-600 uppercase tracking-widest">Cuentas vinculadas:</div>
+                             {group.accountIds.length === 0 && <div className="text-xs text-neutral-500 italic">Sin cuentas asignadas</div>}
+                             {group.accountIds.map(accId => {
+                               const acc = accounts.find(a => a.id === accId);
+                               return (
+                                 <div key={accId} className="flex items-center justify-between text-xs text-neutral-400 bg-black/20 p-2 rounded-lg">
+                                   <span className="truncate">{acc?.name || accId}</span>
+                                   <button 
+                                     onClick={() => {
+                                       saveGroups(groups.map(g => g.id === group.id ? { ...g, accountIds: g.accountIds.filter(id => id !== accId) } : g));
+                                     }}
+                                     className="text-neutral-700 hover:text-white"
+                                   >
+                                     ×
+                                   </button>
+                                 </div>
+                               );
+                             })}
+                          </div>
+
+                          <select 
+                            onChange={(e) => {
+                              const accId = e.target.value;
+                              if (accId) {
+                                saveGroups(groups.map(g => g.id === group.id ? { ...g, accountIds: [...new Set([...g.accountIds, accId])] } : g));
+                              }
+                            }}
+                            className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-[10px] font-bold text-neutral-400 outline-none"
+                          >
+                            <option value="">Añadir cuenta...</option>
+                            {accounts.filter(a => !group.accountIds.includes(a.id)).map(a => (
+                              <option key={a.id} value={a.id}>{a.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
