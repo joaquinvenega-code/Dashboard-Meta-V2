@@ -29,7 +29,8 @@ import {
   ChevronRight,
   LogOut,
   RefreshCcw,
-  CheckCircle2
+  CheckCircle2,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, subDays, startOfMonth } from 'date-fns';
@@ -68,6 +69,7 @@ export default function App() {
   // Report State
   const [reportAccount, setReportAccount] = useState<AdAccount | null>(null);
   const [showColSelectors, setShowColSelectors] = useState(false);
+  const [configEntity, setConfigEntity] = useState<AdAccount | null>(null);
 
   // Visibility State
   const [visibleAccountIds, setVisibleAccountIds] = useState<string[]>(() => {
@@ -213,29 +215,36 @@ export default function App() {
       currentGroups.forEach(g => {
         const gAccs = (accounts || []).filter(a => (g.accountIds || []).includes(a.id));
         if (gAccs.length > 0) {
+          // Priority: Group-level settings if they exist in localStorage/state
+          const existingGroupSettings = settings[g.id];
+          
           const aggregated: AdAccount = {
             id: g.id,
             account_id: 'GRUPO',
             name: g.name || 'Grupo sin nombre',
             account_status: 1,
-            currency: gAccs[0].currency || 'ARS',
+            currency: existingGroupSettings?.currency || gAccs[0].currency || 'ARS',
             spend: gAccs.reduce((sum, a) => sum + (a.spend || 0), 0),
             revenue: gAccs.reduce((sum, a) => sum + (a.revenue || 0), 0),
             purchases: gAccs.reduce((sum, a) => sum + (a.purchases || 0), 0),
             messages: gAccs.reduce((sum, a) => sum + (a.messages || 0), 0),
           };
           
-          // Sum objectives and budgets
-          const groupObjective = (g.accountIds || []).reduce((sum, id) => sum + (settings[id]?.objective || 0), 0);
-          const groupBudget = (g.accountIds || []).reduce((sum, id) => sum + (settings[id]?.budget || 0), 0);
-          
-          virtualSettings[g.id] = {
-            objective: groupObjective,
-            budget: groupBudget,
-            currency: gAccs[0].currency || 'ARS',
-            tracking: 'ecommerce',
-            customName: g.name
-          };
+          if (existingGroupSettings) {
+            virtualSettings[g.id] = { ...existingGroupSettings, customName: g.name };
+          } else {
+            // Fallback: Sum objectives and budgets if no group-level settings
+            const groupObjective = (g.accountIds || []).reduce((sum, id) => sum + (settings[id]?.objective || 0), 0);
+            const groupBudget = (g.accountIds || []).reduce((sum, id) => sum + (settings[id]?.budget || 0), 0);
+            
+            virtualSettings[g.id] = {
+              objective: groupObjective,
+              budget: groupBudget,
+              currency: gAccs[0].currency || 'ARS',
+              tracking: 'ecommerce',
+              customName: g.name
+            };
+          }
           
           entities.push(aggregated);
         }
@@ -449,6 +458,7 @@ export default function App() {
                             {visibleCols.includes('presupuesto') && <th className="px-4 py-5 text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em] text-center w-32">Presupuesto</th>}
                             {visibleCols.includes('prespct') && <th className="px-4 py-5 text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em] text-center w-40">% Presupuesto</th>}
                             {visibleCols.includes('estado') && <th className="px-4 py-5 text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em] text-center w-40">Estado</th>}
+                            <th className="px-4 py-5 text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em] text-right w-24 pr-8"></th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/[0.02]">
@@ -567,6 +577,16 @@ export default function App() {
                                     </div>
                                   </td>
                                 )}
+
+                                <td className="px-4 py-5 text-right pr-8">
+                                  <button 
+                                    onClick={() => setConfigEntity(acc)}
+                                    className="p-2 hover:bg-white/5 rounded-xl text-neutral-600 hover:text-blue-500 transition-all opacity-0 group-hover:opacity-100"
+                                    title="Configurar cliente"
+                                  >
+                                    <Settings className="w-4 h-4" />
+                                  </button>
+                                </td>
                               </tr>
                             );
                           })}
@@ -773,6 +793,121 @@ export default function App() {
           onClose={() => setReportAccount(null)}
         />
       )}
+
+      {/* Config Modal (Local Component) */}
+      <AnimatePresence>
+        {configEntity && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfigEntity(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            ></motion.div>
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-[#161616] border border-white/10 rounded-[2.5rem] shadow-2xl p-10 overflow-hidden"
+            >
+              <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/10 blur-[80px] rounded-full"></div>
+              
+              <div className="relative">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h3 className="text-xl font-black text-white tracking-tight">{configEntity.name}</h3>
+                    <p className="text-[10px] font-black text-neutral-600 uppercase tracking-widest mt-1">Configuración del cliente</p>
+                  </div>
+                  <button onClick={() => setConfigEntity(null)} className="p-2 hover:bg-white/5 rounded-full text-neutral-600">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[9px] font-black text-neutral-600 uppercase tracking-widest mb-2 ml-1">Objetivo Mensual</label>
+                      <input 
+                        type="number"
+                        defaultValue={overviewSettings[configEntity.id]?.objective || 0}
+                        id="set_objective"
+                        className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-neutral-600 uppercase tracking-widest mb-2 ml-1">Presupuesto</label>
+                      <input 
+                        type="number"
+                        defaultValue={overviewSettings[configEntity.id]?.budget || 0}
+                        id="set_budget"
+                        className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[9px] font-black text-neutral-600 uppercase tracking-widest mb-2 ml-1">Moneda</label>
+                      <select 
+                        id="set_currency"
+                        defaultValue={overviewSettings[configEntity.id]?.currency || 'ARS'}
+                        className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
+                      >
+                        <option value="ARS">ARS ($)</option>
+                        <option value="USD">USD (U$D)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="BRL">BRL (R$)</option>
+                        <option value="CLP">CLP ($)</option>
+                        <option value="MXN">MXN ($)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-neutral-600 uppercase tracking-widest mb-2 ml-1">Tracking</label>
+                      <select 
+                        id="set_tracking"
+                        defaultValue={overviewSettings[configEntity.id]?.tracking || 'ecommerce'}
+                        className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
+                      >
+                        <option value="ecommerce">Solo E-commerce</option>
+                        <option value="messaging">Solo Mensajes</option>
+                        <option value="both">Ambos (Ecom + Msg)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                      const obj = Number((document.getElementById('set_objective') as HTMLInputElement).value);
+                      const bud = Number((document.getElementById('set_budget') as HTMLInputElement).value);
+                      const cur = (document.getElementById('set_currency') as HTMLSelectElement).value;
+                      const trk = (document.getElementById('set_tracking') as HTMLSelectElement).value as any;
+
+                      const newSettings = {
+                        ...settings,
+                        [configEntity.id]: {
+                          ...(settings[configEntity.id] || {}),
+                          objective: obj,
+                          budget: bud,
+                          currency: cur,
+                          tracking: trk
+                        }
+                      };
+                      setSettings(newSettings);
+                      localStorage.setItem('cr_settings', JSON.stringify(newSettings));
+                      setConfigEntity(null);
+                    }}
+                    className="w-full bg-blue-600 text-white h-14 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20 active:scale-95"
+                  >
+                    Guardar Cambios
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
