@@ -274,7 +274,8 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
     });
 
     if (adRes && !adRes.error && adRes.creative) {
-      ad.thumbnail = adRes.creative.image_url || adRes.creative.thumbnail_url || null;
+      // Prioritize the high-res thumbnail we requested specifically
+      ad.thumbnail = adRes.creative.thumbnail_url || adRes.creative.image_url || null;
     }
 
     const prevRes: any = await new Promise((resolve) => {
