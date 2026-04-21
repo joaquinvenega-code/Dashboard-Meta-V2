@@ -57,7 +57,12 @@ export default function App() {
   // Settings & Expansion State
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [settings, setSettings] = useState<Record<string, AccountSettings>>(() => {
-    return JSON.parse(localStorage.getItem('cr_settings') || '{}');
+    try {
+      const saved = localStorage.getItem('cr_settings');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
   });
   
   // Report State
@@ -65,14 +70,24 @@ export default function App() {
 
   // Visibility State
   const [visibleAccountIds, setVisibleAccountIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('cr_visible_accounts');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('cr_visible_accounts');
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   });
 
   // Groups State
   const [groups, setGroups] = useState<ClientGroup[]>(() => {
-    const saved = localStorage.getItem('cr_groups');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('cr_groups');
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   });
 
   useEffect(() => {
@@ -186,50 +201,56 @@ export default function App() {
   };
 
   const { overviewEntities, overviewSettings } = React.useMemo(() => {
-    const visibleAccounts = accounts.filter(acc => visibleAccountIds.includes(acc.id));
-    const entities: AdAccount[] = [];
-    const virtualSettings: Record<string, AccountSettings> = { ...settings };
-    const accountsInGroups = new Set(groups.flatMap(g => g.accountIds));
+    try {
+      const visibleAccounts = (accounts || []).filter(acc => (visibleAccountIds || []).includes(acc.id));
+      const entities: AdAccount[] = [];
+      const virtualSettings: Record<string, AccountSettings> = { ...(settings || {}) };
+      const currentGroups = Array.isArray(groups) ? groups : [];
+      const accountsInGroups = new Set(currentGroups.flatMap(g => g.accountIds || []));
 
-    // Groups as entities
-    groups.forEach(g => {
-      const gAccs = accounts.filter(a => g.accountIds.includes(a.id));
-      if (gAccs.length > 0) {
-        const aggregated: AdAccount = {
-          id: g.id,
-          account_id: 'GRUPO',
-          name: g.name,
-          account_status: 1,
-          currency: gAccs[0].currency,
-          spend: gAccs.reduce((sum, a) => sum + (a.spend || 0), 0),
-          revenue: gAccs.reduce((sum, a) => sum + (a.revenue || 0), 0),
-          purchases: gAccs.reduce((sum, a) => sum + (a.purchases || 0), 0),
-          messages: gAccs.reduce((sum, a) => sum + (a.messages || 0), 0),
-        };
-        
-        // Sum objectives and budgets
-        const groupObjective = g.accountIds.reduce((sum, id) => sum + (settings[id]?.objective || 0), 0);
-        const groupBudget = g.accountIds.reduce((sum, id) => sum + (settings[id]?.budget || 0), 0);
-        
-        virtualSettings[g.id] = {
-          objective: groupObjective,
-          budget: groupBudget,
-          currency: gAccs[0].currency,
-          tracking: 'ecommerce'
-        };
-        
-        entities.push(aggregated);
-      }
-    });
+      // Groups as entities
+      currentGroups.forEach(g => {
+        const gAccs = (accounts || []).filter(a => (g.accountIds || []).includes(a.id));
+        if (gAccs.length > 0) {
+          const aggregated: AdAccount = {
+            id: g.id,
+            account_id: 'GRUPO',
+            name: g.name || 'Grupo sin nombre',
+            account_status: 1,
+            currency: gAccs[0].currency || 'ARS',
+            spend: gAccs.reduce((sum, a) => sum + (a.spend || 0), 0),
+            revenue: gAccs.reduce((sum, a) => sum + (a.revenue || 0), 0),
+            purchases: gAccs.reduce((sum, a) => sum + (a.purchases || 0), 0),
+            messages: gAccs.reduce((sum, a) => sum + (a.messages || 0), 0),
+          };
+          
+          // Sum objectives and budgets
+          const groupObjective = (g.accountIds || []).reduce((sum, id) => sum + (settings[id]?.objective || 0), 0);
+          const groupBudget = (g.accountIds || []).reduce((sum, id) => sum + (settings[id]?.budget || 0), 0);
+          
+          virtualSettings[g.id] = {
+            objective: groupObjective,
+            budget: groupBudget,
+            currency: gAccs[0].currency || 'ARS',
+            tracking: 'ecommerce'
+          };
+          
+          entities.push(aggregated);
+        }
+      });
 
-    // Standalone visible accounts
-    visibleAccounts.forEach(acc => {
-      if (!accountsInGroups.has(acc.id)) {
-        entities.push(acc);
-      }
-    });
+      // Standalone visible accounts
+      visibleAccounts.forEach(acc => {
+        if (!accountsInGroups.has(acc.id)) {
+          entities.push(acc);
+        }
+      });
 
-    return { overviewEntities: entities, overviewSettings: virtualSettings };
+      return { overviewEntities: entities, overviewSettings: virtualSettings };
+    } catch (e) {
+      console.error("Error in overview calculation:", e);
+      return { overviewEntities: [], overviewSettings: settings };
+    }
   }, [accounts, groups, visibleAccountIds, settings]);
 
   const filteredAccounts = accounts.filter(acc => visibleAccountIds.includes(acc.id));
