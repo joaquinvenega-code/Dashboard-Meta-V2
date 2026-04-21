@@ -232,17 +232,24 @@ export default function App() {
 
   const { overviewEntities, overviewSettings } = React.useMemo(() => {
     try {
-      const visibleAccounts = (accounts || []).filter(acc => (visibleAccountIds || []).includes(acc.id));
+      const activeAccounts = accounts || [];
+      const currentGroups = Array.isArray(groups) ? groups : [];
+      const currentVisibleIds = visibleAccountIds || [];
+      
       const entities: AdAccount[] = [];
       const virtualSettings: Record<string, AccountSettings> = { ...(settings || {}) };
-      const currentGroups = Array.isArray(groups) ? groups : [];
-      const accountsInGroups = new Set(currentGroups.flatMap(g => g.accountIds || []));
+      
+      // Track which accounts actually get rendered inside a group
+      const renderedInGroup = new Set<string>();
 
-      // Groups as entities
+      // 1. Process Groups
       currentGroups.forEach(g => {
-        const gAccs = (accounts || []).filter(a => (g.accountIds || []).includes(a.id));
+        // Find matching accounts using both id and account_id for maximum compatibility
+        const gAccs = activeAccounts.filter(a => 
+          (g.accountIds || []).includes(a.id) || (g.accountIds || []).includes(a.account_id)
+        );
+
         if (gAccs.length > 0) {
-          // Priority: Group-level settings if they exist in localStorage/state
           const existingGroupSettings = settings[g.id];
           
           const aggregated: AdAccount = {
@@ -260,7 +267,6 @@ export default function App() {
           if (existingGroupSettings) {
             virtualSettings[g.id] = { ...existingGroupSettings, customName: g.name };
           } else {
-            // Fallback: Sum objectives and budgets if no group-level settings
             const groupObjective = (g.accountIds || []).reduce((sum, id) => sum + (settings[id]?.objective || 0), 0);
             const groupBudget = (g.accountIds || []).reduce((sum, id) => sum + (settings[id]?.budget || 0), 0);
             
@@ -274,12 +280,18 @@ export default function App() {
           }
           
           entities.push(aggregated);
+          // Mark these accounts as belonging to an active group
+          gAccs.forEach(a => renderedInGroup.add(a.id));
         }
       });
 
-      // Standalone visible accounts
+      // 2. Process Standalone Accounts (Visible ones that are NOT in a group rendered above)
+      const visibleAccounts = activeAccounts.filter(acc => 
+        currentVisibleIds.includes(acc.id) || currentVisibleIds.includes(acc.account_id)
+      );
+
       visibleAccounts.forEach(acc => {
-        if (!accountsInGroups.has(acc.id)) {
+        if (!renderedInGroup.has(acc.id)) {
           const s = settings[acc.id];
           const entry = { ...acc };
           if (s?.customName) entry.name = s.customName;
@@ -510,16 +522,30 @@ export default function App() {
                                         ? "No se cargaron cuentas desde Meta. Revisa tu conexión o permisos."
                                         : visibleAccountIds.length === 0
                                           ? "No has seleccionado cuentas en la sección 'Cuentas visibles'."
-                                          : "Las cuentas seleccionadas no tienen datos o han sido filtradas."}
+                                          : "Ninguna de las cuentas seleccionadas tiene datos para el período actual o hay un conflicto de visibilidad."}
                                     </p>
-                                    {accounts.length > 0 && visibleAccountIds.length === 0 && (
-                                      <button 
-                                        onClick={() => setActivePage('accounts')}
-                                        className="mt-2 text-[10px] font-black text-blue-500 uppercase tracking-widest hover:underline"
-                                      >
-                                        Ir a seleccionar cuentas
-                                      </button>
-                                    )}
+                                    <div className="flex flex-col gap-2 mt-4">
+                                      {accounts.length > 0 && (
+                                        <button 
+                                          onClick={() => {
+                                            const allIds = accounts.map(a => a.id);
+                                            setVisibleAccountIds(allIds);
+                                            localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
+                                          }}
+                                          className="bg-blue-600/10 text-blue-500 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all border border-blue-600/30"
+                                        >
+                                          Restablecer selección de cuentas
+                                        </button>
+                                      )}
+                                      {accounts.length > 0 && visibleAccountIds.length === 0 && (
+                                        <button 
+                                          onClick={() => setActivePage('accounts')}
+                                          className="text-[10px] font-black text-neutral-400 uppercase tracking-widest hover:text-white transition-all underline decoration-neutral-800 underline-offset-4"
+                                        >
+                                          Panel de cuentas visibles
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </td>
