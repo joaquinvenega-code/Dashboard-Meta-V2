@@ -286,9 +286,16 @@ export default function App() {
       });
 
       // 2. Process Standalone Accounts (Visible ones that are NOT in a group rendered above)
-      const visibleAccounts = activeAccounts.filter(acc => 
-        currentVisibleIds.includes(acc.id) || currentVisibleIds.includes(acc.account_id)
-      );
+      const visibleAccounts = activeAccounts.filter(acc => {
+        const id = acc.id?.toString() || '';
+        const rawId = acc.account_id?.toString() || '';
+        return currentVisibleIds.some(vId => 
+          vId?.toString() === id || 
+          vId?.toString() === rawId || 
+          vId?.toString() === `act_${rawId}` || 
+          id === `act_${vId?.toString()}`
+        );
+      });
 
       visibleAccounts.forEach(acc => {
         if (!renderedInGroup.has(acc.id)) {
@@ -519,12 +526,18 @@ export default function App() {
                                     <p className="text-xs font-black uppercase tracking-[0.2em]">No hay datos para mostrar</p>
                                     <p className="text-[10px] font-medium max-w-[250px] mx-auto leading-relaxed">
                                       {accounts.length === 0 
-                                        ? "No se cargaron cuentas desde Meta. Revisa tu conexión o permisos."
+                                        ? "No se encontró ninguna cuenta vinculada. Asegúrate de tener permisos de Administrador o Anunciante en Meta Ads."
                                         : visibleAccountIds.length === 0
-                                          ? "No has seleccionado cuentas en la sección 'Cuentas visibles'."
-                                          : "Ninguna de las cuentas seleccionadas tiene datos para el período actual o hay un conflicto de visibilidad."}
+                                          ? "No has seleccionado cuentas en el panel de configuración."
+                                          : `Se detectaron ${accounts.length} cuentas en total, pero ninguna coincide con los filtros actuales.`}
                                     </p>
-                                    <div className="flex flex-col gap-2 mt-4">
+                                    <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/5 text-left">
+                                      <p className="text-[8px] font-black uppercase text-neutral-600 tracking-widest mb-1">Diagnóstico:</p>
+                                      <p className="text-[9px] text-neutral-400 font-bold">• Cuentas cargadas de Meta: {accounts.length}</p>
+                                      <p className="text-[9px] text-neutral-400 font-bold">• Cuentas seleccionadas: {visibleAccountIds.length}</p>
+                                      <p className="text-[9px] text-neutral-400 font-bold">• ID Sesión: {user?.id || 'No hay ID'}</p>
+                                    </div>
+                                    <div className="flex flex-col gap-2 mt-6">
                                       {accounts.length > 0 && (
                                         <button 
                                           onClick={() => {
@@ -532,17 +545,9 @@ export default function App() {
                                             setVisibleAccountIds(allIds);
                                             localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
                                           }}
-                                          className="bg-blue-600/10 text-blue-500 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all border border-blue-600/30"
+                                          className="bg-blue-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20"
                                         >
-                                          Restablecer selección de cuentas
-                                        </button>
-                                      )}
-                                      {accounts.length > 0 && visibleAccountIds.length === 0 && (
-                                        <button 
-                                          onClick={() => setActivePage('accounts')}
-                                          className="text-[10px] font-black text-neutral-400 uppercase tracking-widest hover:text-white transition-all underline decoration-neutral-800 underline-offset-4"
-                                        >
-                                          Panel de cuentas visibles
+                                          Forzar aparición de todas las cuentas
                                         </button>
                                       )}
                                     </div>
