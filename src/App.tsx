@@ -125,31 +125,54 @@ export default function App() {
   };
 
   const loadData = useCallback(async () => {
+    if (!isLogged) return;
     setLoading(true);
     try {
       const accs = await getAdAccounts();
+      if (accs.length === 0) {
+        setError('No se encontraron cuentas publicitarias vinculadas a tu perfil de Meta Ads.');
+        setAccounts([]);
+        setLoading(false);
+        return;
+      }
+      
       const detailedAccs = await Promise.all(accs.map(async (acc) => {
-        const insights = await fetchInsights(acc.id, dateRange.since, dateRange.until);
-        return { ...acc, ...insights };
+        try {
+          const insights = await fetchInsights(acc.id, dateRange.since, dateRange.until);
+          return { ...acc, ...insights };
+        } catch (e) {
+          console.error(`Error fetching insights for ${acc.id}:`, e);
+          return { ...acc, spend: 0, revenue: 0 };
+        }
       }));
       setAccounts(detailedAccs);
       setError(null);
       
-      // Initialize or reset visibility if none of the current accounts are visible
-      const visibleInCurrent = detailedAccs.filter(a => visibleAccountIds.includes(a.id));
-      if (detailedAccs.length > 0 && (visibleAccountIds.length === 0 || visibleInCurrent.length === 0)) {
-        const allIds = detailedAccs.map(a => a.id);
-        setVisibleAccountIds(allIds);
-        localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
-      }
+      // Auto-initialize visibility IF we have accounts but VISIBILITY IS LITERALLY EMPTY OR HAS NO MATCHES
+      // Use setVisibleAccountIds with functional update to avoid dependency on visibleAccountIds state itself
+      setVisibleAccountIds(currentVisible => {
+        const hasMatches = detailedAccs.some(a => currentVisible.includes(a.id));
+        if (detailedAccs.length > 0 && (currentVisible.length === 0 || !hasMatches)) {
+          const allIds = detailedAccs.map(a => a.id);
+          localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
+          return allIds;
+        }
+        return currentVisible;
+      });
       
       setLastSync(new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }));
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Error al sincronizar con Meta Ads');
     } finally {
       setLoading(false);
     }
-  }, [dateRange, visibleAccountIds]);
+  }, [dateRange, isLogged]); // Removed visibleAccountIds from dependency
+
+  useEffect(() => {
+    if (isLogged) {
+      loadData();
+    }
+  }, [dateRange, isLogged]); // Manual triggers or date changes
 
   const onLogin = async () => {
     if (!appId) {
@@ -475,8 +498,35 @@ export default function App() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/[0.02]">
-                          {overviewEntities.map((acc) => {
-                            const s = overviewSettings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', tracking: 'ecommerce' };
+                          {overviewEntities.length === 0 ? (
+                            <tr>
+                              <td colSpan={10} className="px-8 py-20 text-center">
+                                <div className="flex flex-col items-center gap-4 text-neutral-600">
+                                  <Facebook className="w-12 h-12 opacity-10" />
+                                  <div className="space-y-1">
+                                    <p className="text-xs font-black uppercase tracking-[0.2em]">No hay datos para mostrar</p>
+                                    <p className="text-[10px] font-medium max-w-[250px] mx-auto leading-relaxed">
+                                      {accounts.length === 0 
+                                        ? "No se cargaron cuentas desde Meta. Revisa tu conexión o permisos."
+                                        : visibleAccountIds.length === 0
+                                          ? "No has seleccionado cuentas en la sección 'Cuentas visibles'."
+                                          : "Las cuentas seleccionadas no tienen datos o han sido filtradas."}
+                                    </p>
+                                    {accounts.length > 0 && visibleAccountIds.length === 0 && (
+                                      <button 
+                                        onClick={() => setActivePage('accounts')}
+                                        className="mt-2 text-[10px] font-black text-blue-500 uppercase tracking-widest hover:underline"
+                                      >
+                                        Ir a seleccionar cuentas
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (
+                            overviewEntities.map((acc) => {
+                              const s = overviewSettings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', tracking: 'ecommerce' };
                             const roas = acc.spend && acc.spend > 0 ? (acc.revenue || 0) / acc.spend : 0;
                             const progress = s.objective > 0 ? Math.min((acc.revenue || 0) / s.objective, 1.2) : 0;
                             const budgetProgress = s.budget > 0 ? Math.min((acc.spend || 0) / s.budget, 1.2) : 0;
@@ -621,7 +671,7 @@ export default function App() {
                                 </td>
                               </tr>
                             );
-                          })}
+                          }))}
                         </tbody>
                       </table>
                     </div>
