@@ -489,7 +489,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
         {/* Dashboard Area */}
         {selectedAccount ? (
           <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar animate-in fade-in slide-in-from-right-4 duration-500 print:overflow-visible print:pr-0 print:space-y-8">
-            <div className="hidden print:flex flex-col gap-4 border-b border-neutral-200 pb-3 mb-3 text-black print:pt-0">
+            <div className="hidden print:flex flex-col gap-4 border-b border-neutral-200 pb-3 mb-3 text-black print:pt-0 print:-mt-10">
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-5">
                   <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-xl overflow-hidden print-keep-bg print-bg-white border border-neutral-100">
@@ -749,7 +749,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                   </div>
                </div>
 
-               <div className="grid grid-cols-1 gap-4 print:gap-14 print:mt-4">
+               <div className="grid grid-cols-1 gap-4">
                  {adsLoading ? (
                    <div className="py-16 bg-[#111]/30 rounded-xl flex flex-col items-center justify-center text-neutral-700 gap-4 border border-white/5 border-dashed">
                       <Loader2 className="w-8 h-8 animate-spin opacity-20" />
