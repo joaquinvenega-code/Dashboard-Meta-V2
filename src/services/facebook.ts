@@ -280,29 +280,27 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       // Priorizamos image_url como base
       const baseThumb = creative.image_url || creative.thumbnail_url;
 
-      // Paso 1: Resolver por image_hash (FUENTE SUPREMA)
-      // Buscamos hashes en: raíz, video_data, link_data, assets y también en el STORY (Reels)
+      // Paso 1: "Brute Force" de image_hash (JPG Original)
+      // Escaneamos recursivamente el objeto creative buscando cualquier cosa que parezca un hash
       const hashes = new Set<string>();
-      if (creative.image_hash) hashes.add(creative.image_hash);
-      
-      const linkData = creative.object_story_spec?.link_data;
-      if (linkData?.image_hash) hashes.add(linkData.image_hash);
-      linkData?.child_attachments?.forEach((c: any) => { if (c.image_hash) hashes.add(c.image_hash); });
+      const findHashes = (obj: any) => {
+        if (!obj || typeof obj !== 'object') return;
+        if (typeof obj.image_hash === 'string') hashes.add(obj.image_hash);
+        if (typeof obj.hash === 'string' && obj.hash.length >= 32) hashes.add(obj.hash);
+        if (typeof obj.thumbnail_hash === 'string') hashes.add(obj.thumbnail_hash);
+        Object.values(obj).forEach(v => findHashes(v));
+      };
+      findHashes(creative);
 
-      const videoData = creative.object_story_spec?.video_data;
-      if (videoData?.image_hash) hashes.add(videoData.image_hash);
-
-      creative.asset_feed_spec?.images?.forEach((img: any) => { if (img.hash) hashes.add(img.hash); });
-      creative.asset_feed_spec?.videos?.forEach((v: any) => { if (v.image_hash) hashes.add(v.image_hash); });
-
-      // Intento extra: Buscar hash en el post original (Vital para Reels e IG Media)
-      const sIdForHash = creative.instagram_story_id || creative.effective_object_story_id || creative.object_story_id;
-      if (sIdForHash) {
+      // Intento extra: Hash del post original (Crucial para Reels e IG Media)
+      const storyIdForHash = creative.instagram_story_id || creative.effective_object_story_id || creative.object_story_id;
+      if (storyIdForHash) {
         try {
           const sHashRes: any = await new Promise((resolve) => {
-            window.FB.api(`/${sIdForHash}`, 'GET', { fields: 'image_hash' }, (res: any) => resolve(res));
+            window.FB.api(`/${storyIdForHash}`, 'GET', { fields: 'image_hash,thumbnail_hash' }, (res: any) => resolve(res));
           });
           if (sHashRes?.image_hash) hashes.add(sHashRes.image_hash);
+          if (sHashRes?.thumbnail_hash) hashes.add(sHashRes.thumbnail_hash);
         } catch (e) {}
       }
 
@@ -315,8 +313,10 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             }, (res: any) => resolve(res));
           });
           if (imgRes?.data?.length > 0) {
-            thumb = imgRes.data[0].url;
-            console.log(`[TopAds] Paso 1 - resolved via deep hashes (${hashes.size}): ${ad.name}`);
+            // Buscamos la URL más limpia (fbcdn.net) que suele ser la de alta
+            const bestHashUrl = imgRes.data.find((d: any) => d.url && d.url.includes('fbcdn.net'))?.url || imgRes.data[0].url;
+            thumb = bestHashUrl;
+            console.log(`[TopAds] Paso 1 - resolved via brute-force hashes (${hashes.size}): ${ad.name}`);
           }
         } catch (e) {}
       }
@@ -352,7 +352,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
                 att.subattachments?.data?.forEach((sub: any) => checkMedia(sub.media));
               });
 
-              // Para Instagram Reels/Posts: media_url, display_url o thumbnail_url (del nodo story) suelen ser HD
+              // Para Instagram Reels/Posts: display_url suelen ser la versión HD
               thumb = bestMedia || storyRes.display_url || storyRes.media_url || storyRes.thumbnail_url || storyRes.full_picture || storyRes.picture || thumb;
               if (thumb && !thumb.includes('safe_image.php')) console.log(`[TopAds] Paso 2 - story/IG ok: ${ad.name}`);
             }
@@ -360,7 +360,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         }
       }
 
-      // Paso 3: Video Node (Miniatura HD del Video)
+      // Paso 3: Video Node Deep Scan
       const vidId = creative.video_id || 
                     creative.object_story_spec?.video_data?.video_id || 
                     creative.asset_feed_spec?.videos?.[0]?.video_id ||
@@ -369,10 +369,9 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
 
       if ((!thumb || thumb.includes('safe_image.php')) && vidId) {
         try {
-          // Pedimos también el edge 'thumbnails' por si 'format' no tiene la imagen HD
           const vidNode: any = await new Promise((resolve) => {
             window.FB.api(`/${vidId}`, 'GET', { 
-              fields: 'picture,format,thumbnails.limit(5){uri,width,height}' 
+              fields: 'picture,format,thumbnails.limit(20){uri,width,height,is_preferred}' 
             }, (res: any) => resolve(res));
           });
           
@@ -380,7 +379,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             let bestVidImg = vidNode.picture;
             let maxVidArea = 0;
 
-            // Opción A: Buscar en formats
+            // Opción A: Formats HD
             if (Array.isArray(vidNode.format)) {
               vidNode.format.forEach((f: any) => {
                 if (f.picture) {
@@ -393,11 +392,11 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               });
             }
 
-            // Opción B: Si thumbnails tiene algo más grande, lo usamos
+            // Opción B: Thumbnails (buscando 1080p+)
             if (vidNode.thumbnails?.data) {
               vidNode.thumbnails.data.forEach((t: any) => {
                 const area = (t.width || 0) * (t.height || 0);
-                if (area >= maxVidArea) {
+                if (area >= maxVidArea || t.is_preferred) {
                   maxVidArea = area;
                   bestVidImg = t.uri;
                 }
@@ -405,24 +404,17 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             }
             
             thumb = bestVidImg || thumb;
-            if (thumb && !thumb.includes('safe_image.php')) console.log(`[TopAds] Paso 3 - video format/thumbnails ok: ${ad.name}`);
+            if (thumb && !thumb.includes('safe_image.php')) console.log(`[TopAds] Paso 3 - deep video query ok: ${ad.name}`);
           }
         } catch (e) {}
       }
 
-      // Paso 4: Metadatos profundos (Fallback manual)
+      // Paso 4: Fallback Final
       if (!thumb || thumb.includes('safe_image.php')) {
-        thumb = 
-          creative.object_story_spec?.video_data?.image_url ||
-          creative.asset_feed_spec?.videos?.[0]?.thumbnail_url ||
-          creative.asset_feed_spec?.images?.[0]?.url ||
-          creative.object_story_spec?.link_data?.picture ||
-          creative.object_story_spec?.photo_data?.url ||
-          creative.image_url ||
-          creative.thumbnail_url;
+        thumb = creative.image_url || creative.thumbnail_url || baseThumb;
       }
 
-      ad.thumbnail = thumb || baseThumb || null;
+      ad.thumbnail = thumb || null;
     }
 
     const prevRes: any = await new Promise((resolve) => {
