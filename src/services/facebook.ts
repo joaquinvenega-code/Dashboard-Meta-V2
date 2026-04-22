@@ -281,53 +281,111 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
   // Fetch thumbnails and previews
   for (const ad of ads) {
     try {
-      // 1. Llamada Completa: Ad (para picture estable) + Creative (para data profunda)
+      let thumb: string | null = null;
+      // PASO 0: Llamada inicial profunda (SIN FIELDS DEPRECATED QUE ROMPEN LA API)
       const adRes: any = await new Promise((resolve) => {
         window.FB.api(`/${ad.id}`, 'GET', {
-          fields: 'creative{id,image_url,thumbnail_url,video_id,object_story_id,effective_object_story_id,object_story_spec,asset_feed_spec,template_data},picture,thumbnail_url',
+          fields: 'creative{id,image_url,image_hash,thumbnail_url.width(600).height(600),object_story_spec,asset_feed_spec,effective_object_story_id,video_id}'
         }, (res: any) => resolve(res));
       });
 
-      if (adRes && !adRes.error) {
-        const creative = adRes.creative || {};
-        
-        // --- NIVEL 1: PRIORIDAD BASE (Campos directos del AD son los más estables) ---
-        let thumb = adRes.picture || adRes.thumbnail_url || creative.image_url || creative.thumbnail_url;
+      if (adRes && !adRes.error && adRes.creative) {
+        const creative = adRes.creative;
 
-        // --- NIVEL 2: REELS & IG FIX (HD via Display Resources) ---
-        const igId = creative.effective_object_story_id || creative.object_story_id;
-        if (igId && igId.includes('instagram')) {
-          const igMedia: any = await new Promise((resolve) => {
-            window.FB.api(`/${igId}`, 'GET', { fields: 'display_resources' }, (res: any) => resolve(res));
+        // PASO 1: Resolver por image_hash (Fuente de MEJOR calidad - CDN Original)
+        // Buscamos el hash en el creativo principal o en las specs anidadas
+        const hash = creative.image_hash || 
+                     creative.object_story_spec?.photo_data?.image_hash ||
+                     creative.object_story_spec?.video_data?.image_hash ||
+                     creative.asset_feed_spec?.images?.[0]?.hash;
+
+        if (hash) {
+          const imgNode: any = await new Promise((resolve) => {
+            window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: [hash], fields: 'url' }, (res: any) => resolve(res));
           });
-          if (igMedia?.display_resources && Array.isArray(igMedia.display_resources)) {
-            const sorted = igMedia.display_resources.sort((a: any, b: any) => b.config_width - a.config_width);
-            thumb = sorted[0]?.src || thumb;
+          if (imgNode?.data?.[0]?.url) {
+            thumb = imgNode.data[0].url;
           }
         }
 
-        // --- NIVEL 3: VIDEO FALLBACK (Si sigue vacío o es safe_image) ---
-        const vidId = creative.video_id || creative.object_story_spec?.video_data?.video_id || creative.asset_feed_spec?.videos?.[0]?.video_id;
-        if ((!thumb || thumb.includes('safe_image.php')) && vidId) {
-          const vNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${vidId}`, 'GET', { fields: 'picture' }, (res: any) => resolve(res));
-          });
-          if (vNode?.picture) thumb = vNode.picture;
+        // PASO 2: effective_object_story_id (Post-level assets)
+        if (!thumb) {
+          const storyId = creative.effective_object_story_id;
+          if (storyId) {
+            const storyNode: any = await new Promise((resolve) => {
+              window.FB.api(`/${storyId}`, 'GET', { 
+                fields: 'full_picture,attachments{media{image{src,height,width}},subattachments{media{image{src,height,width}}}}' 
+              }, (res: any) => resolve(res));
+            });
+
+            if (storyNode && !storyNode.error) {
+              // Intentamos buscar la imagen más grande en attachments (carruseles/media)
+              let bestMedia = null;
+              let maxArea = 0;
+              const allMedia = [];
+              if (storyNode.attachments?.data) {
+                storyNode.attachments.data.forEach((att: any) => {
+                  if (att.media?.image) allMedia.push(att.media.image);
+                  if (att.subattachments?.data) {
+                    att.subattachments.data.forEach((sub: any) => {
+                      if (sub.media?.image) allMedia.push(sub.media.image);
+                    });
+                  }
+                });
+              }
+
+              allMedia.forEach(m => {
+                const area = (m.width || 0) * (m.height || 0);
+                if (area > maxArea) {
+                  maxArea = area;
+                  bestMedia = m.src;
+                }
+              });
+
+              thumb = bestMedia || storyNode.full_picture || storyNode.picture || null;
+            }
+          }
         }
 
-        // --- NIVEL 4: CATALOGS FALLBACK ---
+        // PASO 3: Video Node (format scanning para alta resolución)
+        if (!thumb) {
+          const vidId = creative.video_id || creative.object_story_spec?.video_data?.video_id;
+          if (vidId) {
+            const vidNode: any = await new Promise((resolve) => {
+              window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,format' }, (res: any) => resolve(res));
+            });
+            if (vidNode && !vidNode.error) {
+              // Buscamos el formato más grande disponible
+              if (Array.isArray(vidNode.format)) {
+                const sorted = [...vidNode.format].sort((a, b) => (b.width * b.height) - (a.width * a.height));
+                thumb = sorted[0]?.picture || vidNode.picture;
+              } else {
+                thumb = vidNode.picture;
+              }
+            }
+          }
+        }
+
+        // PASO 4: Extracción de specs anidadas (Link data, Photo data, Asset feed)
         if (!thumb || thumb.includes('safe_image.php')) {
-          const dSource = creative.template_data?.child_attachments?.[0] || 
-                          creative.object_story_spec?.template_data?.child_attachments?.[0] ||
-                          creative.asset_feed_spec?.child_attachments?.[0];
-          if (dSource) thumb = dSource.image_url || dSource.thumbnail_url || dSource.picture;
+          thumb = creative.object_story_spec?.link_data?.picture ||
+                  creative.object_story_spec?.photo_data?.url ||
+                  creative.object_story_spec?.video_data?.image_url ||
+                  creative.asset_feed_spec?.images?.[0]?.url ||
+                  creative.asset_feed_spec?.videos?.[0]?.thumbnail_url ||
+                  creative.template_data?.child_attachments?.[0]?.image_url;
         }
 
-        // --- NIVEL 5: UPGRADE A HD (1080p) ---
-        ad.thumbnail = upgradeToHD(thumb || null);
+        // PASO 5: Fallback final (thumbnail_url pedido con hints)
+        if (!thumb || thumb.includes('safe_image.php')) {
+          thumb = creative.image_url || creative.thumbnail_url;
+        }
       }
 
-      // 2. Preview URL (Standard Feed)
+      // Renderizado final del Ad
+      ad.thumbnail = thumb || null;
+
+      // Preview URL (standard feed tracker)
       const prevRes: any = await new Promise((resolve) => {
         window.FB.api(`/${ad.id}/previews`, 'GET', { ad_format: 'DESKTOP_FEED_STANDARD' }, (res: any) => resolve(res));
       });
