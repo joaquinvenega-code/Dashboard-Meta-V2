@@ -267,21 +267,36 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
 
   // Fetch thumbnails and previews
   for (const ad of ads) {
-    // Paso 0: Llamada inicial (v19)
+    // Paso 0: Llamada inicial (v19) - Añadimos campos de catálogo/template
     const adRes: any = await new Promise((resolve) => {
       window.FB.api(`/${ad.id}`, 'GET', {
-        fields: 'creative{id,image_url,image_hash,thumbnail_url.width(1000).height(1000),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id,instagram_story_id}'
+        fields: 'creative{id,image_url,image_hash,thumbnail_url.width(1000).height(1000),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id,instagram_story_id,template_data}'
       }, (res: any) => resolve(res));
     });
 
     if (adRes && !adRes.error && adRes.creative) {
       const creative = adRes.creative;
       let thumb = null;
-      const baseThumb = creative.image_url || creative.thumbnail_url;
+      
+      // Prioridad 0: Catálogos/DPA (Whisky A fix)
+      // Buscamos en todas las posibles ubicaciones de catálogos dinámicos: child_attachments, multi_share_node_items, etc.
+      const dSource = creative.template_data?.child_attachments?.[0] || 
+                      creative.object_story_spec?.template_data?.child_attachments?.[0] ||
+                      creative.asset_feed_spec?.child_attachments?.[0] ||
+                      creative.template_data?.multi_share_node_items?.[0] ||
+                      creative.object_story_spec?.template_data?.multi_share_node_items?.[0];
+      
+      if (dSource) {
+        thumb = dSource.image_url || dSource.thumbnail_url || dSource.picture;
+        if (thumb) console.log(`[TopAds] Imagen de catálogo recuperada para: ${ad.name}`);
+      }
 
-      // Limpiador seguro: escalamos sin romper la URL base
+      const baseThumb = thumb || creative.image_url || creative.thumbnail_url;
+
+      // Limpiador seguro para escalar URLs de Meta/IG
       const upgradeUrl = (url: string) => {
         if (!url) return url;
+        if (!url.includes('instagram') && !url.includes('fbcdn')) return url;
         let hq = url
           .replace(/\/s\d+x\d+\//g, '/s1080x1080/')
           .replace(/[wh]=\d+&[wh]=\d+/g, 'w=1080&h=1080')

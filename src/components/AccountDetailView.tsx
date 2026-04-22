@@ -70,7 +70,11 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [showMetrics, setShowMetrics] = useState(true);
   const [showObservations, setShowObservations] = useState(true);
   const [showMetricConfig, setShowMetricConfig] = useState(false);
+  const [localVisibleMetrics, setLocalVisibleMetrics] = useState<string[]>([]);
+  const [chartFilters, setChartFilters] = useState<Record<string, string[]>>({});
 
+  const defaultVisibleMetrics = ['spend', 'revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
+  
   // Filter accounts for sidebar
   const sidebarAccounts = accounts.filter(acc => 
     visibleAccountIds.some(vId => vId === acc.id || vId === acc.account_id)
@@ -96,6 +100,15 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       setObservations('');
     }
   }, [selectedId, s]);
+
+  // Initialize local metrics
+  useEffect(() => {
+    if (s?.visibleMetrics) {
+      setLocalVisibleMetrics(s.visibleMetrics);
+    } else {
+      setLocalVisibleMetrics(defaultVisibleMetrics);
+    }
+  }, [s?.visibleMetrics, selectedId]);
 
   const loadAds = useCallback(async () => {
     if (!selectedId) return;
@@ -170,16 +183,26 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     { id: 'cpm_real', label: 'Costo Mensaje Real' },
   ];
 
-  const defaultVisibleMetrics = ['spend', 'revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
-  const visibleMetrics = s?.visibleMetrics || defaultVisibleMetrics;
+  const visibleMetrics = localVisibleMetrics;
 
   const toggleMetric = (metricId: string) => {
     if (!selectedId || !s) return;
-    const current = s.visibleMetrics || defaultVisibleMetrics;
-    const next = current.includes(metricId) 
-      ? current.filter(id => id !== metricId)
-      : [...current, metricId];
+    const next = localVisibleMetrics.includes(metricId) 
+      ? localVisibleMetrics.filter(id => id !== metricId)
+      : [...localVisibleMetrics, metricId];
+    
+    setLocalVisibleMetrics(next); // Instant UI feedback
     onSaveSettings(selectedId, { ...s, visibleMetrics: next });
+  };
+
+  const toggleChartMetric = (adId: string, metric: string) => {
+    setChartFilters(prev => {
+      const current = prev[adId] || ['purchases', 'revenue'];
+      const next = current.includes(metric)
+        ? current.filter(m => m !== metric)
+        : [...current, metric];
+      return { ...prev, [adId]: next };
+    });
   };
 
   const renderMetric = (id: string, acc: AdAccount) => {
@@ -203,6 +226,142 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       case 'cpm_real': return <MetricBox key={id} label="Costo Mensaje Real" value={formatCurrency(acc.costPerMessageReal || 0, acc.currency)} />;
       default: return null;
     }
+  };
+
+  const AdCard: React.FC<{ ad: Ad; rank: number }> = ({ ad, rank }) => {
+    const filters = chartFilters[ad.id] || ['purchases', 'revenue'];
+    const showSales = filters.includes('purchases');
+    const showRevenue = filters.includes('revenue');
+
+    const chartData = ad.dailySeries?.map(d => ({
+      ...d,
+      formattedDate: format(parseISO(d.date), 'dd/MM', { locale: es })
+    })) || [];
+
+    const stats = [
+      { label: 'ROAS', value: `×${ad.roas.toFixed(2)}`, color: 'text-success print:text-green-600' },
+      { label: 'CTR', value: `${ad.ctr.toFixed(2)}%` },
+      { label: 'Spend', value: formatCurrency(ad.spend, selectedAccount?.currency) },
+      { label: 'Sales', value: ad.purchases.toString() },
+      { label: 'Revenue', value: formatCurrency(ad.revenue, selectedAccount?.currency) },
+      { label: 'CPA', value: formatCurrency(ad.purchases > 0 ? ad.spend / ad.purchases : 0, selectedAccount?.currency) }
+    ];
+
+    return (
+      <div className="bg-[#111] rounded-xl border border-white/5 p-4 hover:bg-[#131313] transition-all shadow-xl group/card relative overflow-hidden print:bg-white print:border-neutral-200 print:shadow-none print:break-inside-avoid">
+         <div className="hidden print:block absolute top-2 right-2 text-[8px] font-black text-neutral-400">RANK #{rank}</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 items-center">
+          <div className="md:col-span-1 xl:col-span-2">
+             <div className="bg-[#050505] rounded-xl overflow-hidden aspect-[4/5] border border-white/10 relative shadow-2xl print:border-neutral-200">
+                <div className="absolute top-2 left-2 z-20 px-2 py-0.5 bg-black/95 backdrop-blur-md rounded-md text-[8px] font-black text-white uppercase tracking-widest border border-white/10 print:hidden">
+                   #{rank}
+                </div>
+                {ad.thumbnail ? (
+                  <img 
+                    src={ad.thumbnail} 
+                    alt={ad.name} 
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" 
+                    referrerPolicy="no-referrer"
+                    loading="lazy"
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      img.style.display = 'none';
+                      const placeholder = img.parentElement?.querySelector('.ad-placeholder');
+                      if (placeholder) placeholder.classList.remove('hidden');
+                    }}
+                    style={{ 
+                      WebkitFontSmoothing: 'antialiased',
+                      imageRendering: 'auto'
+                    }}
+                  />
+                ) : null}
+                <div className={`ad-placeholder absolute inset-0 z-0 flex flex-col items-center justify-center opacity-10 gap-2 text-white ${ad.thumbnail ? 'hidden' : ''}`}>
+                  <Package className="w-6 h-6 print:text-black" />
+                  <span className="text-[10px] uppercase font-black">Sin imagen</span>
+                </div>
+             </div>
+          </div>
+
+          <div className="md:col-span-1 xl:col-span-4 flex flex-col gap-4">
+             <div className="space-y-0.5">
+                <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest whitespace-nowrap overflow-hidden text-ellipsis print:text-black print:whitespace-normal" title={ad.name}>
+                  {ad.name}
+                </div>
+             </div>
+
+             <div className="grid grid-cols-3 gap-1.5">
+                {stats.map(stat => (
+                  <div key={stat.label} className="bg-black/30 px-2 py-2 rounded-lg border border-white/5 flex flex-col items-center justify-center text-center print:bg-neutral-50 print:border-neutral-100">
+                    <div className="text-[7px] font-black text-neutral-700 uppercase tracking-widest mb-0.5 print:text-neutral-500">{stat.label}</div>
+                    <div className={`text-[10px] font-black tracking-tight ${stat.color || 'text-neutral-300'} truncate w-full print:text-black`}>{stat.value}</div>
+                  </div>
+                ))}
+             </div>
+          </div>
+
+          <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:bg-white print:border-neutral-200">
+             <div className="flex flex-wrap items-center gap-2 mb-2 shrink-0">
+                <LegendButton 
+                  active={showSales} 
+                  color="#3b82f6" 
+                  label="Sales" 
+                  onClick={() => toggleChartMetric(ad.id, 'purchases')}
+                />
+                <LegendButton 
+                  active={showRevenue} 
+                  color="#22c55e" 
+                  label="Revenue" 
+                  onClick={() => toggleChartMetric(ad.id, 'revenue')}
+                />
+                <LegendItem color="#f97316" label="ROAS" />
+             </div>
+
+             <div className="flex-1 w-full min-h-0">
+               <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id={`gP-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id={`gR-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#22c55e" stopOpacity={0.1}/>
+                        <stop offset="100%" stopColor="#22c55e" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="formattedDate" hide />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px' }}
+                      itemStyle={{ fontSize: '9px', fontWeight: 'bold', padding: '0' }}
+                      labelStyle={{ fontSize: '8px', color: '#666', marginBottom: '2px', fontWeight: '900', textTransform: 'uppercase' }}
+                    />
+                    {showRevenue && (
+                      <Area type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={1} fill={`url(#gR-${ad.id})`} dot={false} strokeDasharray="2 2" strokeOpacity={0.3} />
+                    )}
+                    {showSales && (
+                      <Area type="monotone" dataKey="purchases" stroke="#3b82f6" strokeWidth={1.5} fill={`url(#gP-${ad.id})`} dot={false} />
+                    )}
+                  </AreaChart>
+               </ResponsiveContainer>
+             </div>
+          </div>
+
+          <div className="xl:col-span-1 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0 print:hidden">
+            <a 
+              href={ad.previewUrl || '#'} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className={`flex flex-col items-center gap-1.5 group/link transition-all ${!ad.previewUrl && 'pointer-events-none opacity-20'}`}
+            >
+              <div className="p-2.5 bg-white/5 rounded-lg text-neutral-600 group-hover/link:bg-blue-600 group-hover/link:text-white transition-all shadow-xl active:scale-90">
+                 <ArrowUpRight className="w-4 h-4" />
+              </div>
+              <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover/link:text-neutral-400 whitespace-nowrap">Ver anuncio</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -468,136 +627,21 @@ const MetricBox: React.FC<{ label: string; value: string; isPlaceholder?: boolea
   </div>
 );
 
-const AdCard: React.FC<{ ad: Ad; rank: number }> = ({ ad, rank }) => {
-  const chartData = ad.dailySeries?.map(d => ({
-    ...d,
-    formattedDate: format(parseISO(d.date), 'dd/MM', { locale: es })
-  })) || [];
-
-  const stats = [
-    { label: 'ROAS', value: `×${ad.roas.toFixed(2)}`, color: 'text-success print:text-green-600' },
-    { label: 'CTR', value: `${ad.ctr.toFixed(2)}%` },
-    { label: 'Spend', value: new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(ad.spend) },
-    { label: 'Sales', value: ad.purchases.toString() },
-    { label: 'Revenue', value: new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(ad.revenue) },
-    { label: 'CPA', value: new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(ad.purchases > 0 ? ad.spend / ad.purchases : 0) }
-  ];
-
-  return (
-    <div className="bg-[#111] rounded-xl border border-white/5 p-4 hover:bg-[#131313] transition-all shadow-xl group/card relative overflow-hidden print:bg-white print:border-neutral-200 print:shadow-none print:break-inside-avoid">
-       {/* Rank indicator for print */}
-       <div className="hidden print:block absolute top-2 right-2 text-[8px] font-black text-neutral-400">RANK #{rank}</div>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 items-center">
-        {/* Ad Identity */}
-        <div className="md:col-span-1 xl:col-span-2">
-           <div className="bg-[#050505] rounded-xl overflow-hidden aspect-[4/5] border border-white/10 relative shadow-2xl print:border-neutral-200">
-              <div className="absolute top-2 left-2 z-20 px-2 py-0.5 bg-black/95 backdrop-blur-md rounded-md text-[8px] font-black text-white uppercase tracking-widest border border-white/10 print:hidden">
-                 #{rank}
-              </div>
-              {ad.thumbnail ? (
-                <img 
-                  src={ad.thumbnail} 
-                  alt={ad.name} 
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" 
-                  referrerPolicy="no-referrer"
-                  loading="lazy"
-                  onError={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    img.style.display = 'none';
-                    const placeholder = img.parentElement?.querySelector('.ad-placeholder');
-                    if (placeholder) placeholder.classList.remove('hidden');
-                  }}
-                  style={{ 
-                    WebkitFontSmoothing: 'antialiased',
-                    imageRendering: 'auto'
-                  }}
-                />
-              ) : null}
-              <div className={`ad-placeholder absolute inset-0 z-0 flex flex-col items-center justify-center opacity-10 gap-2 text-white ${ad.thumbnail ? 'hidden' : ''}`}>
-                <Package className="w-6 h-6 print:text-black" />
-                <span className="text-[10px] uppercase font-black">Sin imagen</span>
-              </div>
-           </div>
-        </div>
-
-        {/* Info & Stats */}
-        <div className="md:col-span-1 xl:col-span-4 flex flex-col gap-4">
-           <div className="space-y-0.5">
-              <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest whitespace-nowrap overflow-hidden text-ellipsis print:text-black print:whitespace-normal" title={ad.name}>
-                {ad.name}
-              </div>
-           </div>
-
-           <div className="grid grid-cols-3 gap-1.5">
-              {stats.map(stat => (
-                <div key={stat.label} className="bg-black/30 px-2 py-2 rounded-lg border border-white/5 flex flex-col items-center justify-center text-center print:bg-neutral-50 print:border-neutral-100">
-                  <div className="text-[7px] font-black text-neutral-700 uppercase tracking-widest mb-0.5 print:text-neutral-500">{stat.label}</div>
-                  <div className={`text-[10px] font-black tracking-tight ${stat.color || 'text-neutral-300'} truncate w-full print:text-black`}>{stat.value}</div>
-                </div>
-              ))}
-           </div>
-        </div>
-
-        {/* Chart Section */}
-        <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:bg-white print:border-neutral-200">
-           <div className="flex flex-wrap items-center gap-2 mb-2 shrink-0">
-              <LegendItem color="#3b82f6" label="Sales" />
-              <LegendItem color="#22c55e" label="Revenue" />
-              <LegendItem color="#f97316" label="ROAS" />
-           </div>
-
-           <div className="flex-1 w-full min-h-0">
-             <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id={`gP-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id={`gR-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#22c55e" stopOpacity={0.1}/>
-                      <stop offset="100%" stopColor="#22c55e" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="formattedDate" hide />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px' }}
-                    itemStyle={{ fontSize: '9px', fontWeight: 'bold', padding: '0' }}
-                    labelStyle={{ fontSize: '8px', color: '#666', marginBottom: '2px', fontWeight: '900', textTransform: 'uppercase' }}
-                  />
-                  <Area type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={1} fill={`url(#gR-${ad.id})`} dot={false} strokeDasharray="2 2" strokeOpacity={0.3} />
-                  <Area type="monotone" dataKey="purchases" stroke="#3b82f6" strokeWidth={1.5} fill={`url(#gP-${ad.id})`} dot={false} />
-                </AreaChart>
-             </ResponsiveContainer>
-           </div>
-        </div>
-
-        {/* Action Button */}
-        <div className="xl:col-span-1 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0 print:hidden">
-          <a 
-            href={ad.previewUrl || '#'} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className={`flex flex-col items-center gap-1.5 group/link transition-all ${!ad.previewUrl && 'pointer-events-none opacity-20'}`}
-          >
-            <div className="p-2.5 bg-white/5 rounded-lg text-neutral-600 group-hover/link:bg-blue-600 group-hover/link:text-white transition-all shadow-xl active:scale-90">
-               <ArrowUpRight className="w-4 h-4" />
-            </div>
-            <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover/link:text-neutral-400 whitespace-nowrap">Ver anuncio</span>
-          </a>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-
-
 const LegendItem = ({ color, label }: { color: string; label: string }) => (
   <div className="flex items-center gap-2">
     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
     <span className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">{label}</span>
   </div>
+);
+
+const LegendButton = ({ color, label, active, onClick }: { color: string; label: string; active: boolean; onClick: () => void }) => (
+  <button 
+    onClick={onClick}
+    className={`flex items-center gap-2 transition-all ${active ? 'opacity-100' : 'opacity-20 grayscale'}`}
+  >
+    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+    <span className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">{label}</span>
+  </button>
 );
 
 export default AccountDetailView;
