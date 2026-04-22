@@ -268,24 +268,34 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
   // Fetch thumbnails and previews
   for (const ad of ads) {
     try {
-      // 1. Obtenemos creativo + picture del Ad as fallback
+      // 1. Intentamos obtener info del Ad, incluyendo campos de respaldo directo
       const adRes: any = await new Promise((resolve) => {
         window.FB.api(`/${ad.id}`, 'GET', {
-          fields: 'creative{id,image_url,thumbnail_url,object_story_spec,asset_feed_spec,video_id,instagram_story_id,template_data},picture'
+          fields: 'creative{id,image_url,thumbnail_url,object_story_spec,asset_feed_spec,video_id,instagram_story_id,template_data},picture,thumbnail_url'
         }, (res: any) => resolve(res));
       });
 
       if (adRes && !adRes.error) {
         const creative = adRes.creative || {};
+        let thumb = null;
         
-        // 1. Prioridad: Catálogos/DPA
+        // 1. Prioridad: Catálogos/DPA (Whisky A fix)
         const dSource = creative.template_data?.child_attachments?.[0] || 
                         creative.object_story_spec?.template_data?.child_attachments?.[0] ||
                         creative.asset_feed_spec?.child_attachments?.[0] ||
                         creative.template_data?.multi_share_node_items?.[0] ||
-                        creative.object_story_spec?.template_data?.multi_share_node_items?.[0];
+                        creative.object_story_spec?.template_data?.multi_share_node_items?.[0] ||
+                        creative.template_data?.child_attachments?.[1] ||
+                        creative.object_story_spec?.link_data?.child_attachments?.[0] ||
+                        creative.object_story_spec?.link_data?.picture ||
+                        creative.object_story_spec?.video_data?.image_url;
         
-        let thumb = dSource ? (dSource.image_url || dSource.thumbnail_url || dSource.picture) : null;
+        if (dSource && typeof dSource === 'object') {
+          thumb = dSource.image_url || dSource.thumbnail_url || dSource.picture || dSource.item_url_thumbnail_hash || dSource;
+          if (typeof thumb === 'object') thumb = thumb.image_url || thumb.picture || null;
+        } else if (typeof dSource === 'string') {
+          thumb = dSource;
+        }
 
         // 2. Prioridad: Video/Reels (Mejor miniatura disponible)
         const vidId = creative.video_id || creative.object_story_spec?.video_data?.video_id || creative.asset_feed_spec?.videos?.[0]?.video_id;
@@ -308,9 +318,23 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           }
         }
 
-        // 3. Fallback: Imagen básica
+        // 3. Fallback: Campos estándar y Deep Scan de emergencia
         if (!thumb || thumb.includes('safe_image.php')) {
-          thumb = creative.image_url || creative.thumbnail_url || adRes.picture;
+          thumb = creative.image_url || creative.thumbnail_url || adRes.thumbnail_url || adRes.picture;
+        }
+
+        // 4. Búsqueda profunda final (si seguimos sin imagen)
+        if (!thumb || thumb.includes('safe_image.php')) {
+          const findUrl = (obj: any): string | null => {
+            if (!obj || typeof obj !== 'object') return null;
+            if (typeof obj === 'string' && (obj.includes('fbcdn.net') || obj.includes('instagram.com')) && obj.startsWith('http')) return obj;
+            for (const key in obj) {
+              const found = findUrl(obj[key]);
+              if (found) return found;
+            }
+            return null;
+          };
+          thumb = findUrl(creative) || findUrl(adRes);
         }
 
         ad.thumbnail = thumb || null;
@@ -325,7 +349,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         if (iframeMatch) ad.previewUrl = iframeMatch[1].replace(/&amp;/g, '&');
       }
     } catch (e) {
-      console.error("Error fetching ad data:", ad.id, e);
+      console.error("Error fetching assets for ad:", ad.id, e);
     }
   }
 
