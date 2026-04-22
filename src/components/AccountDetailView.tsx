@@ -264,7 +264,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     ];
 
     return (
-      <div className="bg-[#111] rounded-xl border border-white/5 p-4 hover:bg-[#131313] transition-all shadow-xl group/card relative overflow-hidden ad-card-print print:bg-white print:border-neutral-100 print:shadow-none print:break-inside-avoid print:p-1.5 print:mb-0 print:border-b">
+      <div className="bg-[#111] rounded-xl border border-white/5 p-4 hover:bg-[#131313] transition-all shadow-xl group/card relative overflow-hidden ad-card-print print:bg-white print:border-neutral-100 print:shadow-none print:break-inside-avoid print:p-1.5 print:px-6 print:mb-0 print:border-b">
          <div className="hidden print:block absolute top-1 right-2 text-[8px] font-black text-neutral-400 uppercase tracking-tighter">RANK #{rank}</div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 items-center print:flex print:gap-4 print:items-center">
           <div className="md:col-span-1 xl:col-span-2 print:shrink-0">
@@ -388,7 +388,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
              </div>
           </div>
 
-          <div className="xl:col-span-2 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0 print:flex print:items-center print:justify-center print:border-none print:ml-1 relative print:shrink-0 print:w-20">
+          <div className="xl:col-span-2 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0 print:flex print:items-center print:justify-center print:border-none print:ml-1 relative print:shrink-0 print:w-20 print:mr-4">
             <a 
               href={ad.previewUrl} 
               target="_blank" 
