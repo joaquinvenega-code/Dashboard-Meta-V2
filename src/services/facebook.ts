@@ -277,46 +277,60 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       const creative = adRes.creative;
       let thumb = null;
 
-      // 1. Try Source Story (Highest priority for high-res)
-      const storyId = creative.effective_object_story_id || creative.object_story_id;
-      if (storyId) {
-        try {
-          const storyRes: any = await new Promise((resolve) => {
-            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,picture,attachments{media}' }, (res: any) => resolve(res));
-          });
-          
-          if (storyRes) {
-            // Try attachments first (often contains the actual high-res media)
-            const attachmentMedia = storyRes.attachments?.data?.[0]?.media?.image?.src;
-            thumb = attachmentMedia || storyRes.full_picture || storyRes.picture;
-          }
-        } catch (e) {
-          console.error("Error fetching story assets:", e);
+      // 1. Try Asset Feed Spec (Highest quality for dynamic/modern ads)
+      if (creative.asset_feed_spec) {
+        const spec = creative.asset_feed_spec;
+        if (spec.images && spec.images.length > 0) {
+          thumb = spec.images[0].url;
+        } else if (spec.videos && spec.videos.length > 0) {
+          thumb = spec.videos[0].thumbnail_url;
         }
       }
 
-      // 2. Try Creative specific full_picture
+      // 2. Try Story Attachments (High quality for posts)
+      if (!thumb) {
+        const storyId = creative.effective_object_story_id || creative.object_story_id;
+        if (storyId) {
+          try {
+            const storyRes: any = await new Promise((resolve) => {
+              window.FB.api(`/${storyId}`, 'GET', { 
+                fields: 'full_picture,picture,attachments{media,target,subattachments{media}}' 
+              }, (res: any) => resolve(res));
+            });
+            
+            if (storyRes) {
+              const mainMedia = storyRes.attachments?.data?.[0]?.media?.image?.src;
+              const subMedia = storyRes.attachments?.data?.[0]?.subattachments?.data?.[0]?.media?.image?.src;
+              thumb = mainMedia || subMedia || storyRes.full_picture || storyRes.picture;
+            }
+          } catch (e) {}
+        }
+      }
+
+      // 3. Try Creative specific High-Res Thumbnail
       if (!thumb || thumb.includes('safe_image.php')) {
         try {
-          const creativeDetail: any = await new Promise((resolve) => {
-            window.FB.api(`/${creative.id}`, 'GET', { fields: 'full_picture,image_url,thumbnail_url' }, (res: any) => resolve(res));
+          const detail: any = await new Promise((resolve) => {
+            window.FB.api(`/${creative.id}`, 'GET', { 
+              fields: 'full_picture,image_url,thumbnail_url.width(1080).height(1080)' 
+            }, (res: any) => resolve(res));
           });
-          if (creativeDetail) {
-            thumb = creativeDetail.full_picture || creativeDetail.image_url || thumb;
+          if (detail) {
+            thumb = detail.full_picture || detail.image_url || detail.thumbnail_url || thumb;
           }
         } catch (e) {}
       }
 
-      // 3. Special handling for Video/Reels
+      // 4. Video Specific - Exhaustive Thumbnail Search
       if ((!thumb || thumb.includes('safe_image.php')) && creative.video_id) {
         try {
           const videoThumbRes: any = await new Promise((resolve) => {
             window.FB.api(`/${creative.video_id}/thumbnails`, 'GET', { limit: 50 }, (res: any) => resolve(res));
           });
           if (videoThumbRes?.data?.length > 0) {
-            // Find the biggest one by dimensions
-            const sortedThumbs = [...videoThumbRes.data].sort((a, b) => (b.width || 0) - (a.width || 0));
-            thumb = sortedThumbs[0].uri || thumb;
+            // Filter out small ones and pick biggest
+            const sorted = [...videoThumbRes.data].sort((a, b) => (b.width || 0) - (a.width || 0));
+            thumb = sorted[0].uri;
           }
         } catch (e) {}
       }
