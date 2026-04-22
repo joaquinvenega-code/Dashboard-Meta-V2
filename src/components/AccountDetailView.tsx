@@ -663,7 +663,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
                   {/* Print Version of Observations */}
                   {observations && (
-                    <div className="hidden print:block space-y-2 mb-3">
+                    <div className="hidden print:block space-y-2 mb-8">
                       <div className="flex items-center gap-2 mb-2">
                         <FileText className="w-4 h-4 text-blue-600" />
                         <h3 className="text-xs font-black text-neutral-900 uppercase tracking-widest border-b-2 border-blue-600 pb-0.5">

@@ -430,12 +430,23 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
 
       ad.thumbnail = upgradeToHD(thumb);
 
-      const prevRes: any = await new Promise((resolve) => {
-        window.FB.api(`/${ad.id}/previews`, 'GET', { ad_format: 'DESKTOP_FEED_STANDARD' }, (res: any) => resolve(res));
-      });
-      if (prevRes && !prevRes.error && prevRes.data?.[0]) {
-        const iframeMatch = prevRes.data[0].body.match(/src="([^"]+)"/);
-        if (iframeMatch) ad.previewUrl = iframeMatch[1].replace(/&amp;/g, '&');
+      // PASO FINAL: Link de Previsualización (Aislado de la carga de imágenes para evitar bloqueos)
+      try {
+        const prevRes: any = await new Promise((resolve) => {
+          window.FB.api(`/${ad.id}/previews`, 'GET', { ad_format: 'DESKTOP_FEED_STANDARD' }, (res: any) => resolve(res));
+        });
+        if (prevRes && !prevRes.error && prevRes.data?.[0]) {
+          const iframeMatch = prevRes.data[0].body.match(/src="([^"]+)"/);
+          if (iframeMatch) {
+            ad.previewUrl = iframeMatch[1].replace(/&amp;/g, '&');
+          }
+        }
+        // Fallback robusto a la biblioteca de anuncios si el preview de iframe falla o para asegurar link directo
+        if (!ad.previewUrl) {
+          ad.previewUrl = `https://www.facebook.com/ads/library/?id=${ad.id}`;
+        }
+      } catch (e) {
+        ad.previewUrl = `https://www.facebook.com/ads/library/?id=${ad.id}`;
       }
     } catch (err) {
       console.error(`[TopAds] Error processing Ad ${ad.id}:`, err);
