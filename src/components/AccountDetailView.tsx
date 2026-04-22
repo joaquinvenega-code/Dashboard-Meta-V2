@@ -309,14 +309,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
              </div>
           </div>
 
-          <div className="md:col-span-1 xl:col-span-3 flex flex-col gap-4 print:flex-1 print:gap-2">
+          <div className="md:col-span-1 xl:col-span-3 flex flex-col gap-4 print:flex-[1.2] print:gap-2">
              <div className="space-y-0.5">
                 <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest whitespace-nowrap overflow-hidden text-ellipsis print:text-black print:whitespace-pre-wrap print:text-[8.5px] print:leading-tight print:font-bold" title={ad.name}>
                   {ad.name}
                 </div>
              </div>
 
-             <div className="grid grid-cols-3 gap-1.5 print:grid-cols-2 print:gap-1.5 print:mt-1">
+             <div className="grid grid-cols-3 gap-1.5 print:grid-cols-2 print:gap-2 print:mt-1">
                 {stats.map(stat => (
                   <div key={stat.label} className="bg-black/30 px-2 py-2 rounded-lg border border-white/5 flex flex-col items-center justify-center text-center print:bg-neutral-50/50 print:border-neutral-100 print:py-1.5 print:px-2 print:rounded-xl">
                     <div className="text-[7px] font-black text-neutral-700 uppercase tracking-widest mb-0.5 print:text-neutral-500 print:text-[5.5px] print:leading-tight print:whitespace-normal">{stat.label}</div>
@@ -326,7 +326,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
              </div>
           </div>
 
-          <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:flex-[2.5] print:h-24 print:p-0 print:bg-transparent print:border-2 print:border-neutral-100/50 print:rounded-2xl print:overflow-hidden">
+          <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:flex-[3] print:h-24 print:p-0 print:bg-transparent print:border-2 print:border-neutral-100/50 print:rounded-2xl print:overflow-hidden">
              <div className="flex flex-wrap items-center gap-2 mb-2 shrink-0 print:gap-4 print:my-2 print:justify-start print:pl-3">
                 <LegendButton 
                   active={showSales} 
@@ -388,12 +388,12 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
              </div>
           </div>
 
-          <div className="xl:col-span-2 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0 print:flex print:items-center print:justify-center print:border-none print:ml-1 relative">
+          <div className="xl:col-span-2 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0 print:flex print:items-center print:justify-center print:border-none print:ml-1 relative print:shrink-0 print:w-20">
             <a 
               href={ad.previewUrl} 
               target="_blank" 
               rel="noopener noreferrer"
-              className={`flex flex-col items-center gap-1 group/link transition-all ${!ad.previewUrl ? 'pointer-events-none opacity-20' : 'cursor-pointer'} print:opacity-100 print:bg-blue-600 print:px-3 print:py-2 print:rounded-lg print:shadow-md print:block print:w-full print:text-center print:cursor-pointer print:relative print:z-50`}
+              className={`flex flex-col items-center gap-1 group/link transition-all ${!ad.previewUrl ? 'pointer-events-none opacity-20' : 'cursor-pointer'} print:opacity-100 print:bg-blue-600 print:px-2 print:py-2.5 print:rounded-lg print:shadow-md print:block print:w-full print:text-center print:cursor-pointer print:relative print:z-50 print:leading-none`}
               id={`ad-link-${ad.id}`}
             >
               {/* Desktop View */}
@@ -402,10 +402,13 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                 <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover/link:text-neutral-400 whitespace-nowrap">Ver anuncio</span>
               </div>
               
-              {/* PDF Print View: Simple text link is best for PDF generator recognition */}
-              <div className="hidden print:block">
-                 <span className="text-white text-[7px] font-black uppercase underline decoration-white/50 decoration-1 underline-offset-4">
-                   VER ANUNCIO EN META →
+              {/* PDF Print View: Two lines for more space efficiency */}
+              <div className="hidden print:flex flex-col items-center justify-center h-full">
+                 <span className="text-white text-[7px] font-black uppercase whitespace-nowrap mb-0.5">
+                   VER ANUNCIO
+                 </span>
+                 <span className="text-white/80 text-[6px] font-black uppercase tracking-tighter whitespace-nowrap border-t border-white/20 pt-0.5 mt-0.5">
+                   EN META →
                  </span>
               </div>
             </a>
