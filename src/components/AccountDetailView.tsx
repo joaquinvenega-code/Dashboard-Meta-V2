@@ -307,18 +307,18 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                 </div>
              </div>
 
-             <div className="grid grid-cols-3 gap-1.5 print:gap-1">
+             <div className="grid grid-cols-3 gap-1.5 print:grid-cols-2 print:gap-1.5 print:mt-1">
                 {stats.map(stat => (
-                  <div key={stat.label} className="bg-black/30 px-2 py-2 rounded-lg border border-white/5 flex flex-col items-center justify-center text-center print:bg-neutral-50/50 print:border-neutral-100 print:py-0.5 print:px-1">
-                    <div className="text-[7px] font-black text-neutral-700 uppercase tracking-widest mb-0.5 print:text-neutral-500 print:text-[5.5px] truncate">{stat.label}</div>
-                    <div className={`text-[10px] font-black tracking-tight ${stat.color || 'text-neutral-300'} truncate w-full print:text-black print:text-[7.5px]`}>{stat.value}</div>
+                  <div key={stat.label} className="bg-black/30 px-2 py-2 rounded-lg border border-white/5 flex flex-col items-center justify-center text-center print:bg-neutral-50/50 print:border-neutral-100 print:py-1.5 print:px-2 print:rounded-xl">
+                    <div className="text-[7px] font-black text-neutral-700 uppercase tracking-widest mb-0.5 print:text-neutral-500 print:text-[5.5px] print:leading-tight print:whitespace-normal">{stat.label}</div>
+                    <div className={`text-[10px] font-black tracking-tight ${stat.color || 'text-neutral-300'} truncate w-full print:text-black print:text-[9.5px] print:truncate-none print:leading-none`}>{stat.value}</div>
                   </div>
                 ))}
              </div>
           </div>
 
-          <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:flex-[2.5] print:h-24 print:p-2 print:bg-transparent print:border-2 print:border-neutral-50 print:rounded-xl">
-             <div className="flex flex-wrap items-center gap-2 mb-2 shrink-0 print:gap-4 print:mb-2 print:justify-start print:pl-2">
+          <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:flex-[2.5] print:h-24 print:p-0 print:bg-transparent print:border-2 print:border-neutral-100/50 print:rounded-2xl print:overflow-hidden">
+             <div className="flex flex-wrap items-center gap-2 mb-2 shrink-0 print:gap-4 print:my-2 print:justify-start print:pl-3">
                 <LegendButton 
                   active={showSales} 
                   color="#3b82f6" 
@@ -339,9 +339,9 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                 />
              </div>
 
-             <div className="flex-1 w-full min-h-0">
+             <div className="flex-1 w-full min-h-0 print:pr-4 print:pb-2">
                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
+                  <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                     <defs>
                       <linearGradient id={`gP-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.1}/>
