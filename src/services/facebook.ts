@@ -281,25 +281,29 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       const baseThumb = creative.image_url || creative.thumbnail_url;
 
       // Paso 1: Resolver por image_hash (FUENTE SUPREMA)
+      // Buscamos hashes en: raíz, video_data, link_data, assets y también en el STORY (Reels)
       const hashes = new Set<string>();
       if (creative.image_hash) hashes.add(creative.image_hash);
       
       const linkData = creative.object_story_spec?.link_data;
       if (linkData?.image_hash) hashes.add(linkData.image_hash);
-      if (linkData?.child_attachments) {
-        linkData.child_attachments.forEach((child: any) => {
-          if (child.image_hash) hashes.add(child.image_hash);
-        });
-      }
+      linkData?.child_attachments?.forEach((c: any) => { if (c.image_hash) hashes.add(c.image_hash); });
 
       const videoData = creative.object_story_spec?.video_data;
       if (videoData?.image_hash) hashes.add(videoData.image_hash);
 
-      const assetImages = creative.asset_feed_spec?.images;
-      if (Array.isArray(assetImages)) {
-        assetImages.forEach((img: any) => {
-          if (img.hash) hashes.add(img.hash);
-        });
+      creative.asset_feed_spec?.images?.forEach((img: any) => { if (img.hash) hashes.add(img.hash); });
+      creative.asset_feed_spec?.videos?.forEach((v: any) => { if (v.image_hash) hashes.add(v.image_hash); });
+
+      // Intento extra: Buscar hash en el post original (Vital para Reels e IG Media)
+      const sIdForHash = creative.instagram_story_id || creative.effective_object_story_id || creative.object_story_id;
+      if (sIdForHash) {
+        try {
+          const sHashRes: any = await new Promise((resolve) => {
+            window.FB.api(`/${sIdForHash}`, 'GET', { fields: 'image_hash' }, (res: any) => resolve(res));
+          });
+          if (sHashRes?.image_hash) hashes.add(sHashRes.image_hash);
+        } catch (e) {}
       }
 
       if (hashes.size > 0) {
@@ -312,7 +316,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           });
           if (imgRes?.data?.length > 0) {
             thumb = imgRes.data[0].url;
-            console.log(`[TopAds] Paso 1 - resolved via hashes (${hashes.size}): ${ad.name}`);
+            console.log(`[TopAds] Paso 1 - resolved via deep hashes (${hashes.size}): ${ad.name}`);
           }
         } catch (e) {}
       }
