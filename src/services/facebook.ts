@@ -283,8 +283,9 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
     try {
       let thumb: string | null = null;
       let winningStep = "none";
+      let adType = "unknown";
 
-      // PASO 0: Llamada inicial profunda (SIN FIELDS DEPRECATED QUE ROMPEN LA API)
+      // PASO 0: Llamada inicial completa
       const adRes: any = await new Promise((resolve) => {
         window.FB.api(`/${ad.id}`, 'GET', {
           fields: 'creative{id,image_url,image_hash,thumbnail_url.width(600).height(600),object_story_spec,asset_feed_spec,template_data,effective_object_story_id,video_id}'
@@ -293,68 +294,57 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
 
       if (adRes && !adRes.error && adRes.creative) {
         const creative = adRes.creative;
+        const spec = creative.object_story_spec || {};
+        
+        // --- IDENTIFICACIÓN DEL TIPO DE ANUNCIO POR BLOQUES ---
 
-        // PASO 1: Resolver por image_hash (Fuente de MEJOR calidad - CDN Original)
-        const hash = creative.image_hash || 
-                     creative.object_story_spec?.photo_data?.image_hash ||
-                     creative.object_story_spec?.video_data?.image_hash ||
-                     creative.asset_feed_spec?.images?.[0]?.hash ||
-                     creative.object_story_spec?.link_data?.child_attachments?.[0]?.image_hash ||
-                     creative.asset_feed_spec?.child_attachments?.[0]?.image_hash ||
-                     creative.template_data?.child_attachments?.[0]?.image_hash;
-
-        if (hash) {
-          const imgNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: [hash], fields: 'url' }, (res: any) => resolve(res));
-          });
-          if (imgNode?.data?.[0]?.url) {
-            thumb = imgNode.data[0].url;
-            winningStep = `adimage hash (${hash})`;
-          }
-        }
-
-        // PASO 2: effective_object_story_id (Post-level assets)
-        if (!thumb) {
+        // BLOQUE 3: Publicación redes (Reel, Post, Carrusel de IG/FB)
+        if (creative.effective_object_story_id) {
+          adType = "publicacion_redes";
           const storyId = creative.effective_object_story_id;
-          if (storyId) {
-            const storyNode: any = await new Promise((resolve) => {
-              window.FB.api(`/${storyId}`, 'GET', { 
-                fields: 'full_picture,attachments{media{image{src,height,width}},subattachments{media{image{src,height,width}}}}' 
-              }, (res: any) => resolve(res));
-            });
+          const storyNode: any = await new Promise((resolve) => {
+            window.FB.api(`/${storyId}`, 'GET', { 
+              fields: 'full_picture,attachments{media{image{src,height,width}},subattachments{media{image{src,height,width}}},display_resources}' 
+            }, (res: any) => resolve(res));
+          });
 
-            if (storyNode && !storyNode.error) {
-              let bestMedia = null;
+          if (storyNode && !storyNode.error) {
+            // Caso IG: Buscar en display_resources si existe
+            if (storyNode.display_resources && Array.isArray(storyNode.display_resources)) {
+              const sorted = storyNode.display_resources.sort((a: any, b: any) => (b.config_width || 0) - (a.config_width || 0));
+              thumb = sorted[0]?.src || null;
+            }
+            
+            // Fallback: Buscar en attachments (muy común para carruseles de posts)
+            if (!thumb && storyNode.attachments?.data) {
               let maxArea = 0;
-              const allMedia = [];
-              if (storyNode.attachments?.data) {
-                storyNode.attachments.data.forEach((att: any) => {
-                  if (att.media?.image) allMedia.push(att.media.image);
-                  if (att.subattachments?.data) {
-                    att.subattachments.data.forEach((sub: any) => {
-                      if (sub.media?.image) allMedia.push(sub.media.image);
-                    });
-                  }
-                });
-              }
-
-              allMedia.forEach(m => {
-                const area = (m.width || 0) * (m.height || 0);
-                if (area > maxArea) {
-                  maxArea = area;
-                  bestMedia = m.src;
+              storyNode.attachments.data.forEach((att: any) => {
+                const img = att.media?.image;
+                if (img) {
+                  const area = (img.width || 0) * (img.height || 0);
+                  if (area > maxArea) { maxArea = area; thumb = img.src; }
+                }
+                if (att.subattachments?.data) {
+                  att.subattachments.data.forEach((sub: any) => {
+                    const sImg = sub.media?.image;
+                    if (sImg) {
+                      const sArea = (sImg.width || 0) * (sImg.height || 0);
+                      if (sArea > maxArea) { maxArea = sArea; thumb = sImg.src; }
+                    }
+                  });
                 }
               });
-
-              thumb = bestMedia || storyNode.full_picture || null;
-              if (thumb) winningStep = `story post (${storyId})`;
             }
+            
+            if (!thumb) thumb = storyNode.full_picture || storyNode.picture;
+            winningStep = `resolucion post (${storyId})`;
           }
         }
 
-        // PASO 3: Video Node (format scanning para alta resolución)
-        if (!thumb) {
-          const vidId = creative.video_id || creative.object_story_spec?.video_data?.video_id;
+        // BLOQUE 2: Video
+        if (!thumb && (creative.video_id || spec.video_data)) {
+          adType = "video";
+          const vidId = creative.video_id || spec.video_data?.video_id;
           if (vidId) {
             const vidNode: any = await new Promise((resolve) => {
               window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,format' }, (res: any) => resolve(res));
@@ -366,37 +356,71 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               } else {
                 thumb = vidNode.picture;
               }
-              if (thumb) winningStep = `video node (${vidId})`;
+              winningStep = `resolucion video node (${vidId})`;
             }
           }
         }
 
-        // PASO 4: Extracción de specs anidadas
-        if (!thumb || thumb.includes('safe_image.php')) {
-          thumb = creative.object_story_spec?.link_data?.picture ||
-                  creative.object_story_spec?.child_attachments?.[0]?.picture ||
-                  creative.object_story_spec?.photo_data?.url ||
-                  creative.object_story_spec?.video_data?.image_url ||
-                  creative.asset_feed_spec?.images?.[0]?.url ||
-                  creative.asset_feed_spec?.videos?.[0]?.thumbnail_url ||
-                  creative.template_data?.child_attachments?.[0]?.image_url;
-          if (thumb) winningStep = "creative specs deep scan";
+        // BLOQUE 4: Flexible (Asset Feed)
+        if (!thumb && creative.asset_feed_spec) {
+          adType = "flexible";
+          const afs = creative.asset_feed_spec;
+          // Intentamos sacar el hash de la primera imagen o video
+          const afsHash = afs.images?.[0]?.hash || afs.videos?.[0]?.thumbnail_hash;
+          if (afsHash) {
+            const imgNode: any = await new Promise((resolve) => {
+              window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: [afsHash], fields: 'url' }, (res: any) => resolve(res));
+            });
+            thumb = imgNode?.data?.[0]?.url || afs.images?.[0]?.url || afs.videos?.[0]?.thumbnail_url;
+            winningStep = `resolucion flexible (hash: ${afsHash})`;
+          }
         }
 
-        // PASO 5: Fallback final
-        if (!thumb || thumb.includes('safe_image.php')) {
-          thumb = creative.image_url || creative.thumbnail_url;
-          if (thumb) winningStep = "creative thumbnail_url fallback";
+        // BLOQUE 5: Anuncio de catálogo (DPA/Dynamic)
+        if (!thumb && creative.template_data) {
+          adType = "catalogo";
+          const td = creative.template_data;
+          const firstChild = td.child_attachments?.[0];
+          if (firstChild) {
+            thumb = firstChild.image_url || firstChild.picture;
+            if (firstChild.image_hash) {
+              const imgNode: any = await new Promise((resolve) => {
+                window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: [firstChild.image_hash], fields: 'url' }, (res: any) => resolve(res));
+              });
+              thumb = imgNode?.data?.[0]?.url || thumb;
+            }
+            winningStep = "resolucion catalogo (template_data)";
+          }
         }
 
+        // BLOQUE 1: Imagen estática (y fallback final de specs)
+        if (!thumb) {
+          adType = adType === "unknown" ? "imagen_estatica" : adType;
+          const hash = creative.image_hash || spec.photo_data?.image_hash || spec.link_data?.image_hash;
+          if (hash) {
+            const imgNode: any = await new Promise((resolve) => {
+              window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: [hash], fields: 'url' }, (res: any) => resolve(res));
+            });
+            thumb = imgNode?.data?.[0]?.url || null;
+            if (thumb) winningStep = `resolucion imagen hash (${hash})`;
+          }
+          
+          // Caso desesperado: specs de link_data o photo_data directos
+          if (!thumb) {
+            thumb = spec.link_data?.picture || spec.photo_data?.url || creative.image_url || creative.thumbnail_url;
+            if (thumb) winningStep = "resolucion specs basicas/fallback";
+          }
+        }
+
+        // Log final del bloque resuelto
         if (thumb) {
-          console.log(`[TopAds] Resolved ${ad.id}: Step won: ${winningStep}`);
+          console.log(`[TopAds][${adType.toUpperCase()}] Resolved ${ad.id} via ${winningStep}`);
         } else {
-          console.warn(`[TopAds] Failed to resolve thumbnail for ${ad.id}`);
+          console.warn(`[TopAds][${adType.toUpperCase()}] FAILED to resolve thumbnail for ${ad.id}`);
         }
       }
 
-      // Renderizado final del Ad con escalado HD
+      // Renderizado final con el escalado HD (1080p) que ya tenemos
       ad.thumbnail = upgradeToHD(thumb || null);
 
       // Preview URL (standard feed tracker)
