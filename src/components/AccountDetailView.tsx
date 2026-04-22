@@ -238,7 +238,9 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     const showRevenue = filters.includes('revenue');
     const showRoas = filters.includes('roas');
 
-    const chartData = ad.dailySeries?.map(d => ({
+    const chartData = ad.dailySeries?.filter(d => 
+      d.date >= dateRange.since && d.date <= dateRange.until
+    ).map(d => ({
       ...d,
       formattedDate: format(parseISO(d.date), 'dd/MM', { locale: es })
     })) || [];
@@ -246,10 +248,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     const stats = [
       { label: 'ROAS', value: `×${ad.roas.toFixed(2)}`, color: 'text-success print:text-green-600' },
       { label: 'CTR', value: `${ad.ctr.toFixed(2)}%` },
-      { label: 'Spend', value: formatCurrency(ad.spend, selectedAccount?.currency) },
-      { label: 'Sales', value: ad.purchases.toString() },
-      { label: 'Revenue', value: formatCurrency(ad.revenue, selectedAccount?.currency) },
-      { label: 'CPA', value: formatCurrency(ad.purchases > 0 ? ad.spend / ad.purchases : 0, selectedAccount?.currency) }
+      { label: 'Inversión', value: formatCurrency(ad.spend, selectedAccount?.currency) },
+      { label: 'Ventas', value: ad.purchases.toString() },
+      { label: 'Ingresos', value: formatCurrency(ad.revenue, selectedAccount?.currency) },
+      { label: 'Costo x Venta', value: formatCurrency(ad.purchases > 0 ? ad.spend / ad.purchases : 0, selectedAccount?.currency) }
     ];
 
     return (
