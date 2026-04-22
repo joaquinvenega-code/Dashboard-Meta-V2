@@ -311,7 +311,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                 {stats.map(stat => (
                   <div key={stat.label} className="bg-black/30 px-2 py-2 rounded-lg border border-white/5 flex flex-col items-center justify-center text-center print:bg-neutral-50/50 print:border-neutral-100 print:py-1.5 print:px-2 print:rounded-xl">
                     <div className="text-[7px] font-black text-neutral-700 uppercase tracking-widest mb-0.5 print:text-neutral-500 print:text-[5.5px] print:leading-tight print:whitespace-normal">{stat.label}</div>
-                    <div className={`text-[10px] font-black tracking-tight ${stat.color || 'text-neutral-300'} truncate w-full print:text-black print:text-[9.5px] print:truncate-none print:leading-none`}>{stat.value}</div>
+                    <div className={`text-[10px] font-black tracking-tight ${stat.color || 'text-neutral-300'} truncate w-full print:text-black print:text-[8px] print:truncate-none print:whitespace-nowrap print:leading-none`}>{stat.value}</div>
                   </div>
                 ))}
              </div>
@@ -341,7 +341,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
              <div className="flex-1 w-full min-h-0 print:pr-4 print:pb-2">
                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                  <AreaChart data={chartData} margin={{ top: 5, right: 35, left: 10, bottom: 0 }}>
                     <defs>
                       <linearGradient id={`gP-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.1}/>
@@ -618,7 +618,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  className="space-y-3 overflow-hidden print:mb-4"
+                  className="space-y-3 overflow-hidden print:mb-2"
                 >
                   <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 print:grid-cols-4 gap-2 print:gap-3 print-metrics-grid">
                     {visibleMetrics.map(id => renderMetric(id, selectedAccount!))}
@@ -663,7 +663,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
                   {/* Print Version of Observations */}
                   {observations && (
-                    <div className="hidden print:block space-y-2 mb-4">
+                    <div className="hidden print:block space-y-2 mb-3">
                       <div className="flex items-center gap-2 mb-2">
                         <FileText className="w-4 h-4 text-blue-600" />
                         <h3 className="text-xs font-black text-neutral-900 uppercase tracking-widest border-b-2 border-blue-600 pb-0.5">

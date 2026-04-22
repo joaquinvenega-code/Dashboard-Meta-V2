@@ -295,7 +295,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       // PASO 0: Llamada inicial (v4.3 - Reforzamos campos de video y thumbnails)
       let adRes: any = await new Promise((resolve) => {
         window.FB.api(`/${ad.id}`, 'GET', {
-          fields: 'creative{id,image_url,image_hash,thumbnail_url,object_story_spec,asset_feed_spec,effective_object_story_id,video_id}'
+          fields: 'preview_url,creative{id,image_url,image_hash,thumbnail_url,object_story_spec,asset_feed_spec,effective_object_story_id,video_id}'
         }, (res: any) => resolve(res));
       });
 
@@ -306,6 +306,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       }
 
       if (adRes && !adRes.error && adRes.creative) {
+        ad.previewUrl = adRes.preview_url;
         const creative = adRes.creative;
         const spec = creative.object_story_spec || {};
 
