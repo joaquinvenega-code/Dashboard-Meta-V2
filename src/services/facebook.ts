@@ -270,48 +270,58 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
     // Paso 0: Llamada inicial (v19)
     const adRes: any = await new Promise((resolve) => {
       window.FB.api(`/${ad.id}`, 'GET', {
-        fields: 'creative{id,image_url,image_hash,thumbnail_url.width(1000).height(1000),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id,instagram_story_id}'
+        fields: 'ad_review_thumbnail_url,creative{id,image_url,image_hash,thumbnail_url.width(1080).height(1080),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id,instagram_story_id}'
       }, (res: any) => resolve(res));
     });
 
     if (adRes && !adRes.error && adRes.creative) {
       const creative = adRes.creative;
       let thumb = null;
-      const baseThumb = creative.image_url || creative.thumbnail_url;
+      // El ad_review_thumbnail_url es la fuente oficial más limpia para previews
+      const backupThumb = adRes.ad_review_thumbnail_url || creative.image_url || creative.thumbnail_url;
 
-      // "Limpiador" seguro para escalar URLs sin romper el path del CDN
+      // Limpiador seguro: eliminamos el segmento de tamaño para forzar original
       const upgradeUrl = (url: string) => {
         if (!url) return url;
-        // Solo cambiamos el tamaño, no borramos segmentos del path (para evitar 404/403)
         let hq = url
-          .replace(/\/s\d+x\d+\//g, '/s1080x1080/')
-          .replace(/_s\.jpg/g, '_n.jpg')
+          .replace(/\/[sp]\d+x\d+\//g, '/') // Elimina /s150x150/
           .replace(/[wh]=\d+&[wh]=\d+/g, 'w=1080&h=1080')
           .replace(/&quality=\d+/g, '&quality=100');
         return hq;
       };
 
-      // Paso 1: Instagram/Reels HQ Direct (Usando display_resources si están disponibles)
+      // Paso 1: Instagram Native Display Resources (Isbella's Secret)
       const stId = creative.instagram_story_id || creative.effective_object_story_id || creative.object_story_id;
       if (stId) {
         try {
           const mNode: any = await new Promise((resolve) => {
             window.FB.api(`/${stId}`, 'GET', { 
-              fields: 'display_url,media_url,thumbnail_url,full_picture' 
+              fields: 'display_url,display_resources,image_hash,thumbnail_hash,full_picture' 
             }, (res: any) => resolve(res));
           });
           
           if (mNode) {
-            const rawIG = mNode.display_url || mNode.media_url || mNode.thumbnail_url || mNode.full_picture;
+            let igBest = null;
+            if (mNode.display_resources?.length > 0) {
+              let maxWidth = 0;
+              mNode.display_resources.forEach((r: any) => {
+                if (r.config_width > maxWidth) {
+                  maxWidth = r.config_width;
+                  igBest = r.src;
+                }
+              });
+            }
+            
+            const rawIG = igBest || mNode.display_url || mNode.full_picture;
             thumb = upgradeUrl(rawIG);
             if (thumb && !thumb.includes('safe_image.php')) {
-              console.log(`[TopAds] Paso 1 ok (IG HQ Safe): ${ad.name}`);
+              console.log(`[TopAds] Paso 1 ok (IG Resources HD): ${ad.name}`);
             }
           }
         } catch (e) {}
       }
 
-      // Paso 2: Brute Force de Hashes (JPG Original)
+      // Paso 2: Brute Force de Hashes profundos
       if (!thumb || thumb.includes('safe_image.php')) {
         const hashes = new Set<string>();
         const recursiveScan = (obj: any) => {
@@ -322,6 +332,16 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           Object.values(obj).forEach(recursiveScan);
         };
         recursiveScan(creative);
+        
+        if (stId) {
+          try {
+            const mNodeHash: any = await new Promise((resolve) => {
+              window.FB.api(`/${stId}`, 'GET', { fields: 'image_hash,thumbnail_hash' }, (res: any) => resolve(res));
+            });
+            if (mNodeHash?.image_hash) hashes.add(mNodeHash.image_hash);
+            if (mNodeHash?.thumbnail_hash) hashes.add(mNodeHash.thumbnail_hash);
+          } catch (e) {}
+        }
 
         if (hashes.size > 0) {
           try {
@@ -331,13 +351,13 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             if (imgRes?.data?.length > 0) {
               const cleaned = imgRes.data.find((d: any) => d.url && !d.url.includes('safe_image.php') && d.url.includes('fbcdn.net'))?.url;
               thumb = upgradeUrl(cleaned || imgRes.data[0].url);
-              if (thumb) console.log(`[TopAds] Paso 2 ok (Hash HD Safe): ${ad.name}`);
+              if (thumb) console.log(`[TopAds] Paso 2 ok (Hash HD Deep): ${ad.name}`);
             }
           } catch (e) {}
         }
       }
 
-      // Paso 3: Video Engine (Deep Scan + HQ Filter)
+      // Paso 3: Video Engine (Scan de Miniaturas Originales)
       const vidId = creative.video_id || creative.object_story_spec?.video_data?.video_id || creative.asset_feed_spec?.videos?.[0]?.video_id;
       if ((!thumb || thumb.includes('safe_image.php')) && vidId) {
         try {
@@ -347,26 +367,23 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           if (vNode) {
             let vBest = vNode.picture;
             let vMax = 0;
-            
             vNode.thumbnails?.data?.forEach((t: any) => {
               const area = (t.width || 0) * (t.height || 0);
-              const isHD = t.width >= 1080 || (t.uri && (t.uri.includes('_n.jpg') || t.uri.includes('_o.jpg')));
-              if (isHD || area >= vMax) {
-                if (isHD) vMax = area * 10;
-                else vMax = area;
+              const isHQ = (t.width >= 1000) || (t.uri && (t.uri.includes('_n.jpg') || t.uri.includes('_o.jpg')));
+              if (isHQ || area >= vMax) {
+                vMax = isHQ ? area * 10 : area;
                 vBest = t.uri;
               }
             });
-            
             thumb = upgradeUrl(vBest || vNode.picture);
-            if (thumb && !thumb.includes('safe_image.php')) console.log(`[TopAds] Paso 3 ok (Video HD Safe): ${ad.name}`);
+            if (thumb && !thumb.includes('safe_image.php')) console.log(`[TopAds] Paso 3 ok (Video HQ Final): ${ad.name}`);
           }
         } catch (e) {}
       }
 
-      // Paso 4: Final Fallback
+      // Paso 4: Final Fallback (Ad Review)
       if (!thumb || thumb.includes('safe_image.php')) {
-        thumb = upgradeUrl(baseThumb);
+        thumb = upgradeUrl(backupThumb);
       }
       
       ad.thumbnail = thumb || null;
