@@ -57,6 +57,24 @@
     print-color-adjust: exact !important;
   }
 
+  /* Exemptions for Branding & UI elements that MUST keep color */
+  .print-keep-bg, .print-keep-bg * {
+    background-color: #000 !important;
+    color: #fff !important;
+  }
+  
+  .bg-blue-600, .print-bg-blue {
+    background-color: #2563eb !important;
+    color: #fff !important;
+  }
+
+  .bg-green-50 { background-color: #f0fdf4 !important; }
+  .bg-blue-50 { background-color: #eff6ff !important; }
+  .bg-blue-50\/50 { background-color: rgba(239, 246, 255, 0.5) !important; }
+  .bg-neutral-50 { background-color: #fafafa !important; }
+  .bg-neutral-50\/50 { background-color: rgba(250, 250, 250, 0.5) !important; }
+  .bg-neutral-950 { background-color: #0a0a0a !important; color: #fff !important; }
+
   html, body, #root, main, [data-v-app], .flex-1 {
     background-color: #fff !important;
     background: #fff !important;
