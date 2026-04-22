@@ -267,11 +267,10 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
 
   // Fetch thumbnails and previews
   for (const ad of ads) {
-    // Paso 0: Llamada inicial con campos clave. 
-    // NOTA: NO incluir 'picture' en la expansión de creative ya que rompe v19.
+    // Paso 0: Llamada inicial (v19) - SIN el campo 'picture' en creative
     const adRes: any = await new Promise((resolve) => {
       window.FB.api(`/${ad.id}`, 'GET', {
-        fields: 'creative{id,image_url,image_hash,thumbnail_url.width(1200).height(1200),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id}'
+        fields: 'creative{id,image_url,image_hash,thumbnail_url.width(600).height(600),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id}'
       }, (res: any) => resolve(res));
     });
 
@@ -279,7 +278,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       const creative = adRes.creative;
       let thumb = null;
 
-      // Paso 1: Resolver por image_hash (Fuente de mejor calidad - JPG Original)
+      // Paso 1: Resolver por image_hash (JPG Original)
       if (creative.image_hash) {
         try {
           const imgRes: any = await new Promise((resolve) => {
@@ -290,12 +289,12 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           });
           if (imgRes?.data?.[0]?.url) {
             thumb = imgRes.data[0].url;
-            console.log(`[TopAds] Resolved via image_hash: ${ad.name}`);
+            console.log(`[TopAds] Paso 1 - image_hash ok: ${ad.name}`);
           }
         } catch (e) {}
       }
 
-      // Paso 2: Si no hay thumb, intentar por effective_object_story_id (Post original)
+      // Paso 2: effective_object_story_id (Post original)
       if (!thumb) {
         const storyId = creative.effective_object_story_id || creative.object_story_id;
         if (storyId) {
@@ -321,62 +320,51 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
                 }
               };
 
-              // Priorizar attachments y subattachments (para carruseles)
               storyRes.attachments?.data?.forEach((att: any) => {
                 checkMedia(att.media);
                 att.subattachments?.data?.forEach((sub: any) => checkMedia(sub.media));
               });
 
               thumb = bestMedia || storyRes.full_picture || thumb;
-              if (thumb) console.log(`[TopAds] Resolved via story assets: ${ad.name}`);
+              if (thumb) console.log(`[TopAds] Paso 2 - story ok: ${ad.name}`);
             }
           } catch (e) {}
         }
       }
 
-      // Paso 3: Nodo Video (picture/format) - Evita Advanced Access
-      if ((!thumb || thumb.includes('safe_image.php')) && creative.video_id) {
+      // Paso 3: Nodo Video (picture/format)
+      if (!thumb && creative.video_id) {
         try {
           const videoNode: any = await new Promise((resolve) => {
             window.FB.api(`/${creative.video_id}`, 'GET', { fields: 'picture,format' }, (res: any) => resolve(res));
           });
           if (videoNode) {
-            let bestVideoThumb = videoNode.picture;
+            let bestFormatThumb = videoNode.picture;
             if (Array.isArray(videoNode.format)) {
-              // Elegir la resolución más grande disponible en format
-              const sortedFormats = [...videoNode.format]
+              const sorted = [...videoNode.format]
                 .filter(f => f.picture)
                 .sort((a, b) => (b.width || 0) * (b.height || 0) - (a.width || 0) * (a.height || 0));
-              if (sortedFormats[0]?.picture) bestVideoThumb = sortedFormats[0].picture;
+              if (sorted[0]?.picture) bestFormatThumb = sorted[0].picture;
             }
-            thumb = bestVideoThumb || thumb;
-            console.log(`[TopAds] Resolved via video format: ${ad.name}`);
+            thumb = bestFormatThumb || thumb;
+            if (thumb) console.log(`[TopAds] Paso 3 - video ok: ${ad.name}`);
           }
         } catch (e) {}
       }
 
-      // Paso 4: Extracción manual de metadatos profundos (Fallback)
-      if (!thumb || thumb.includes('safe_image.php')) {
+      // Paso 4: Metadatos profundos
+      if (!thumb) {
         thumb = 
           creative.asset_feed_spec?.images?.[0]?.url ||
           creative.asset_feed_spec?.videos?.[0]?.thumbnail_url ||
           creative.object_story_spec?.link_data?.picture ||
           creative.object_story_spec?.photo_data?.url ||
           creative.object_story_spec?.video_data?.image_url ||
-          creative.image_url ||
-          creative.thumbnail_url ||
-          thumb;
+          creative.image_url;
       }
 
-      // Paso 5: Limpieza final de URL
-      if (thumb && thumb.includes('safe_image.php')) {
-        // Si sigue siendo una URL de safe_image, intentamos extraer la URL real si viene como parámetro
-        const urlParams = new URLSearchParams(thumb.split('?')[1]);
-        const urlParam = urlParams.get('url');
-        if (urlParam) thumb = decodeURIComponent(urlParam);
-      }
-
-      ad.thumbnail = thumb || null;
+      // Paso 5: Fallback final
+      ad.thumbnail = thumb || creative.thumbnail_url || null;
     }
 
     const prevRes: any = await new Promise((resolve) => {

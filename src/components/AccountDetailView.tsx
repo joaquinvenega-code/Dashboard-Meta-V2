@@ -490,20 +490,21 @@ const AdCard: React.FC<{ ad: Ad; rank: number }> = ({ ad, rank }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 items-center">
         {/* Ad Identity */}
         <div className="md:col-span-1 xl:col-span-2">
-           <div className="bg-black rounded-xl overflow-hidden aspect-square border border-white/5 relative shadow-2xl print:border-neutral-200">
-              <div className="absolute top-2 left-2 z-20 px-2 py-0.5 bg-black/80 backdrop-blur-md rounded-md text-[8px] font-black text-white uppercase tracking-widest border border-white/10 print:hidden">
+           <div className="bg-[#050505] rounded-xl overflow-hidden aspect-[4/5] border border-white/10 relative shadow-2xl print:border-neutral-200">
+              <div className="absolute top-2 left-2 z-20 px-2 py-0.5 bg-black/95 backdrop-blur-md rounded-md text-[8px] font-black text-white uppercase tracking-widest border border-white/10 print:hidden">
                  #{rank}
               </div>
               {ad.thumbnail ? (
                 <img 
                   src={ad.thumbnail} 
                   alt={ad.name} 
-                  className="w-full h-full object-contain relative z-10 transition-transform duration-700 group-hover/card:scale-105" 
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" 
                   referrerPolicy="no-referrer"
                   loading="lazy"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    const placeholder = (e.target as HTMLImageElement).parentElement?.querySelector('.ad-placeholder');
+                    const img = e.target as HTMLImageElement;
+                    img.style.display = 'none';
+                    const placeholder = img.parentElement?.querySelector('.ad-placeholder');
                     if (placeholder) placeholder.classList.remove('hidden');
                   }}
                   style={{ 
