@@ -271,7 +271,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
     // NOTA: NO incluir 'picture' en la expansión de creative ya que rompe v19.
     const adRes: any = await new Promise((resolve) => {
       window.FB.api(`/${ad.id}`, 'GET', {
-        fields: 'creative{id,image_url,image_hash,thumbnail_url.width(600).height(600),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id}'
+        fields: 'creative{id,image_url,image_hash,thumbnail_url.width(1200).height(1200),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id}'
       }, (res: any) => resolve(res));
     });
 
@@ -285,7 +285,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           const imgRes: any = await new Promise((resolve) => {
             window.FB.api(`/${accountId}/adimages`, 'GET', {
               hashes: [creative.image_hash],
-              fields: 'url,width,height'
+              fields: 'url'
             }, (res: any) => resolve(res));
           });
           if (imgRes?.data?.[0]?.url) {
@@ -313,7 +313,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               const checkMedia = (media: any) => {
                 const img = media?.image;
                 if (img?.src) {
-                  const area = (img.width || 0) * (img.height || 0);
+                  const area = (img.width || 1) * (img.height || 1);
                   if (area >= maxArea) {
                     maxArea = area;
                     bestMedia = img.src;
@@ -344,7 +344,9 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             let bestVideoThumb = videoNode.picture;
             if (Array.isArray(videoNode.format)) {
               // Elegir la resolución más grande disponible en format
-              const sortedFormats = [...videoNode.format].sort((a, b) => (b.width || 0) * (b.height || 0) - (a.width || 0) * (a.height || 0));
+              const sortedFormats = [...videoNode.format]
+                .filter(f => f.picture)
+                .sort((a, b) => (b.width || 0) * (b.height || 0) - (a.width || 0) * (a.height || 0));
               if (sortedFormats[0]?.picture) bestVideoThumb = sortedFormats[0].picture;
             }
             thumb = bestVideoThumb || thumb;
@@ -361,11 +363,20 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           creative.object_story_spec?.link_data?.picture ||
           creative.object_story_spec?.photo_data?.url ||
           creative.object_story_spec?.video_data?.image_url ||
+          creative.image_url ||
+          creative.thumbnail_url ||
           thumb;
       }
 
-      // Paso 5: Último recurso (lo que trajo el creative inicialmente)
-      ad.thumbnail = thumb || creative.image_url || creative.thumbnail_url || null;
+      // Paso 5: Limpieza final de URL
+      if (thumb && thumb.includes('safe_image.php')) {
+        // Si sigue siendo una URL de safe_image, intentamos extraer la URL real si viene como parámetro
+        const urlParams = new URLSearchParams(thumb.split('?')[1]);
+        const urlParam = urlParams.get('url');
+        if (urlParam) thumb = decodeURIComponent(urlParam);
+      }
+
+      ad.thumbnail = thumb || null;
     }
 
     const prevRes: any = await new Promise((resolve) => {
