@@ -139,7 +139,16 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   }, [loadAds]);
 
   const handlePrint = () => {
+    const originalTitle = document.title;
+    const accountName = settings[selectedId!]?.customName || selectedAccount?.name || 'ADS';
+    document.title = `REPORTE - ${accountName.toUpperCase()}`;
+    
     window.print();
+    
+    // Restaurar después de un pequeño delay para que el driver de impresión tome el nombre
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 500);
   };
 
   const handleSaveObs = () => {
@@ -389,7 +398,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
               id={`ad-link-${ad.id}`}
             >
               <ArrowUpRight className="w-4 h-4 text-neutral-600 group-hover/link:text-white print:text-white print:mx-auto" />
-              <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover/link:text-neutral-400 whitespace-nowrap print:text-white print:text-[7px] print:block print:w-full">Ver anuncio</span>
+              <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover/link:text-neutral-400 whitespace-nowrap print:hidden">Ver anuncio</span>
+              <span className="hidden print:block text-white text-[7px] font-black uppercase underline decoration-white/30 decoration-1 underline-offset-2">Ver anuncio →</span>
             </a>
           </div>
         </div>
