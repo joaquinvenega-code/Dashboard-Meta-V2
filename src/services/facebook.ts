@@ -277,51 +277,47 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
     if (adRes && !adRes.error && adRes.creative) {
       const creative = adRes.creative;
       let thumb = null;
-      // Respaldo básico garantizado
       const baseThumb = creative.image_url || creative.thumbnail_url;
 
-      // Paso 1: Instagram/Reels Media node (Prioridad para Reels de Isbella)
+      // Paso 1: Instagram/Reels Shortcode & HQ Node (Estrategia Pro)
       const stId = creative.instagram_story_id || creative.effective_object_story_id || creative.object_story_id;
       if (stId) {
         try {
+          // Pedimos shortcode e id para intentar reconstruir si falla el resto
           const mNode: any = await new Promise((resolve) => {
             window.FB.api(`/${stId}`, 'GET', { 
-              fields: 'display_url,media_url,thumbnail_url,full_picture,picture,attachments{media{image{src,height,width}},subattachments{media{image{src,height,width}}}}' 
+              fields: 'shortcode,display_url,media_url,thumbnail_url,full_picture' 
             }, (res: any) => resolve(res));
           });
+          
           if (mNode) {
-            // El display_url es el "Santo Grial" para Reels orgánicos
-            const storyBest = mNode.display_url || mNode.media_url || mNode.thumbnail_url || mNode.full_picture || mNode.picture;
+            // display_url suele ser 1080p. shortcode nos permite saber que es un post real.
+            let storyBest = mNode.display_url || mNode.media_url || mNode.thumbnail_url || mNode.full_picture;
+            
+            // Si tenemos URL de IG, intentamos forzar que no sea una miniatura
+            if (storyBest && storyBest.includes('cdninstagram.com') && storyBest.includes('150x150')) {
+              storyBest = storyBest.replace(/150x150/g, '1080x1080'); // Intento constructivo
+            }
+
             if (storyBest && !storyBest.includes('safe_image.php')) {
               thumb = storyBest;
-              console.log(`[TopAds] Paso 1 ok (IG HD): ${ad.name}`);
+              console.log(`[TopAds] Paso 1 ok (IG Shortcode/HQ): ${ad.name}`);
             }
           }
         } catch (e) {}
       }
 
-      // Paso 2: "Brute Force" de image_hash (JPG de Origen)
+      // Paso 2: Brute Force de Hashes (JPG Original)
       if (!thumb || thumb.includes('safe_image.php')) {
         const hashes = new Set<string>();
         const recursiveScan = (obj: any) => {
           if (!obj || typeof obj !== 'object') return;
-          ['hash', 'image_hash', 'thumbnail_hash', 'video_hash'].forEach(k => {
+          ['image_hash', 'hash', 'thumbnail_hash'].forEach(k => {
             if (typeof obj[k] === 'string' && obj[k].length >= 30) hashes.add(obj[k]);
           });
           Object.values(obj).forEach(recursiveScan);
         };
         recursiveScan(creative);
-
-        // También buscamos hashes en el Story Node
-        if (stId && hashes.size < 3) {
-          try {
-            const sHashNode: any = await new Promise((resolve) => {
-              window.FB.api(`/${stId}`, 'GET', { fields: 'image_hash,thumbnail_hash' }, (res: any) => resolve(res));
-            });
-            if (sHashNode?.image_hash) hashes.add(sHashNode.image_hash);
-            if (sHashNode?.thumbnail_hash) hashes.add(sHashNode.thumbnail_hash);
-          } catch (e) {}
-        }
 
         if (hashes.size > 0) {
           try {
@@ -329,40 +325,47 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: Array.from(hashes), fields: 'url' }, (res: any) => resolve(res));
             });
             if (imgRes?.data?.length > 0) {
-              thumb = imgRes.data.find((d: any) => d.url && d.url.includes('fbcdn.net'))?.url || imgRes.data[0].url;
-              if (thumb) console.log(`[TopAds] Paso 2 ok (Hash HD): ${ad.name}`);
+              // Priorizamos URLs que no tengan parámetros de resize
+              const cleanest = imgRes.data.find((d: any) => d.url && !d.url.includes('safe_image.php') && d.url.includes('fbcdn.net'))?.url;
+              thumb = cleanest || imgRes.data[0].url;
+              if (thumb) console.log(`[TopAds] Paso 2 ok (Hash): ${ad.name}`);
             }
           } catch (e) {}
         }
       }
 
-      // Paso 3: Video Engine Scan
+      // Paso 3: Video Engine con Filtro de Sufijo de Calidad (_n.jpg)
       const vidId = creative.video_id || creative.object_story_spec?.video_data?.video_id || creative.asset_feed_spec?.videos?.[0]?.video_id;
       if ((!thumb || thumb.includes('safe_image.php')) && vidId) {
         try {
           const vNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,format,thumbnails.limit(15){uri,width,height,is_preferred}' }, (res: any) => resolve(res));
+            window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,thumbnails.limit(15){uri,width,height}' }, (res: any) => resolve(res));
           });
           if (vNode) {
             let vBest = vNode.picture;
             let vMax = 0;
+            
+            // Buscamos miniaturas que terminen en _n.jpg o _o.jpg (HQ de Meta)
             vNode.thumbnails?.data?.forEach((t: any) => {
               const area = (t.width || 0) * (t.height || 0);
-              if (area > vMax || t.is_preferred) { vMax = area; vBest = t.uri; }
+              const isHQ = t.uri && (t.uri.includes('_n.jpg') || t.uri.includes('_o.jpg'));
+              if (isHQ || area > vMax) {
+                if (isHQ) vMax = area * 2; // Damos peso extra a los terminados en HQ
+                else vMax = area;
+                vBest = t.uri;
+              }
             });
+            
             if (vBest && !vBest.includes('safe_image.php')) {
               thumb = vBest;
-              console.log(`[TopAds] Paso 3 ok (Video HD): ${ad.name}`);
+              console.log(`[TopAds] Paso 3 ok (Video HQ Suffix): ${ad.name}`);
             }
           }
         } catch (e) {}
       }
 
-      // Paso 4: Fallback final
-      if (!thumb || thumb.includes('safe_image.php')) {
-        thumb = baseThumb;
-      }
-      
+      // Paso 4: Final Fallback
+      if (!thumb || thumb.includes('safe_image.php')) thumb = baseThumb;
       ad.thumbnail = thumb || null;
     }
 
