@@ -66,7 +66,8 @@
   .bg-blue-50 { background-color: #eff6ff !important; }
   .bg-neutral-50 { background-color: #fafafa !important; }
   .bg-neutral-950 { background-color: #0a0a0a !important; color: #fff !important; }
-  .print-keep-bg { background-color: #000 !important; color: #fff !important; }
+  .print-keep-bg { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .print-bg-white { background-color: #fff !important; color: #000 !important; }
 
   .text-success { color: #059669 !important; }
   .text-blue-600 { color: #2563eb !important; }

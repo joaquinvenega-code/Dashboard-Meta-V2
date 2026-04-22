@@ -388,23 +388,26 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
              </div>
           </div>
 
-          <div className="xl:col-span-2 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0 print:flex print:items-center print:justify-center print:border-none print:ml-1">
+          <div className="xl:col-span-2 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0 print:flex print:items-center print:justify-center print:border-none print:ml-1 relative">
             <a 
               href={ad.previewUrl} 
               target="_blank" 
               rel="noopener noreferrer"
-              className={`relative flex flex-col items-center gap-1 group/link transition-all ${!ad.previewUrl ? 'pointer-events-none opacity-20' : 'cursor-pointer'} print:opacity-100 print:grayscale-0 print:bg-blue-600 print:px-3 print:py-2 print:rounded-lg print:shadow-md print:block print:w-full print:text-center print:cursor-pointer`}
-              style={{ display: 'flex', textDecoration: 'none' }}
+              className={`flex flex-col items-center gap-1 group/link transition-all ${!ad.previewUrl ? 'pointer-events-none opacity-20' : 'cursor-pointer'} print:opacity-100 print:bg-blue-600 print:px-3 print:py-2 print:rounded-lg print:shadow-md print:block print:w-full print:text-center print:cursor-pointer print:relative print:z-50`}
               id={`ad-link-${ad.id}`}
             >
-              {/* Overlay invisible para forzar el click en el PDF - Técnica de enlace sólido */}
-              <span className="hidden print:block absolute inset-0 opacity-0 text-[1px] select-none pointer-events-auto" aria-hidden="true">
-                VIEW AD LINK {ad.previewUrl}
-              </span>
+              {/* Desktop View */}
+              <div className="flex flex-col items-center gap-1 print:hidden">
+                <ArrowUpRight className="w-4 h-4 text-neutral-600 group-hover/link:text-white" />
+                <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover/link:text-neutral-400 whitespace-nowrap">Ver anuncio</span>
+              </div>
               
-              <ArrowUpRight className="w-4 h-4 text-neutral-600 group-hover/link:text-white print:text-white print:mx-auto" />
-              <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover/link:text-neutral-400 whitespace-nowrap print:hidden">Ver anuncio</span>
-              <span className="hidden print:block text-white text-[7px] font-black uppercase underline decoration-white/30 decoration-1 underline-offset-2 relative z-10">Ver anuncio →</span>
+              {/* PDF Print View: Simple text link is best for PDF generator recognition */}
+              <div className="hidden print:block">
+                 <span className="text-white text-[7px] font-black uppercase underline decoration-white/50 decoration-1 underline-offset-4">
+                   VER ANUNCIO EN META →
+                 </span>
+              </div>
             </a>
           </div>
         </div>
@@ -486,7 +489,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
             <div className="hidden print:flex flex-col gap-4 border-b border-neutral-200 pb-3 mb-3 text-black pt-2">
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-5">
-                  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-xl overflow-hidden print-keep-bg border border-neutral-100">
+                  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-xl overflow-hidden print-keep-bg print-bg-white border border-neutral-100">
                     {settings[selectedAccount.id]?.customLogo ? (
                       <img 
                         src={settings[selectedAccount.id]?.customLogo} 
