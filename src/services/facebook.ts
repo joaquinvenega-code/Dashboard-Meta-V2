@@ -292,23 +292,17 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       let winningStep = "none";
       let adType = "desconocido";
 
-      // PASO 0: Llamada inicial (v4.7 - FULL FIELDS + PREVIEW)
+      // PASO 0: Llamada inicial (v4.3 - Reforzamos campos de video y thumbnails)
       let adRes: any = await new Promise((resolve) => {
         window.FB.api(`/${ad.id}`, 'GET', {
-          fields: 'preview_url,creative{id,image_url,image_hash,thumbnail_url,object_story_spec,asset_feed_spec,effective_object_story_id,video_id}'
+          fields: 'creative{id,image_url,image_hash,thumbnail_url,object_story_spec,asset_feed_spec,effective_object_story_id,video_id}'
         }, (res: any) => resolve(res));
       });
 
       if (!adRes || adRes.error) {
         adRes = await new Promise((resolve) => {
-          window.FB.api(`/${ad.id}`, 'GET', { 
-            fields: 'preview_url,creative{id,image_url,image_hash,thumbnail_url,object_story_spec,asset_feed_spec,effective_object_story_id,video_id}' 
-          }, (res: any) => resolve(res));
+          window.FB.api(`/${ad.id}`, 'GET', { fields: 'creative{id,image_url,thumbnail_url}' }, (res: any) => resolve(res));
         });
-      }
-
-      if (adRes && !adRes.error && (adRes.preview_url || adRes.view_url)) {
-        ad.previewUrl = adRes.preview_url || adRes.view_url;
       }
 
       if (adRes && !adRes.error && adRes.creative) {
