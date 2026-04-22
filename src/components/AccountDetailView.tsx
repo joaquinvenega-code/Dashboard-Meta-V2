@@ -500,16 +500,21 @@ const AdCard: React.FC<{ ad: Ad; rank: number }> = ({ ad, rank }) => {
                   alt={ad.name} 
                   className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" 
                   referrerPolicy="no-referrer"
+                  loading="lazy"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                  }}
                   style={{ 
                     WebkitFontSmoothing: 'antialiased',
                     imageRendering: 'auto'
                   }}
                 />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center opacity-10 gap-2 text-white">
-                  <Package className="w-6 h-6 print:text-black" />
-                </div>
-              )}
+              ) : null}
+              <div className={`w-full h-full flex flex-col items-center justify-center opacity-10 gap-2 text-white ${ad.thumbnail ? 'hidden' : ''}`}>
+                <Package className="w-6 h-6 print:text-black" />
+                <span className="text-[10px] uppercase font-black">Sin imagen</span>
+              </div>
            </div>
         </div>
 

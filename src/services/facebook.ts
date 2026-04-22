@@ -267,9 +267,11 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
 
   // Fetch thumbnails and previews
   for (const ad of ads) {
+    // Paso 0: Llamada inicial con campos clave. 
+    // NOTA: NO incluir 'picture' en la expansión de creative ya que rompe v19.
     const adRes: any = await new Promise((resolve) => {
       window.FB.api(`/${ad.id}`, 'GET', {
-        fields: 'creative{id,image_url,image_hash,thumbnail_url.width(1200).height(1200),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id}'
+        fields: 'creative{id,image_url,image_hash,thumbnail_url.width(600).height(600),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id}'
       }, (res: any) => resolve(res));
     });
 
@@ -277,64 +279,92 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       const creative = adRes.creative;
       let thumb = null;
 
-      // 1. Try Asset Feed Spec (Highest quality for dynamic/modern ads)
-      if (creative.asset_feed_spec) {
-        const spec = creative.asset_feed_spec;
-        if (spec.images && spec.images.length > 0) {
-          thumb = spec.images[0].url;
-        } else if (spec.videos && spec.videos.length > 0) {
-          thumb = spec.videos[0].thumbnail_url;
-        }
+      // Paso 1: Resolver por image_hash (Fuente de mejor calidad - JPG Original)
+      if (creative.image_hash) {
+        try {
+          const imgRes: any = await new Promise((resolve) => {
+            window.FB.api(`/${accountId}/adimages`, 'GET', {
+              hashes: [creative.image_hash],
+              fields: 'url,width,height'
+            }, (res: any) => resolve(res));
+          });
+          if (imgRes?.data?.[0]?.url) {
+            thumb = imgRes.data[0].url;
+            console.log(`[TopAds] Resolved via image_hash: ${ad.name}`);
+          }
+        } catch (e) {}
       }
 
-      // 2. Try Story Attachments (High quality for posts)
+      // Paso 2: Si no hay thumb, intentar por effective_object_story_id (Post original)
       if (!thumb) {
         const storyId = creative.effective_object_story_id || creative.object_story_id;
         if (storyId) {
           try {
             const storyRes: any = await new Promise((resolve) => {
               window.FB.api(`/${storyId}`, 'GET', { 
-                fields: 'full_picture,picture,attachments{media,target,subattachments{media}}' 
+                fields: 'full_picture,attachments{media{image{src,height,width}},subattachments{media{image{src,height,width}}}}' 
               }, (res: any) => resolve(res));
             });
             
             if (storyRes) {
-              const mainMedia = storyRes.attachments?.data?.[0]?.media?.image?.src;
-              const subMedia = storyRes.attachments?.data?.[0]?.subattachments?.data?.[0]?.media?.image?.src;
-              thumb = mainMedia || subMedia || storyRes.full_picture || storyRes.picture;
+              let bestMedia = null;
+              let maxArea = 0;
+              
+              const checkMedia = (media: any) => {
+                const img = media?.image;
+                if (img?.src) {
+                  const area = (img.width || 0) * (img.height || 0);
+                  if (area >= maxArea) {
+                    maxArea = area;
+                    bestMedia = img.src;
+                  }
+                }
+              };
+
+              // Priorizar attachments y subattachments (para carruseles)
+              storyRes.attachments?.data?.forEach((att: any) => {
+                checkMedia(att.media);
+                att.subattachments?.data?.forEach((sub: any) => checkMedia(sub.media));
+              });
+
+              thumb = bestMedia || storyRes.full_picture || thumb;
+              if (thumb) console.log(`[TopAds] Resolved via story assets: ${ad.name}`);
             }
           } catch (e) {}
         }
       }
 
-      // 3. Try Creative specific High-Res Thumbnail
-      if (!thumb || thumb.includes('safe_image.php')) {
-        try {
-          const detail: any = await new Promise((resolve) => {
-            window.FB.api(`/${creative.id}`, 'GET', { 
-              fields: 'full_picture,image_url,thumbnail_url.width(1080).height(1080)' 
-            }, (res: any) => resolve(res));
-          });
-          if (detail) {
-            thumb = detail.full_picture || detail.image_url || detail.thumbnail_url || thumb;
-          }
-        } catch (e) {}
-      }
-
-      // 4. Video Specific - Exhaustive Thumbnail Search
+      // Paso 3: Nodo Video (picture/format) - Evita Advanced Access
       if ((!thumb || thumb.includes('safe_image.php')) && creative.video_id) {
         try {
-          const videoThumbRes: any = await new Promise((resolve) => {
-            window.FB.api(`/${creative.video_id}/thumbnails`, 'GET', { limit: 50 }, (res: any) => resolve(res));
+          const videoNode: any = await new Promise((resolve) => {
+            window.FB.api(`/${creative.video_id}`, 'GET', { fields: 'picture,format' }, (res: any) => resolve(res));
           });
-          if (videoThumbRes?.data?.length > 0) {
-            // Filter out small ones and pick biggest
-            const sorted = [...videoThumbRes.data].sort((a, b) => (b.width || 0) - (a.width || 0));
-            thumb = sorted[0].uri;
+          if (videoNode) {
+            let bestVideoThumb = videoNode.picture;
+            if (Array.isArray(videoNode.format)) {
+              // Elegir la resolución más grande disponible en format
+              const sortedFormats = [...videoNode.format].sort((a, b) => (b.width || 0) * (b.height || 0) - (a.width || 0) * (a.height || 0));
+              if (sortedFormats[0]?.picture) bestVideoThumb = sortedFormats[0].picture;
+            }
+            thumb = bestVideoThumb || thumb;
+            console.log(`[TopAds] Resolved via video format: ${ad.name}`);
           }
         } catch (e) {}
       }
 
+      // Paso 4: Extracción manual de metadatos profundos (Fallback)
+      if (!thumb || thumb.includes('safe_image.php')) {
+        thumb = 
+          creative.asset_feed_spec?.images?.[0]?.url ||
+          creative.asset_feed_spec?.videos?.[0]?.thumbnail_url ||
+          creative.object_story_spec?.link_data?.picture ||
+          creative.object_story_spec?.photo_data?.url ||
+          creative.object_story_spec?.video_data?.image_url ||
+          thumb;
+      }
+
+      // Paso 5: Último recurso (lo que trajo el creative inicialmente)
       ad.thumbnail = thumb || creative.image_url || creative.thumbnail_url || null;
     }
 
