@@ -253,11 +253,11 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     ];
 
     return (
-      <div className="bg-[#111] rounded-xl border border-white/5 p-4 hover:bg-[#131313] transition-all shadow-xl group/card relative overflow-hidden ad-card-print print:bg-white print:border-neutral-200 print:shadow-none print:break-inside-avoid">
-         <div className="hidden print:block absolute top-2 right-2 text-[8px] font-black text-neutral-400">RANK #{rank}</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 items-center">
-          <div className="md:col-span-1 xl:col-span-2">
-             <div className="bg-[#050505] rounded-xl overflow-hidden aspect-[4/5] border border-white/10 relative shadow-2xl print:border-neutral-200">
+      <div className="bg-[#111] rounded-xl border border-white/5 p-4 hover:bg-[#131313] transition-all shadow-xl group/card relative overflow-hidden ad-card-print print:bg-white print:border-neutral-200 print:shadow-none print:break-inside-avoid print:p-2 print:mb-4">
+         <div className="hidden print:block absolute top-1 right-2 text-[8px] font-black text-neutral-400 uppercase">RANK #{rank}</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 items-center print:flex print:gap-4 print:items-start">
+          <div className="md:col-span-1 xl:col-span-2 print:shrink-0">
+             <div className="bg-[#050505] rounded-xl overflow-hidden aspect-[4/5] border border-white/10 relative shadow-2xl print:border-neutral-200 print:w-20 print:h-24 print:aspect-auto">
                 <div className="absolute top-2 left-2 z-20 px-2 py-0.5 bg-black/95 backdrop-blur-md rounded-md text-[8px] font-black text-white uppercase tracking-widest border border-white/10 print:hidden">
                    #{rank}
                 </div>
@@ -298,25 +298,25 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
              </div>
           </div>
 
-          <div className="md:col-span-1 xl:col-span-4 flex flex-col gap-4">
+          <div className="md:col-span-1 xl:col-span-4 flex flex-col gap-4 print:flex-1 print:gap-2">
              <div className="space-y-0.5">
-                <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest whitespace-nowrap overflow-hidden text-ellipsis print:text-black print:whitespace-normal" title={ad.name}>
+                <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest whitespace-nowrap overflow-hidden text-ellipsis print:text-black print:whitespace-pre-wrap print:text-[9px] print:leading-tight" title={ad.name}>
                   {ad.name}
                 </div>
              </div>
 
-             <div className="grid grid-cols-3 gap-1.5">
+             <div className="grid grid-cols-3 gap-1.5 print:gap-1">
                 {stats.map(stat => (
-                  <div key={stat.label} className="bg-black/30 px-2 py-2 rounded-lg border border-white/5 flex flex-col items-center justify-center text-center print:bg-neutral-50 print:border-neutral-100">
-                    <div className="text-[7px] font-black text-neutral-700 uppercase tracking-widest mb-0.5 print:text-neutral-500">{stat.label}</div>
-                    <div className={`text-[10px] font-black tracking-tight ${stat.color || 'text-neutral-300'} truncate w-full print:text-black`}>{stat.value}</div>
+                  <div key={stat.label} className="bg-black/30 px-2 py-2 rounded-lg border border-white/5 flex flex-col items-center justify-center text-center print:bg-neutral-50 print:border-neutral-100 print:py-1">
+                    <div className="text-[7px] font-black text-neutral-700 uppercase tracking-widest mb-0.5 print:text-neutral-500 print:text-[6px]">{stat.label}</div>
+                    <div className={`text-[10px] font-black tracking-tight ${stat.color || 'text-neutral-300'} truncate w-full print:text-black print:text-[8px]`}>{stat.value}</div>
                   </div>
                 ))}
              </div>
           </div>
 
-          <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:bg-white print:border-neutral-200">
-             <div className="flex flex-wrap items-center gap-2 mb-2 shrink-0">
+          <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:flex-1 print:h-20 print:p-2 print:bg-transparent">
+             <div className="flex flex-wrap items-center gap-2 mb-2 shrink-0 print:gap-1 print:mb-1">
                 <LegendButton 
                   active={showSales} 
                   color="#3b82f6" 
@@ -352,9 +352,9 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     </defs>
                     <XAxis dataKey="formattedDate" hide />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px' }}
-                      itemStyle={{ fontSize: '9px', fontWeight: 'bold', padding: '0' }}
-                      labelStyle={{ fontSize: '8px', color: '#666', marginBottom: '2px', fontWeight: '900', textTransform: 'uppercase' }}
+                      contentStyle={{ backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px', padding: '6px', color: '#000' }}
+                      itemStyle={{ fontSize: '8px', fontWeight: 'bold' }}
+                      labelStyle={{ fontSize: '7px', color: '#666' }}
                     />
                     {showRevenue && (
                       <Area type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={1} fill={`url(#gR-${ad.id})`} dot={false} strokeDasharray="2 2" strokeOpacity={0.3} />
@@ -579,9 +579,9 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  className="space-y-3 overflow-hidden"
+                  className="space-y-3 overflow-hidden print:mb-6"
                 >
-                  <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 print:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 print:grid-cols-4 gap-2 print:gap-1.5 print-metrics-grid">
                     {visibleMetrics.map(id => renderMetric(id, selectedAccount))}
                   </div>
                 </motion.div>
@@ -624,16 +624,15 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
                   {/* Print Version of Observations */}
                   {observations && (
-                    <div className="hidden print:block space-y-4 mb-10">
-                      <div className="flex items-center gap-3 mb-4">
-                        <FileText className="w-5 h-5 text-blue-600" />
-                        <h3 className="text-sm font-black text-neutral-900 uppercase tracking-[0.2em] border-b-2 border-blue-600 pb-1">
+                    <div className="hidden print:block space-y-2 mb-6">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-4 h-4 text-blue-600" />
+                        <h3 className="text-xs font-black text-neutral-900 uppercase tracking-widest border-b-2 border-blue-600 pb-0.5">
                           Análisis y Conclusiones
                         </h3>
                       </div>
-                      <div className="bg-neutral-50 p-8 rounded-3xl border border-neutral-100 shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-600" />
-                        <p className="text-sm text-neutral-800 leading-7 whitespace-pre-wrap font-medium">
+                      <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-100 shadow-sm relative overflow-hidden print:bg-white print:p-0 print:border-none">
+                        <p className="text-[10px] text-neutral-800 leading-normal whitespace-pre-wrap font-medium">
                           {observations}
                         </p>
                       </div>
