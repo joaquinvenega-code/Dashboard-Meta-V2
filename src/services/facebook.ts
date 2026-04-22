@@ -324,7 +324,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           try {
             const storyRes: any = await new Promise((resolve) => {
               window.FB.api(`/${storyId}`, 'GET', { 
-                fields: 'full_picture,picture,attachments{media{image{src,height,width}},subattachments{media{image{src,height,width}}}},media_url,display_url' 
+                fields: 'full_picture,picture,attachments{media{image{src,height,width}},subattachments{media{image{src,height,width}}}},media_url,display_url,thumbnail_url' 
               }, (res: any) => resolve(res));
             });
             
@@ -333,11 +333,12 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               let maxArea = 0;
               
               const checkMedia = (media: any) => {
-                if (media?.image?.src) {
-                  const area = (media.image.width || 1) * (media.image.height || 1);
+                const img = media?.image;
+                if (img?.src) {
+                  const area = (img.width || 1) * (img.height || 1);
                   if (area >= maxArea) {
                     maxArea = area;
-                    bestMedia = media.image.src;
+                    bestMedia = img.src;
                   }
                 }
               };
@@ -347,9 +348,9 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
                 att.subattachments?.data?.forEach((sub: any) => checkMedia(sub.media));
               });
 
-              // Para Instagram, media_url y display_url suelen ser la versión HD
-              thumb = bestMedia || storyRes.media_url || storyRes.display_url || storyRes.full_picture || storyRes.picture || thumb;
-              if (thumb) console.log(`[TopAds] Paso 2 - story/IG ok: ${ad.name}`);
+              // Para Instagram Reels/Posts: media_url, display_url o thumbnail_url (del nodo story) suelen ser HD
+              thumb = bestMedia || storyRes.display_url || storyRes.media_url || storyRes.thumbnail_url || storyRes.full_picture || storyRes.picture || thumb;
+              if (thumb && !thumb.includes('safe_image.php')) console.log(`[TopAds] Paso 2 - story/IG ok: ${ad.name}`);
             }
           } catch (e) {}
         }
@@ -364,19 +365,43 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
 
       if ((!thumb || thumb.includes('safe_image.php')) && vidId) {
         try {
+          // Pedimos también el edge 'thumbnails' por si 'format' no tiene la imagen HD
           const vidNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,format' }, (res: any) => resolve(res));
+            window.FB.api(`/${vidId}`, 'GET', { 
+              fields: 'picture,format,thumbnails.limit(5){uri,width,height}' 
+            }, (res: any) => resolve(res));
           });
+          
           if (vidNode) {
             let bestVidImg = vidNode.picture;
+            let maxVidArea = 0;
+
+            // Opción A: Buscar en formats
             if (Array.isArray(vidNode.format)) {
-              const sorted = [...vidNode.format]
-                .filter(f => f.picture)
-                .sort((a,b) => (b.width||0)*(b.height||0) - (a.width||0)*(a.height||0));
-              if (sorted[0]?.picture) bestVidImg = sorted[0].picture;
+              vidNode.format.forEach((f: any) => {
+                if (f.picture) {
+                  const area = (f.width || 0) * (f.height || 0);
+                  if (area >= maxVidArea) {
+                    maxVidArea = area;
+                    bestVidImg = f.picture;
+                  }
+                }
+              });
             }
+
+            // Opción B: Si thumbnails tiene algo más grande, lo usamos
+            if (vidNode.thumbnails?.data) {
+              vidNode.thumbnails.data.forEach((t: any) => {
+                const area = (t.width || 0) * (t.height || 0);
+                if (area >= maxVidArea) {
+                  maxVidArea = area;
+                  bestVidImg = t.uri;
+                }
+              });
+            }
+            
             thumb = bestVidImg || thumb;
-            if (thumb) console.log(`[TopAds] Paso 3 - video format ok (${vidId}): ${ad.name}`);
+            if (thumb && !thumb.includes('safe_image.php')) console.log(`[TopAds] Paso 3 - video format/thumbnails ok: ${ad.name}`);
           }
         } catch (e) {}
       }
