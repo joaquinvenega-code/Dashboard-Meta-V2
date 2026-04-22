@@ -279,29 +279,35 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       let thumb = null;
       const baseThumb = creative.image_url || creative.thumbnail_url;
 
-      // Paso 1: Instagram/Reels Shortcode & HQ Node (Estrategia Pro)
+      // Función auxiliar para "limpiar" y escalar URLs de Meta/IG
+      const upgradeUrl = (url: string) => {
+        if (!url) return url;
+        // Reemplazar patrones de compresión por HQ
+        let hq = url
+          .replace(/\/s\d+x\d+\//g, '/s1080x1080/')
+          .replace(/[wh]=\d+&[wh]=\d+/g, 'w=1080&h=1080')
+          .replace(/&cfs=1/g, '')
+          .replace(/&quality=\d+/g, '&quality=100');
+        return hq;
+      };
+
+      // Paso 1: Instagram/Reels HQ Direct (El "Shortcut" de Isbella)
       const stId = creative.instagram_story_id || creative.effective_object_story_id || creative.object_story_id;
       if (stId) {
         try {
-          // Pedimos shortcode e id para intentar reconstruir si falla el resto
           const mNode: any = await new Promise((resolve) => {
             window.FB.api(`/${stId}`, 'GET', { 
-              fields: 'shortcode,display_url,media_url,thumbnail_url,full_picture' 
+              fields: 'display_url,media_url,thumbnail_url,full_picture' 
             }, (res: any) => resolve(res));
           });
           
           if (mNode) {
-            // display_url suele ser 1080p. shortcode nos permite saber que es un post real.
-            let storyBest = mNode.display_url || mNode.media_url || mNode.thumbnail_url || mNode.full_picture;
+            // display_url suele ser 1080p, pero lo pasamos por el upgrader por si acaso
+            let storyBest = upgradeUrl(mNode.display_url || mNode.media_url || mNode.thumbnail_url || mNode.full_picture);
             
-            // Si tenemos URL de IG, intentamos forzar que no sea una miniatura
-            if (storyBest && storyBest.includes('cdninstagram.com') && storyBest.includes('150x150')) {
-              storyBest = storyBest.replace(/150x150/g, '1080x1080'); // Intento constructivo
-            }
-
             if (storyBest && !storyBest.includes('safe_image.php')) {
               thumb = storyBest;
-              console.log(`[TopAds] Paso 1 ok (IG Shortcode/HQ): ${ad.name}`);
+              console.log(`[TopAds] Paso 1 ok (IG Upscaled): ${ad.name}`);
             }
           }
         } catch (e) {}
@@ -325,47 +331,44 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: Array.from(hashes), fields: 'url' }, (res: any) => resolve(res));
             });
             if (imgRes?.data?.length > 0) {
-              // Priorizamos URLs que no tengan parámetros de resize
               const cleanest = imgRes.data.find((d: any) => d.url && !d.url.includes('safe_image.php') && d.url.includes('fbcdn.net'))?.url;
-              thumb = cleanest || imgRes.data[0].url;
-              if (thumb) console.log(`[TopAds] Paso 2 ok (Hash): ${ad.name}`);
+              thumb = upgradeUrl(cleanest || imgRes.data[0].url);
+              if (thumb) console.log(`[TopAds] Paso 2 ok (Hash cleaned): ${ad.name}`);
             }
           } catch (e) {}
         }
       }
 
-      // Paso 3: Video Engine con Filtro de Sufijo de Calidad (_n.jpg)
+      // Paso 3: Video Engine (Deep Scan + Area Filter)
       const vidId = creative.video_id || creative.object_story_spec?.video_data?.video_id || creative.asset_feed_spec?.videos?.[0]?.video_id;
       if ((!thumb || thumb.includes('safe_image.php')) && vidId) {
         try {
           const vNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,thumbnails.limit(15){uri,width,height}' }, (res: any) => resolve(res));
+            window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,thumbnails.limit(20){uri,width,height}' }, (res: any) => resolve(res));
           });
           if (vNode) {
             let vBest = vNode.picture;
             let vMax = 0;
             
-            // Buscamos miniaturas que terminen en _n.jpg o _o.jpg (HQ de Meta)
             vNode.thumbnails?.data?.forEach((t: any) => {
               const area = (t.width || 0) * (t.height || 0);
-              const isHQ = t.uri && (t.uri.includes('_n.jpg') || t.uri.includes('_o.jpg'));
-              if (isHQ || area > vMax) {
-                if (isHQ) vMax = area * 2; // Damos peso extra a los terminados en HQ
-                else vMax = area;
+              if (area >= vMax) {
+                vMax = area;
                 vBest = t.uri;
               }
             });
             
-            if (vBest && !vBest.includes('safe_image.php')) {
-              thumb = vBest;
-              console.log(`[TopAds] Paso 3 ok (Video HQ Suffix): ${ad.name}`);
-            }
+            thumb = upgradeUrl(vBest || vNode.picture);
+            if (thumb && !thumb.includes('safe_image.php')) console.log(`[TopAds] Paso 3 ok (Video HQ Scaled): ${ad.name}`);
           }
         } catch (e) {}
       }
 
-      // Paso 4: Final Fallback
-      if (!thumb || thumb.includes('safe_image.php')) thumb = baseThumb;
+      // Paso 4: Final Upscaled Fallback
+      if (!thumb || thumb.includes('safe_image.php')) {
+        thumb = upgradeUrl(baseThumb);
+      }
+      
       ad.thumbnail = thumb || null;
     }
 
