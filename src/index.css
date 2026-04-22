@@ -41,58 +41,68 @@
 
 @media print {
   @page {
-    margin: 1cm;
+    margin: 1.5cm;
     size: A4 portrait;
   }
 
   body {
     background: white !important;
-    color: black !important;
+    color: #000 !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
 
-  /* Reset paddings for main container */
-  main {
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: visible !important;
-  }
-
-  /* Force light theme elements for printing */
-  .bg-[#111], .bg-[#0a0a0a], .bg-[#1c1c1c], .bg-black\/30, .bg-black\/50 {
-    background: #fcfcfc !important;
+  /* Force light theme for all components */
+  *, ::before, ::after {
     border-color: #eee !important;
+    color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
   }
 
-  .text-white, .text-neutral-100, .text-neutral-300 {
-    color: #111 !important;
+  /* Custom overrides for dashboard elements */
+  .bg-[#111], .bg-[#050505], .bg-[#131313], .bg-black\/30, .bg-black\/50, .bg-neutral-950 {
+    background: #ffffff !important;
+    border: 1px solid #f0f0f0 !important;
   }
 
-  .text-neutral-500, .text-neutral-600, .text-neutral-700 {
-    color: #666 !important;
+  .text-white, .text-neutral-100, .text-neutral-200, .text-neutral-300, .text-neutral-400 {
+    color: #000 !important;
   }
 
-  /* Chart & Legend adjustments */
-  svg text {
-    fill: #333 !important;
+  .text-success, .text-green-500, .text-green-600 {
+    color: #059669 !important;
   }
 
-  /* Hide scrollbars */
+  .text-blue-500, .text-blue-600 {
+    color: #2563eb !important;
+  }
+
+  /* Hide scrollbars during print */
   ::-webkit-scrollbar {
-    display: none;
+    display: none !important;
   }
 
   /* Layout adjustments */
-  .max-w-7xl {
-    max-width: 100% !important;
+  main, .flex-1 {
+    overflow: visible !important;
+    height: auto !important;
   }
 
-  /* Ensure cards break properly or stay together */
+  /* Card styling for professional report */
   .ad-card-print {
     break-inside: avoid;
     page-break-inside: avoid;
-    margin-bottom: 2rem;
-    border: 1px solid #eee !important;
+    margin-bottom: 2.5rem;
+    padding: 2rem !important;
+    border-radius: 1.5rem !important;
+    background: #ffffff !important;
+    border: 2px solid #f8f8f8 !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure charts have visible grids if needed */
+  svg text {
+    fill: #666 !important;
+    font-weight: bold;
   }
 }

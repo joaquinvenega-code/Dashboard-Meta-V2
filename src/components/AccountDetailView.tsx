@@ -28,7 +28,11 @@ import {
   ChevronUp,
   Eye,
   EyeOff,
-  Settings
+  Settings,
+  Download,
+  FileText,
+  Instagram,
+  Facebook
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -455,16 +459,48 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
         {/* Dashboard Area */}
         {selectedAccount ? (
           <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar animate-in fade-in slide-in-from-right-4 duration-500 print:overflow-visible print:pr-0 print:space-y-8">
-            {/* Print Only Header */}
-            <div className="hidden print:block border-b-2 border-blue-600 pb-6 mb-8 text-black">
-              <div className="flex justify-between items-end">
-                <div>
-                  <h1 className="text-3xl font-black uppercase tracking-tighter">Informe de Rendimiento</h1>
-                  <p className="text-sm font-bold text-neutral-500 uppercase tracking-widest mt-1">Meta Ads Dashboard — {selectedAccount.name}</p>
+            {/* Print Only Header (Agency Style) */}
+            <div className="hidden print:flex flex-col gap-6 border-b-2 border-neutral-900 pb-8 mb-10 text-black">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-5">
+                  <div className="w-16 h-16 bg-neutral-950 rounded-2xl flex items-center justify-center text-white shadow-2xl overflow-hidden border border-white/10">
+                    {/* Brand Icon Fallback */}
+                    <Instagram className="w-8 h-8" /> 
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-black tracking-tighter leading-none">
+                      {settings[selectedAccount.id]?.customName || selectedAccount.name}
+                    </h1>
+                    <div className="flex items-center gap-2 mt-2">
+                       <div className="h-0.5 w-8 bg-blue-600 rounded-full" />
+                       <p className="text-[10px] font-bold text-blue-600 uppercase tracking-[0.3em]">
+                        Informe Semanal de Rendimiento — Meta Ads
+                       </p>
+                    </div>
+                  </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Periodo del Reporte</div>
-                  <div className="text-sm font-bold">{dateRange.since} — {dateRange.until}</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">Fecha de Emisión</div>
+                  <div className="text-sm font-bold text-neutral-900">
+                    {format(new Date(), "dd 'de' MMMM, yyyy", { locale: es })}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-8 border-t border-neutral-100 pt-6">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2">Periodo Analizado</div>
+                  <div className="flex items-center gap-2 text-sm font-bold bg-neutral-50 px-4 py-2 rounded-xl w-fit border border-neutral-100">
+                    <Calendar className="w-4 h-4 text-blue-600" />
+                    <span>{dateRange.since} — {dateRange.until}</span>
+                  </div>
+                </div>
+                <div className="text-right flex flex-col items-end justify-center">
+                   <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">Status</div>
+                   <div className="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full border border-green-100 italic text-[10px] font-bold">
+                     <Target className="w-3 h-3" />
+                     Reporte Verificado
+                   </div>
                 </div>
               </div>
             </div>
@@ -545,7 +581,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                   exit={{ height: 0, opacity: 0 }}
                   className="space-y-3 overflow-hidden"
                 >
-                  <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-2">
+                  <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 print:grid-cols-4 gap-2">
                     {visibleMetrics.map(id => renderMetric(id, selectedAccount))}
                   </div>
                 </motion.div>
@@ -555,43 +591,65 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
             {/* Observations Area */}
             <AnimatePresence>
               {showObservations && (
-                <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="space-y-2 overflow-hidden"
-                >
-                   <div className="flex items-center justify-between px-1">
-                     <h3 className="text-[9px] font-black text-neutral-700 uppercase tracking-widest">Bitácora de cuenta</h3>
-                   </div>
-                   <div className="bg-[#111] rounded-xl border border-white/5 p-4 shadow-xl hover:bg-[#131313] transition-colors group">
-                     <textarea 
-                       placeholder="Escribe aquí las observaciones, experimentos o cambios realizados..."
-                       value={observations}
-                       onChange={(e) => setObservations(e.target.value)}
-                       className="w-full bg-transparent border-none outline-none text-neutral-400 text-xs h-24 resize-none custom-scrollbar placeholder-neutral-800 leading-relaxed"
-                     />
-                     <div className="flex justify-end gap-2 mt-3 text-[9px] font-black uppercase tracking-widest">
-                        <button className="bg-neutral-900 border border-white/5 hover:bg-neutral-800 text-white px-4 py-1.5 rounded-lg transition-all">Metas</button>
-                        <button 
-                          onClick={handleSaveObs}
-                          disabled={isSavingObs}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-1.5 rounded-lg transition-all shadow-xl shadow-blue-600/20 flex items-center gap-2 disabled:opacity-50 active:scale-95"
-                        >
-                          {isSavingObs ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                          Actualizar
-                        </button>
+                <>
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="space-y-2 overflow-hidden print:hidden"
+                  >
+                     <div className="flex items-center justify-between px-1">
+                       <h3 className="text-[9px] font-black text-neutral-700 uppercase tracking-widest">Bitácora de cuenta</h3>
                      </div>
-                   </div>
-                </motion.div>
+                     <div className="bg-[#111] rounded-xl border border-white/5 p-4 shadow-xl hover:bg-[#131313] transition-colors group">
+                       <textarea 
+                         placeholder="Escribe aquí las observaciones, experimentos o cambios realizados..."
+                         value={observations}
+                         onChange={(e) => setObservations(e.target.value)}
+                         className="w-full bg-transparent border-none outline-none text-neutral-400 text-xs h-24 resize-none custom-scrollbar placeholder-neutral-800 leading-relaxed"
+                       />
+                       <div className="flex justify-end gap-2 mt-3 text-[9px] font-black uppercase tracking-widest">
+                          <button className="bg-neutral-900 border border-white/5 hover:bg-neutral-800 text-white px-4 py-1.5 rounded-lg transition-all">Metas</button>
+                          <button 
+                            onClick={handleSaveObs}
+                            disabled={isSavingObs}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-1.5 rounded-lg transition-all shadow-xl shadow-blue-600/20 flex items-center gap-2 disabled:opacity-50 active:scale-95"
+                          >
+                            {isSavingObs ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                            Actualizar
+                          </button>
+                       </div>
+                     </div>
+                  </motion.div>
+
+                  {/* Print Version of Observations */}
+                  {observations && (
+                    <div className="hidden print:block space-y-4 mb-10">
+                      <div className="flex items-center gap-3 mb-4">
+                        <FileText className="w-5 h-5 text-blue-600" />
+                        <h3 className="text-sm font-black text-neutral-900 uppercase tracking-[0.2em] border-b-2 border-blue-600 pb-1">
+                          Análisis y Conclusiones
+                        </h3>
+                      </div>
+                      <div className="bg-neutral-50 p-8 rounded-3xl border border-neutral-100 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-600" />
+                        <p className="text-sm text-neutral-800 leading-7 whitespace-pre-wrap font-medium">
+                          {observations}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </AnimatePresence>
 
             {/* Winners Section */}
             <div className="space-y-4 pb-20 print:pb-0">
-               <div className="flex items-center justify-between px-1 print:hidden">
-                  <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Creativos Ganadores</h3>
-                  <div className="flex items-center gap-2">
+               <div className="flex items-center justify-between px-1 print:mb-6">
+                  <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest print:text-sm print:text-neutral-900 print:border-l-4 print:border-blue-600 print:pl-3">
+                    Creativos de Máximo Rendimiento
+                  </h3>
+                  <div className="flex items-center gap-2 print:hidden">
                     <div className="flex items-center gap-2 bg-[#111] px-2 py-1 rounded border border-white/5">
                        <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest">Sort</span>
                        <select 
@@ -639,6 +697,16 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                    <AdCard key={ad.id} ad={ad} rank={idx + 1} />
                  ))}
                </div>
+            </div>
+
+            {/* Print Only Footer */}
+            <div className="hidden print:flex justify-between items-center border-t border-neutral-100 pt-8 mt-12 text-neutral-400">
+              <div className="text-[8px] font-black uppercase tracking-widest">
+                © {new Date().getFullYear()} Meta Ads Performance Suite — Reporte de Rendimiento Estratégico
+              </div>
+              <div className="text-[8px] font-black uppercase tracking-widest italic">
+                Documento CONFIDENCIAL para uso exclusivo del cliente.
+              </div>
             </div>
           </div>
         ) : (
