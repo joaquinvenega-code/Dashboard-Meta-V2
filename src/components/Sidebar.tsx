@@ -39,7 +39,7 @@ export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, l
   );
 
   return (
-    <aside className="w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col h-screen sticky top-0 shrink-0">
+    <aside className="w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col h-screen sticky top-0 shrink-0 print:hidden">
       <div className="p-6 flex items-center gap-3">
         <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center shrink-0 border border-white/5">
           <BarChart3 className="w-6 h-6 text-blue-500" />

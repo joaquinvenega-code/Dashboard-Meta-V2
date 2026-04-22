@@ -64,9 +64,10 @@ export default function App() {
 
   // Date Range State
   const [dateRange, setDateRange] = useState({
-    since: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
+    since: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
     until: format(new Date(), 'yyyy-MM-dd')
   });
+  const [isCustomDate, setIsCustomDate] = useState(false);
 
   // Settings & Expansion State
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -448,26 +449,59 @@ export default function App() {
             </div>
 
             {activePage !== 'accounts' && (
-              <div className="flex items-center gap-3 bg-[#111] p-2 rounded-2xl border border-white/5">
-                <Calendar className="w-4 h-4 text-neutral-600 ml-2" />
-                <div className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mr-4">
-                  {dateRange.since} — {dateRange.until}
+              <div className="flex flex-wrap items-center gap-3 bg-[#111] p-2 rounded-2xl border border-white/5">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-neutral-600 ml-2" />
+                  <div className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mr-4">
+                    {dateRange.since} — {dateRange.until}
+                  </div>
                 </div>
-                <select 
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const now = new Date();
-                    if (val === 'this_month') {
-                      setDateRange({ since: format(startOfMonth(now), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
-                    } else if (val === 'last_7') {
-                      setDateRange({ since: format(subDays(now, 7), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
-                    }
-                  }}
-                  className="bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-2 text-[10px] font-black text-neutral-100 uppercase tracking-widest outline-none focus:border-blue-600 transition-all cursor-pointer hover:bg-[#222]"
-                >
-                  <option value="this_month">Este mes</option>
-                  <option value="last_7">Últimos 7 días</option>
-                </select>
+
+                <div className="flex items-center gap-2">
+                  <select 
+                    value={isCustomDate ? 'custom' : (dateRange.since === format(startOfMonth(new Date()), 'yyyy-MM-dd') ? 'this_month' : 'last_7')}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const now = new Date();
+                      if (val === 'custom') {
+                        setIsCustomDate(true);
+                      } else {
+                        setIsCustomDate(false);
+                        if (val === 'this_month') {
+                          setDateRange({ since: format(startOfMonth(now), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
+                        } else if (val === 'last_7') {
+                          setDateRange({ since: format(subDays(now, 7), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
+                        } else if (val === 'last_30') {
+                          setDateRange({ since: format(subDays(now, 30), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
+                        }
+                      }
+                    }}
+                    className="bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-2 text-[10px] font-black text-neutral-100 uppercase tracking-widest outline-none focus:border-blue-600 transition-all cursor-pointer hover:bg-[#222]"
+                  >
+                    <option value="this_month">Este mes</option>
+                    <option value="last_7">Últimos 7 días</option>
+                    <option value="last_30">Últimos 30 días</option>
+                    <option value="custom">Personalizado</option>
+                  </select>
+
+                  {isCustomDate && (
+                    <div className="flex items-center gap-2 animate-in slide-in-from-right-2 duration-300">
+                      <input 
+                        type="date" 
+                        value={dateRange.since}
+                        onChange={(e) => setDateRange(prev => ({ ...prev, since: e.target.value }))}
+                        className="bg-[#1c1c1c] border border-white/10 rounded-xl px-2 py-1.5 text-[10px] font-bold text-white outline-none focus:border-blue-600 appearance-none"
+                      />
+                      <span className="text-[10px] text-neutral-600 font-black">A</span>
+                      <input 
+                        type="date" 
+                        value={dateRange.until}
+                        onChange={(e) => setDateRange(prev => ({ ...prev, until: e.target.value }))}
+                        className="bg-[#1c1c1c] border border-white/10 rounded-xl px-2 py-1.5 text-[10px] font-bold text-white outline-none focus:border-blue-600 appearance-none"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

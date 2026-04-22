@@ -38,3 +38,61 @@
 .report-shadow {
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
+
+@media print {
+  @page {
+    margin: 1cm;
+    size: A4 portrait;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Reset paddings for main container */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Force light theme elements for printing */
+  .bg-[#111], .bg-[#0a0a0a], .bg-[#1c1c1c], .bg-black\/30, .bg-black\/50 {
+    background: #fcfcfc !important;
+    border-color: #eee !important;
+  }
+
+  .text-white, .text-neutral-100, .text-neutral-300 {
+    color: #111 !important;
+  }
+
+  .text-neutral-500, .text-neutral-600, .text-neutral-700 {
+    color: #666 !important;
+  }
+
+  /* Chart & Legend adjustments */
+  svg text {
+    fill: #333 !important;
+  }
+
+  /* Hide scrollbars */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Layout adjustments */
+  .max-w-7xl {
+    max-width: 100% !important;
+  }
+
+  /* Ensure cards break properly or stay together */
+  .ad-card-print {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 2rem;
+    border: 1px solid #eee !important;
+  }
+}

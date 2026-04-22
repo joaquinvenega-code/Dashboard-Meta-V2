@@ -101,14 +101,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     }
   }, [selectedId, s]);
 
-  // Initialize local metrics - solo cuando cambia de cuenta o si no hay nada seteado
+  // Initialize local metrics - cuando cambia la cuenta o cuando los settings llegan por primera vez
   useEffect(() => {
-    if (s?.visibleMetrics) {
+    if (s?.visibleMetrics && s.visibleMetrics.length > 0) {
       setLocalVisibleMetrics(s.visibleMetrics);
     } else {
       setLocalVisibleMetrics(defaultVisibleMetrics);
     }
-  }, [selectedId]);
+  }, [selectedId, !!s?.visibleMetrics]);
 
   const loadAds = useCallback(async () => {
     if (!selectedId) return;
@@ -249,7 +249,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     ];
 
     return (
-      <div className="bg-[#111] rounded-xl border border-white/5 p-4 hover:bg-[#131313] transition-all shadow-xl group/card relative overflow-hidden print:bg-white print:border-neutral-200 print:shadow-none print:break-inside-avoid">
+      <div className="bg-[#111] rounded-xl border border-white/5 p-4 hover:bg-[#131313] transition-all shadow-xl group/card relative overflow-hidden ad-card-print print:bg-white print:border-neutral-200 print:shadow-none print:break-inside-avoid">
          <div className="hidden print:block absolute top-2 right-2 text-[8px] font-black text-neutral-400">RANK #{rank}</div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 items-center">
           <div className="md:col-span-1 xl:col-span-2">
@@ -443,13 +443,27 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
         {/* Dashboard Area */}
         {selectedAccount ? (
-          <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar animate-in fade-in slide-in-from-right-4 duration-500 print:overflow-visible print:pr-0 print:space-y-4">
+          <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar animate-in fade-in slide-in-from-right-4 duration-500 print:overflow-visible print:pr-0 print:space-y-8">
+            {/* Print Only Header */}
+            <div className="hidden print:block border-b-2 border-blue-600 pb-6 mb-8 text-black">
+              <div className="flex justify-between items-end">
+                <div>
+                  <h1 className="text-3xl font-black uppercase tracking-tighter">Informe de Rendimiento</h1>
+                  <p className="text-sm font-bold text-neutral-500 uppercase tracking-widest mt-1">Meta Ads Dashboard — {selectedAccount.name}</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Periodo del Reporte</div>
+                  <div className="text-sm font-bold">{dateRange.since} — {dateRange.until}</div>
+                </div>
+              </div>
+            </div>
+
             {/* Account Info Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between print:mb-4">
               <div className="flex items-center gap-4">
                  <div className={`w-2 h-2 rounded-full ${selectedAccount.account_status === 1 ? 'bg-success shadow-[0_0_8px_rgba(34,197,94,0.3)]' : 'bg-neutral-800'} print:hidden`} />
-                 <h2 className="text-xl font-black text-white tracking-tight uppercase opacity-90 print:text-black">{settings[selectedAccount.id]?.customName || selectedAccount.name}</h2>
-                 <div className="px-2 py-0.5 bg-white/5 border border-white/5 text-neutral-500 text-[9px] font-black rounded uppercase tracking-widest print:border-neutral-200 print:text-neutral-600">{selectedAccount.currency}</div>
+                 <h2 className="text-xl font-black text-white tracking-tight uppercase opacity-90 print:text-black print:text-2xl">{settings[selectedAccount.id]?.customName || selectedAccount.name}</h2>
+                 <div className="px-2 py-0.5 bg-white/5 border border-white/5 text-neutral-500 text-[9px] font-black rounded uppercase tracking-widest print:border-neutral-300 print:text-neutral-700">{selectedAccount.currency}</div>
               </div>
               <div className="flex items-center gap-2 print:hidden relative">
                 <button 
