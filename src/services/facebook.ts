@@ -268,16 +268,17 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
   // Fetch thumbnails and previews
   for (const ad of ads) {
     try {
-      // 1. Llamada básica: creativo y miniatura estándar
+      // 1. Llamada básica: creativo y miniatura estándar del Ad (fallback fuerte)
       const adRes: any = await new Promise((resolve) => {
         window.FB.api(`/${ad.id}`, 'GET', {
-          fields: 'creative{id,image_url,thumbnail_url,video_id,object_story_spec,asset_feed_spec,template_data}',
+          fields: 'creative{id,image_url,thumbnail_url,video_id,object_story_spec,asset_feed_spec,template_data},picture,thumbnail_url',
         }, (res: any) => resolve(res));
       });
 
-      if (adRes && !adRes.error && adRes.creative) {
-        const creative = adRes.creative;
-        let thumb = creative.image_url || creative.thumbnail_url;
+      if (adRes && !adRes.error) {
+        const creative = adRes.creative || {};
+        // Prioridad 1: Imagen directa del Ad (la más estable aunque sea pixelada en reels)
+        let thumb = adRes.picture || adRes.thumbnail_url || creative.image_url || creative.thumbnail_url;
 
         // Caso especial: Video/Reels (si la imagen del creativo es mala o no existe)
         const vidId = creative.video_id || creative.object_story_spec?.video_data?.video_id || creative.asset_feed_spec?.videos?.[0]?.video_id;
