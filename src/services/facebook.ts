@@ -282,10 +282,12 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
   for (const ad of ads) {
     try {
       let thumb: string | null = null;
+      let winningStep = "none";
+
       // PASO 0: Llamada inicial profunda (SIN FIELDS DEPRECATED QUE ROMPEN LA API)
       const adRes: any = await new Promise((resolve) => {
         window.FB.api(`/${ad.id}`, 'GET', {
-          fields: 'creative{id,image_url,image_hash,thumbnail_url.width(600).height(600),object_story_spec,asset_feed_spec,effective_object_story_id,video_id}'
+          fields: 'creative{id,image_url,image_hash,thumbnail_url.width(600).height(600),object_story_spec,asset_feed_spec,template_data,effective_object_story_id,video_id}'
         }, (res: any) => resolve(res));
       });
 
@@ -293,14 +295,11 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         const creative = adRes.creative;
 
         // PASO 1: Resolver por image_hash (Fuente de MEJOR calidad - CDN Original)
-        // Buscamos el hash en el creativo principal o en las specs anidadas (incluyendo carruseles)
         const hash = creative.image_hash || 
                      creative.object_story_spec?.photo_data?.image_hash ||
                      creative.object_story_spec?.video_data?.image_hash ||
                      creative.asset_feed_spec?.images?.[0]?.hash ||
-                     // Carruseles manuales
                      creative.object_story_spec?.link_data?.child_attachments?.[0]?.image_hash ||
-                     // Carruseles/Catálogos dinámicos
                      creative.asset_feed_spec?.child_attachments?.[0]?.image_hash ||
                      creative.template_data?.child_attachments?.[0]?.image_hash;
 
@@ -310,6 +309,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           });
           if (imgNode?.data?.[0]?.url) {
             thumb = imgNode.data[0].url;
+            winningStep = `adimage hash (${hash})`;
           }
         }
 
@@ -324,7 +324,6 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             });
 
             if (storyNode && !storyNode.error) {
-              // Intentamos buscar la imagen más grande en attachments (carruseles/media)
               let bestMedia = null;
               let maxArea = 0;
               const allMedia = [];
@@ -347,7 +346,8 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
                 }
               });
 
-              thumb = bestMedia || storyNode.full_picture || storyNode.picture || null;
+              thumb = bestMedia || storyNode.full_picture || null;
+              if (thumb) winningStep = `story post (${storyId})`;
             }
           }
         }
@@ -360,30 +360,39 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,format' }, (res: any) => resolve(res));
             });
             if (vidNode && !vidNode.error) {
-              // Buscamos el formato más grande disponible
               if (Array.isArray(vidNode.format)) {
                 const sorted = [...vidNode.format].sort((a, b) => (b.width * b.height) - (a.width * a.height));
                 thumb = sorted[0]?.picture || vidNode.picture;
               } else {
                 thumb = vidNode.picture;
               }
+              if (thumb) winningStep = `video node (${vidId})`;
             }
           }
         }
 
-        // PASO 4: Extracción de specs anidadas (Link data, Photo data, Asset feed)
+        // PASO 4: Extracción de specs anidadas
         if (!thumb || thumb.includes('safe_image.php')) {
           thumb = creative.object_story_spec?.link_data?.picture ||
+                  creative.object_story_spec?.child_attachments?.[0]?.picture ||
                   creative.object_story_spec?.photo_data?.url ||
                   creative.object_story_spec?.video_data?.image_url ||
                   creative.asset_feed_spec?.images?.[0]?.url ||
                   creative.asset_feed_spec?.videos?.[0]?.thumbnail_url ||
                   creative.template_data?.child_attachments?.[0]?.image_url;
+          if (thumb) winningStep = "creative specs deep scan";
         }
 
-        // PASO 5: Fallback final (thumbnail_url pedido con hints)
+        // PASO 5: Fallback final
         if (!thumb || thumb.includes('safe_image.php')) {
           thumb = creative.image_url || creative.thumbnail_url;
+          if (thumb) winningStep = "creative thumbnail_url fallback";
+        }
+
+        if (thumb) {
+          console.log(`[TopAds] Resolved ${ad.id}: Step won: ${winningStep}`);
+        } else {
+          console.warn(`[TopAds] Failed to resolve thumbnail for ${ad.id}`);
         }
       }
 
