@@ -281,23 +281,28 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       // Baselining: Siempre tener una miniatura básica por si falla el waterfall
       const baseThumb = creative.thumbnail_url || creative.image_url;
 
-      // Paso 1: image_hash (JPG Original de alta calidad)
-      if (creative.image_hash) {
+      // Paso 1: Resolver por image_hash (Fuente de mejor calidad)
+      // Buscamos el hash en la raíz, en video_data o en link_data
+      const hash = creative.image_hash || 
+                   creative.object_story_spec?.video_data?.image_hash || 
+                   creative.object_story_spec?.link_data?.image_hash;
+
+      if (hash) {
         try {
           const imgRes: any = await new Promise((resolve) => {
             window.FB.api(`/${accountId}/adimages`, 'GET', {
-              hashes: [creative.image_hash],
+              hashes: [hash],
               fields: 'url'
             }, (res: any) => resolve(res));
           });
           if (imgRes?.data?.[0]?.url) {
             thumb = imgRes.data[0].url;
-            console.log(`[TopAds] Paso 1 - hash ok: ${ad.name}`);
+            console.log(`[TopAds] Paso 1 - hash found (${hash}): ${ad.name}`);
           }
         } catch (e) {}
       }
 
-      // Paso 2: Story assets (Attachments)
+      // Paso 2: Story assets (Attachments / Subattachments)
       if (!thumb) {
         const storyId = creative.effective_object_story_id || creative.object_story_id;
         if (storyId) {
@@ -327,13 +332,14 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
                 att.subattachments?.data?.forEach((sub: any) => checkMedia(sub.media));
               });
 
-              thumb = bestMedia || storyRes.full_picture || storyRes.picture || thumb;
+              thumb = bestMedia || storyRes.full_picture || storyRes.picture;
+              if (thumb) console.log(`[TopAds] Paso 2 - story ok: ${ad.name}`);
             }
           } catch (e) {}
         }
       }
 
-      // Paso 3: Video Node (Formato de Resolución de Miniatura)
+      // Paso 3: Video Node (Formato de alta resolución)
       const vidId = creative.video_id || 
                     creative.object_story_spec?.video_data?.video_id || 
                     creative.asset_feed_spec?.videos?.[0]?.video_id ||
@@ -353,19 +359,21 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               if (sorted[0]?.picture) bestVidImg = sorted[0].picture;
             }
             thumb = bestVidImg || thumb;
+            if (thumb) console.log(`[TopAds] Paso 3 - video format ok: ${ad.name}`);
           }
         } catch (e) {}
       }
 
-      // Paso 4: Metadatos profundos
-      if (!thumb || thumb.includes('safe_image.php')) {
+      // Paso 4: Metadatos profundos (Fallback manual)
+      if (!thumb) {
         thumb = 
           creative.object_story_spec?.video_data?.image_url ||
           creative.asset_feed_spec?.videos?.[0]?.thumbnail_url ||
           creative.asset_feed_spec?.images?.[0]?.url ||
           creative.object_story_spec?.link_data?.picture ||
           creative.object_story_spec?.photo_data?.url ||
-          thumb;
+          creative.image_url ||
+          creative.thumbnail_url;
       }
 
       ad.thumbnail = thumb || baseThumb || null;
