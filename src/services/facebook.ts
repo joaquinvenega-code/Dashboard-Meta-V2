@@ -270,7 +270,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
     // Paso 0: Llamada inicial (v19) - Añadimos campos de catálogo/template
     const adRes: any = await new Promise((resolve) => {
       window.FB.api(`/${ad.id}`, 'GET', {
-        fields: 'creative{id,image_url,image_hash,thumbnail_url.width(1000).height(1000),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id,instagram_story_id,template_data}'
+        fields: 'creative{id,image_url,image_hash,thumbnail_url,object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id,instagram_story_id,template_data}'
       }, (res: any) => resolve(res));
     });
 

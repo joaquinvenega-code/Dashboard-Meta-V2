@@ -186,13 +186,13 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const visibleMetrics = localVisibleMetrics;
 
   const toggleMetric = (metricId: string) => {
-    if (!selectedId || !s) return;
+    if (!selectedId) return;
     const next = localVisibleMetrics.includes(metricId) 
       ? localVisibleMetrics.filter(id => id !== metricId)
       : [...localVisibleMetrics, metricId];
     
     setLocalVisibleMetrics(next); // Instant UI feedback
-    onSaveSettings(selectedId, { ...s, visibleMetrics: next });
+    onSaveSettings(selectedId, { ...(s || {}), visibleMetrics: next } as any);
   };
 
   const toggleChartMetric = (adId: string, metric: string) => {
