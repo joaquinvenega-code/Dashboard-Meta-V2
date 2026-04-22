@@ -255,7 +255,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     ];
 
     return (
-      <div className="bg-[#111] rounded-xl border border-white/5 p-4 hover:bg-[#131313] transition-all shadow-xl group/card relative overflow-hidden ad-card-print print:bg-white print:border-neutral-100 print:shadow-none print:break-inside-avoid print:p-2 print:mb-1 print:border-b-2">
+      <div className="bg-[#111] rounded-xl border border-white/5 p-4 hover:bg-[#131313] transition-all shadow-xl group/card relative overflow-hidden ad-card-print print:bg-white print:border-neutral-100 print:shadow-none print:break-inside-avoid print:p-1.5 print:mb-0 print:border-b">
          <div className="hidden print:block absolute top-1 right-2 text-[8px] font-black text-neutral-400 uppercase tracking-tighter">RANK #{rank}</div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 items-center print:flex print:gap-4 print:items-center">
           <div className="md:col-span-1 xl:col-span-2 print:shrink-0">
@@ -307,17 +307,17 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                 </div>
              </div>
 
-             <div className="grid grid-cols-3 gap-1.5 print:gap-1.5">
+             <div className="grid grid-cols-3 gap-1.5 print:gap-1">
                 {stats.map(stat => (
-                  <div key={stat.label} className="bg-black/30 px-2 py-2 rounded-lg border border-white/5 flex flex-col items-center justify-center text-center print:bg-neutral-50/50 print:border-neutral-100 print:py-1">
-                    <div className="text-[7px] font-black text-neutral-700 uppercase tracking-widest mb-0.5 print:text-neutral-500 print:text-[6px]">{stat.label}</div>
-                    <div className={`text-[10px] font-black tracking-tight ${stat.color || 'text-neutral-300'} truncate w-full print:text-black print:text-[8.5px]`}>{stat.value}</div>
+                  <div key={stat.label} className="bg-black/30 px-2 py-2 rounded-lg border border-white/5 flex flex-col items-center justify-center text-center print:bg-neutral-50/50 print:border-neutral-100 print:py-0.5 print:px-1">
+                    <div className="text-[7px] font-black text-neutral-700 uppercase tracking-widest mb-0.5 print:text-neutral-500 print:text-[5.5px] truncate">{stat.label}</div>
+                    <div className={`text-[10px] font-black tracking-tight ${stat.color || 'text-neutral-300'} truncate w-full print:text-black print:text-[7.5px]`}>{stat.value}</div>
                   </div>
                 ))}
              </div>
           </div>
 
-          <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:flex-[2] print:h-24 print:p-0 print:bg-transparent print:border-none">
+          <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:flex-[2.5] print:h-24 print:p-2 print:bg-transparent print:border-2 print:border-neutral-50 print:rounded-xl">
              <div className="flex flex-wrap items-center gap-2 mb-2 shrink-0 print:gap-4 print:mb-2 print:justify-start print:pl-2">
                 <LegendButton 
                   active={showSales} 
@@ -379,17 +379,15 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
              </div>
           </div>
 
-          <div className="xl:col-span-2 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0 print:flex print:items-center print:justify-center print:border-none print:ml-4">
+          <div className="xl:col-span-2 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0 print:flex print:items-center print:justify-center print:border-none print:ml-1">
             <a 
               href={ad.previewUrl || '#'} 
               target="_blank" 
               rel="noopener noreferrer"
-              className={`flex flex-col items-center gap-1.5 group/link transition-all ${!ad.previewUrl && 'pointer-events-none opacity-20'} print:opacity-100 print:grayscale-0`}
+              className={`flex flex-col items-center gap-1 group/link transition-all ${!ad.previewUrl && 'pointer-events-none opacity-20'} print:opacity-100 print:grayscale-0 print:bg-blue-600 print:px-3 print:py-2 print:rounded-lg print:shadow-md`}
             >
-              <div className="p-2.5 bg-white/5 rounded-lg text-neutral-600 group-hover/link:bg-blue-600 group-hover/link:text-white transition-all shadow-xl active:scale-90 print:bg-blue-600 print:text-white print:p-2 print:shadow-md">
-                 <ArrowUpRight className="w-4 h-4" />
-              </div>
-              <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover/link:text-neutral-400 whitespace-nowrap print:text-blue-600 print:font-black">Ver anuncio</span>
+              <ArrowUpRight className="w-4 h-4 text-neutral-600 group-hover/link:text-white print:text-white" />
+              <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover/link:text-neutral-400 whitespace-nowrap print:text-white print:text-[7px]">Ver anuncio</span>
             </a>
           </div>
         </div>
@@ -468,7 +466,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
         {/* Dashboard Area */}
         {selectedAccount ? (
           <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar animate-in fade-in slide-in-from-right-4 duration-500 print:overflow-visible print:pr-0 print:space-y-8">
-            <div className="hidden print:flex flex-col gap-4 border-b border-neutral-200 pb-6 mb-6 text-black pt-2">
+            <div className="hidden print:flex flex-col gap-4 border-b border-neutral-200 pb-3 mb-3 text-black pt-2">
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-5">
                   <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center text-white shadow-xl overflow-hidden print-keep-bg">
@@ -620,7 +618,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  className="space-y-3 overflow-hidden print:mb-8"
+                  className="space-y-3 overflow-hidden print:mb-4"
                 >
                   <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 print:grid-cols-4 gap-2 print:gap-3 print-metrics-grid">
                     {visibleMetrics.map(id => renderMetric(id, selectedAccount!))}
@@ -665,7 +663,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
                   {/* Print Version of Observations */}
                   {observations && (
-                    <div className="hidden print:block space-y-2 mb-8">
+                    <div className="hidden print:block space-y-2 mb-4">
                       <div className="flex items-center gap-2 mb-2">
                         <FileText className="w-4 h-4 text-blue-600" />
                         <h3 className="text-xs font-black text-neutral-900 uppercase tracking-widest border-b-2 border-blue-600 pb-0.5">
@@ -685,7 +683,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
             {/* Winners Section */}
             <div className="space-y-4 pb-20 print:pb-0">
-               <div className="flex items-center justify-between px-1 print:mb-8 print:border-b-2 print:border-neutral-100 print:pb-2">
+               <div className="flex items-center justify-between px-1 print:mb-4 print:border-b-2 print:border-neutral-100 print:pb-2">
                   <div className="flex items-center gap-4">
                     <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest print:text-sm print:text-neutral-900 print:border-l-4 print:border-blue-600 print:pl-3">
                       Anuncios de Mejor Rendimiento
