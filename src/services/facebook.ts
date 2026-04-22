@@ -279,20 +279,19 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       let thumb = null;
       const baseThumb = creative.image_url || creative.thumbnail_url;
 
-      // "Limpiador" agresivo de parámetros de compresión de Meta/IG
+      // "Limpiador" seguro para escalar URLs sin romper el path del CDN
       const upgradeUrl = (url: string) => {
         if (!url) return url;
-        // 1. Eliminar parámetros de scaling internos de Meta (stp, cfs, etc.)
+        // Solo cambiamos el tamaño, no borramos segmentos del path (para evitar 404/403)
         let hq = url
-          .replace(/\/s\d+x\d+\//g, '/') // Elimina /s320x320/ de la ruta
-          .replace(/dst-jpg_s\d+x\d+\//g, '') // Elimina el sufijo de resolución interno
-          .replace(/[wh]=\d+&[wh]=\d+/g, 'w=1080&h=1080') // Forza dimensiones HD
-          .replace(/&stp=[^&]*/g, '') // ELIMINA el parámetro stp (vital para Reels)
+          .replace(/\/s\d+x\d+\//g, '/s1080x1080/')
+          .replace(/_s\.jpg/g, '_n.jpg')
+          .replace(/[wh]=\d+&[wh]=\d+/g, 'w=1080&h=1080')
           .replace(/&quality=\d+/g, '&quality=100');
         return hq;
       };
 
-      // Paso 1: Instagram/Reels HQ Direct (El "Shortcut" de Isbella)
+      // Paso 1: Instagram/Reels HQ Direct (Usando display_resources si están disponibles)
       const stId = creative.instagram_story_id || creative.effective_object_story_id || creative.object_story_id;
       if (stId) {
         try {
@@ -303,13 +302,10 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           });
           
           if (mNode) {
-            // Buscamos la fuente más pura del nodo IG
             const rawIG = mNode.display_url || mNode.media_url || mNode.thumbnail_url || mNode.full_picture;
-            let storyBest = upgradeUrl(rawIG);
-            
-            if (storyBest && !storyBest.includes('safe_image.php')) {
-              thumb = storyBest;
-              console.log(`[TopAds] Paso 1 ok (IG Stripped): ${ad.name}`);
+            thumb = upgradeUrl(rawIG);
+            if (thumb && !thumb.includes('safe_image.php')) {
+              console.log(`[TopAds] Paso 1 ok (IG HQ Safe): ${ad.name}`);
             }
           }
         } catch (e) {}
@@ -320,7 +316,6 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         const hashes = new Set<string>();
         const recursiveScan = (obj: any) => {
           if (!obj || typeof obj !== 'object') return;
-          // Buscamos hashes específicos que Meta usa para assets de alta
           ['image_hash', 'hash', 'thumbnail_hash', 'video_id'].forEach(k => {
             if (typeof obj[k] === 'string' && obj[k].length >= 30) hashes.add(obj[k]);
           });
@@ -336,7 +331,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             if (imgRes?.data?.length > 0) {
               const cleaned = imgRes.data.find((d: any) => d.url && !d.url.includes('safe_image.php') && d.url.includes('fbcdn.net'))?.url;
               thumb = upgradeUrl(cleaned || imgRes.data[0].url);
-              if (thumb) console.log(`[TopAds] Paso 2 ok (Hash Stripped): ${ad.name}`);
+              if (thumb) console.log(`[TopAds] Paso 2 ok (Hash HD Safe): ${ad.name}`);
             }
           } catch (e) {}
         }
@@ -355,21 +350,21 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             
             vNode.thumbnails?.data?.forEach((t: any) => {
               const area = (t.width || 0) * (t.height || 0);
-              // Si la URL tiene un marcador de HQ (_n o _o), lo priorizamos
-              const hq = t.uri && (t.uri.includes('_n.jpg') || t.uri.includes('_o.jpg'));
-              if (hq || area >= vMax) {
-                vMax = hq ? area * 10 : area; // Peso masivo al HQ
+              const isHD = t.width >= 1080 || (t.uri && (t.uri.includes('_n.jpg') || t.uri.includes('_o.jpg')));
+              if (isHD || area >= vMax) {
+                if (isHD) vMax = area * 10;
+                else vMax = area;
                 vBest = t.uri;
               }
             });
             
             thumb = upgradeUrl(vBest || vNode.picture);
-            if (thumb && !thumb.includes('safe_image.php')) console.log(`[TopAds] Paso 3 ok (Video HQ Stripped): ${ad.name}`);
+            if (thumb && !thumb.includes('safe_image.php')) console.log(`[TopAds] Paso 3 ok (Video HD Safe): ${ad.name}`);
           }
         } catch (e) {}
       }
 
-      // Paso 4: Final Safety Fallback
+      // Paso 4: Final Fallback
       if (!thumb || thumb.includes('safe_image.php')) {
         thumb = upgradeUrl(baseThumb);
       }
