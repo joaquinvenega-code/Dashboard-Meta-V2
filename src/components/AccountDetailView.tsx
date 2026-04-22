@@ -309,7 +309,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
              </div>
           </div>
 
-          <div className="md:col-span-1 xl:col-span-3 flex flex-col gap-4 print:flex-[1.2] print:gap-2">
+          <div className="md:col-span-1 xl:col-span-3 flex flex-col gap-4 print:flex-[1.8] print:gap-2">
              <div className="space-y-0.5">
                 <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest whitespace-nowrap overflow-hidden text-ellipsis print:text-black print:whitespace-pre-wrap print:text-[8.5px] print:leading-tight print:font-bold" title={ad.name}>
                   {ad.name}
@@ -326,7 +326,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
              </div>
           </div>
 
-          <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:flex-[3] print:h-24 print:p-0 print:bg-transparent print:border-2 print:border-neutral-100/50 print:rounded-2xl print:overflow-hidden">
+          <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:flex-[3.2] print:h-24 print:p-0 print:bg-transparent print:border-2 print:border-neutral-100/50 print:rounded-2xl print:overflow-hidden">
              <div className="flex flex-wrap items-center gap-2 mb-2 shrink-0 print:gap-4 print:my-2 print:justify-start print:pl-3">
                 <LegendButton 
                   active={showSales} 
@@ -388,7 +388,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
              </div>
           </div>
 
-          <div className="xl:col-span-2 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0 print:flex print:items-center print:justify-center print:border-none print:ml-1 relative print:shrink-0 print:w-20 print:mr-4">
+          <div className="xl:col-span-2 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0 print:flex print:items-center print:justify-center print:border-none print:ml-1 relative print:shrink-0 print:w-24">
             <a 
               href={ad.previewUrl} 
               target="_blank" 
