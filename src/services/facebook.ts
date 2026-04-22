@@ -267,18 +267,21 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
 
   // Fetch thumbnails and previews
   for (const ad of ads) {
-    // Paso 0: Llamada inicial (v19) - SIN el campo 'picture' que rompe v19
+    // Paso 0: Llamada inicial (v19) - SIN el campo 'template_data' en la raíz (suele fallar)
     const adRes: any = await new Promise((resolve) => {
       window.FB.api(`/${ad.id}`, 'GET', {
-        fields: 'creative{id,image_url,image_hash,thumbnail_url.width(800).height(800),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id,template_data}'
+        fields: 'creative{id,image_url,image_hash,thumbnail_url.width(1000).height(1000),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id}'
       }, (res: any) => resolve(res));
     });
 
     if (adRes && !adRes.error && adRes.creative) {
       const creative = adRes.creative;
       let thumb = null;
+      
+      // Baselining: Siempre tener una miniatura básica por si falla el waterfall
+      const baseThumb = creative.thumbnail_url || creative.image_url;
 
-      // Paso 1: image_hash (JPG Original)
+      // Paso 1: image_hash (JPG Original de alta calidad)
       if (creative.image_hash) {
         try {
           const imgRes: any = await new Promise((resolve) => {
@@ -294,7 +297,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         } catch (e) {}
       }
 
-      // Paso 2: Story y Attachments (Carruseles y Posts)
+      // Paso 2: Story assets (Attachments)
       if (!thumb) {
         const storyId = creative.effective_object_story_id || creative.object_story_id;
         if (storyId) {
@@ -310,12 +313,11 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               let maxArea = 0;
               
               const checkMedia = (media: any) => {
-                const img = media?.image;
-                if (img?.src) {
-                  const area = (img.width || 1) * (img.height || 1);
+                if (media?.image?.src) {
+                  const area = (media.image.width || 1) * (media.image.height || 1);
                   if (area >= maxArea) {
                     maxArea = area;
-                    bestMedia = img.src;
+                    bestMedia = media.image.src;
                   }
                 }
               };
@@ -326,61 +328,47 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               });
 
               thumb = bestMedia || storyRes.full_picture || storyRes.picture || thumb;
-              if (thumb) console.log(`[TopAds] Paso 2 - story ok: ${ad.name}`);
             }
           } catch (e) {}
         }
       }
 
-      // Paso 3: Rastreo exhaustivo de Video ID y Miniaturas
-      const vid = creative.video_id || 
-                  creative.object_story_spec?.video_data?.video_id || 
-                  creative.asset_feed_spec?.videos?.[0]?.video_id ||
-                  creative.template_data?.video_id ||
-                  creative.object_story_spec?.template_data?.video_id;
+      // Paso 3: Video Node (Formato de Resolución de Miniatura)
+      const vidId = creative.video_id || 
+                    creative.object_story_spec?.video_data?.video_id || 
+                    creative.asset_feed_spec?.videos?.[0]?.video_id ||
+                    creative.object_story_spec?.template_data?.video_id;
 
-      if (!thumb && vid) {
+      if (!thumb && vidId) {
         try {
-          const videoNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${vid}`, 'GET', { fields: 'picture,format,thumbnails{uri,width,height}' }, (res: any) => resolve(res));
+          const vidNode: any = await new Promise((resolve) => {
+            window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,format' }, (res: any) => resolve(res));
           });
-          
-          if (videoNode) {
-            let bestVidThumb = videoNode.picture;
-            
-            // Prioridad 1: Formatos de alta resolución
-            if (Array.isArray(videoNode.format)) {
-              const sortedF = [...videoNode.format]
+          if (vidNode) {
+            let bestVidImg = vidNode.picture;
+            if (Array.isArray(vidNode.format)) {
+              const sorted = [...vidNode.format]
                 .filter(f => f.picture)
-                .sort((a, b) => (b.width || 0) * (b.height || 0) - (a.width || 0) * (a.height || 0));
-              if (sortedF[0]) bestVidThumb = sortedF[0].picture;
+                .sort((a,b) => (b.width||0)*(b.height||0) - (a.width||0)*(a.height||0));
+              if (sorted[0]?.picture) bestVidImg = sorted[0].picture;
             }
-            
-            // Prioridad 2: Thumbnails edge (si format falló)
-            if (!bestVidThumb && videoNode.thumbnails?.data) {
-              const sortedT = [...videoNode.thumbnails.data].sort((a, b) => (b.width || 0) * (b.height || 0) - (a.width || 0) * (a.height || 0));
-              if (sortedT[0]) bestVidThumb = sortedT[0].uri;
-            }
-
-            thumb = bestVidThumb || thumb;
-            if (thumb) console.log(`[TopAds] Paso 3 - video info ok: ${ad.name}`);
+            thumb = bestVidImg || thumb;
           }
         } catch (e) {}
       }
 
-      // Paso 4: Fallbacks de metadatos profundos
+      // Paso 4: Metadatos profundos
       if (!thumb || thumb.includes('safe_image.php')) {
         thumb = 
           creative.object_story_spec?.video_data?.image_url ||
-          creative.asset_feed_spec?.images?.[0]?.url ||
           creative.asset_feed_spec?.videos?.[0]?.thumbnail_url ||
+          creative.asset_feed_spec?.images?.[0]?.url ||
           creative.object_story_spec?.link_data?.picture ||
-          creative.image_url ||
+          creative.object_story_spec?.photo_data?.url ||
           thumb;
       }
 
-      // Paso 5: Fallback final
-      ad.thumbnail = thumb || creative.thumbnail_url || null;
+      ad.thumbnail = thumb || baseThumb || null;
     }
 
     const prevRes: any = await new Promise((resolve) => {
