@@ -270,21 +270,20 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
     // Paso 0: Llamada inicial (v19)
     const adRes: any = await new Promise((resolve) => {
       window.FB.api(`/${ad.id}`, 'GET', {
-        fields: 'ad_review_thumbnail_url,creative{id,image_url,image_hash,thumbnail_url.width(1080).height(1080),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id,instagram_story_id}'
+        fields: 'creative{id,image_url,image_hash,thumbnail_url.width(1000).height(1000),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id,instagram_story_id}'
       }, (res: any) => resolve(res));
     });
 
     if (adRes && !adRes.error && adRes.creative) {
       const creative = adRes.creative;
       let thumb = null;
-      // El ad_review_thumbnail_url es la fuente oficial más limpia para previews
-      const backupThumb = adRes.ad_review_thumbnail_url || creative.image_url || creative.thumbnail_url;
+      const baseThumb = creative.image_url || creative.thumbnail_url;
 
-      // Limpiador seguro: eliminamos el segmento de tamaño para forzar original
+      // Limpiador seguro: escalamos sin romper la URL base
       const upgradeUrl = (url: string) => {
         if (!url) return url;
         let hq = url
-          .replace(/\/[sp]\d+x\d+\//g, '/') // Elimina /s150x150/
+          .replace(/\/s\d+x\d+\//g, '/s1080x1080/')
           .replace(/[wh]=\d+&[wh]=\d+/g, 'w=1080&h=1080')
           .replace(/&quality=\d+/g, '&quality=100');
         return hq;
@@ -332,16 +331,6 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           Object.values(obj).forEach(recursiveScan);
         };
         recursiveScan(creative);
-        
-        if (stId) {
-          try {
-            const mNodeHash: any = await new Promise((resolve) => {
-              window.FB.api(`/${stId}`, 'GET', { fields: 'image_hash,thumbnail_hash' }, (res: any) => resolve(res));
-            });
-            if (mNodeHash?.image_hash) hashes.add(mNodeHash.image_hash);
-            if (mNodeHash?.thumbnail_hash) hashes.add(mNodeHash.thumbnail_hash);
-          } catch (e) {}
-        }
 
         if (hashes.size > 0) {
           try {
@@ -381,9 +370,9 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         } catch (e) {}
       }
 
-      // Paso 4: Final Fallback (Ad Review)
+      // Paso 4: Final Fallback
       if (!thumb || thumb.includes('safe_image.php')) {
-        thumb = upgradeUrl(backupThumb);
+        thumb = upgradeUrl(baseThumb);
       }
       
       ad.thumbnail = thumb || null;
