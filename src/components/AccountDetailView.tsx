@@ -101,14 +101,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     }
   }, [selectedId, s]);
 
-  // Initialize local metrics
+  // Initialize local metrics - solo cuando cambia de cuenta o si no hay nada seteado
   useEffect(() => {
     if (s?.visibleMetrics) {
       setLocalVisibleMetrics(s.visibleMetrics);
     } else {
       setLocalVisibleMetrics(defaultVisibleMetrics);
     }
-  }, [s?.visibleMetrics, selectedId]);
+  }, [selectedId]);
 
   const loadAds = useCallback(async () => {
     if (!selectedId) return;
@@ -191,7 +191,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       ? localVisibleMetrics.filter(id => id !== metricId)
       : [...localVisibleMetrics, metricId];
     
-    setLocalVisibleMetrics(next); // Instant UI feedback
+    setLocalVisibleMetrics(next); // Feedback instantáneo
     onSaveSettings(selectedId, { ...(s || {}), visibleMetrics: next } as any);
   };
 
@@ -229,9 +229,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   };
 
   const AdCard: React.FC<{ ad: Ad; rank: number }> = ({ ad, rank }) => {
-    const filters = chartFilters[ad.id] || ['purchases', 'revenue'];
+    const filters = chartFilters[ad.id] || ['purchases', 'revenue', 'roas'];
     const showSales = filters.includes('purchases');
     const showRevenue = filters.includes('revenue');
+    const showRoas = filters.includes('roas');
 
     const chartData = ad.dailySeries?.map(d => ({
       ...d,
@@ -313,7 +314,12 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                   label="Revenue" 
                   onClick={() => toggleChartMetric(ad.id, 'revenue')}
                 />
-                <LegendItem color="#f97316" label="ROAS" />
+                <LegendButton 
+                  active={showRoas} 
+                  color="#f97316" 
+                  label="ROAS" 
+                  onClick={() => toggleChartMetric(ad.id, 'roas')}
+                />
              </div>
 
              <div className="flex-1 w-full min-h-0">
@@ -340,6 +346,9 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     )}
                     {showSales && (
                       <Area type="monotone" dataKey="purchases" stroke="#3b82f6" strokeWidth={1.5} fill={`url(#gP-${ad.id})`} dot={false} />
+                    )}
+                    {showRoas && (
+                      <Area type="monotone" dataKey="roas" stroke="#f97316" strokeWidth={1} dot={false} strokeDasharray="3 3" />
                     )}
                   </AreaChart>
                </ResponsiveContainer>

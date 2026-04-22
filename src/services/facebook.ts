@@ -267,136 +267,65 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
 
   // Fetch thumbnails and previews
   for (const ad of ads) {
-    // Paso 0: Llamada inicial (v19) - Añadimos campos de catálogo/template y 'picture' como fallback universal
-    const adRes: any = await new Promise((resolve) => {
-      window.FB.api(`/${ad.id}`, 'GET', {
-        fields: 'creative{id,image_url,image_hash,thumbnail_url,object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id,instagram_story_id,template_data},picture'
-      }, (res: any) => resolve(res));
-    });
+    try {
+      // 1. Obtenemos creativo + picture del Ad as fallback
+      const adRes: any = await new Promise((resolve) => {
+        window.FB.api(`/${ad.id}`, 'GET', {
+          fields: 'creative{id,image_url,thumbnail_url,object_story_spec,asset_feed_spec,video_id,instagram_story_id,template_data},picture'
+        }, (res: any) => resolve(res));
+      });
 
-    if (adRes && !adRes.error) {
-      const creative = adRes.creative || {};
-      let thumb = null;
-      
-      // Prioridad 0: Catálogos/DPA (Whisky A fix)
-      const dSource = creative.template_data?.child_attachments?.[0] || 
-                      creative.object_story_spec?.template_data?.child_attachments?.[0] ||
-                      creative.asset_feed_spec?.child_attachments?.[0] ||
-                      creative.template_data?.multi_share_node_items?.[0] ||
-                      creative.object_story_spec?.template_data?.multi_share_node_items?.[0];
-      
-      if (dSource) {
-        thumb = dSource.image_url || dSource.thumbnail_url || dSource.picture;
-      }
+      if (adRes && !adRes.error) {
+        const creative = adRes.creative || {};
+        
+        // 1. Prioridad: Catálogos/DPA
+        const dSource = creative.template_data?.child_attachments?.[0] || 
+                        creative.object_story_spec?.template_data?.child_attachments?.[0] ||
+                        creative.asset_feed_spec?.child_attachments?.[0] ||
+                        creative.template_data?.multi_share_node_items?.[0] ||
+                        creative.object_story_spec?.template_data?.multi_share_node_items?.[0];
+        
+        let thumb = dSource ? (dSource.image_url || dSource.thumbnail_url || dSource.picture) : null;
 
-      // El fallback base (image_url > thumbnail_url > picture del Ad)
-      const baseThumb = creative.image_url || creative.thumbnail_url || adRes.picture;
-      if (!thumb) thumb = baseThumb;
-
-      // Limpiador seguro para escalar URLs de Meta/IG
-      const upgradeUrl = (url: string) => {
-        if (!url || typeof url !== 'string') return url;
-        if (url.includes('safe_image.php')) return url;
-        // Solo intentamos mejorar si es un CDN conocido y tiene el patrón de tamaño
-        if (url.includes('fbcdn.net') && url.includes('/s') && url.includes('x')) {
-           return url.replace(/\/s\d+x\d+\//g, '/s1080x1080/');
-        }
-        return url;
-      };
-
-      // Paso 1: Instagram Native Display Resources
-      const stId = creative.instagram_story_id || creative.effective_object_story_id || creative.object_story_id;
-      if (stId && (!thumb || thumb.includes('safe_image.php'))) {
-        try {
-          const mNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${stId}`, 'GET', { 
-              fields: 'display_url,display_resources,full_picture' 
-            }, (res: any) => resolve(res));
+        // 2. Prioridad: Video/Reels (Mejor miniatura disponible)
+        const vidId = creative.video_id || creative.object_story_spec?.video_data?.video_id || creative.asset_feed_spec?.videos?.[0]?.video_id;
+        if (!thumb && vidId) {
+          const vNode: any = await new Promise((resolve) => {
+            window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,thumbnails{uri,width,height}' }, (res: any) => resolve(res));
           });
-          
-          if (mNode) {
-            let igBest = null;
-            if (mNode.display_resources?.length > 0) {
-              let maxWidth = 0;
-              mNode.display_resources.forEach((r: any) => {
-                if (r.config_width > maxWidth) {
-                  maxWidth = r.config_width;
-                  igBest = r.src;
+          if (vNode && !vNode.error) {
+            thumb = vNode.picture;
+            if (vNode.thumbnails?.data) {
+              let maxArea = 0;
+              vNode.thumbnails.data.forEach((t: any) => {
+                const area = (t.width || 0) * (t.height || 0);
+                if (area > maxArea) {
+                  maxArea = area;
+                  thumb = t.uri;
                 }
               });
             }
-            const rawIG = igBest || mNode.display_url || mNode.full_picture;
-            if (rawIG && !rawIG.includes('safe_image.php')) {
-               thumb = upgradeUrl(rawIG);
-            }
           }
-        } catch (e) {}
-      }
-
-      // Paso 2: Brute Force de Hashes profundos
-      if (!thumb || thumb.includes('safe_image.php')) {
-        const hashes = new Set<string>();
-        const recursiveScan = (obj: any) => {
-          if (!obj || typeof obj !== 'object') return;
-          ['image_hash', 'hash', 'thumbnail_hash'].forEach(k => {
-            if (typeof obj[k] === 'string' && obj[k].length >= 30) hashes.add(obj[k]);
-          });
-          Object.values(obj).forEach(recursiveScan);
-        };
-        recursiveScan(creative);
-
-        if (hashes.size > 0) {
-          try {
-            const imgRes: any = await new Promise((resolve) => {
-              window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: Array.from(hashes), fields: 'url' }, (res: any) => resolve(res));
-            });
-            if (imgRes?.data?.length > 0) {
-              const bestImg = imgRes.data.find((d: any) => d.url && !d.url.includes('safe_image.php'))?.url || imgRes.data[0].url;
-              thumb = upgradeUrl(bestImg);
-            }
-          } catch (e) {}
         }
+
+        // 3. Fallback: Imagen básica
+        if (!thumb || thumb.includes('safe_image.php')) {
+          thumb = creative.image_url || creative.thumbnail_url || adRes.picture;
+        }
+
+        ad.thumbnail = thumb || null;
       }
 
-      // Paso 3: Video Engine (Scan de Miniaturas Originales) - Clave para Reels
-      const vidId = creative.video_id || creative.object_story_spec?.video_data?.video_id || creative.asset_feed_spec?.videos?.[0]?.video_id;
-      if (vidId && (!thumb || thumb.includes('safe_image.php'))) {
-        try {
-          const vNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,thumbnails.limit(25){uri,width,height}' }, (res: any) => resolve(res));
-          });
-          if (vNode) {
-            let vBest = vNode.picture;
-            let vArea = 0;
-            vNode.thumbnails?.data?.forEach((t: any) => {
-              const area = (t.width || 0) * (t.height || 0);
-              if (area > vArea) {
-                vArea = area;
-                vBest = t.uri;
-              }
-            });
-            thumb = upgradeUrl(vBest || vNode.picture);
-          }
-        } catch (e) {}
+      // Preview URL
+      const prevRes: any = await new Promise((resolve) => {
+        window.FB.api(`/${ad.id}/previews`, 'GET', { ad_format: 'DESKTOP_FEED_STANDARD' }, (res: any) => resolve(res));
+      });
+      if (prevRes && !prevRes.error && prevRes.data?.[0]) {
+        const iframeMatch = prevRes.data[0].body.match(/src="([^"]+)"/);
+        if (iframeMatch) ad.previewUrl = iframeMatch[1].replace(/&amp;/g, '&');
       }
-
-      // Paso 4: Final Fallback
-      if (!thumb || thumb.includes('safe_image.php')) {
-        thumb = upgradeUrl(baseThumb);
-      }
-      
-      ad.thumbnail = thumb || null;
-    }
-
-    const prevRes: any = await new Promise((resolve) => {
-      window.FB.api(`/${ad.id}/previews`, 'GET', {
-        ad_format: 'DESKTOP_FEED_STANDARD',
-      }, (res: any) => resolve(res));
-    });
-
-    if (prevRes && !prevRes.error && prevRes.data && prevRes.data.length) {
-      const iframeMatch = prevRes.data[0].body.match(/src="([^"]+)"/);
-      if (iframeMatch) ad.previewUrl = iframeMatch[1].replace(/&amp;/g, '&');
+    } catch (e) {
+      console.error("Error fetching ad data:", ad.id, e);
     }
   }
 
