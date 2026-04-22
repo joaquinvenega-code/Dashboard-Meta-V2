@@ -227,19 +227,22 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
   };
 }
 
-// v4.3 - MOTOR DE RESOLUCIÓN POR BLOQUES (FIX VIDEO + AGGRESSIVE SEARCH)
+// v4.4 - MOTOR DE RESOLUCIÓN POR BLOQUES (ULTRA HD REELS & CATALOG)
 const upgradeToHD = (url: string | null) => {
   if (!url) return null;
   // Preservamos URLs con firmas de seguridad (_o, _n) para evitar 403 Forbidden
   if (url.includes('_o.jpg') || url.includes('_n.jpg') || url.includes('s1080x1080')) return url;
+  
   if (url.includes('fbcdn.net') || url.includes('instagram.com')) {
-    return url.replace(/\/[sp]\d+x\d+\//, '/s1080x1080/');
+    // Reemplazamos patrones de tamaño común en FB e IG (s100x100, p480x480, s640x640, etc)
+    return url.replace(/\/[sp]\d+x\d+\//, '/s1080x1080/')
+              .replace(/\/s\d+x\d+\//, '/s1080x1080/');
   }
   return url;
 };
 
 export async function fetchTopAds(accountId: string, since: string, until: string, n: number, sortBy: string): Promise<Ad[]> {
-  console.info("%c*** [TopAds] V4.3 ENGINE ACTIVE - FIX VIDEO + REELS ***", "color: #00ff00; font-weight: bold; font-size: 12px;");
+  console.info("%c*** [TopAds] V4.4 ENGINE ACTIVE - ULTRA HD REELS + CATALOG ***", "color: #00ff00; font-weight: bold; font-size: 12px;");
   console.log(`[TopAds] Fetching account: ${accountId}`);
   const time_range = JSON.stringify({ since, until });
 
@@ -308,7 +311,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           adType = "publicacion_redes";
           const storyId = creative.effective_object_story_id;
           const storyNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,attachments{media{image{src,height,width}},subattachments{media{image{src,height,width}}},display_resources}' }, (res: any) => resolve(res));
+            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,thumbnail_url,attachments{media{image{src,height,width}},subattachments{media{image{src,height,width}}},display_resources}' }, (res: any) => resolve(res));
           });
           if (storyNode && !storyNode.error) {
             if (storyNode.display_resources && Array.isArray(storyNode.display_resources)) {
@@ -322,7 +325,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               allMedia.sort((a, b) => (b.width * b.height) - (a.width * a.height));
               thumb = allMedia[0]?.src || null;
             }
-            thumb = thumb || storyNode.full_picture;
+            thumb = thumb || storyNode.thumbnail_url || storyNode.full_picture;
             if (thumb) winningStep = "story node scan";
           }
         }
