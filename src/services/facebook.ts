@@ -227,24 +227,25 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
   };
 }
 
-// v4.5 - MOTOR DE RESOLUCIÓN POR BLOQUES (ULTRA HD REELS, CATALOG & CACHE-BUSTER)
+// v4.6 - MOTOR DE RESOLUCIÓN POR BLOQUES (ULTRA SHARP, CATALOG RESCUE & AMARILLO NEON)
 const upgradeToHD = (url: string | null) => {
   if (!url) return null;
   // Preservamos URLs con firmas de seguridad (_o, _n) para evitar 403 Forbidden
   if (url.includes('_o.jpg') || url.includes('_n.jpg') || url.includes('s1080x1080')) return url;
   
   if (url.includes('fbcdn.net') || url.includes('instagram.com')) {
-    // Reemplazamos patrones de tamaño común en FB e IG (s100x100, p480x480, s640x640, etc)
+    // Reemplazamos patrones de tamaño común en FB e IG
     return url.replace(/\/[sp]\d+x\d+\//, '/s1080x1080/')
               .replace(/\/s\d+x\d+\//, '/s1080x1080/')
-              .replace(/\/p\d+x\d+\//, '/s1080x1080/');
+              .replace(/\/p\d+x\d+\//, '/s1080x1080/')
+              .replace(/_s\.jpg/, '_o.jpg'); // Intento de forzar original
   }
   return url;
 };
 
 export async function fetchTopAds(accountId: string, since: string, until: string, n: number, sortBy: string): Promise<Ad[]> {
-  const cacheBuster = Math.floor(Math.random() * 1000);
-  console.info(`%c*** [TopAds] V4.5 ENGINE ACTIVE (#${cacheBuster}) - REELS & CATALOG FIX ***`, "color: #ff00ff; font-weight: bold; font-size: 14px; text-shadow: 1px 1px 0px #000;");
+  const buster = Math.floor(Math.random() * 9000) + 1000;
+  console.info(`%c*** [TopAds] V4.6 ENGINE ACTIVE (#${buster}) - ULTRA SHARP FIX ***`, "color: #ffff00; font-weight: bold; font-size: 14px; background: #000; padding: 4px; border: 1px solid #ffff00;");
   console.log(`[TopAds] Fetching account: ${accountId}`);
   const time_range = JSON.stringify({ since, until });
 
@@ -341,16 +342,16 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           // Sub-intento A: Nodo de video
           if (vidId) {
             const vidNode: any = await new Promise((resolve) => {
-              window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,format' }, (res: any) => resolve(res));
+              window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,format,thumbnail_url' }, (res: any) => resolve(res));
             });
             if (vidNode && !vidNode.error) {
               if (Array.isArray(vidNode.format)) {
                 const sorted = [...vidNode.format].sort((a,b) => (b.width * b.height) - (a.width * a.height));
                 thumb = sorted[0]?.picture || vidNode.picture;
               } else {
-                thumb = vidNode.picture;
+                thumb = vidNode.thumbnail_url || vidNode.picture;
               }
-              if (thumb) winningStep = "video node high-res";
+              if (thumb) winningStep = "video node high-res match";
             }
           }
           // Sub-intento B: Metadata del creativo (Muy común en Reels/Videos directos)
@@ -360,10 +361,10 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               const imgNode: any = await new Promise((resolve) => {
                 window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: [vHash], fields: 'url' }, (res: any) => resolve(res));
               });
-              thumb = imgNode?.data?.[0]?.url;
+              if (imgNode?.data?.[0]?.url) thumb = imgNode.data[0].url;
             }
             thumb = thumb || spec.video_data?.image_url || creative.image_url || creative.thumbnail_url;
-            if (thumb) winningStep = "video metadata / creative roots";
+            if (thumb) winningStep = "video metadata/hash rescue";
           }
         }
 
@@ -393,10 +394,13 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               const imgNode: any = await new Promise((resolve) => {
                 window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: [cHash], fields: 'url' }, (res: any) => resolve(res));
               });
-              thumb = imgNode?.data?.[0]?.url;
+              // Solo sobreescribimos si realmente obtuvimos una URL válida para no dejarlo en blanco
+              if (imgNode?.data?.[0]?.url) {
+                thumb = imgNode.data[0].url;
+              }
             }
-            thumb = thumb || firstChild.image_url || firstChild.picture || spec.link_data?.picture;
-            if (thumb) winningStep = "catalog child/hash resolution";
+            thumb = thumb || firstChild.image_url || firstChild.picture || spec.link_data?.picture || creative.image_url;
+            if (thumb) winningStep = "catalog rescue/hash stabilized";
           }
         }
 
