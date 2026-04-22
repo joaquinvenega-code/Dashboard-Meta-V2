@@ -268,10 +268,10 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
   // Helper para subir resolución a 1080p de forma segura
   const upgradeToHD = (url: string | null) => {
     if (!url) return null;
-    // Solo tocamos URLs de contenido de FB/IG que conocemos
+    // Solo tocamos URLs de contenido de FB/IG que sabemos que soportan el escalado por path
     if (url.includes('fbcdn.net') || url.includes('instagram.com')) {
       return url
-        .replace(/\/[sp]\d+x\d+\//, '/s1080x1080/') // Cambia s100x100 a s1080x1080
+        .replace(/\/[sp]\d+x\d+\//, '/s1080x1080/') // Cambia s100x100 o similar a s1080x1080
         .replace(/_n\.jpg\?/, '_o.jpg?')           // Intenta versión original
         .replace(/_s\.jpg\?/, '_n.jpg?');          // Sube un nivel si es small
     }
@@ -293,11 +293,16 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         const creative = adRes.creative;
 
         // PASO 1: Resolver por image_hash (Fuente de MEJOR calidad - CDN Original)
-        // Buscamos el hash en el creativo principal o en las specs anidadas
+        // Buscamos el hash en el creativo principal o en las specs anidadas (incluyendo carruseles)
         const hash = creative.image_hash || 
                      creative.object_story_spec?.photo_data?.image_hash ||
                      creative.object_story_spec?.video_data?.image_hash ||
-                     creative.asset_feed_spec?.images?.[0]?.hash;
+                     creative.asset_feed_spec?.images?.[0]?.hash ||
+                     // Carruseles manuales
+                     creative.object_story_spec?.link_data?.child_attachments?.[0]?.image_hash ||
+                     // Carruseles/Catálogos dinámicos
+                     creative.asset_feed_spec?.child_attachments?.[0]?.image_hash ||
+                     creative.template_data?.child_attachments?.[0]?.image_hash;
 
         if (hash) {
           const imgNode: any = await new Promise((resolve) => {
@@ -382,8 +387,8 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         }
       }
 
-      // Renderizado final del Ad
-      ad.thumbnail = thumb || null;
+      // Renderizado final del Ad con escalado HD
+      ad.thumbnail = upgradeToHD(thumb || null);
 
       // Preview URL (standard feed tracker)
       const prevRes: any = await new Promise((resolve) => {
