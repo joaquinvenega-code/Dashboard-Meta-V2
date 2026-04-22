@@ -265,22 +265,47 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
     .sort((a: any, b: any) => (b[sortKey] || 0) - (a[sortKey] || 0))
     .slice(0, n);
 
+  // Helper para subir resolución a 1080p de forma segura
+  const upgradeToHD = (url: string | null) => {
+    if (!url) return null;
+    // Solo tocamos URLs de contenido de FB/IG que conocemos
+    if (url.includes('fbcdn.net') || url.includes('instagram.com')) {
+      return url
+        .replace(/\/[sp]\d+x\d+\//, '/s1080x1080/') // Cambia s100x100 a s1080x1080
+        .replace(/_n\.jpg\?/, '_o.jpg?')           // Intenta versión original
+        .replace(/_s\.jpg\?/, '_n.jpg?');          // Sube un nivel si es small
+    }
+    return url;
+  };
+
   // Fetch thumbnails and previews
   for (const ad of ads) {
     try {
-      // 1. Llamada básica: creativo y miniatura estándar del Ad (fallback fuerte)
+      // 1. Llamada profunda: creativo con IDs de historia de objeto para IG
       const adRes: any = await new Promise((resolve) => {
         window.FB.api(`/${ad.id}`, 'GET', {
-          fields: 'creative{id,image_url,thumbnail_url,video_id,object_story_spec,asset_feed_spec,template_data},picture,thumbnail_url',
+          fields: 'creative{id,image_url,thumbnail_url,video_id,object_story_id,effective_object_story_id,object_story_spec,asset_feed_spec,template_data}',
         }, (res: any) => resolve(res));
       });
 
-      if (adRes && !adRes.error) {
-        const creative = adRes.creative || {};
-        // Prioridad 1: Imagen directa del Ad (la más estable aunque sea pixelada en reels)
-        let thumb = adRes.picture || adRes.thumbnail_url || creative.image_url || creative.thumbnail_url;
+      if (adRes && !adRes.error && adRes.creative) {
+        const creative = adRes.creative;
+        let thumb = creative.image_url || creative.thumbnail_url;
 
-        // Caso especial: Video/Reels (si la imagen del creativo es mala o no existe)
+        // --- REELS & IG FIX (HD via Display Resources) ---
+        const igId = creative.effective_object_story_id || creative.object_story_id;
+        if (igId && igId.includes('instagram')) {
+          const igMedia: any = await new Promise((resolve) => {
+            window.FB.api(`/${igId}`, 'GET', { fields: 'display_resources' }, (res: any) => resolve(res));
+          });
+          // Buscamos la versión de mayor resolución en display_resources
+          if (igMedia?.display_resources && Array.isArray(igMedia.display_resources)) {
+            const sorted = igMedia.display_resources.sort((a: any, b: any) => b.config_width - a.config_width);
+            thumb = sorted[0]?.src || thumb;
+          }
+        }
+
+        // --- VIDEO FALLBACK (Si no es IG o falló lo anterior) ---
         const vidId = creative.video_id || creative.object_story_spec?.video_data?.video_id || creative.asset_feed_spec?.videos?.[0]?.video_id;
         if ((!thumb || thumb.includes('safe_image.php')) && vidId) {
           const vNode: any = await new Promise((resolve) => {
@@ -289,7 +314,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           if (vNode?.picture) thumb = vNode.picture;
         }
 
-        // Caso especial: Catálogos (DPA)
+        // --- CATALOGS FALLBACK ---
         if (!thumb || thumb.includes('safe_image.php')) {
           const dSource = creative.template_data?.child_attachments?.[0] || 
                           creative.object_story_spec?.template_data?.child_attachments?.[0] ||
@@ -297,7 +322,8 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           if (dSource) thumb = dSource.image_url || dSource.thumbnail_url || dSource.picture;
         }
 
-        ad.thumbnail = thumb || null;
+        // Escalado inteligente final
+        ad.thumbnail = upgradeToHD(thumb || null);
       }
 
       // 2. Preview URL (Standard Feed)
