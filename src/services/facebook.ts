@@ -288,10 +288,10 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       let winningStep = "none";
       let adType = "desconocido";
 
-      // PASO 0: Llamada inicial con expansión controlada
+      // PASO 0: Llamada inicial con expansión controlada (SIN campos inexistentes que rompen la API)
       const adRes: any = await new Promise((resolve) => {
         window.FB.api(`/${ad.id}`, 'GET', {
-          fields: 'creative{id,image_url,image_hash,thumbnail_url.width(600).height(600),object_story_spec,asset_feed_spec,template_data,effective_object_story_id,video_id},thumbnail_url'
+          fields: 'creative{id,image_url,image_hash,object_story_spec,asset_feed_spec,template_data,effective_object_story_id,video_id}'
         }, (res: any) => resolve(res));
       });
 
@@ -404,13 +404,13 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         if (!thumb || thumb.includes('safe_image.php')) {
           thumb = spec.link_data?.picture || 
                   spec.photo_data?.url || 
-                  creative.image_url || 
-                  creative.thumbnail_url ||
-                  adRes.thumbnail_url;
-          if (thumb) winningStep = "emergency fallback (creative roots)";
+                  creative.image_url;
+          if (thumb) winningStep = "emergency fallback (creative specs)";
         }
 
-        console.log(`[TopAds][${adType.toUpperCase()}] Resolved Ad ${ad.id} via ${winningStep}`);
+        if (thumb) {
+          console.log(`[TopAds][${adType.toUpperCase()}] Resolved Ad ${ad.id} via ${winningStep}`);
+        }
       } else {
         console.warn(`[TopAds] Creative expansion failed for ${ad.id}:`, adRes?.error);
       }
