@@ -227,23 +227,19 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
   };
 }
 
-// v4.2 - MOTOR DE RESOLUCIÓN POR BLOQUES (FIX 403)
+// v4.3 - MOTOR DE RESOLUCIÓN POR BLOQUES (FIX VIDEO + AGGRESSIVE SEARCH)
 const upgradeToHD = (url: string | null) => {
   if (!url) return null;
-  
-  // Si la URL ya parece ser de alta resolución (tiene _o, _n o s1080) no la tocamos
-  // Tocar la firma (oh, oe) de Meta suele causar el error 403 Forbidden
+  // Preservamos URLs con firmas de seguridad (_o, _n) para evitar 403 Forbidden
   if (url.includes('_o.jpg') || url.includes('_n.jpg') || url.includes('s1080x1080')) return url;
-
   if (url.includes('fbcdn.net') || url.includes('instagram.com')) {
-    // Solo reemplazamos patrones de tamaño pequeño (s100x100, p60x60, etc)
     return url.replace(/\/[sp]\d+x\d+\//, '/s1080x1080/');
   }
   return url;
 };
 
 export async function fetchTopAds(accountId: string, since: string, until: string, n: number, sortBy: string): Promise<Ad[]> {
-  console.info("%c*** [TopAds] V4.2 ENGINE ACTIVE - BLOQUES AISLADOS + FIX 403 ***", "color: #00ff00; font-weight: bold; font-size: 12px;");
+  console.info("%c*** [TopAds] V4.3 ENGINE ACTIVE - FIX VIDEO + REELS ***", "color: #00ff00; font-weight: bold; font-size: 12px;");
   console.log(`[TopAds] Fetching account: ${accountId}`);
   const time_range = JSON.stringify({ since, until });
 
@@ -284,24 +280,20 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
     .sort((a: any, b: any) => (b[sortKey] || 0) - (a[sortKey] || 0))
     .slice(0, n);
 
-  // Procesamiento de miniaturas por bloques aislados
   for (const ad of ads) {
     try {
       let thumb: string | null = null;
       let winningStep = "none";
       let adType = "desconocido";
 
-      // PASO 0: Llamada inicial con expansión controlada (v4.2 - ULTRA ESTABLE)
-      // Removemos template_data porque causa Error #100 en muchos anuncios
+      // PASO 0: Llamada inicial (v4.3 - Reforzamos campos de video y thumbnails)
       let adRes: any = await new Promise((resolve) => {
         window.FB.api(`/${ad.id}`, 'GET', {
-          fields: 'creative{id,image_url,image_hash,object_story_spec,asset_feed_spec,effective_object_story_id,video_id}'
+          fields: 'creative{id,image_url,image_hash,thumbnail_url,object_story_spec,asset_feed_spec,effective_object_story_id,video_id}'
         }, (res: any) => resolve(res));
       });
 
-      // MODO RESCATE: Si la llamada profunda falla (#100), intentamos una mínima para no perder visibilidad
       if (!adRes || adRes.error) {
-        console.warn(`[TopAds] Paso 0 falló para ${ad.id}, entrando en Modo Rescate...`);
         adRes = await new Promise((resolve) => {
           window.FB.api(`/${ad.id}`, 'GET', { fields: 'creative{id,image_url,thumbnail_url}' }, (res: any) => resolve(res));
         });
@@ -311,16 +303,13 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         const creative = adRes.creative;
         const spec = creative.object_story_spec || {};
 
-        // BLOQUE 3: Posteos de Redes / Reels (vía effective_object_story_id)
+        // BLOQUE 3: Posteos de Redes / Reels
         if (!thumb && creative.effective_object_story_id) {
           adType = "publicacion_redes";
           const storyId = creative.effective_object_story_id;
           const storyNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${storyId}`, 'GET', { 
-              fields: 'full_picture,attachments{media{image{src,height,width}},subattachments{media{image{src,height,width}}},display_resources}' 
-            }, (res: any) => resolve(res));
+            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,attachments{media{image{src,height,width}},subattachments{media{image{src,height,width}}},display_resources}' }, (res: any) => resolve(res));
           });
-
           if (storyNode && !storyNode.error) {
             if (storyNode.display_resources && Array.isArray(storyNode.display_resources)) {
               const sorted = [...storyNode.display_resources].sort((a,b) => (b.config_width || 0) - (a.config_width || 0));
@@ -328,40 +317,50 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             }
             if (!thumb && storyNode.attachments?.data) {
               const allMedia: any[] = [];
-              const scan = (items: any[]) => items.forEach(i => {
-                if (i.media?.image) allMedia.push(i.media.image);
-                if (i.subattachments?.data) scan(i.subattachments.data);
-              });
+              const scan = (it: any[]) => it.forEach(i => { if (i.media?.image) allMedia.push(i.media.image); if (i.subattachments?.data) scan(i.subattachments.data); });
               scan(storyNode.attachments.data);
               allMedia.sort((a, b) => (b.width * b.height) - (a.width * a.height));
               thumb = allMedia[0]?.src || null;
             }
             thumb = thumb || storyNode.full_picture;
-            if (thumb) winningStep = `story block (${storyId})`;
+            if (thumb) winningStep = "story node scan";
           }
         }
 
-        // BLOQUE 2: Videos (vía video node)
+        // BLOQUE 2: Videos (Búsqueda agresiva en nodo y metadata)
         if (!thumb && (creative.video_id || spec.video_data)) {
           adType = "video";
           const vidId = creative.video_id || spec.video_data?.video_id;
+          // Sub-intento A: Nodo de video
           if (vidId) {
             const vidNode: any = await new Promise((resolve) => {
               window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,format' }, (res: any) => resolve(res));
             });
             if (vidNode && !vidNode.error) {
               if (Array.isArray(vidNode.format)) {
-                const sorted = [...vidNode.format].sort((a, b) => (b.width * b.height) - (a.width * a.height));
+                const sorted = [...vidNode.format].sort((a,b) => (b.width * b.height) - (a.width * a.height));
                 thumb = sorted[0]?.picture || vidNode.picture;
               } else {
                 thumb = vidNode.picture;
               }
-              if (thumb) winningStep = `video node high-res (${vidId})`;
+              if (thumb) winningStep = "video node high-res";
             }
+          }
+          // Sub-intento B: Metadata del creativo (Muy común en Reels/Videos directos)
+          if (!thumb) {
+            const vHash = spec.video_data?.image_hash;
+            if (vHash) {
+              const imgNode: any = await new Promise((resolve) => {
+                window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: [vHash], fields: 'url' }, (res: any) => resolve(res));
+              });
+              thumb = imgNode?.data?.[0]?.url;
+            }
+            thumb = thumb || spec.video_data?.image_url || creative.image_url || creative.thumbnail_url;
+            if (thumb) winningStep = "video metadata / creative roots";
           }
         }
 
-        // BLOQUE 4: Anuncios Flexibles (Asset Feed)
+        // BLOQUE 4: Anuncios Flexibles
         if (!thumb && creative.asset_feed_spec) {
           adType = "flexible";
           const afs = creative.asset_feed_spec;
@@ -373,10 +372,10 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             thumb = imgNode?.data?.[0]?.url;
           }
           thumb = thumb || afs.images?.[0]?.url || afs.videos?.[0]?.thumbnail_url;
-          if (thumb) winningStep = "asset_feed_spec block";
+          if (thumb) winningStep = "asset_feed_spec scan";
         }
 
-        // BLOQUE 5: Catálogos / DPA (vía template_data dentro de spec)
+        // BLOQUE 5: Catálogos / DPA
         const td = creative.template_data || spec.template_data;
         if (!thumb && td) {
           adType = "catalogo";
@@ -389,48 +388,36 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               thumb = imgNode?.data?.[0]?.url;
             }
             thumb = thumb || firstChild.image_url || firstChild.picture;
-            if (thumb) winningStep = "catalogo template_data block";
+            if (thumb) winningStep = "catalog child_attachment";
           }
         }
 
-        // BLOQUE 1: Imagen Estática / Carrusel Manual
+        // BLOQUE 1: Imagen Estática / Manual
         if (!thumb) {
           adType = adType === "desconocido" ? "imagen_estatica" : adType;
-          const hashList = [
-            creative.image_hash,
-            spec.photo_data?.image_hash,
-            spec.link_data?.image_hash,
-            spec.link_data?.child_attachments?.[0]?.image_hash
-          ].filter(Boolean);
-
+          const hashList = [creative.image_hash, spec.photo_data?.image_hash, spec.link_data?.image_hash, spec.link_data?.child_attachments?.[0]?.image_hash].filter(Boolean);
           if (hashList.length > 0) {
             const imgNode: any = await new Promise((resolve) => {
               window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: [hashList[0] as string], fields: 'url' }, (res: any) => resolve(res));
             });
             thumb = imgNode?.data?.[0]?.url;
-            if (thumb) winningStep = `hash resolution (${hashList[0]})`;
+            if (thumb) winningStep = "static hash resolution";
           }
         }
 
-        // --- FALLBACK FINAL PARA CUALQUIER FORMATO ---
+        // FALLBACK FINAL
         if (!thumb || thumb.includes('safe_image.php')) {
-          thumb = spec.link_data?.picture || 
-                  spec.photo_data?.url || 
-                  creative.image_url ||
-                  adRes.thumbnail_url;
-          if (thumb) winningStep = "emergency fallback (creative roots)";
+          thumb = spec.link_data?.picture || spec.photo_data?.url || creative.image_url || creative.thumbnail_url;
+          if (thumb) winningStep = "emergency deep fallback";
         }
 
         if (thumb) {
           console.log(`[TopAds][${adType.toUpperCase()}] Resolved Ad ${ad.id} via ${winningStep}`);
         }
-      } else {
-        console.warn(`[TopAds] Failed to resolve creative for ${ad.id} even in Rescue Mode.`);
       }
 
       ad.thumbnail = upgradeToHD(thumb);
 
-      // Previews
       const prevRes: any = await new Promise((resolve) => {
         window.FB.api(`/${ad.id}/previews`, 'GET', { ad_format: 'DESKTOP_FEED_STANDARD' }, (res: any) => resolve(res));
       });
@@ -439,7 +426,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         if (iframeMatch) ad.previewUrl = iframeMatch[1].replace(/&amp;/g, '&');
       }
     } catch (err) {
-      console.error(`[TopAds] Error processing ad ${ad.id}:`, err);
+      console.error(`[TopAds] Error processing Ad ${ad.id}:`, err);
     }
   }
 
