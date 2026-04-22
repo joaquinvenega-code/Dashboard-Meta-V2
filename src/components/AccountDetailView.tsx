@@ -381,13 +381,15 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
           <div className="xl:col-span-2 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0 print:flex print:items-center print:justify-center print:border-none print:ml-1">
             <a 
-              href={ad.previewUrl || '#'} 
+              href={ad.previewUrl} 
               target="_blank" 
               rel="noopener noreferrer"
-              className={`flex flex-col items-center gap-1 group/link transition-all ${!ad.previewUrl && 'pointer-events-none opacity-20'} print:opacity-100 print:grayscale-0 print:bg-blue-600 print:px-3 print:py-2 print:rounded-lg print:shadow-md`}
+              className={`flex flex-col items-center gap-1 group/link transition-all ${!ad.previewUrl ? 'pointer-events-none opacity-20' : 'cursor-pointer'} print:opacity-100 print:grayscale-0 print:bg-blue-600 print:px-3 print:py-2 print:rounded-lg print:shadow-md print:block print:w-full print:text-center print:cursor-pointer`}
+              style={{ display: 'flex', textDecoration: 'none' }}
+              id={`ad-link-${ad.id}`}
             >
-              <ArrowUpRight className="w-4 h-4 text-neutral-600 group-hover/link:text-white print:text-white" />
-              <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover/link:text-neutral-400 whitespace-nowrap print:text-white print:text-[7px]">Ver anuncio</span>
+              <ArrowUpRight className="w-4 h-4 text-neutral-600 group-hover/link:text-white print:text-white print:mx-auto" />
+              <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover/link:text-neutral-400 whitespace-nowrap print:text-white print:text-[7px] print:block print:w-full">Ver anuncio</span>
             </a>
           </div>
         </div>
@@ -663,7 +665,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
                   {/* Print Version of Observations */}
                   {observations && (
-                    <div className="hidden print:block space-y-2 mb-8">
+                    <div className="hidden print:block space-y-2 mb-10">
                       <div className="flex items-center gap-2 mb-2">
                         <FileText className="w-4 h-4 text-blue-600" />
                         <h3 className="text-xs font-black text-neutral-900 uppercase tracking-widest border-b-2 border-blue-600 pb-0.5">

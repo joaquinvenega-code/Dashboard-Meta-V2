@@ -287,8 +287,11 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
     .slice(0, n);
 
   for (const ad of ads) {
-    try {
-      let thumb: string | null = null;
+      // BASELINE: Link garantizado a la biblioteca de anuncios (NUNCA estará vacío para el PDF)
+      ad.previewUrl = `https://www.facebook.com/ads/library/?id=${ad.id}`;
+
+      try {
+        let thumb: string | null = null;
       let winningStep = "none";
       let adType = "desconocido";
 
