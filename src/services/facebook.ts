@@ -288,12 +288,21 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       let winningStep = "none";
       let adType = "desconocido";
 
-      // PASO 0: Llamada inicial con expansión controlada (SIN campos inexistentes que rompen la API)
-      const adRes: any = await new Promise((resolve) => {
+      // PASO 0: Llamada inicial con expansión controlada (v4.2 - ULTRA ESTABLE)
+      // Removemos template_data porque causa Error #100 en muchos anuncios
+      let adRes: any = await new Promise((resolve) => {
         window.FB.api(`/${ad.id}`, 'GET', {
-          fields: 'creative{id,image_url,image_hash,object_story_spec,asset_feed_spec,template_data,effective_object_story_id,video_id}'
+          fields: 'creative{id,image_url,image_hash,object_story_spec,asset_feed_spec,effective_object_story_id,video_id}'
         }, (res: any) => resolve(res));
       });
+
+      // MODO RESCATE: Si la llamada profunda falla (#100), intentamos una mínima para no perder visibilidad
+      if (!adRes || adRes.error) {
+        console.warn(`[TopAds] Paso 0 falló para ${ad.id}, entrando en Modo Rescate...`);
+        adRes = await new Promise((resolve) => {
+          window.FB.api(`/${ad.id}`, 'GET', { fields: 'creative{id,image_url,thumbnail_url}' }, (res: any) => resolve(res));
+        });
+      }
 
       if (adRes && !adRes.error && adRes.creative) {
         const creative = adRes.creative;
@@ -364,11 +373,11 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           if (thumb) winningStep = "asset_feed_spec block";
         }
 
-        // BLOQUE 5: Catálogos / DPA
-        if (!thumb && (creative.template_data || spec.template_data)) {
+        // BLOQUE 5: Catálogos / DPA (vía template_data dentro de spec)
+        const td = creative.template_data || spec.template_data;
+        if (!thumb && td) {
           adType = "catalogo";
-          const td = creative.template_data || spec.template_data;
-          const firstChild = td?.child_attachments?.[0];
+          const firstChild = td.child_attachments?.[0];
           if (firstChild) {
             if (firstChild.image_hash) {
               const imgNode: any = await new Promise((resolve) => {
@@ -404,15 +413,16 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         if (!thumb || thumb.includes('safe_image.php')) {
           thumb = spec.link_data?.picture || 
                   spec.photo_data?.url || 
-                  creative.image_url;
-          if (thumb) winningStep = "emergency fallback (creative specs)";
+                  creative.image_url ||
+                  adRes.thumbnail_url;
+          if (thumb) winningStep = "emergency fallback (creative roots)";
         }
 
         if (thumb) {
           console.log(`[TopAds][${adType.toUpperCase()}] Resolved Ad ${ad.id} via ${winningStep}`);
         }
       } else {
-        console.warn(`[TopAds] Creative expansion failed for ${ad.id}:`, adRes?.error);
+        console.warn(`[TopAds] Failed to resolve creative for ${ad.id} even in Rescue Mode.`);
       }
 
       ad.thumbnail = upgradeToHD(thumb);
