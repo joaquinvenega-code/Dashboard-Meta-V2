@@ -333,34 +333,40 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       }
 
       // Paso 3: Nodo Video (picture/format)
-      if (!thumb && creative.video_id) {
+      const vid = creative.video_id || 
+                  creative.object_story_spec?.video_data?.video_id || 
+                  creative.asset_feed_spec?.videos?.[0]?.video_id;
+
+      if (!thumb && vid) {
         try {
           const videoNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${creative.video_id}`, 'GET', { fields: 'picture,format' }, (res: any) => resolve(res));
+            window.FB.api(`/${vid}`, 'GET', { fields: 'picture,format' }, (res: any) => resolve(res));
           });
           if (videoNode) {
-            let bestFormatThumb = videoNode.picture;
+            let bestVideoThumb = videoNode.picture;
             if (Array.isArray(videoNode.format)) {
-              const sorted = [...videoNode.format]
+              // Filtrar formatos que tengan picture y ordenar por área (ancho x alto)
+              const sortedFormats = [...videoNode.format]
                 .filter(f => f.picture)
                 .sort((a, b) => (b.width || 0) * (b.height || 0) - (a.width || 0) * (a.height || 0));
-              if (sorted[0]?.picture) bestFormatThumb = sorted[0].picture;
+              if (sortedFormats[0]?.picture) bestVideoThumb = sortedFormats[0].picture;
             }
-            thumb = bestFormatThumb || thumb;
-            if (thumb) console.log(`[TopAds] Paso 3 - video ok: ${ad.name}`);
+            thumb = bestVideoThumb || thumb;
+            if (thumb) console.log(`[TopAds] Paso 3 - video ok (ID: ${vid}): ${ad.name}`);
           }
         } catch (e) {}
       }
 
-      // Paso 4: Metadatos profundos
-      if (!thumb) {
+      // Paso 4: Extracción manual de metadatos profundos (Handoff paths)
+      if (!thumb || thumb.includes('safe_image.php')) {
         thumb = 
-          creative.asset_feed_spec?.images?.[0]?.url ||
-          creative.asset_feed_spec?.videos?.[0]?.thumbnail_url ||
+          creative.object_story_spec?.video_data?.image_url ||
           creative.object_story_spec?.link_data?.picture ||
           creative.object_story_spec?.photo_data?.url ||
-          creative.object_story_spec?.video_data?.image_url ||
-          creative.image_url;
+          creative.asset_feed_spec?.images?.[0]?.url ||
+          creative.asset_feed_spec?.videos?.[0]?.thumbnail_url ||
+          creative.image_url ||
+          thumb;
       }
 
       // Paso 5: Fallback final
