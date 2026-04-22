@@ -315,18 +315,18 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
              </div>
           </div>
 
-          <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:flex-1 print:h-20 print:p-2 print:bg-transparent">
-             <div className="flex flex-wrap items-center gap-2 mb-2 shrink-0 print:gap-1 print:mb-1">
+          <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:flex-[1.8] print:h-28 print:p-0 print:bg-transparent print:border-none">
+             <div className="flex flex-wrap items-center gap-2 mb-2 shrink-0 print:gap-4 print:mb-2 print:justify-start print:pl-2">
                 <LegendButton 
                   active={showSales} 
                   color="#3b82f6" 
-                  label="Sales" 
+                  label="Ventas" 
                   onClick={() => toggleChartMetric(ad.id, 'purchases')}
                 />
                 <LegendButton 
                   active={showRevenue} 
                   color="#22c55e" 
-                  label="Revenue" 
+                  label="Ingresos" 
                   onClick={() => toggleChartMetric(ad.id, 'revenue')}
                 />
                 <LegendButton 
@@ -350,7 +350,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                         <stop offset="100%" stopColor="#22c55e" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <XAxis dataKey="formattedDate" hide />
+                    <XAxis 
+                      dataKey="formattedDate" 
+                      hide={false}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 6, fontWeight: 'bold', fill: '#999' }}
+                      className="print:block"
+                    />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px', padding: '6px', color: '#000' }}
                       itemStyle={{ fontSize: '8px', fontWeight: 'bold' }}
@@ -460,53 +467,49 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
         {selectedAccount ? (
           <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar animate-in fade-in slide-in-from-right-4 duration-500 print:overflow-visible print:pr-0 print:space-y-8">
             {/* Print Only Header (Agency Style) */}
-            <div className="hidden print:flex flex-col gap-6 border-b-2 border-neutral-900 pb-8 mb-10 text-black">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-5">
-                  <div className="w-16 h-16 bg-neutral-950 rounded-2xl flex items-center justify-center text-white shadow-2xl overflow-hidden border border-white/10">
-                    {/* Brand Icon Fallback */}
-                    <Instagram className="w-8 h-8" /> 
-                  </div>
-                  <div>
-                    <h1 className="text-3xl font-black tracking-tighter leading-none">
-                      {settings[selectedAccount.id]?.customName || selectedAccount.name}
-                    </h1>
-                    <div className="flex items-center gap-2 mt-2">
-                       <div className="h-0.5 w-8 bg-blue-600 rounded-full" />
-                       <p className="text-[10px] font-bold text-blue-600 uppercase tracking-[0.3em]">
-                        Informe Semanal de Rendimiento — Meta Ads
-                       </p>
-                    </div>
+            <div className="hidden print:flex flex-col gap-8 border-b-2 border-neutral-900 pb-10 mb-12 text-black pt-4">
+              <div className="flex flex-col items-center text-center gap-6">
+                <div className="w-20 h-20 bg-neutral-950 rounded-3xl flex items-center justify-center text-white shadow-2xl overflow-hidden border-2 border-neutral-900/10">
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neutral-800 to-black">
+                    <Instagram className="w-10 h-10 text-white" />
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">Fecha de Emisión</div>
-                  <div className="text-sm font-bold text-neutral-900">
-                    {format(new Date(), "dd 'de' MMMM, yyyy", { locale: es })}
+                
+                <div className="space-y-3">
+                  <h1 className="text-4xl font-black tracking-tight leading-none text-neutral-900">
+                    {settings[selectedAccount.id]?.customName || selectedAccount.name}
+                  </h1>
+                  <div className="flex flex-col items-center gap-3">
+                     <p className="text-[12px] font-black text-blue-600 uppercase tracking-[0.4em] bg-blue-50 px-4 py-1.5 rounded-full border border-blue-100">
+                      Informe Semanal de Rendimiento — Meta Ads
+                     </p>
                   </div>
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-8 border-t border-neutral-100 pt-6">
-                <div>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2">Periodo Analizado</div>
-                  <div className="flex items-center gap-2 text-sm font-bold bg-neutral-50 px-4 py-2 rounded-xl w-fit border border-neutral-100">
+              <div className="grid grid-cols-2 gap-12 border-t border-neutral-100 pt-8 mt-4">
+                <div className="flex flex-col gap-2">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Periodo Analizado</div>
+                  <div className="flex items-center gap-3 text-sm font-bold text-neutral-900">
                     <Calendar className="w-4 h-4 text-blue-600" />
                     <span>{dateRange.since} — {dateRange.until}</span>
                   </div>
                 </div>
-                <div className="text-right flex flex-col items-end justify-center">
-                   <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">Status</div>
-                   <div className="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full border border-green-100 italic text-[10px] font-bold">
-                     <Target className="w-3 h-3" />
-                     Reporte Verificado
+                <div className="text-right flex flex-col items-end gap-2">
+                   <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Status & Emisión</div>
+                   <div className="flex flex-col items-end gap-1">
+                     <div className="text-xs font-bold text-neutral-900">{format(new Date(), "dd 'de' MMMM, yyyy", { locale: es })}</div>
+                     <div className="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full border border-green-100 text-[10px] font-bold">
+                       <Target className="w-3 h-3" />
+                       Reporte Verificado
+                     </div>
                    </div>
                 </div>
               </div>
             </div>
 
             {/* Account Info Header */}
-            <div className="flex items-center justify-between print:mb-4">
+            <div className="flex items-center justify-between print:hidden">
               <div className="flex items-center gap-4">
                  <div className={`w-2 h-2 rounded-full ${selectedAccount.account_status === 1 ? 'bg-success shadow-[0_0_8px_rgba(34,197,94,0.3)]' : 'bg-neutral-800'} print:hidden`} />
                  <h2 className="text-xl font-black text-white tracking-tight uppercase opacity-90 print:text-black print:text-2xl">{settings[selectedAccount.id]?.customName || selectedAccount.name}</h2>
@@ -624,11 +627,11 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
                   {/* Print Version of Observations */}
                   {observations && (
-                    <div className="hidden print:block space-y-2 mb-6">
+                    <div className="hidden print:block space-y-2 mb-8">
                       <div className="flex items-center gap-2 mb-2">
                         <FileText className="w-4 h-4 text-blue-600" />
                         <h3 className="text-xs font-black text-neutral-900 uppercase tracking-widest border-b-2 border-blue-600 pb-0.5">
-                          Análisis y Conclusiones
+                          Observaciones
                         </h3>
                       </div>
                       <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-100 shadow-sm relative overflow-hidden print:bg-white print:p-0 print:border-none">
@@ -644,10 +647,16 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
             {/* Winners Section */}
             <div className="space-y-4 pb-20 print:pb-0">
-               <div className="flex items-center justify-between px-1 print:mb-6">
-                  <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest print:text-sm print:text-neutral-900 print:border-l-4 print:border-blue-600 print:pl-3">
-                    Creativos de Máximo Rendimiento
-                  </h3>
+               <div className="flex items-center justify-between px-1 print:mb-8 print:border-b-2 print:border-neutral-100 print:pb-2">
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest print:text-sm print:text-neutral-900 print:border-l-4 print:border-blue-600 print:pl-3">
+                      Anuncios de Mejor Rendimiento
+                    </h3>
+                    <div className="hidden print:flex items-center gap-2 px-2 py-0.5 bg-neutral-950 text-white rounded text-[8px] font-black uppercase tracking-widest">
+                      <TrendingUp className="w-3 h-3" />
+                      Ponderado por: {sortBy.toUpperCase()}
+                    </div>
+                  </div>
                   <div className="flex items-center gap-2 print:hidden">
                     <div className="flex items-center gap-2 bg-[#111] px-2 py-1 rounded border border-white/5">
                        <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest">Sort</span>
@@ -738,10 +747,10 @@ const LegendItem = ({ color, label }: { color: string; label: string }) => (
 const LegendButton = ({ color, label, active, onClick }: { color: string; label: string; active: boolean; onClick: () => void }) => (
   <button 
     onClick={onClick}
-    className={`flex items-center gap-2 transition-all ${active ? 'opacity-100' : 'opacity-20 grayscale'}`}
+    className={`flex items-center gap-2 transition-all ${active ? 'opacity-100' : 'opacity-20 grayscale'} print:opacity-100 print:grayscale-0`}
   >
-    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-    <span className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">{label}</span>
+    <div className="w-2 h-2 rounded-full print:w-3 print:h-3" style={{ backgroundColor: color }} />
+    <span className="text-[9px] font-black text-neutral-500 uppercase tracking-widest print:text-[8px] print:text-black print:font-black">{label}</span>
   </button>
 );
 
