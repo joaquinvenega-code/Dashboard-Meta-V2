@@ -267,20 +267,20 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
 
   // Fetch thumbnails and previews
   for (const ad of ads) {
-    // Paso 0: Llamada inicial - Pedimos campos a nivel AD y CREATIVE
+    // Paso 0: Llamada inicial (v19)
     const adRes: any = await new Promise((resolve) => {
       window.FB.api(`/${ad.id}`, 'GET', {
-        fields: 'thumbnail_url,creative{id,image_url,image_hash,thumbnail_url.width(1080).height(1080),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id,instagram_story_id}'
+        fields: 'creative{id,image_url,image_hash,thumbnail_url.width(1000).height(1000),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id,instagram_story_id}'
       }, (res: any) => resolve(res));
     });
 
     if (adRes && !adRes.error && adRes.creative) {
       const creative = adRes.creative;
       let thumb = null;
-      // Respaldo básico: El thumbnail_url del anuncio
-      const backupThumb = adRes.thumbnail_url || creative.image_url || creative.thumbnail_url;
+      // Respaldo básico garantizado
+      const baseThumb = creative.image_url || creative.thumbnail_url;
 
-      // Paso 1: Instagram Media & High-Res Story Assets (Prioridad para Isbella/Reels)
+      // Paso 1: Instagram/Reels Media node (Prioridad para Reels de Isbella)
       const stId = creative.instagram_story_id || creative.effective_object_story_id || creative.object_story_id;
       if (stId) {
         try {
@@ -290,11 +290,11 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             }, (res: any) => resolve(res));
           });
           if (mNode) {
-            // En Reels, display_url suele ser la versión HD de 1080p
+            // El display_url es el "Santo Grial" para Reels orgánicos
             const storyBest = mNode.display_url || mNode.media_url || mNode.thumbnail_url || mNode.full_picture || mNode.picture;
             if (storyBest && !storyBest.includes('safe_image.php')) {
               thumb = storyBest;
-              console.log(`[TopAds] Paso 1 - Story/IG HD OK: ${ad.name}`);
+              console.log(`[TopAds] Paso 1 ok (IG HD): ${ad.name}`);
             }
           }
         } catch (e) {}
@@ -312,6 +312,17 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         };
         recursiveScan(creative);
 
+        // También buscamos hashes en el Story Node
+        if (stId && hashes.size < 3) {
+          try {
+            const sHashNode: any = await new Promise((resolve) => {
+              window.FB.api(`/${stId}`, 'GET', { fields: 'image_hash,thumbnail_hash' }, (res: any) => resolve(res));
+            });
+            if (sHashNode?.image_hash) hashes.add(sHashNode.image_hash);
+            if (sHashNode?.thumbnail_hash) hashes.add(sHashNode.thumbnail_hash);
+          } catch (e) {}
+        }
+
         if (hashes.size > 0) {
           try {
             const imgRes: any = await new Promise((resolve) => {
@@ -319,7 +330,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             });
             if (imgRes?.data?.length > 0) {
               thumb = imgRes.data.find((d: any) => d.url && d.url.includes('fbcdn.net'))?.url || imgRes.data[0].url;
-              if (thumb) console.log(`[TopAds] Paso 2 - Hash HD OK: ${ad.name}`);
+              if (thumb) console.log(`[TopAds] Paso 2 ok (Hash HD): ${ad.name}`);
             }
           } catch (e) {}
         }
@@ -330,7 +341,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       if ((!thumb || thumb.includes('safe_image.php')) && vidId) {
         try {
           const vNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,format,thumbnails.limit(20){uri,width,height,is_preferred}' }, (res: any) => resolve(res));
+            window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,format,thumbnails.limit(15){uri,width,height,is_preferred}' }, (res: any) => resolve(res));
           });
           if (vNode) {
             let vBest = vNode.picture;
@@ -341,7 +352,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             });
             if (vBest && !vBest.includes('safe_image.php')) {
               thumb = vBest;
-              console.log(`[TopAds] Paso 3 - Video node HD OK: ${ad.name}`);
+              console.log(`[TopAds] Paso 3 ok (Video HD): ${ad.name}`);
             }
           }
         } catch (e) {}
@@ -349,7 +360,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
 
       // Paso 4: Fallback final
       if (!thumb || thumb.includes('safe_image.php')) {
-        thumb = backupThumb;
+        thumb = baseThumb;
       }
       
       ad.thumbnail = thumb || null;
