@@ -227,21 +227,24 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
   };
 }
 
-// v4.0 - MOTOR DE RESOLUCIÓN POR BLOQUES (ESTABILIZADO)
+// v4.2 - MOTOR DE RESOLUCIÓN POR BLOQUES (FIX 403)
 const upgradeToHD = (url: string | null) => {
   if (!url) return null;
-  // Solo escalamos URLs de servidores de Meta que soportan parámetros de resolución en el path
+  
+  // Si la URL ya parece ser de alta resolución (tiene _o, _n o s1080) no la tocamos
+  // Tocar la firma (oh, oe) de Meta suele causar el error 403 Forbidden
+  if (url.includes('_o.jpg') || url.includes('_n.jpg') || url.includes('s1080x1080')) return url;
+
   if (url.includes('fbcdn.net') || url.includes('instagram.com')) {
-    return url
-      .replace(/\/[sp]\d+x\d+\//, '/s1080x1080/')
-      .replace(/_n\.jpg\?/, '_o.jpg?')
-      .replace(/_s\.jpg\?/, '_n.jpg?');
+    // Solo reemplazamos patrones de tamaño pequeño (s100x100, p60x60, etc)
+    return url.replace(/\/[sp]\d+x\d+\//, '/s1080x1080/');
   }
   return url;
 };
 
 export async function fetchTopAds(accountId: string, since: string, until: string, n: number, sortBy: string): Promise<Ad[]> {
-  console.log(`[TopAds] Starting fetch v4.0 - Account: ${accountId}`);
+  console.info("%c*** [TopAds] V4.2 ENGINE ACTIVE - BLOQUES AISLADOS + FIX 403 ***", "color: #00ff00; font-weight: bold; font-size: 12px;");
+  console.log(`[TopAds] Fetching account: ${accountId}`);
   const time_range = JSON.stringify({ since, until });
 
   const insRes: any = await new Promise((resolve) => {

@@ -261,11 +261,22 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                   <img 
                     src={ad.thumbnail} 
                     alt={ad.name} 
+                    data-original={ad.thumbnail}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" 
                     referrerPolicy="no-referrer"
                     loading="lazy"
                     onError={(e) => {
                       const img = e.target as HTMLImageElement;
+                      const originalUrl = img.getAttribute('data-original') || '';
+                      
+                      // Si falló el 1080p, intentamos volver a la URL original sin escala
+                      if (img.src.includes('/s1080x1080/')) {
+                        console.warn(`[AdThumb] 403/Error on HD, rolling back for ${ad.id}`);
+                        img.src = originalUrl.replace('/s1080x1080/', '/'); 
+                        return;
+                      }
+
+                      // Si ya falló todo, ocultamos y mostramos placeholder
                       img.style.display = 'none';
                       const placeholder = img.parentElement?.querySelector('.ad-placeholder');
                       if (placeholder) placeholder.classList.remove('hidden');
