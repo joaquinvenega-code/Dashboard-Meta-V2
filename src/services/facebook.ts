@@ -227,7 +227,7 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
   };
 }
 
-// v4.4 - MOTOR DE RESOLUCIÓN POR BLOQUES (ULTRA HD REELS & CATALOG)
+// v4.5 - MOTOR DE RESOLUCIÓN POR BLOQUES (ULTRA HD REELS, CATALOG & CACHE-BUSTER)
 const upgradeToHD = (url: string | null) => {
   if (!url) return null;
   // Preservamos URLs con firmas de seguridad (_o, _n) para evitar 403 Forbidden
@@ -236,13 +236,15 @@ const upgradeToHD = (url: string | null) => {
   if (url.includes('fbcdn.net') || url.includes('instagram.com')) {
     // Reemplazamos patrones de tamaño común en FB e IG (s100x100, p480x480, s640x640, etc)
     return url.replace(/\/[sp]\d+x\d+\//, '/s1080x1080/')
-              .replace(/\/s\d+x\d+\//, '/s1080x1080/');
+              .replace(/\/s\d+x\d+\//, '/s1080x1080/')
+              .replace(/\/p\d+x\d+\//, '/s1080x1080/');
   }
   return url;
 };
 
 export async function fetchTopAds(accountId: string, since: string, until: string, n: number, sortBy: string): Promise<Ad[]> {
-  console.info("%c*** [TopAds] V4.4 ENGINE ACTIVE - ULTRA HD REELS + CATALOG ***", "color: #00ff00; font-weight: bold; font-size: 12px;");
+  const cacheBuster = Math.floor(Math.random() * 1000);
+  console.info(`%c*** [TopAds] V4.5 ENGINE ACTIVE (#${cacheBuster}) - REELS & CATALOG FIX ***`, "color: #ff00ff; font-weight: bold; font-size: 14px; text-shadow: 1px 1px 0px #000;");
   console.log(`[TopAds] Fetching account: ${accountId}`);
   const time_range = JSON.stringify({ since, until });
 
@@ -314,10 +316,12 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,thumbnail_url,attachments{media{image{src,height,width}},subattachments{media{image{src,height,width}}},display_resources}' }, (res: any) => resolve(res));
           });
           if (storyNode && !storyNode.error) {
+            // Instagram a veces tiene display_resources con el HD real
             if (storyNode.display_resources && Array.isArray(storyNode.display_resources)) {
               const sorted = [...storyNode.display_resources].sort((a,b) => (b.config_width || 0) - (a.config_width || 0));
               thumb = sorted[0]?.src || null;
             }
+            // Si no, escaneamos adjuntos
             if (!thumb && storyNode.attachments?.data) {
               const allMedia: any[] = [];
               const scan = (it: any[]) => it.forEach(i => { if (i.media?.image) allMedia.push(i.media.image); if (i.subattachments?.data) scan(i.subattachments.data); });
@@ -326,7 +330,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               thumb = allMedia[0]?.src || null;
             }
             thumb = thumb || storyNode.thumbnail_url || storyNode.full_picture;
-            if (thumb) winningStep = "story node scan";
+            if (thumb) winningStep = "story/reel high-res node search";
           }
         }
 
@@ -384,14 +388,15 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           adType = "catalogo";
           const firstChild = td.child_attachments?.[0];
           if (firstChild) {
-            if (firstChild.image_hash) {
+            const cHash = firstChild.image_hash || spec.link_data?.image_hash;
+            if (cHash) {
               const imgNode: any = await new Promise((resolve) => {
-                window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: [firstChild.image_hash], fields: 'url' }, (res: any) => resolve(res));
+                window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: [cHash], fields: 'url' }, (res: any) => resolve(res));
               });
               thumb = imgNode?.data?.[0]?.url;
             }
-            thumb = thumb || firstChild.image_url || firstChild.picture;
-            if (thumb) winningStep = "catalog child_attachment";
+            thumb = thumb || firstChild.image_url || firstChild.picture || spec.link_data?.picture;
+            if (thumb) winningStep = "catalog child/hash resolution";
           }
         }
 
