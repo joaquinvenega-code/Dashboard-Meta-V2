@@ -267,7 +267,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
 
   // Fetch thumbnails and previews
   for (const ad of ads) {
-    // Paso 0: Llamada inicial (v19) - SIN el campo 'template_data' en la raíz (suele fallar)
+    // Paso 0: Llamada inicial (v19)
     const adRes: any = await new Promise((resolve) => {
       window.FB.api(`/${ad.id}`, 'GET', {
         fields: 'creative{id,image_url,image_hash,thumbnail_url.width(1000).height(1000),object_story_spec,asset_feed_spec,effective_object_story_id,object_story_id,video_id}'
@@ -277,27 +277,43 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
     if (adRes && !adRes.error && adRes.creative) {
       const creative = adRes.creative;
       let thumb = null;
-      
-      // Baselining: Siempre tener una miniatura básica por si falla el waterfall
       const baseThumb = creative.thumbnail_url || creative.image_url;
 
-      // Paso 1: Resolver por image_hash (Fuente de mejor calidad)
-      // Buscamos el hash en la raíz, en video_data o en link_data
-      const hash = creative.image_hash || 
-                   creative.object_story_spec?.video_data?.image_hash || 
-                   creative.object_story_spec?.link_data?.image_hash;
+      // Paso 1: Resolver por image_hash (FUENTE SUPREMA)
+      // Buscamos hashes en: raíz, video_data, link_data y child_attachments (para carruseles)
+      const hashes = new Set<string>();
+      if (creative.image_hash) hashes.add(creative.image_hash);
+      
+      const linkData = creative.object_story_spec?.link_data;
+      if (linkData?.image_hash) hashes.add(linkData.image_hash);
+      if (linkData?.child_attachments) {
+        linkData.child_attachments.forEach((child: any) => {
+          if (child.image_hash) hashes.add(child.image_hash);
+        });
+      }
 
-      if (hash) {
+      const videoData = creative.object_story_spec?.video_data;
+      if (videoData?.image_hash) hashes.add(videoData.image_hash);
+
+      const assetImages = creative.asset_feed_spec?.images;
+      if (Array.isArray(assetImages)) {
+        assetImages.forEach((img: any) => {
+          if (img.hash) hashes.add(img.hash);
+        });
+      }
+
+      if (hashes.size > 0) {
         try {
           const imgRes: any = await new Promise((resolve) => {
             window.FB.api(`/${accountId}/adimages`, 'GET', {
-              hashes: [hash],
-              fields: 'url'
+              hashes: Array.from(hashes),
+              fields: 'hash,url'
             }, (res: any) => resolve(res));
           });
-          if (imgRes?.data?.[0]?.url) {
+          if (imgRes?.data?.length > 0) {
+            // Preferimos el primer hash encontrado o el que Meta devuelva primero
             thumb = imgRes.data[0].url;
-            console.log(`[TopAds] Paso 1 - hash found (${hash}): ${ad.name}`);
+            console.log(`[TopAds] Paso 1 - resolved via hashes (${hashes.size}): ${ad.name}`);
           }
         } catch (e) {}
       }
