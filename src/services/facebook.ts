@@ -10,8 +10,15 @@ declare global {
 export const MESSAGING_OBJECTIVES = new Set([
   'MESSAGES',
   'OUTCOME_ENGAGEMENT',
+  'OUTCOME_SALES',
   'PAGE_LIKES',
   'LEAD_GENERATION',
+]);
+
+const MESSAGING_OPTIMIZATION_GOALS = new Set([
+  'REPLIES',
+  'CONVERSIONS',
+  'LEAD_GENERATION'
 ]);
 
 export function initFacebookSdk(appId: string): Promise<boolean> {
@@ -195,7 +202,7 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
 
   const campaigns: any = await new Promise((resolve) => {
     window.FB.api(`/${accountId}/campaigns`, 'GET', {
-      fields: 'id,objective',
+      fields: 'id,objective,effective_status',
       limit: 500,
     }, (res: any) => resolve(res));
   });
@@ -204,6 +211,10 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
     return { messagesReal: 0, costPerMessageReal: 0 };
   }
 
+  // Also get adsets to check optimization goal if we want to be very precise, 
+  // but let's try with objective + presence of messaging actions for now.
+  // Actually, let's fetch insights per campaign and check if they have the specific action.
+  
   const objMap: Record<string, string> = {};
   campaigns.data.forEach((c: any) => {
     objMap[c.id] = c.objective;
@@ -215,10 +226,18 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
   response.data.forEach((d: any) => {
     const obj = objMap[d.campaign_id] || '';
     if (!MESSAGING_OBJECTIVES.has(obj)) return;
+    
     const msgs = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') ||
                  getAction(d.actions, 'onsite_conversion.total_messaging_connection');
-    messagesReal += msgs;
-    spendMsg += parseFloat(d.spend) || 0;
+    
+    // If it's OUTCOME_SALES, only count it if it actually generated messages (it could be a web sales campaign)
+    // Actually, to be safer, we only count these campaigns if messaging is a significant part of their actions?
+    // User said: "de las campañas que tiene como acción 'mensaje'".
+    
+    if (msgs > 0) {
+      messagesReal += msgs;
+      spendMsg += parseFloat(d.spend) || 0;
+    }
   });
 
   return {

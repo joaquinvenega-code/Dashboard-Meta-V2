@@ -190,13 +190,16 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       const customName = sAcc.customName || acc.name;
       const currency = sAcc.currency || acc.currency || 'ARS';
       
+      const msgs = acc.messagesReal || acc.messages || 0;
+      const cpm = acc.costPerMessageReal || acc.costPerMessage || 0;
+      
       text += `- ${customName}\n`;
       
       if (sAcc.tracking === 'messaging') {
          text += `Campañas de mensajería:\n`;
          text += `Inversión: ${exportFormatCurrency(acc.spend || 0, currency)}\n`;
-         text += `Mensajes generados: ${acc.messages || 0}\n`;
-         text += `Valor por mensaje: ${exportFormatCurrency(acc.costPerMessage || 0, currency)}\n`;
+         text += `Mensajes generados: ${msgs}\n`;
+         text += `Valor por mensaje: ${exportFormatCurrency(cpm, currency)}\n`;
       } else if (sAcc.tracking === 'both') {
          text += `Campañas de conversión web:\n`;
          text += `Inversión: ${exportFormatCurrency(acc.spend || 0, currency)}\n`;
@@ -204,8 +207,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
          text += `ROAS General: ${roas}\n`;
          text += `Campañas de mensajería:\n`;
          text += `Inversión: ${exportFormatCurrency(acc.spend || 0, currency)}\n`;
-         text += `Mensajes generados: ${acc.messages || 0}\n`;
-         text += `Valor por mensaje: ${exportFormatCurrency(acc.costPerMessage || 0, currency)}\n`;
+         text += `Mensajes generados: ${msgs}\n`;
+         text += `Valor por mensaje: ${exportFormatCurrency(cpm, currency)}\n`;
       } else {
          text += `Inversión: ${exportFormatCurrency(acc.spend || 0, currency)}\n`;
          text += `Facturación: ${exportFormatCurrency(acc.revenue || 0, currency)}\n`;
@@ -310,8 +313,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       case 'atc': return <MetricBox key={id} label="Agreg. carrito" value={formatDecimal(acc.addToCart, 0)} />;
       case 'ic': return <MetricBox key={id} label="Pagos iniciados" value={formatDecimal(acc.checkouts, 0)} />;
       case 'cpp': return <MetricBox key={id} label="Costo x compra" value={formatCurrency(acc.costPerPurchase || 0, acc.currency)} />;
-      case 'messages': return <MetricBox key={id} label="Mensajes" value={formatDecimal(acc.messages, 0)} />;
-      case 'cpm': return <MetricBox key={id} label="Costo x mensaje" value={formatCurrency(acc.costPerMessage || 0, acc.currency)} />;
+      case 'messages': return <MetricBox key={id} label="Mensajes" value={formatDecimal(acc.messagesReal || acc.messages, 0)} />;
+      case 'cpm': return <MetricBox key={id} label="Costo x mensaje" value={formatCurrency(acc.costPerMessageReal || acc.costPerMessage || 0, acc.currency)} />;
       case 'messages_real': return <MetricBox key={id} label="Mensajes Reales" value={formatDecimal(acc.messagesReal, 0)} />;
       case 'cpm_real': return <MetricBox key={id} label="Costo Mensaje Real" value={formatCurrency(acc.costPerMessageReal || 0, acc.currency)} />;
       default: return null;
@@ -574,10 +577,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
            >
              <ArrowUpRight className="w-3.5 h-3.5 rotate-180" />
              PDF Report
-           </button>
-           <button className="bg-neutral-900 border border-white/5 px-3 py-2.5 rounded-xl text-[10px] font-black text-neutral-400 uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2">
-             <TableIcon className="w-3.5 h-3.5" />
-             Excel
            </button>
         </div>
       </div>
