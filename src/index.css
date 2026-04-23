@@ -41,7 +41,7 @@
 
 @media print {
   @page {
-    margin: 3cm 1.5cm 2cm 1.5cm;
+    margin: 3.5cm 1.5cm 2.5cm 1.5cm;
     size: A4 portrait;
   }
 

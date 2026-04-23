@@ -489,7 +489,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
         {/* Dashboard Area */}
         {selectedAccount ? (
           <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar animate-in fade-in slide-in-from-right-4 duration-500 print:overflow-visible print:pr-0 print:space-y-8">
-            <div className="hidden print:flex flex-col gap-4 border-b border-neutral-200 pb-3 mb-3 text-black print:pt-0 print:-mt-10">
+            <div className="hidden print:flex flex-col gap-4 border-b border-neutral-200 pb-3 mb-3 text-black print:pt-0 print:-mt-4">
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-5">
                   <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-xl overflow-hidden print-keep-bg print-bg-white border border-neutral-100">
