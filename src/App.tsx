@@ -803,70 +803,14 @@ export default function App() {
                 />
               )}
               {activePage === 'accounts' && (
-                <div className="animate-in fade-in duration-500 max-w-2xl">
-                  <div className="bg-[#111] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl p-8">
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-sm font-black text-white uppercase tracking-widest">Seleccionar cuentas visibles</h3>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => {
-                            const allIds = accounts.map(a => a.id);
-                            setVisibleAccountIds(allIds);
-                            localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
-                          }}
-                          className="text-[9px] font-black text-blue-500 uppercase tracking-widest hover:bg-blue-500/10 px-2 py-1 rounded"
-                        >
-                          Todas
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setVisibleAccountIds([]);
-                            localStorage.setItem('cr_visible_accounts', JSON.stringify([]));
-                          }}
-                          className="text-[9px] font-black text-neutral-600 uppercase tracking-widest hover:bg-white/5 px-2 py-1 rounded"
-                        >
-                          Ninguna
-                        </button>
-                      </div>
-                    </div>
-                    <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                      {accounts.map(acc => {
-                        const isVisible = visibleAccountIds.some(v => matchId(v, acc.id));
-                        return (
-                          <button
-                            key={acc.id}
-                            onClick={() => toggleAccountVisibility(acc.id)}
-                            className={cn(
-                              "w-full flex items-center justify-between p-4 rounded-2xl border transition-all",
-                              isVisible 
-                                ? "bg-blue-600/10 border-blue-600/30 text-white" 
-                                : "bg-transparent border-white/5 text-neutral-500 hover:bg-white/[0.02]"
-                            )}
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className={cn("w-5 h-5 rounded-md border flex items-center justify-center transition-all", isVisible ? "bg-blue-600 border-blue-600" : "bg-transparent border-neutral-700")}>
-                                {isVisible && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
-                              </div>
-                              <div className="text-left">
-                                <div className="text-sm font-bold">{acc.name}</div>
-                                <div className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest">{acc.account_id}</div>
-                              </div>
-                            </div>
-                            <div className="text-[10px] font-black uppercase tracking-widest bg-neutral-900 px-2 py-1 rounded">
-                              {acc.currency}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {activePage === 'groups' && (
-                <div className="animate-in fade-in duration-500 max-w-4xl space-y-6">
+                <div className="animate-in fade-in duration-500 max-w-4xl space-y-8 pb-20">
+                  {/* --- SECCIÓN 1: GRUPOS DE CLIENTE --- */}
                   <div className="bg-[#111] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl p-8">
                     <div className="flex items-center justify-between mb-8">
-                      <h3 className="text-sm font-black text-white uppercase tracking-widest">Gestionar grupos de cliente</h3>
+                      <div>
+                        <h3 className="text-sm font-black text-white uppercase tracking-widest">Grupos de cliente</h3>
+                        <p className="text-[10px] font-bold text-neutral-600 mt-1 uppercase tracking-widest">Agrupa múltiples cuentas en una sola entidad</p>
+                      </div>
                       <button 
                         onClick={() => {
                           const name = prompt('Nombre del nuevo grupo:');
@@ -874,13 +818,19 @@ export default function App() {
                             saveGroups([...groups, { id: Math.random().toString(36).substr(2, 9), name, accountIds: [] }]);
                           }
                         }}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center gap-2"
                       >
+                        <Settings2 className="w-3 h-3" />
                         Nuevo Grupo
                       </button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {groups.length === 0 && (
+                        <div className="col-span-full py-8 text-center bg-white/[0.02] rounded-2xl border border-dashed border-white/5">
+                          <p className="text-xs text-neutral-600 font-bold uppercase tracking-widest">No hay grupos creados</p>
+                        </div>
+                      )}
                       {groups.filter(g => g && g.id).map(group => (
                         <div key={group.id} className="bg-[#1c1c1c] p-6 rounded-2xl border border-white/5 space-y-4">
                           <div className="flex items-center justify-between">
@@ -902,7 +852,7 @@ export default function App() {
                                   saveGroups(groups.filter(g => g && g.id !== group.id));
                                 }
                               }}
-                              className="text-red-500 hover:text-red-400"
+                              className="text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 transition-all"
                             >
                               <LogOut className="w-4 h-4 rotate-90" />
                             </button>
@@ -911,22 +861,24 @@ export default function App() {
                           <div className="space-y-2">
                              <div className="text-[9px] font-black text-neutral-600 uppercase tracking-widest">Cuentas vinculadas:</div>
                              {(group.accountIds || []).length === 0 && <div className="text-xs text-neutral-500 italic">Sin cuentas asignadas</div>}
-                             {(group.accountIds || []).map(accId => {
-                               const acc = accounts.find(a => a.id === accId);
-                               return (
-                                 <div key={accId} className="flex items-center justify-between text-xs text-neutral-400 bg-black/20 p-2 rounded-lg">
-                                   <span className="truncate">{acc?.name || accId}</span>
-                                   <button 
-                                     onClick={() => {
-                                       saveGroups(groups.map(g => g?.id === group.id ? { ...g, accountIds: (g.accountIds || []).filter(id => id !== accId) } : g));
-                                     }}
-                                     className="text-neutral-700 hover:text-white"
-                                   >
-                                     ×
-                                   </button>
-                                 </div>
-                               );
-                             })}
+                             <div className="space-y-1">
+                               {(group.accountIds || []).map(accId => {
+                                 const acc = accounts.find(a => a.id === accId);
+                                 return (
+                                   <div key={accId} className="flex items-center justify-between text-[10px] font-bold text-neutral-400 bg-black/20 px-3 py-2 rounded-lg group/acc">
+                                     <span className="truncate">{acc?.name || accId}</span>
+                                     <button 
+                                       onClick={() => {
+                                         saveGroups(groups.map(g => g?.id === group.id ? { ...g, accountIds: (g.accountIds || []).filter(id => id !== accId) } : g));
+                                       }}
+                                       className="text-neutral-700 hover:text-red-500 transition-all opacity-0 group-hover/acc:opacity-100"
+                                     >
+                                       Quitar
+                                     </button>
+                                   </div>
+                                 );
+                               })}
+                             </div>
                           </div>
 
                           <select 
@@ -934,17 +886,80 @@ export default function App() {
                               const accId = e.target.value;
                               if (accId) {
                                 saveGroups(groups.map(g => g?.id === group.id ? { ...g, accountIds: [...new Set([...(g.accountIds || []), accId])] } : g));
+                                e.target.value = "";
                               }
                             }}
-                            className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-[10px] font-bold text-neutral-400 outline-none"
+                            className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-[10px] font-bold text-neutral-400 outline-none hover:border-blue-600/30 transition-all cursor-pointer"
                           >
-                            <option value="">Añadir cuenta...</option>
+                            <option value="">+ Añadir cuenta al grupo</option>
                             {accounts.filter(a => !(group.accountIds || []).includes(a.id)).map(a => (
                               <option key={a.id} value={a.id}>{a.name}</option>
                             ))}
                           </select>
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* --- SECCIÓN 2: CUENTAS INDIVIDUALES --- */}
+                  <div className="bg-[#111] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl p-8">
+                    <div className="flex items-center justify-between mb-8">
+                      <div>
+                        <h3 className="text-sm font-black text-white uppercase tracking-widest">Cuentas Visibles</h3>
+                        <p className="text-[10px] font-bold text-neutral-600 mt-1 uppercase tracking-widest">Selecciona qué cuentas mostrar en el panel</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => {
+                            const allIds = accounts.map(a => a.id);
+                            setVisibleAccountIds(allIds);
+                            localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
+                          }}
+                          className="text-[9px] font-black text-blue-500 uppercase tracking-widest hover:bg-blue-500/10 px-3 py-2 rounded-xl transition-all border border-blue-500/20"
+                        >
+                          Todas
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setVisibleAccountIds([]);
+                            localStorage.setItem('cr_visible_accounts', JSON.stringify([]));
+                          }}
+                          className="text-[9px] font-black text-neutral-600 uppercase tracking-widest hover:bg-white/5 px-3 py-2 rounded-xl transition-all border border-white/5"
+                        >
+                          Ninguna
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                      {accounts.map(acc => {
+                        const isVisible = visibleAccountIds.some(v => matchId(v, acc.id));
+                        return (
+                          <button
+                            key={acc.id}
+                            onClick={() => toggleAccountVisibility(acc.id)}
+                            className={cn(
+                              "flex items-center justify-between p-4 rounded-2xl border transition-all",
+                              isVisible 
+                                ? "bg-blue-600/10 border-blue-600/30 text-white" 
+                                : "bg-transparent border-white/5 text-neutral-500 hover:bg-white/[0.02]"
+                            )}
+                          >
+                            <div className="flex items-center gap-4 min-w-0">
+                              <div className={cn("w-5 h-5 rounded-md border flex items-center justify-center transition-all shrink-0", isVisible ? "bg-blue-600 border-blue-600" : "bg-transparent border-neutral-700")}>
+                                {isVisible && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                              </div>
+                              <div className="text-left truncate">
+                                <div className="text-[11px] font-bold truncate tracking-tight">{acc.name}</div>
+                                <div className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest truncate">{acc.account_id}</div>
+                              </div>
+                            </div>
+                            <div className="text-[9px] font-black uppercase tracking-widest bg-neutral-900 px-2 py-1 rounded shrink-0 ml-2">
+                              {acc.currency}
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
