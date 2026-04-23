@@ -31,10 +31,39 @@ import {
   LogOut,
   RefreshCcw,
   CheckCircle2,
-  X
+  X,
+  GripVertical
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, subDays, startOfMonth } from 'date-fns';
+import {
+  DndContext, 
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+const COLUMN_DEFS: Record<string, { label: string; width: string }> = {
+  objetivo: { label: 'Objetivo', width: 'w-28' },
+  facturado: { label: 'Facturado', width: 'w-28' },
+  roas: { label: 'ROAS', width: 'w-20' },
+  progreso: { label: 'Progreso', width: 'w-32' },
+  invertido: { label: 'Invertido', width: 'w-28' },
+  presupuesto: { label: 'Presupuesto', width: 'w-28' },
+  prespct: { label: '% Presupuesto', width: 'w-32' },
+  estado: { label: 'Estado', width: 'w-32' }
+};
 
 // Global ID Match Utility
 const matchId = (id1: any, id2: any) => {
@@ -59,6 +88,25 @@ export default function App() {
   
   // Column Selection State
   const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
+  const [colOrder, setColOrder] = useState<string[]>(['objetivo', 'facturado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setColOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string);
+        const newIndex = items.indexOf(over.id as string);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
 
   // Global ID Match Utility (moved outside)
 
@@ -542,7 +590,7 @@ export default function App() {
                       >
                         <div className="flex flex-wrap items-center gap-3 py-4 border-y border-white/5">
                           <span className="text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] mr-2">Visibilidad de columnas</span>
-                          {['objetivo', 'facturado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado'].map(col => (
+                          {Object.keys(COLUMN_DEFS).map(col => (
                             <button
                               key={col}
                               onClick={() => toggleCol(col)}
@@ -555,7 +603,7 @@ export default function App() {
                             >
                               <div className="flex items-center gap-2">
                                 <div className={cn("w-1.5 h-1.5 rounded-full", visibleCols.includes(col) ? "bg-blue-500" : "bg-neutral-800")}></div>
-                                {col}
+                                {COLUMN_DEFS[col].label}
                               </div>
                             </button>
                           ))}
@@ -569,18 +617,25 @@ export default function App() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse table-fixed">
                         <thead>
-                          <tr className="border-b border-white/5 bg-white/[0.01]">
-                            <th className="px-5 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] w-48">Cuenta</th>
-                            {visibleCols.includes('objetivo') && <th className="px-2 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] text-center w-28">Objetivo</th>}
-                            {visibleCols.includes('facturado') && <th className="px-2 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] text-center w-28">Facturado</th>}
-                            {visibleCols.includes('roas') && <th className="px-2 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] text-center w-20">ROAS</th>}
-                            {visibleCols.includes('progreso') && <th className="px-2 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] text-center w-32">Progreso</th>}
-                            {visibleCols.includes('invertido') && <th className="px-2 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] text-center w-28">Invertido</th>}
-                            {visibleCols.includes('presupuesto') && <th className="px-2 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] text-center w-28">Presupuesto</th>}
-                            {visibleCols.includes('prespct') && <th className="px-2 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] text-center w-32">% Presupuesto</th>}
-                            {visibleCols.includes('estado') && <th className="px-2 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] text-center w-32">Estado</th>}
-                            <th className="px-2 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] text-right w-16 pr-5"></th>
-                          </tr>
+                          <DndContext 
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                          >
+                            <SortableContext 
+                              items={colOrder}
+                              strategy={horizontalListSortingStrategy}
+                            >
+                              <tr className="border-b border-white/5 bg-white/[0.01]">
+                                <th className="px-5 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] w-48">Cuenta</th>
+                                {colOrder.map((colId: string) => {
+                                  if (!visibleCols.includes(colId)) return null;
+                                  return <SortableHeader key={colId} id={colId} label={COLUMN_DEFS[colId].label} width={COLUMN_DEFS[colId].width} />;
+                                })}
+                                <th className="px-2 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] text-right w-16 pr-5"></th>
+                              </tr>
+                            </SortableContext>
+                          </DndContext>
                         </thead>
                         <tbody className="divide-y divide-white/[0.02]">
                           {overviewEntities.length === 0 ? (
@@ -700,78 +755,92 @@ export default function App() {
                                   </div>
                                 </td>
                                 
-                                {visibleCols.includes('objetivo') && (
-                                  <td className="px-2 py-2.5 text-center text-[10px] font-bold text-neutral-500">
-                                    {s.objective ? formatCurrency(s.objective, s.currency) : '—'}
-                                  </td>
-                                )}
+                                {colOrder.map(colId => {
+                                  if (!visibleCols.includes(colId)) return null;
 
-                                {visibleCols.includes('facturado') && (
-                                  <td className="px-2 py-2.5 text-center text-[10px] font-bold text-neutral-200">
-                                    {formatCurrency(acc.revenue || 0, s.currency)}
-                                  </td>
-                                )}
+                                  if (colId === 'objetivo') return (
+                                    <td key={colId} className="px-2 py-2.5 text-center text-[10px] font-bold text-neutral-500">
+                                      {s.objective ? formatCurrency(s.objective, s.currency) : '—'}
+                                    </td>
+                                  );
 
-                                {visibleCols.includes('roas') && (
-                                  <td className="px-2 py-2.5 text-center">
-                                    <span className={cn("text-[10px] font-bold", status.color)}>
-                                      ×{formatDecimal(roas)}
-                                    </span>
-                                  </td>
-                                )}
+                                  if (colId === 'facturado') return (
+                                    <td key={colId} className="px-2 py-2.5 text-center text-[10px] font-bold text-neutral-200">
+                                      {formatCurrency(acc.revenue || 0, s.currency)}
+                                    </td>
+                                  );
 
-                                {visibleCols.includes('progreso') && (
-                                  <td className="px-2 py-2.5">
-                                    <div className="flex items-center gap-2 justify-center">
-                                      <div className="w-12 h-1 bg-neutral-900 rounded-full overflow-hidden border border-white/5">
-                                        <div 
-                                          className={cn("h-full transition-all duration-1000", status.bg)} 
-                                          style={{ width: `${Math.min(progress * 100, 100)}%` }}
-                                        ></div>
-                                      </div>
-                                      <span className="text-[9px] font-black text-neutral-600 w-6">{Math.round(progress * 100)}%</span>
-                                    </div>
-                                  </td>
-                                )}
-
-                                {visibleCols.includes('invertido') && (
-                                  <td className="px-2 py-2.5 text-center text-[10px] font-medium text-neutral-500">
-                                    {formatCurrency(acc.spend || 0, s.currency)}
-                                  </td>
-                                )}
-
-                                {visibleCols.includes('presupuesto') && (
-                                  <td className="px-2 py-2.5 text-center text-[10px] font-medium text-neutral-500">
-                                    {s.budget ? formatCurrency(s.budget, s.currency) : '—'}
-                                  </td>
-                                )}
-
-                                {visibleCols.includes('prespct') && (
-                                  <td className="px-2 py-2.5">
-                                    <div className="flex items-center gap-2 justify-center">
-                                      <div className="w-12 h-1 bg-neutral-900 rounded-full overflow-hidden border border-white/5">
-                                        <div 
-                                          className={cn("h-full transition-all duration-1000", budgetProgress > 1 ? "bg-danger" : "bg-neutral-800")} 
-                                          style={{ width: `${Math.min(budgetProgress * 100, 100)}%` }}
-                                        ></div>
-                                      </div>
-                                      <span className={cn("text-[9px] font-black w-6", budgetProgress > 1 ? "text-danger" : "text-neutral-700")}>
-                                        {Math.round(budgetProgress * 100)}%
+                                  if (colId === 'roas') return (
+                                    <td key={colId} className="px-2 py-2.5 text-center">
+                                      <span className={cn("text-[10px] font-bold", status.color)}>
+                                        ×{formatDecimal(roas)}
                                       </span>
-                                    </div>
-                                  </td>
-                                )}
+                                    </td>
+                                  );
 
-                                {visibleCols.includes('estado') && (
-                                  <td className="px-2 py-2.5 text-center">
-                                    <div className="inline-flex items-center gap-1.5">
-                                      <div className={cn("w-1 h-1 rounded-full", status.bg)}></div>
-                                      <span className={cn("text-[9px] font-bold uppercase tracking-widest leading-none", status.color)}>
-                                        {status.label}
-                                      </span>
-                                    </div>
-                                  </td>
-                                )}
+                                  if (colId === 'progreso') return (
+                                    <td key={colId} className="px-2 py-2.5">
+                                      <div className="flex items-center gap-2 justify-center">
+                                        <div className="w-12 h-1 bg-neutral-900 rounded-full overflow-hidden border border-white/5">
+                                          <div 
+                                            className={cn("h-full transition-all duration-1000", status.bg)} 
+                                            style={{ width: `${Math.min(progress * 100, 100)}%` }}
+                                          ></div>
+                                        </div>
+                                        <span className="text-[9px] font-black text-neutral-600 w-6">{Math.round(progress * 100)}%</span>
+                                      </div>
+                                    </td>
+                                  );
+
+                                  if (colId === 'invertido') return (
+                                    <td key={colId} className="px-2 py-2.5 text-center text-[10px] font-medium text-neutral-500">
+                                      {formatCurrency(acc.spend || 0, s.currency)}
+                                    </td>
+                                  );
+
+                                  if (colId === 'presupuesto') return (
+                                    <td key={colId} className="px-2 py-2.5 text-center text-[10px] font-medium text-neutral-500">
+                                      {s.budget ? formatCurrency(s.budget, s.currency) : '—'}
+                                    </td>
+                                  );
+
+                                  if (colId === 'prespct') return (
+                                    <td key={colId} className="px-2 py-2.5">
+                                      <div className="flex items-center gap-2 justify-center">
+                                        <div className="w-12 h-1 bg-neutral-900 rounded-full overflow-hidden border border-white/5">
+                                          <div 
+                                            className={cn("h-full transition-all duration-1000", 
+                                              budgetProgress > 1 ? "bg-danger" : 
+                                              budgetProgress > 0.9 ? "bg-warning" : 
+                                              "bg-success/50"
+                                            )} 
+                                            style={{ width: `${Math.min(budgetProgress * 100, 100)}%` }}
+                                          ></div>
+                                        </div>
+                                        <span className={cn("text-[9px] font-black w-6 rounded px-1", 
+                                          budgetProgress > 1 ? "text-danger" : 
+                                          budgetProgress > 0.9 ? "text-warning" : 
+                                          "text-success/50"
+                                        )}>
+                                          {Math.round(budgetProgress * 100)}%
+                                        </span>
+                                      </div>
+                                    </td>
+                                  );
+
+                                  if (colId === 'estado') return (
+                                    <td key={colId} className="px-2 py-2.5 text-center">
+                                      <div className="inline-flex items-center gap-1.5">
+                                        <div className={cn("w-1 h-1 rounded-full", status.bg)}></div>
+                                        <span className={cn("text-[9px] font-bold uppercase tracking-widest leading-none", status.color)}>
+                                          {status.label}
+                                        </span>
+                                      </div>
+                                    </td>
+                                  );
+
+                                  return null;
+                                })}
 
                                 <td className="px-2 py-2.5 text-right pr-5">
                                   <button 
@@ -1094,5 +1163,47 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+interface SortableHeaderProps {
+  id: string;
+  label: string;
+  width: string;
+}
+
+const SortableHeader: React.FC<SortableHeaderProps> = ({ id, label, width }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 0,
+    opacity: isDragging ? 0.8 : 1
+  };
+
+  return (
+    <th 
+      ref={setNodeRef} 
+      style={style} 
+      className={cn(
+        "py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] text-center cursor-grab active:cursor-grabbing hover:bg-white/[0.02] transition-colors relative group",
+        width
+      )}
+      {...attributes}
+      {...listeners}
+    >
+      <div className="flex items-center justify-center gap-1">
+        <GripVertical className="w-2.5 h-2.5 opacity-0 group-hover:opacity-50 transition-opacity whitespace-nowrap" />
+        <span className="truncate">{label}</span>
+      </div>
+    </th>
   );
 }
