@@ -9,6 +9,7 @@ import {
   fetchTopAds, 
   fetchDailySeries 
 } from '../services/facebook';
+import { generateAccountInsights } from '../services/geminiService';
 import { 
   Search, 
   RefreshCw, 
@@ -32,8 +33,14 @@ import {
   Download,
   FileText,
   Instagram,
-  Facebook
+  Facebook,
+  RefreshCcw,
+  BrainCircuit,
+  Info,
+  X
 } from 'lucide-react';
+import { cn } from '../lib/utils';
+import { startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
 import { 
   AreaChart, 
   Area, 
@@ -76,8 +83,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [showMetricConfig, setShowMetricConfig] = useState(false);
   const [localVisibleMetrics, setLocalVisibleMetrics] = useState<string[]>([]);
   const [chartFilters, setChartFilters] = useState<Record<string, string[]>>({});
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [insight, setInsight] = useState<string | null>(null);
 
-  const defaultVisibleMetrics = ['spend', 'revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
+  const defaultVisibleMetrics = ['spend', 'revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'projected_revenue', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
   
   // Filter accounts for sidebar
   const sidebarAccounts = accounts.filter(acc => 
@@ -218,8 +227,35 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     });
   };
 
+  const handleGetInsight = async () => {
+    if (!selectedAccount || !s || insightLoading) return;
+    setInsightLoading(true);
+    try {
+      const result = await generateAccountInsights({
+        name: selectedAccount.name,
+        spend: selectedAccount.spend || 0,
+        revenue: selectedAccount.revenue || 0,
+        objective: s.objective,
+        budget: s.budget,
+        currency: s.currency,
+      });
+      setInsight(result);
+    } finally {
+      setInsightLoading(false);
+    }
+  };
+
   const renderMetric = (id: string, acc: AdAccount) => {
     const sAcc = settings[acc.id];
+    
+    // Pacing calculations
+    const today = new Date();
+    const monthStart = startOfMonth(today);
+    const monthEnd = endOfMonth(today);
+    const daysPassed = Math.max(differenceInDays(today, monthStart), 1);
+    const daysInMonth = differenceInDays(monthEnd, monthStart) + 1;
+    const pacingMultiplier = daysInMonth / daysPassed;
+
     switch(id) {
       case 'spend': return <MetricBox key={id} label="Inversión" value={formatCurrency(acc.spend || 0, acc.currency)} />;
       case 'revenue': return <MetricBox key={id} label="Facturado" value={formatCurrency(acc.revenue || 0, acc.currency)} />;
@@ -227,6 +263,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       case 'objective': return <MetricBox key={id} label="Objetivo" value={formatCurrency(sAcc?.objective || 0, acc.currency)} isPlaceholder={!sAcc?.objective} />;
       case 'progress_revenue': return <MetricBox key={id} label="% Objetivo" value={`${getProgress(acc) || 0}%`} isPlaceholder={!getProgress(acc)} />;
       case 'progress_budget': return <MetricBox key={id} label="% Presupuesto" value={`${sAcc?.budget ? Math.round(((acc.spend || 0) / sAcc.budget) * 100) : 0}%`} isPlaceholder={!sAcc?.budget} />;
+      case 'projected_revenue': 
+        return <MetricBox key={id} label="Proy. Facturación" value={formatCurrency((acc.revenue || 0) * pacingMultiplier, acc.currency)} variant="highlight" />;
       case 'ctr': return <MetricBox key={id} label="CTR" value={`${formatDecimal(acc.ctr, 2)}%`} />;
       case 'clicks': return <MetricBox key={id} label="Clics" value={formatDecimal(acc.clicks, 0)} />;
       case 'purchases': return <MetricBox key={id} label="Compras" value={formatDecimal(acc.purchases, 0)} />;
@@ -629,6 +667,46 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
               </div>
             </div>
 
+            {/* Header / Summary */}
+            <div className="space-y-4 print:hidden">
+              <div className="flex items-start justify-between bg-blue-600/[0.03] border border-blue-600/10 rounded-2xl p-5 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 blur-[80px] rounded-full -mr-32 -mt-32"></div>
+                <div className="relative flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <BrainCircuit className="w-4 h-4 text-blue-500" />
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500/80">Analista de Estrategia IA</h3>
+                  </div>
+                  {insight ? (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 5 }} 
+                      animate={{ opacity: 1, y: 0 }}
+                      className="relative"
+                    >
+                      <p className="text-sm font-medium text-neutral-300 leading-relaxed italic pr-12">"{insight}"</p>
+                      <button 
+                        onClick={() => setInsight(null)}
+                        className="absolute top-0 right-0 p-1 hover:bg-white/5 rounded-lg text-neutral-600 hover:text-white transition-all"
+                      >
+                         <X className="w-3.5 h-3.5" />
+                      </button>
+                    </motion.div>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      <p className="text-xs text-neutral-500 font-bold uppercase tracking-widest leading-none">Genera un análisis estratégico basado en el rendimiento actual.</p>
+                      <button 
+                        onClick={handleGetInsight}
+                        disabled={insightLoading}
+                        className="w-fit flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20 disabled:opacity-50"
+                      >
+                         {insightLoading ? <RefreshCcw className="w-3 h-3 animate-spin" /> : <BrainCircuit className="w-3 h-3" />}
+                         {insightLoading ? 'Analizando...' : 'Generar Insight'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Metrics Grids */}
             <div className="hidden print:block mb-3">
               <h3 className="text-[10px] font-black text-neutral-900 uppercase tracking-[0.2em] border-l-4 border-blue-600 pl-3">
@@ -787,10 +865,22 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   );
 };
 
-const MetricBox: React.FC<{ label: string; value: string; isPlaceholder?: boolean }> = ({ label, value, isPlaceholder }) => (
-  <div className="bg-[#111] p-3 rounded-xl border border-white/5 space-y-1 hover:bg-[#141414] transition-all shadow-lg group overflow-hidden print:bg-white print:border-neutral-100 print:shadow-sm print:border-b-2">
-    <div className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover:text-neutral-500 transition-colors print:text-neutral-400">{label}</div>
-    <div className={`text-sm md:text-base font-black tracking-tight truncate ${isPlaceholder ? 'text-neutral-900' : 'text-white'} print:text-black`}>
+const MetricBox: React.FC<{ label: string; value: string; isPlaceholder?: boolean; variant?: 'default' | 'highlight' }> = ({ label, value, isPlaceholder, variant = 'default' }) => (
+  <div className={cn(
+    "p-3 rounded-xl border transition-all shadow-lg group overflow-hidden print:bg-white print:border-neutral-100 print:shadow-sm print:border-b-2",
+    variant === 'highlight' 
+      ? "bg-blue-600/[0.05] border-blue-600/20 ring-1 ring-blue-600/10" 
+      : "bg-[#111] border-white/5 hover:bg-[#141414]"
+  )}>
+    <div className="flex items-center justify-between mb-1.5">
+      <div className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover:text-neutral-500 transition-colors print:text-neutral-400">{label}</div>
+      {variant === 'highlight' && <TrendingUp className="w-2.5 h-2.5 text-blue-500 opacity-50" />}
+    </div>
+    <div className={cn(
+      "text-sm md:text-base font-black tracking-tight truncate print:text-black",
+      isPlaceholder ? 'text-neutral-900' : 'text-white',
+      variant === 'highlight' && !isPlaceholder ? 'text-blue-100' : ''
+    )}>
       {isPlaceholder ? '—' : value}
     </div>
   </div>

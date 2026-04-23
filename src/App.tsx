@@ -35,7 +35,7 @@ import {
   GripVertical
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { format, subDays, startOfMonth } from 'date-fns';
+import { format, subDays, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
 import {
   DndContext, 
   closestCenter,
@@ -57,6 +57,7 @@ import { CSS } from '@dnd-kit/utilities';
 const COLUMN_DEFS: Record<string, { label: string; width: string }> = {
   objetivo: { label: 'Objetivo', width: 'w-28' },
   facturado: { label: 'Facturado', width: 'w-28' },
+  proyectado: { label: 'Proyectado', width: 'w-32' },
   roas: { label: 'ROAS', width: 'w-20' },
   progreso: { label: 'Progreso', width: 'w-32' },
   invertido: { label: 'Invertido', width: 'w-28' },
@@ -87,8 +88,8 @@ export default function App() {
   const [calcError, setCalcError] = useState<string | null>(null);
   
   // Column Selection State
-  const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
-  const [colOrder, setColOrder] = useState<string[]>(['objetivo', 'facturado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
+  const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'proyectado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
+  const [colOrder, setColOrder] = useState<string[]>(['objetivo', 'facturado', 'proyectado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -695,11 +696,19 @@ export default function App() {
                           ) : (
                             overviewEntities.map((acc) => {
                               const s = overviewSettings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', tracking: 'ecommerce' };
-                            const roas = acc.spend && acc.spend > 0 ? (acc.revenue || 0) / acc.spend : 0;
-                            const progress = s.objective > 0 ? Math.min((acc.revenue || 0) / s.objective, 1.2) : 0;
-                            const budgetProgress = s.budget > 0 ? Math.min((acc.spend || 0) / s.budget, 1.2) : 0;
-                            
-                            // Semaphore Logic
+                              const roas = acc.spend && acc.spend > 0 ? (acc.revenue || 0) / acc.spend : 0;
+                              const progress = s.objective > 0 ? Math.min((acc.revenue || 0) / s.objective, 1.2) : 0;
+                              const budgetProgress = s.budget > 0 ? Math.min((acc.spend || 0) / s.budget, 1.2) : 0;
+                             
+                              // Pacing Logic
+                              const today = new Date();
+                              const monthStart = startOfMonth(today);
+                              const monthEnd = endOfMonth(today);
+                              const daysPassed = Math.max(differenceInDays(today, monthStart), 1);
+                              const daysInMonth = differenceInDays(monthEnd, monthStart) + 1;
+                              const pacingMultiplier = daysInMonth / daysPassed;
+
+                              // Semaphore Logic
                             const getStatusInfo = () => {
                               const p = (acc.revenue || 0) / (s.objective || 1);
                               if (p >= 1) return { label: 'Objetivo', color: 'text-success', bg: 'bg-success' };
@@ -767,6 +776,12 @@ export default function App() {
                                   if (colId === 'facturado') return (
                                     <td key={colId} className="px-2 py-2.5 text-center text-[10px] font-bold text-neutral-200">
                                       {formatCurrency(acc.revenue || 0, s.currency)}
+                                    </td>
+                                  );
+
+                                  if (colId === 'proyectado') return (
+                                    <td key={colId} className="px-2 py-2.5 text-center text-[10px] font-black text-blue-400 tabular-nums bg-blue-600/[0.02]">
+                                      {formatCurrency((acc.revenue || 0) * pacingMultiplier, s.currency)}
                                     </td>
                                   );
 

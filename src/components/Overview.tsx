@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AdAccount, AccountSettings } from '../types';
 import { formatCurrency, formatNumber, formatDecimal, cn } from '../lib/utils';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
+import { BrainCircuit, TrendingUp, AlertTriangle, CheckCircle2, Info, RefreshCcw, X } from 'lucide-react';
+import { generateAccountInsights } from '../services/geminiService';
+import { differenceInDays, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 
 interface OverviewProps {
   accounts: AdAccount[];
@@ -9,7 +12,10 @@ interface OverviewProps {
 }
 
 export function Overview({ accounts, settings }: OverviewProps) {
-  // Aggregate data by currency
+  const [loadingInsightIds, setLoadingInsightIds] = useState<Set<string>>(new Set());
+  const [insights, setInsights] = useState<Record<string, string>>({});
+
+  // Aggregation logic...
   const totalsByCurrency: Record<string, { spend: number; revenue: number }> = {};
   
   accounts.forEach(acc => {
@@ -24,11 +30,45 @@ export function Overview({ accounts, settings }: OverviewProps) {
   const totalSpendStr = currencies.map(c => formatCurrency(totalsByCurrency[c].spend, c)).join(' + ');
   const totalRevenueStr = currencies.map(c => formatCurrency(totalsByCurrency[c].revenue, c)).join(' + ');
   
+  // Forecasting Logic
+  const today = new Date();
+  const monthStart = startOfMonth(today);
+  const monthEnd = endOfMonth(today);
+  const daysPassed = Math.max(differenceInDays(today, monthStart), 1);
+  const daysInMonth = differenceInDays(monthEnd, monthStart) + 1;
+  const pacingMultiplier = daysInMonth / daysPassed;
+
   const totalSpendGlobal = accounts.reduce((a, c) => a + (c.spend || 0), 0);
   const totalRevenueGlobal = accounts.reduce((a, c) => a + (c.revenue || 0), 0);
   const avgRoas = totalSpendGlobal > 0 ? totalRevenueGlobal / totalSpendGlobal : 0;
 
-  // Semaphore Logic
+  const projectedRevenueStr = currencies.map(c => {
+    const projected = totalsByCurrency[c].revenue * pacingMultiplier;
+    return formatCurrency(projected, c);
+  }).join(' + ');
+
+  const handleGetInsight = async (acc: AdAccount, s: any) => {
+    if (loadingInsightIds.has(acc.id)) return;
+    setLoadingInsightIds(prev => new Set(prev).add(acc.id));
+    try {
+      const result = await generateAccountInsights({
+        name: acc.name,
+        spend: acc.spend || 0,
+        revenue: acc.revenue || 0,
+        objective: s.objective,
+        budget: s.budget,
+        currency: s.currency,
+      });
+      setInsights(prev => ({ ...prev, [acc.id]: result }));
+    } finally {
+      setLoadingInsightIds(prev => {
+        const next = new Set(prev);
+        next.delete(acc.id);
+        return next;
+      });
+    }
+  };
+
   const getStatus = (acc: AdAccount) => {
     const s = settings[acc.id] || { objective: 0 };
     if (!s.objective) return { label: 'Sin objetivo', color: 'bg-neutral-500', text: 'text-neutral-500', border: 'border-neutral-500/10' };
@@ -41,23 +81,25 @@ export function Overview({ accounts, settings }: OverviewProps) {
   const onTrackCount = accounts.filter(acc => getStatus(acc).label === 'En objetivo').length;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Top Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard 
           label="Facturación Total" 
           value={totalRevenueStr} 
           sub="Período seleccionado" 
+          icon={<TrendingUp className="w-3.5 h-3.5 text-blue-500" />}
+        />
+        <SummaryCard 
+          label="Proyección de Cierre" 
+          value={projectedRevenueStr} 
+          sub={`Estimado a ${daysInMonth} días`} 
+          highlight 
         />
         <SummaryCard 
           label="Invertido" 
           value={totalSpendStr} 
           sub="Reportado por Meta" 
-        />
-        <SummaryCard 
-          label="Roas general" 
-          value={`×${formatDecimal(avgRoas)}`} 
-          sub="Eficiencia general" 
         />
         <SummaryCard 
           label="Cuentas en objetivo" 
@@ -89,51 +131,110 @@ export function Overview({ accounts, settings }: OverviewProps) {
             <div className="text-right">Ingresos</div>
             <div className="text-right">ROAS</div>
           </div>
-          
-          {accounts.map(acc => {
-            const s = settings[acc.id] || { objective: 0 };
+                    {accounts.map(acc => {
+            const s = settings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS' };
             const status = getStatus(acc);
             const progress = s.objective > 0 ? Math.min((acc.revenue || 0) / s.objective, 1) : 0;
             const progressPct = Math.round(progress * 100);
             const roas = acc.spend && acc.spend > 0 ? (acc.revenue || 0) / acc.spend : 0;
+            const projectedRevenue = (acc.revenue || 0) * pacingMultiplier;
+            const isAhead = projectedRevenue >= s.objective && s.objective > 0;
 
             return (
-              <div key={acc.id} className="grid grid-cols-[140px_1fr_100px_60px] gap-3 items-center group py-1.5 border-b border-white/[0.02] last:border-0 last:pb-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", status.color)}></div>
-                  <div className="text-[11px] font-bold truncate text-neutral-400 tracking-tight group-hover:text-white transition-colors">{acc.name}</div>
-                </div>
-                
-                <div className="space-y-1 px-1">
-                  <div className="flex justify-between items-center px-0.5">
-                    <span className={cn("text-[9px] font-black uppercase tracking-tight", status.text)}>{progressPct}%</span>
-                    <span className="text-[8px] font-bold text-neutral-400 uppercase tracking-widest tabular-nums">
-                      {formatCurrency(acc.revenue || 0, (s as any).currency || acc.currency || 'ARS')} / {formatCurrency(s.objective || 0, (s as any).currency || acc.currency || 'ARS')}
+              <div key={acc.id} className="group relative">
+                <div className="grid grid-cols-[140px_1fr_100px_60px] gap-3 items-center py-2.5 border-b border-white/[0.03] group-hover:bg-white/[0.01] transition-all px-2 rounded-lg">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", status.color)}></div>
+                    <div className="text-[11px] font-bold truncate text-neutral-400 tracking-tight group-hover:text-white transition-colors">{acc.name}</div>
+                  </div>
+                  
+                  <div className="space-y-1.5 px-1">
+                    <div className="flex justify-between items-center px-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("text-[10px] font-black uppercase tracking-tight", status.text)}>{progressPct}%</span>
+                        {isAhead && s.objective > 0 && (
+                          <div className="bg-success/10 text-success text-[7px] font-black px-1 py-0.5 rounded flex items-center gap-0.5 border border-success/20">
+                            <TrendingUp className="w-2 h-2" />
+                            PACING OK
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-[8px] font-bold text-neutral-500 uppercase tracking-widest tabular-nums">
+                        {formatCurrency(acc.revenue || 0, s.currency)} / {formatCurrency(s.objective || 0, s.currency)}
+                      </span>
+                    </div>
+                    <div className="relative h-1.5 bg-white/[0.05] rounded-full overflow-hidden border border-white/5">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress * 100}%` }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        className={cn("h-full rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]", status.color)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-right text-[11px] font-semibold text-neutral-300 font-mono tracking-tighter">
+                    {formatCurrency(acc.revenue || 0, s.currency)}
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={cn(
+                      "text-[10px] font-black px-1.5 py-0.5 rounded transition-all", 
+                      status.text, 
+                      "bg-white/[0.02] group-hover:bg-white/[0.05]"
+                    )}>
+                      ×{formatDecimal(roas, 1)}
                     </span>
+                    <button 
+                      onClick={() => handleGetInsight(acc, s)}
+                      disabled={loadingInsightIds.has(acc.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-blue-600/10 rounded-lg text-neutral-600 hover:text-blue-500 transition-all flex items-center gap-1 text-[8px] font-black uppercase"
+                    >
+                      {loadingInsightIds.has(acc.id) ? (
+                        <RefreshCcw className="w-2.5 h-2.5 animate-spin" />
+                      ) : (
+                        <BrainCircuit className="w-2.5 h-2.5" />
+                      )}
+                      IA
+                    </button>
                   </div>
-                  <div className="relative h-1.5 bg-white/[0.05] rounded-full overflow-hidden border border-white/5">
+                </div>
+
+                <AnimatePresence>
+                  {insights[acc.id] && (
                     <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progress * 100}%` }}
-                      transition={{ duration: 0.8, ease: "easeOut" }}
-                      className={cn("h-full rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]", status.color)}
-                    />
-                  </div>
-                </div>
-
-                <div className="text-right text-[11px] font-semibold text-neutral-300 font-mono tracking-tighter">
-                  {formatCurrency(acc.revenue || 0, (s as any).currency || acc.currency)}
-                </div>
-
-                <div className="text-right">
-                  <span className={cn(
-                    "text-[9px] font-black px-1 py-0.5 rounded transition-all", 
-                    status.text, 
-                    "bg-white/[0.02] group-hover:bg-white/[0.05]"
-                  )}>
-                    ×{formatDecimal(roas, 1)}
-                  </span>
-                </div>
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mx-6 mb-3 p-3 bg-blue-600/5 border border-blue-600/10 rounded-xl relative">
+                        <div className="absolute top-2 right-2 flex gap-1">
+                           <button onClick={() => setInsights(prev => {
+                             const n = {...prev};
+                             delete n[acc.id];
+                             return n;
+                           })} className="p-1 hover:bg-blue-600/10 rounded text-neutral-600 hover:text-blue-500">
+                             <X className="w-3 h-3" />
+                           </button>
+                        </div>
+                        <div className="flex gap-2 items-start">
+                          <div className="p-1.5 bg-blue-600/10 rounded-lg">
+                            <BrainCircuit className="w-3.5 h-3.5 text-blue-500" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[10px] font-black italic text-blue-400/80 mb-1 uppercase tracking-widest flex items-center gap-1">
+                              Análisis Estratégico IA
+                            </p>
+                            <p className="text-[11px] font-medium text-neutral-300 leading-relaxed italic">
+                              "{insights[acc.id]}"
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             );
           })}
@@ -152,16 +253,26 @@ function StatusLegend({ color, label }: { color: string; label: string }) {
   );
 }
 
-function SummaryCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+function SummaryCard({ label, value, sub, icon, highlight }: { label: string; value: string; sub: string; icon?: React.ReactNode; highlight?: boolean }) {
   return (
-    <div className="bg-[#111] border border-white/5 p-5 rounded-2xl shadow-xl hover:bg-[#141414] transition-all group relative overflow-hidden flex flex-col justify-between min-h-[110px]">
+    <div className={cn(
+      "border p-5 rounded-2xl shadow-xl transition-all group relative overflow-hidden flex flex-col justify-between min-h-[110px]",
+      highlight 
+        ? "bg-blue-600/[0.03] border-blue-600/20 ring-1 ring-blue-600/10" 
+        : "bg-[#111] border-white/5 hover:bg-[#141414]"
+    )}>
       <div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.02] blur-3xl rounded-full -mr-16 -mt-16 transition-all group-hover:bg-blue-600/5"></div>
       <div className="relative">
-        <div className="text-[10px] font-black text-neutral-600 uppercase tracking-[0.2em] mb-4 group-hover:text-neutral-500 transition-colors">{label}</div>
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-[10px] font-black text-neutral-600 uppercase tracking-[0.2em] group-hover:text-neutral-500 transition-colors">
+            {label}
+          </div>
+          {icon}
+        </div>
         <div className="text-xl font-bold text-white mb-2 leading-none tracking-tighter tabular-nums">{value}</div>
       </div>
       <div className="relative flex items-center gap-2">
-        <div className="w-1 h-1 rounded-full bg-blue-600 opacity-50"></div>
+        <div className={cn("w-1 h-1 rounded-full opacity-50", highlight ? "bg-blue-400" : "bg-neutral-700")}></div>
         <div className="text-[9px] text-neutral-600 font-bold uppercase tracking-wider group-hover:text-neutral-500 transition-colors line-clamp-1">{sub}</div>
       </div>
     </div>
