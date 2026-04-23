@@ -9,7 +9,6 @@ import {
   fetchTopAds, 
   fetchDailySeries 
 } from '../services/facebook';
-import { generateAccountInsights } from '../services/geminiService';
 import { 
   Search, 
   RefreshCw, 
@@ -33,11 +32,7 @@ import {
   Download,
   FileText,
   Instagram,
-  Facebook,
-  RefreshCcw,
-  BrainCircuit,
-  Info,
-  X
+  Facebook
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
@@ -83,8 +78,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [showMetricConfig, setShowMetricConfig] = useState(false);
   const [localVisibleMetrics, setLocalVisibleMetrics] = useState<string[]>([]);
   const [chartFilters, setChartFilters] = useState<Record<string, string[]>>({});
-  const [insightLoading, setInsightLoading] = useState(false);
-  const [insight, setInsight] = useState<string | null>(null);
 
   const defaultVisibleMetrics = ['spend', 'revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'projected_revenue', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
   
@@ -225,24 +218,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
         : [...current, metric];
       return { ...prev, [adId]: next };
     });
-  };
-
-  const handleGetInsight = async () => {
-    if (!selectedAccount || !s || insightLoading) return;
-    setInsightLoading(true);
-    try {
-      const result = await generateAccountInsights({
-        name: selectedAccount.name,
-        spend: selectedAccount.spend || 0,
-        revenue: selectedAccount.revenue || 0,
-        objective: s.objective,
-        budget: s.budget,
-        currency: s.currency,
-      });
-      setInsight(result);
-    } finally {
-      setInsightLoading(false);
-    }
   };
 
   const renderMetric = (id: string, acc: AdAccount) => {
@@ -664,46 +639,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                 >
                   <TableIcon className={`w-3.5 h-3.5 ${showObservations ? 'opacity-100' : 'opacity-40'}`} />
                 </button>
-              </div>
-            </div>
-
-            {/* Header / Summary */}
-            <div className="space-y-4 print:hidden">
-              <div className="flex items-start justify-between bg-blue-600/[0.03] border border-blue-600/10 rounded-2xl p-5 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 blur-[80px] rounded-full -mr-32 -mt-32"></div>
-                <div className="relative flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <BrainCircuit className="w-4 h-4 text-blue-500" />
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500/80">Analista de Estrategia IA</h3>
-                  </div>
-                  {insight ? (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 5 }} 
-                      animate={{ opacity: 1, y: 0 }}
-                      className="relative"
-                    >
-                      <p className="text-sm font-medium text-neutral-300 leading-relaxed italic pr-12">"{insight}"</p>
-                      <button 
-                        onClick={() => setInsight(null)}
-                        className="absolute top-0 right-0 p-1 hover:bg-white/5 rounded-lg text-neutral-600 hover:text-white transition-all"
-                      >
-                         <X className="w-3.5 h-3.5" />
-                      </button>
-                    </motion.div>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      <p className="text-xs text-neutral-500 font-bold uppercase tracking-widest leading-none">Genera un análisis estratégico basado en el rendimiento actual.</p>
-                      <button 
-                        onClick={handleGetInsight}
-                        disabled={insightLoading}
-                        className="w-fit flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20 disabled:opacity-50"
-                      >
-                         {insightLoading ? <RefreshCcw className="w-3 h-3 animate-spin" /> : <BrainCircuit className="w-3 h-3" />}
-                         {insightLoading ? 'Analizando...' : 'Generar Insight'}
-                      </button>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
 

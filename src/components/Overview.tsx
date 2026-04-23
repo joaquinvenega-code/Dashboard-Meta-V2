@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { AdAccount, AccountSettings } from '../types';
 import { formatCurrency, formatNumber, formatDecimal, cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { BrainCircuit, TrendingUp, AlertTriangle, CheckCircle2, Info, RefreshCcw, X } from 'lucide-react';
-import { generateAccountInsights } from '../services/geminiService';
-import { differenceInDays, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { TrendingUp, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { differenceInDays, startOfMonth, endOfMonth } from 'date-fns';
 
 interface OverviewProps {
   accounts: AdAccount[];
@@ -12,9 +11,6 @@ interface OverviewProps {
 }
 
 export function Overview({ accounts, settings }: OverviewProps) {
-  const [loadingInsightIds, setLoadingInsightIds] = useState<Set<string>>(new Set());
-  const [insights, setInsights] = useState<Record<string, string>>({});
-
   // Aggregation logic...
   const totalsByCurrency: Record<string, { spend: number; revenue: number }> = {};
   
@@ -46,28 +42,6 @@ export function Overview({ accounts, settings }: OverviewProps) {
     const projected = totalsByCurrency[c].revenue * pacingMultiplier;
     return formatCurrency(projected, c);
   }).join(' + ');
-
-  const handleGetInsight = async (acc: AdAccount, s: any) => {
-    if (loadingInsightIds.has(acc.id)) return;
-    setLoadingInsightIds(prev => new Set(prev).add(acc.id));
-    try {
-      const result = await generateAccountInsights({
-        name: acc.name,
-        spend: acc.spend || 0,
-        revenue: acc.revenue || 0,
-        objective: s.objective,
-        budget: s.budget,
-        currency: s.currency,
-      });
-      setInsights(prev => ({ ...prev, [acc.id]: result }));
-    } finally {
-      setLoadingInsightIds(prev => {
-        const next = new Set(prev);
-        next.delete(acc.id);
-        return next;
-      });
-    }
-  };
 
   const getStatus = (acc: AdAccount) => {
     const s = settings[acc.id] || { objective: 0 };
@@ -185,56 +159,8 @@ export function Overview({ accounts, settings }: OverviewProps) {
                     )}>
                       ×{formatDecimal(roas, 1)}
                     </span>
-                    <button 
-                      onClick={() => handleGetInsight(acc, s)}
-                      disabled={loadingInsightIds.has(acc.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-blue-600/10 rounded-lg text-neutral-600 hover:text-blue-500 transition-all flex items-center gap-1 text-[8px] font-black uppercase"
-                    >
-                      {loadingInsightIds.has(acc.id) ? (
-                        <RefreshCcw className="w-2.5 h-2.5 animate-spin" />
-                      ) : (
-                        <BrainCircuit className="w-2.5 h-2.5" />
-                      )}
-                      IA
-                    </button>
                   </div>
                 </div>
-
-                <AnimatePresence>
-                  {insights[acc.id] && (
-                    <motion.div 
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mx-6 mb-3 p-3 bg-blue-600/5 border border-blue-600/10 rounded-xl relative">
-                        <div className="absolute top-2 right-2 flex gap-1">
-                           <button onClick={() => setInsights(prev => {
-                             const n = {...prev};
-                             delete n[acc.id];
-                             return n;
-                           })} className="p-1 hover:bg-blue-600/10 rounded text-neutral-600 hover:text-blue-500">
-                             <X className="w-3 h-3" />
-                           </button>
-                        </div>
-                        <div className="flex gap-2 items-start">
-                          <div className="p-1.5 bg-blue-600/10 rounded-lg">
-                            <BrainCircuit className="w-3.5 h-3.5 text-blue-500" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-[10px] font-black italic text-blue-400/80 mb-1 uppercase tracking-widest flex items-center gap-1">
-                              Análisis Estratégico IA
-                            </p>
-                            <p className="text-[11px] font-medium text-neutral-300 leading-relaxed italic">
-                              "{insights[acc.id]}"
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             );
           })}
