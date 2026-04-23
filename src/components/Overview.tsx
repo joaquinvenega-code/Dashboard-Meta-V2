@@ -59,21 +59,21 @@ export function Overview({ accounts, settings }: OverviewProps) {
       {/* Top Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard 
-          label="Facturación Total" 
-          value={totalRevenueStr} 
-          sub="Período seleccionado" 
+          label="Inversión General" 
+          value={totalSpendStr} 
+          sub="Reportado por Meta" 
           icon={<TrendingUp className="w-3.5 h-3.5 text-blue-500" />}
         />
         <SummaryCard 
-          label="Proyección de Cierre" 
-          value={projectedRevenueStr} 
-          sub={`Estimado a ${daysInMonth} días`} 
-          highlight 
+          label="Facturación General" 
+          value={totalRevenueStr} 
+          sub="Período seleccionado" 
         />
         <SummaryCard 
-          label="Invertido" 
-          value={totalSpendStr} 
-          sub="Reportado por Meta" 
+          label="Roas General" 
+          value={`×${formatDecimal(avgRoas, 1)}`} 
+          sub="Promedio de cuentas" 
+          highlight 
         />
         <SummaryCard 
           label="Cuentas en objetivo" 
@@ -105,14 +105,12 @@ export function Overview({ accounts, settings }: OverviewProps) {
             <div className="text-right">Ingresos</div>
             <div className="text-right">ROAS</div>
           </div>
-                    {accounts.map(acc => {
+          {accounts.map(acc => {
             const s = settings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS' };
             const status = getStatus(acc);
             const progress = s.objective > 0 ? Math.min((acc.revenue || 0) / s.objective, 1) : 0;
             const progressPct = Math.round(progress * 100);
             const roas = acc.spend && acc.spend > 0 ? (acc.revenue || 0) / acc.spend : 0;
-            const projectedRevenue = (acc.revenue || 0) * pacingMultiplier;
-            const isAhead = projectedRevenue >= s.objective && s.objective > 0;
 
             return (
               <div key={acc.id} className="group relative">
@@ -126,12 +124,6 @@ export function Overview({ accounts, settings }: OverviewProps) {
                     <div className="flex justify-between items-center px-0.5">
                       <div className="flex items-center gap-2">
                         <span className={cn("text-[10px] font-black uppercase tracking-tight", status.text)}>{progressPct}%</span>
-                        {isAhead && s.objective > 0 && (
-                          <div className="bg-success/10 text-success text-[7px] font-black px-1 py-0.5 rounded flex items-center gap-0.5 border border-success/20">
-                            <TrendingUp className="w-2 h-2" />
-                            PACING OK
-                          </div>
-                        )}
                       </div>
                       <span className="text-[8px] font-bold text-neutral-500 uppercase tracking-widest tabular-nums">
                         {formatCurrency(acc.revenue || 0, s.currency)} / {formatCurrency(s.objective || 0, s.currency)}
