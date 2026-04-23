@@ -477,34 +477,34 @@ export default function App() {
             </div>
           )}
 
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 print:hidden">
-            <div>
-              <h2 className="text-xl font-black tracking-widest text-white uppercase opacity-80">
-                {activePage === 'overview' ? 'Vista general' : 
-                 activePage === 'detail' ? 'Dashboard De Creativos' : 
-                 activePage === 'accounts' ? 'Cuentas visibles' : activePage}
-              </h2>
-              <div className="flex items-center gap-4 mt-2">
-                <p className="text-neutral-500 text-sm font-bold uppercase tracking-widest leading-none">Dash — live metrics</p>
-                <div className="flex items-center gap-2 text-[9px] font-black text-neutral-600 bg-white/5 px-2 py-0.5 rounded border border-white/5 uppercase">
-                  <span>Totales: {accounts.length}</span>
-                  <span className="opacity-20">/</span>
-                  <span>Seleccionados: {visibleAccountIds.length}</span>
-                  <span className="opacity-20">/</span>
-                  <span>En Tabla: {overviewEntities.length}</span>
-                </div>
-              </div>
-            </div>
-
-            {activePage !== 'accounts' && (
-              <div className="flex flex-wrap items-center gap-3 bg-[#111] p-2 rounded-2xl border border-white/5">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-neutral-600 ml-2" />
-                  <div className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mr-4">
-                    {dateRange.since} — {dateRange.until}
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 print:hidden">
+              <div>
+                <h2 className="text-xl font-black tracking-widest text-white uppercase opacity-80">
+                  {activePage === 'overview' ? 'Vista general' : 
+                   activePage === 'detail' ? 'Dashboard De Creativos' : 
+                   activePage === 'accounts' ? 'Cuentas visibles' : activePage}
+                </h2>
+                <div className="flex items-center gap-4 mt-2">
+                  <p className="text-neutral-500 text-sm font-bold uppercase tracking-widest leading-none">Dash — live metrics</p>
+                  <div className="flex items-center gap-2 text-[9px] font-black text-neutral-600 bg-white/5 px-2 py-0.5 rounded border border-white/5 uppercase">
+                    <span>Totales: {accounts.length}</span>
+                    <span className="opacity-20">/</span>
+                    <span>Seleccionados: {visibleAccountIds.length}</span>
+                    <span className="opacity-20">/</span>
+                    <span>En Tabla: {overviewEntities.length}</span>
                   </div>
                 </div>
+              </div>
+
+              {activePage === 'overview' && (
+                <div className="flex flex-wrap items-center gap-3 bg-[#111] p-2 rounded-2xl border border-white/5">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-neutral-600 ml-2" />
+                    <div className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mr-4">
+                      {dateRange.since} — {dateRange.until}
+                    </div>
+                  </div>
 
                 <div className="flex items-center gap-2">
                   <select 
@@ -885,6 +885,9 @@ export default function App() {
                   settings={settings}
                   onSaveSettings={handleSaveSettings}
                   dateRange={dateRange}
+                  setDateRange={setDateRange}
+                  isCustomDate={isCustomDate}
+                  setIsCustomDate={setIsCustomDate}
                   onRefresh={loadData}
                 />
               )}

@@ -32,10 +32,12 @@ import {
   Download,
   FileText,
   Instagram,
-  Facebook
+  Facebook,
+  Copy,
+  Check
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
+import { startOfMonth, endOfMonth, differenceInDays, subDays } from 'date-fns';
 import { 
   AreaChart, 
   Area, 
@@ -54,6 +56,9 @@ interface AccountDetailViewProps {
   settings: Record<string, AccountSettings>;
   onSaveSettings: (id: string, s: AccountSettings) => void;
   dateRange: { since: string; until: string };
+  setDateRange: (range: { since: string; until: string }) => void;
+  isCustomDate: boolean;
+  setIsCustomDate: (val: boolean) => void;
   onRefresh: () => void;
 }
 
@@ -63,6 +68,9 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   settings,
   onSaveSettings,
   dateRange,
+  setDateRange,
+  isCustomDate,
+  setIsCustomDate,
   onRefresh
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -78,6 +86,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [showMetricConfig, setShowMetricConfig] = useState(false);
   const [localVisibleMetrics, setLocalVisibleMetrics] = useState<string[]>([]);
   const [chartFilters, setChartFilters] = useState<Record<string, string[]>>({});
+  const [copied, setCopied] = useState(false);
 
   const defaultVisibleMetrics = ['spend', 'revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'projected_revenue', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
   
@@ -158,6 +167,61 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     setIsSavingObs(true);
     onSaveSettings(selectedId, { ...s, observations } as any);
     setTimeout(() => setIsSavingObs(false), 800);
+  };
+
+  const handleCopyText = () => {
+    const selectedAccounts = accounts.filter(acc => 
+      visibleAccountIds.some(vId => vId === acc.id || vId === acc.account_id)
+    );
+
+    const exportFormatCurrency = (val: number, curr: string) => {
+      return new Intl.NumberFormat('es-AR', {
+        style: 'currency',
+        currency: curr,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(val);
+    };
+
+    let text = "";
+    selectedAccounts.forEach((acc) => {
+      const sAcc = settings[acc.id] || {};
+      const roas = acc.spend > 0 ? (acc.revenue / acc.spend).toFixed(2) : "0";
+      const customName = sAcc.customName || acc.name;
+      const currency = sAcc.currency || acc.currency || 'ARS';
+      
+      text += `- ${customName}\n`;
+      
+      if (sAcc.tracking === 'messaging') {
+         text += `Campañas de mensajería:\n`;
+         text += `Inversión: ${exportFormatCurrency(acc.spend || 0, currency)}\n`;
+         text += `Mensajes generados: ${acc.messages || 0}\n`;
+         text += `Valor por mensaje: ${exportFormatCurrency(acc.costPerMessage || 0, currency)}\n`;
+      } else if (sAcc.tracking === 'both') {
+         text += `Campañas de conversión web:\n`;
+         text += `Inversión: ${exportFormatCurrency(acc.spend || 0, currency)}\n`;
+         text += `Facturación: ${exportFormatCurrency(acc.revenue || 0, currency)}\n`;
+         text += `ROAS General: ${roas}\n`;
+         text += `Campañas de mensajería:\n`;
+         text += `Inversión: ${exportFormatCurrency(acc.spend || 0, currency)}\n`;
+         text += `Mensajes generados: ${acc.messages || 0}\n`;
+         text += `Valor por mensaje: ${exportFormatCurrency(acc.costPerMessage || 0, currency)}\n`;
+      } else {
+         text += `Inversión: ${exportFormatCurrency(acc.spend || 0, currency)}\n`;
+         text += `Facturación: ${exportFormatCurrency(acc.revenue || 0, currency)}\n`;
+         text += `ROAS General: ${roas}\n`;
+      }
+
+      if (sAcc.observations) {
+        text += `Observación: ${sAcc.observations}\n`;
+      }
+      
+      text += "\n";
+    });
+
+    navigator.clipboard.writeText(text.trim());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const formatCurrency = (val: number, curr: string = 'ARS') => {
@@ -442,11 +506,68 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
             placeholder="Buscar cuenta en el listado..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full max-w-sm bg-[#111] border border-white/5 rounded-xl py-2.5 pl-11 pr-4 text-xs text-white placeholder-neutral-700 outline-none focus:border-blue-500/50 transition-all shadow-inner"
+            className="w-full max-w-sm bg-[#111] border border-white/5 rounded-xl py-2.5 pl-11 pr-4 text-xs text-white placeholder-neutral-700 outline-none focus:border-blue-500/50 transition-all shadow-inner font-bold"
           />
         </div>
 
         <div className="flex items-center gap-2">
+            {/* New Date Picker in Detail View */}
+            <div className="flex items-center gap-2 bg-[#111] p-1.5 rounded-xl border border-white/5 mr-2">
+              <Calendar className="w-3.5 h-3.5 text-neutral-600 ml-1.5" />
+              <select 
+                value={isCustomDate ? 'custom' : (dateRange.since === format(startOfMonth(new Date()), 'yyyy-MM-dd') ? 'this_month' : 'last_7')}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const now = new Date();
+                  if (val === 'custom') {
+                    setIsCustomDate(true);
+                  } else {
+                    setIsCustomDate(false);
+                    if (val === 'this_month') {
+                      setDateRange({ since: format(startOfMonth(now), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
+                    } else if (val === 'last_7') {
+                      setDateRange({ since: format(subDays(now, 7), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
+                    } else if (val === 'last_30') {
+                      setDateRange({ since: format(subDays(now, 30), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
+                    }
+                  }
+                }}
+                className="bg-transparent text-[9px] font-black text-neutral-400 uppercase tracking-widest outline-none cursor-pointer border-none py-1 pr-2"
+              >
+                <option value="this_month">Este mes</option>
+                <option value="last_7">Últimos 7 días</option>
+                <option value="last_30">Últimos 30 días</option>
+                <option value="custom">Personalizado</option>
+              </select>
+
+              {isCustomDate && (
+                <div className="flex items-center gap-2 pr-2 animate-in slide-in-from-right-2 duration-300">
+                  <input 
+                    type="date" 
+                    value={dateRange.since}
+                    onChange={(e) => setDateRange({ ...dateRange, since: e.target.value })}
+                    className="bg-black/20 border border-white/5 rounded-lg px-2 py-1 text-[8px] font-bold text-white outline-none"
+                  />
+                  <input 
+                    type="date" 
+                    value={dateRange.until}
+                    onChange={(e) => setDateRange({ ...dateRange, until: e.target.value })}
+                    className="bg-black/20 border border-white/5 rounded-lg px-2 py-1 text-[8px] font-bold text-white outline-none"
+                  />
+                </div>
+              )}
+            </div>
+
+           <button 
+             onClick={handleCopyText}
+             className={cn(
+               "bg-neutral-900 border border-white/5 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+               copied ? "text-success border-success/20" : "text-neutral-400 hover:text-white"
+             )}
+           >
+             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+             {copied ? 'Copiado!' : 'Copiar Texto'}
+           </button>
            <button 
              onClick={handlePrint}
              className="bg-neutral-900 border border-white/10 px-4 py-2.5 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2 shadow-lg"
