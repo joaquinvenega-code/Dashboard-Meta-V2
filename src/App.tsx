@@ -627,7 +627,7 @@ export default function App() {
                               strategy={horizontalListSortingStrategy}
                             >
                               <tr className="border-b border-white/5 bg-white/[0.01]">
-                                <th className="px-5 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] w-48">Cuenta</th>
+                                <th className="px-5 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] w-48">Cliente</th>
                                 {colOrder.map((colId: string) => {
                                   if (!visibleCols.includes(colId)) return null;
                                   return <SortableHeader key={colId} id={colId} label={COLUMN_DEFS[colId].label} width={COLUMN_DEFS[colId].width} />;
@@ -780,20 +780,22 @@ export default function App() {
 
                                   if (colId === 'progreso') return (
                                     <td key={colId} className="px-2 py-2.5">
-                                      <div className="flex items-center gap-2 justify-center">
-                                        <div className="w-12 h-1 bg-neutral-900 rounded-full overflow-hidden border border-white/5">
+                                      <div className="flex flex-col gap-1.5 justify-center">
+                                        <div className="flex justify-between items-center px-0.5">
+                                          <span className={cn("text-[9px] font-black tracking-tight", status.color)}>{Math.round(progress * 100)}%</span>
+                                        </div>
+                                        <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden border border-white/5 relative">
                                           <div 
-                                            className={cn("h-full transition-all duration-1000", status.bg)} 
+                                            className={cn("h-full transition-all duration-1000 shadow-[0_0_8px_rgba(0,0,0,0.3)]", status.bg)} 
                                             style={{ width: `${Math.min(progress * 100, 100)}%` }}
                                           ></div>
                                         </div>
-                                        <span className="text-[9px] font-black text-neutral-600 w-6">{Math.round(progress * 100)}%</span>
                                       </div>
                                     </td>
                                   );
 
                                   if (colId === 'invertido') return (
-                                    <td key={colId} className="px-2 py-2.5 text-center text-[10px] font-medium text-neutral-500">
+                                    <td key={colId} className="px-2 py-2.5 text-center text-[10px] font-bold text-neutral-400 tabular-nums">
                                       {formatCurrency(acc.spend || 0, s.currency)}
                                     </td>
                                   );
@@ -806,10 +808,17 @@ export default function App() {
 
                                   if (colId === 'prespct') return (
                                     <td key={colId} className="px-2 py-2.5">
-                                      <div className="flex items-center gap-2 justify-center">
-                                        <div className="w-12 h-1 bg-neutral-900 rounded-full overflow-hidden border border-white/5">
+                                      <div className="flex flex-col gap-1.5 justify-center">
+                                        <div className="flex justify-between items-center px-0.5">
+                                          <span className={cn("text-[9px] font-black tracking-tight", 
+                                            budgetProgress > 1 ? "text-danger" : 
+                                            budgetProgress > 0.9 ? "text-warning" : 
+                                            "text-success/70"
+                                          )}>{Math.round(budgetProgress * 100)}%</span>
+                                        </div>
+                                        <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden border border-white/5 relative">
                                           <div 
-                                            className={cn("h-full transition-all duration-1000", 
+                                            className={cn("h-full transition-all duration-1000 shadow-[0_0_8px_rgba(0,0,0,0.3)]", 
                                               budgetProgress > 1 ? "bg-danger" : 
                                               budgetProgress > 0.9 ? "bg-warning" : 
                                               "bg-success/50"
@@ -817,13 +826,6 @@ export default function App() {
                                             style={{ width: `${Math.min(budgetProgress * 100, 100)}%` }}
                                           ></div>
                                         </div>
-                                        <span className={cn("text-[9px] font-black w-6 rounded px-1", 
-                                          budgetProgress > 1 ? "text-danger" : 
-                                          budgetProgress > 0.9 ? "text-warning" : 
-                                          "text-success/50"
-                                        )}>
-                                          {Math.round(budgetProgress * 100)}%
-                                        </span>
                                       </div>
                                     </td>
                                   );

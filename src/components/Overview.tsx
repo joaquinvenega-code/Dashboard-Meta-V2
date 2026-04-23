@@ -50,17 +50,17 @@ export function Overview({ accounts, settings }: OverviewProps) {
           sub="Período seleccionado" 
         />
         <SummaryCard 
-          label="Inversión Consumida" 
+          label="Invertido" 
           value={totalSpendStr} 
           sub="Reportado por Meta" 
         />
         <SummaryCard 
-          label="Ponderado ROAS" 
+          label="Roas general" 
           value={`×${formatDecimal(avgRoas)}`} 
           sub="Eficiencia general" 
         />
         <SummaryCard 
-          label="Cuentas Saludables" 
+          label="Cuentas en objetivo" 
           value={`${onTrackCount} / ${accounts.length}`} 
           sub="Cuentas en meta" 
         />
@@ -84,7 +84,7 @@ export function Overview({ accounts, settings }: OverviewProps) {
 
         <div className="space-y-2.5 relative">
           <div className="grid grid-cols-[140px_1fr_100px_60px] gap-3 px-2 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] border-b border-white/5 pb-2">
-            <div>Entidad / Cliente</div>
+            <div>Cliente</div>
             <div className="text-center">Progreso</div>
             <div className="text-right">Ingresos</div>
             <div className="text-right">ROAS</div>
@@ -106,17 +106,17 @@ export function Overview({ accounts, settings }: OverviewProps) {
                 
                 <div className="space-y-1 px-1">
                   <div className="flex justify-between items-center px-0.5">
-                    <span className={cn("text-[8px] font-black uppercase tracking-tight", status.text)}>{progressPct}%</span>
-                    <span className="text-[7px] font-bold text-neutral-800 uppercase tracking-widest opacity-50">
-                      {formatCurrency(acc.revenue || 0, 'ARS')} / {formatCurrency(s.objective || 0, 'ARS')}
+                    <span className={cn("text-[9px] font-black uppercase tracking-tight", status.text)}>{progressPct}%</span>
+                    <span className="text-[8px] font-bold text-neutral-400 uppercase tracking-widest tabular-nums">
+                      {formatCurrency(acc.revenue || 0, (s as any).currency || acc.currency || 'ARS')} / {formatCurrency(s.objective || 0, (s as any).currency || acc.currency || 'ARS')}
                     </span>
                   </div>
-                  <div className="relative h-1 bg-white/[0.02] rounded-full overflow-hidden border border-white/[0.03]">
+                  <div className="relative h-1.5 bg-white/[0.05] rounded-full overflow-hidden border border-white/5">
                     <motion.div 
                       initial={{ width: 0 }}
                       animate={{ width: `${progress * 100}%` }}
                       transition={{ duration: 0.8, ease: "easeOut" }}
-                      className={cn("h-full rounded-full", status.color)}
+                      className={cn("h-full rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]", status.color)}
                     />
                   </div>
                 </div>
@@ -154,12 +154,15 @@ function StatusLegend({ color, label }: { color: string; label: string }) {
 
 function SummaryCard({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
-    <div className="bg-[#141414] border border-white/5 p-4 rounded-xl shadow-lg hover:bg-[#181818] transition-all group relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-16 h-16 bg-white/5 blur-2xl rounded-full -mr-8 -mt-8 transition-all group-hover:bg-blue-600/5"></div>
+    <div className="bg-[#111] border border-white/5 p-5 rounded-2xl shadow-xl hover:bg-[#141414] transition-all group relative overflow-hidden flex flex-col justify-between min-h-[110px]">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.02] blur-3xl rounded-full -mr-16 -mt-16 transition-all group-hover:bg-blue-600/5"></div>
       <div className="relative">
-        <div className="text-[9px] font-black text-neutral-600 uppercase tracking-[0.15em] mb-2 group-hover:text-neutral-500 transition-colors">{label}</div>
-        <div className="text-base lg:text-lg font-semibold text-white mb-1 leading-tight tracking-tight">{value}</div>
-        <div className="text-[8px] text-neutral-800 font-bold uppercase tracking-wide group-hover:text-neutral-700 transition-colors line-clamp-1">{sub}</div>
+        <div className="text-[10px] font-black text-neutral-600 uppercase tracking-[0.2em] mb-4 group-hover:text-neutral-500 transition-colors">{label}</div>
+        <div className="text-xl font-bold text-white mb-2 leading-none tracking-tighter tabular-nums">{value}</div>
+      </div>
+      <div className="relative flex items-center gap-2">
+        <div className="w-1 h-1 rounded-full bg-blue-600 opacity-50"></div>
+        <div className="text-[9px] text-neutral-600 font-bold uppercase tracking-wider group-hover:text-neutral-500 transition-colors line-clamp-1">{sub}</div>
       </div>
     </div>
   );
