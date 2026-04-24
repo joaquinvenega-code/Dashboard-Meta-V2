@@ -270,7 +270,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
 
   const insRes: any = await new Promise((resolve) => {
     window.FB.api(`/${accountId}/insights`, 'GET', {
-      fields: 'ad_id,ad_name,spend,ctr,actions,action_values',
+      fields: 'ad_id,ad_name,spend,clicks,ctr,actions,action_values',
       time_range,
       level: 'ad',
       limit: 500,
@@ -295,6 +295,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         id: d.ad_id,
         name: d.ad_name || d.ad_id,
         spend,
+        clicks: parseInt(d.clicks) || 0,
         purchases,
         revenue,
         messages,
@@ -485,7 +486,7 @@ export async function fetchDailySeries(accountId: string, since: string, until: 
   const time_range = JSON.stringify({ since, until });
   const response: any = await new Promise((resolve) => {
     window.FB.api(`/${accountId}/insights`, 'GET', {
-      fields: 'ad_id,date_start,spend,actions,action_values',
+      fields: 'ad_id,date_start,spend,clicks,actions,action_values',
       time_range,
       level: 'ad',
       time_increment: 1,
@@ -500,10 +501,13 @@ export async function fetchDailySeries(accountId: string, since: string, until: 
       const spend = parseFloat(d.spend) || 0;
       const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase');
       const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase');
+      const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') ||
+                       getAction(d.actions, 'onsite_conversion.total_messaging_connection');
+      const clicks = parseInt(d.clicks) || 0;
       const roas = spend > 0 ? revenue / spend : 0;
       const adId = d.ad_id;
       if (!byAd[adId]) byAd[adId] = [];
-      byAd[adId].push({ date: d.date_start, spend, purchases, revenue, roas });
+      byAd[adId].push({ date: d.date_start, spend, purchases, revenue, messages, clicks, roas });
     });
     Object.keys(byAd).forEach((k) => byAd[k].sort((a, b) => a.date.localeCompare(b.date)));
   }

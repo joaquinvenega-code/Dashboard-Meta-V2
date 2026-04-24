@@ -42,6 +42,7 @@ import {
   AreaChart, 
   Area, 
   XAxis, 
+  YAxis,
   Tooltip, 
   ResponsiveContainer,
   Line
@@ -90,6 +91,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
   const defaultVisibleMetrics = ['spend', 'revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
   
+  const messagingDefaultMetrics = ['messages', 'cpm', 'ctr', 'spend', 'clicks', 'cpm_real'];
+  
   // Filter accounts for sidebar
   const sidebarAccounts = accounts.filter(acc => 
     visibleAccountIds.some(vId => vId === acc.id || vId === acc.account_id)
@@ -121,9 +124,12 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     if (s?.visibleMetrics && s.visibleMetrics.length > 0) {
       setLocalVisibleMetrics(s.visibleMetrics);
     } else {
-      setLocalVisibleMetrics(defaultVisibleMetrics);
+      const defaults = (s?.tracking === 'messaging' || sortBy === 'messages') 
+        ? messagingDefaultMetrics 
+        : defaultVisibleMetrics;
+      setLocalVisibleMetrics(defaults);
     }
-  }, [selectedId, !!s?.visibleMetrics]);
+  }, [selectedId, !!s?.visibleMetrics, s?.tracking, sortBy]);
 
   const loadAds = useCallback(async () => {
     if (!selectedId) return;
@@ -305,30 +311,40 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   };
 
   const AdCard: React.FC<{ ad: Ad; rank: number }> = ({ ad, rank }) => {
-    const filters = chartFilters[ad.id] || (sortBy === 'messages' || s?.tracking === 'messaging' ? ['messages', 'roas'] : ['purchases', 'revenue', 'roas']);
-    const showSales = filters.includes('purchases');
-    const showRevenue = filters.includes('revenue');
+    const isMessaging = sortBy === 'messages' || s?.tracking === 'messaging';
+    
+    // Default filters based on campaign type
+    const defaultFilters = isMessaging ? ['messages', 'costPerMessage'] : ['purchases', 'revenue', 'roas'];
+    const filters = chartFilters[ad.id] || defaultFilters;
+    
+    const showSales = !isMessaging && filters.includes('purchases');
+    const showRevenue = !isMessaging && filters.includes('revenue');
     const showRoas = filters.includes('roas');
     const showMessages = filters.includes('messages');
+    const showCostPerMessage = filters.includes('costPerMessage');
 
     const chartData = ad.dailySeries?.filter(d => 
       d.date >= dateRange.since && d.date <= dateRange.until
     ).map(d => ({
       ...d,
+      costPerMessage: d.messages && d.messages > 0 ? d.spend / d.messages : 0,
       formattedDate: format(parseISO(d.date), 'dd/MM', { locale: es })
     })) || [];
 
-    const stats = [
+    const stats = isMessaging ? [
+      { label: 'Mensajes', value: (ad.messages || 0).toString(), color: 'text-blue-400' },
+      { label: 'Costo x Mensaje', value: formatCurrency(ad.messages && ad.messages > 0 ? ad.spend / ad.messages : 0, selectedAccount?.currency || 'ARS'), color: 'text-purple-400' },
+      { label: 'CTR', value: `${ad.ctr.toFixed(2)}%` },
+      { label: 'Inversión', value: formatCurrency(ad.spend, selectedAccount?.currency || 'ARS') },
+      { label: 'Clics', value: (ad.clicks || 0).toString() },
+      { label: 'CPC', value: formatCurrency(ad.clicks && ad.clicks > 0 ? ad.spend / ad.clicks : 0, selectedAccount?.currency || 'ARS') }
+    ] : [
       { label: 'ROAS', value: `×${ad.roas.toFixed(2)}`, color: 'text-success print:text-green-600' },
       { label: 'CTR', value: `${ad.ctr.toFixed(2)}%` },
       { label: 'Inversión', value: formatCurrency(ad.spend, selectedAccount?.currency || 'ARS') },
-      sortBy === 'messages' || s?.tracking === 'messaging' ? 
-        { label: 'Mensajes', value: (ad.messages || 0).toString() } :
-        { label: 'Ventas', value: ad.purchases.toString() },
+      { label: 'Ventas', value: ad.purchases.toString() },
       { label: 'Ingresos', value: formatCurrency(ad.revenue, selectedAccount?.currency || 'ARS') },
-      sortBy === 'messages' || s?.tracking === 'messaging' ?
-        { label: 'Costo x Mensaje', value: formatCurrency(ad.messages && ad.messages > 0 ? ad.spend / ad.messages : 0, selectedAccount?.currency || 'ARS') } :
-        { label: 'Costo x Venta', value: formatCurrency(ad.purchases > 0 ? ad.spend / ad.purchases : 0, selectedAccount?.currency || 'ARS') }
+      { label: 'Costo x Venta', value: formatCurrency(ad.purchases > 0 ? ad.spend / ad.purchases : 0, selectedAccount?.currency || 'ARS') }
     ];
 
     return (
@@ -352,14 +368,11 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                       const img = e.target as HTMLImageElement;
                       const originalUrl = img.getAttribute('data-original') || '';
                       
-                      // Si falló el 1080p, intentamos volver a la URL original sin escala
                       if (img.src.includes('/s1080x1080/')) {
-                        console.warn(`[AdThumb] 403/Error on HD, rolling back for ${ad.id}`);
                         img.src = originalUrl.replace('/s1080x1080/', '/'); 
                         return;
                       }
 
-                      // Si ya falló todo, ocultamos y mostramos placeholder
                       img.style.display = 'none';
                       const placeholder = img.parentElement?.querySelector('.ad-placeholder');
                       if (placeholder) placeholder.classList.remove('hidden');
@@ -396,7 +409,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
           <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:flex-[3.2] print:h-24 print:p-0 print:bg-transparent print:border-2 print:border-neutral-100/50 print:rounded-2xl print:overflow-hidden">
              <div className="flex flex-wrap items-center gap-2 mb-2 shrink-0 print:gap-4 print:my-2 print:justify-start print:pl-3">
-                {!(sortBy === 'messages' || s?.tracking === 'messaging') && (
+                {!isMessaging && (
                   <>
                     <LegendButton 
                       active={showSales} 
@@ -410,27 +423,35 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                       label="Ingresos" 
                       onClick={() => toggleChartMetric(ad.id, 'revenue')}
                     />
+                    <LegendButton 
+                      active={showRoas} 
+                      color="#f97316" 
+                      label="ROAS" 
+                      onClick={() => toggleChartMetric(ad.id, 'roas')}
+                    />
                   </>
                 )}
-                {(sortBy === 'messages' || s?.tracking === 'messaging') && (
-                  <LegendButton 
-                    active={showMessages} 
-                    color="#8b5cf6" 
-                    label="Mensajes" 
-                    onClick={() => toggleChartMetric(ad.id, 'messages')}
-                  />
+                {isMessaging && (
+                  <>
+                    <LegendButton 
+                      active={showMessages} 
+                      color="#8b5cf6" 
+                      label="Mensajes" 
+                      onClick={() => toggleChartMetric(ad.id, 'messages')}
+                    />
+                    <LegendButton 
+                      active={showCostPerMessage} 
+                      color="#06b6d4" 
+                      label="Costo Mensaje" 
+                      onClick={() => toggleChartMetric(ad.id, 'costPerMessage')}
+                    />
+                  </>
                 )}
-                <LegendButton 
-                  active={showRoas} 
-                  color="#f97316" 
-                  label="ROAS" 
-                  onClick={() => toggleChartMetric(ad.id, 'roas')}
-                />
              </div>
 
              <div className="flex-1 w-full min-h-0 print:pr-4 print:pb-2">
                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 5, right: 35, left: 10, bottom: 0 }}>
+                  <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
                     <defs>
                       <linearGradient id={`gP-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.1}/>
@@ -444,6 +465,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                         <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.1}/>
                         <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0}/>
                       </linearGradient>
+                      <linearGradient id={`gCPM-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.1}/>
+                        <stop offset="100%" stopColor="#06b6d4" stopOpacity={0}/>
+                      </linearGradient>
                     </defs>
                     <XAxis 
                       dataKey="formattedDate" 
@@ -453,22 +478,28 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                       tick={{ fontSize: 6, fontWeight: 'bold', fill: '#999' }}
                       className="print:block"
                     />
+                    <YAxis yAxisId="left" hide />
+                    <YAxis yAxisId="right" hide />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px', padding: '6px', color: '#000' }}
                       itemStyle={{ fontSize: '8px', fontWeight: 'bold' }}
                       labelStyle={{ fontSize: '7px', color: '#666' }}
                     />
+                    {/* Ejes para escalas distintas */}
                     {showRevenue && (
-                      <Area type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={1} fill={`url(#gR-${ad.id})`} dot={false} strokeDasharray="2 2" strokeOpacity={0.3} />
+                      <Area type="monotone" dataKey="revenue" yAxisId="right" stroke="#22c55e" strokeWidth={1} fill={`url(#gR-${ad.id})`} dot={false} strokeDasharray="2 2" strokeOpacity={0.3} />
                     )}
                     {showSales && (
-                      <Area type="monotone" dataKey="purchases" stroke="#3b82f6" strokeWidth={1.5} fill={`url(#gP-${ad.id})`} dot={false} />
+                      <Area type="monotone" dataKey="purchases" yAxisId="left" stroke="#3b82f6" strokeWidth={1.5} fill={`url(#gP-${ad.id})`} dot={false} />
                     )}
                     {showMessages && (
-                      <Area type="monotone" dataKey="messages" stroke="#8b5cf6" strokeWidth={1.5} fill={`url(#gM-${ad.id})`} dot={false} />
+                      <Area type="monotone" dataKey="messages" yAxisId="left" stroke="#8b5cf6" strokeWidth={1.5} fill={`url(#gM-${ad.id})`} dot={false} />
+                    )}
+                    {showCostPerMessage && (
+                      <Area type="monotone" dataKey="costPerMessage" yAxisId="right" stroke="#06b6d4" strokeWidth={1} dot={false} fill={`url(#gCPM-${ad.id})`} strokeDasharray="3 2" />
                     )}
                     {showRoas && (
-                      <Area type="monotone" dataKey="roas" stroke="#f97316" strokeWidth={1} dot={false} strokeDasharray="3 3" />
+                      <Area type="monotone" dataKey="roas" yAxisId="right" stroke="#f97316" strokeWidth={1} dot={false} strokeDasharray="3 3" />
                     )}
                   </AreaChart>
                </ResponsiveContainer>
@@ -483,13 +514,11 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
               className={`flex flex-col items-center gap-1 group/link transition-all ${!ad.previewUrl ? 'pointer-events-none opacity-20' : 'cursor-pointer'} print:opacity-100 print:bg-blue-600 print:px-2 print:py-2.5 print:rounded-lg print:shadow-md print:block print:w-full print:text-center print:cursor-pointer print:relative print:z-50 print:leading-none`}
               id={`ad-link-${ad.id}`}
             >
-              {/* Desktop View */}
               <div className="flex flex-col items-center gap-1 print:hidden">
                 <ArrowUpRight className="w-4 h-4 text-neutral-600 group-hover/link:text-white" />
                 <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover/link:text-neutral-400 whitespace-nowrap">Ver anuncio</span>
               </div>
               
-              {/* PDF Print View: Two lines for more space efficiency */}
               <div className="hidden print:flex flex-col items-center justify-center h-full">
                  <span className="text-white text-[7px] font-black uppercase whitespace-nowrap mb-0.5">
                    VER ANUNCIO

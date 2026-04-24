@@ -35,6 +35,7 @@ export interface Ad {
   id: string;
   name: string;
   spend: number;
+  clicks?: number;
   purchases: number;
   revenue: number;
   messages?: number;
@@ -48,8 +49,10 @@ export interface Ad {
 export interface DailyMetric {
   date: string;
   spend: number;
+  clicks?: number;
   purchases: number;
   revenue: number;
+  messages?: number;
   roas: number;
 }
 
