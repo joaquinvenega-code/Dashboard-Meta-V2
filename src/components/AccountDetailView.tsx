@@ -82,7 +82,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [observations, setObservations] = useState('');
   const [isSavingObs, setIsSavingObs] = useState(false);
   const [showMetrics, setShowMetrics] = useState(true);
-  const [showObservations, setShowObservations] = useState(true);
+  const [showObservations, setShowObservations] = useState(false);
   const [showMetricConfig, setShowMetricConfig] = useState(false);
   const [localVisibleMetrics, setLocalVisibleMetrics] = useState<string[]>([]);
   const [chartFilters, setChartFilters] = useState<Record<string, string[]>>({});
@@ -297,7 +297,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       case 'ic': return <MetricBox key={id} label="Pagos iniciados" value={formatDecimal(acc.checkouts, 0)} />;
       case 'cpp': return <MetricBox key={id} label="Costo x compra" value={formatCurrency(acc.costPerPurchase || 0, acc.currency)} />;
       case 'messages': return <MetricBox key={id} label="Mensajes" value={formatDecimal(acc.messagesReal || acc.messages, 0)} />;
-      case 'cpm': return <MetricBox key={id} label="Costo x mensaje" value={formatCurrency(acc.costPerMessageReal || acc.costPerMessage || 0, acc.currency)} />;
+      case 'cpm': return <MetricBox key={id} label="Costo x Mensaje" value={formatCurrency(acc.costPerMessage || 0, acc.currency)} />;
       case 'messages_real': return <MetricBox key={id} label="Mensajes Reales" value={formatDecimal(acc.messagesReal, 0)} />;
       case 'cpm_real': return <MetricBox key={id} label="Costo Mensaje Real" value={formatCurrency(acc.costPerMessageReal || 0, acc.currency)} />;
       default: return null;
@@ -305,10 +305,11 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   };
 
   const AdCard: React.FC<{ ad: Ad; rank: number }> = ({ ad, rank }) => {
-    const filters = chartFilters[ad.id] || ['purchases', 'revenue', 'roas'];
+    const filters = chartFilters[ad.id] || (sortBy === 'messages' || s?.tracking === 'messaging' ? ['messages', 'roas'] : ['purchases', 'revenue', 'roas']);
     const showSales = filters.includes('purchases');
     const showRevenue = filters.includes('revenue');
     const showRoas = filters.includes('roas');
+    const showMessages = filters.includes('messages');
 
     const chartData = ad.dailySeries?.filter(d => 
       d.date >= dateRange.since && d.date <= dateRange.until
@@ -395,18 +396,30 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
           <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-4 border border-white/5 h-32 flex flex-col print:flex-[3.2] print:h-24 print:p-0 print:bg-transparent print:border-2 print:border-neutral-100/50 print:rounded-2xl print:overflow-hidden">
              <div className="flex flex-wrap items-center gap-2 mb-2 shrink-0 print:gap-4 print:my-2 print:justify-start print:pl-3">
-                <LegendButton 
-                  active={showSales} 
-                  color="#3b82f6" 
-                  label="Ventas" 
-                  onClick={() => toggleChartMetric(ad.id, 'purchases')}
-                />
-                <LegendButton 
-                  active={showRevenue} 
-                  color="#22c55e" 
-                  label="Ingresos" 
-                  onClick={() => toggleChartMetric(ad.id, 'revenue')}
-                />
+                {!(sortBy === 'messages' || s?.tracking === 'messaging') && (
+                  <>
+                    <LegendButton 
+                      active={showSales} 
+                      color="#3b82f6" 
+                      label="Ventas" 
+                      onClick={() => toggleChartMetric(ad.id, 'purchases')}
+                    />
+                    <LegendButton 
+                      active={showRevenue} 
+                      color="#22c55e" 
+                      label="Ingresos" 
+                      onClick={() => toggleChartMetric(ad.id, 'revenue')}
+                    />
+                  </>
+                )}
+                {(sortBy === 'messages' || s?.tracking === 'messaging') && (
+                  <LegendButton 
+                    active={showMessages} 
+                    color="#8b5cf6" 
+                    label="Mensajes" 
+                    onClick={() => toggleChartMetric(ad.id, 'messages')}
+                  />
+                )}
                 <LegendButton 
                   active={showRoas} 
                   color="#f97316" 
@@ -427,6 +440,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                         <stop offset="0%" stopColor="#22c55e" stopOpacity={0.1}/>
                         <stop offset="100%" stopColor="#22c55e" stopOpacity={0}/>
                       </linearGradient>
+                      <linearGradient id={`gM-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.1}/>
+                        <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0}/>
+                      </linearGradient>
                     </defs>
                     <XAxis 
                       dataKey="formattedDate" 
@@ -446,6 +463,9 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     )}
                     {showSales && (
                       <Area type="monotone" dataKey="purchases" stroke="#3b82f6" strokeWidth={1.5} fill={`url(#gP-${ad.id})`} dot={false} />
+                    )}
+                    {showMessages && (
+                      <Area type="monotone" dataKey="messages" stroke="#8b5cf6" strokeWidth={1.5} fill={`url(#gM-${ad.id})`} dot={false} />
                     )}
                     {showRoas && (
                       <Area type="monotone" dataKey="roas" stroke="#f97316" strokeWidth={1} dot={false} strokeDasharray="3 3" />
@@ -496,7 +516,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
             placeholder="Buscar cuenta en el listado..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full max-w-sm bg-[#111] border border-white/5 rounded-xl py-2.5 pl-11 pr-4 text-xs text-white placeholder-neutral-700 outline-none focus:border-blue-500/50 transition-all shadow-inner font-bold"
+            className="w-full bg-[#111] border border-white/5 rounded-xl py-2.5 pl-11 pr-4 text-xs text-white placeholder-neutral-700 outline-none focus:border-blue-500/50 transition-all shadow-inner font-bold"
           />
         </div>
 

@@ -484,16 +484,6 @@ export default function App() {
                    activePage === 'detail' ? 'Dashboard De Creativos' : 
                    activePage === 'accounts' ? 'Cuentas visibles' : activePage}
                 </h2>
-                <div className="flex items-center gap-4 mt-2">
-                  <p className="text-neutral-500 text-sm font-bold uppercase tracking-widest leading-none">Dash — live metrics</p>
-                  <div className="flex items-center gap-2 text-[9px] font-black text-neutral-600 bg-white/5 px-2 py-0.5 rounded border border-white/5 uppercase">
-                    <span>Totales: {accounts.length}</span>
-                    <span className="opacity-20">/</span>
-                    <span>Seleccionados: {visibleAccountIds.length}</span>
-                    <span className="opacity-20">/</span>
-                    <span>En Tabla: {overviewEntities.length}</span>
-                  </div>
-                </div>
               </div>
 
               {activePage === 'overview' && (
