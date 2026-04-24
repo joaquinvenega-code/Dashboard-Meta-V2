@@ -59,15 +59,15 @@ export function Overview({ accounts, settings }: OverviewProps) {
       {/* Top Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard 
-          label="Inversión General" 
-          value={totalSpendStr} 
-          sub="Reportado por Meta" 
-          icon={<TrendingUp className="w-3.5 h-3.5 text-blue-500" />}
-        />
-        <SummaryCard 
           label="Facturación General" 
           value={totalRevenueStr} 
           sub="Período seleccionado" 
+          icon={<TrendingUp className="w-3.5 h-3.5 text-blue-500" />}
+        />
+        <SummaryCard 
+          label="Inversión General" 
+          value={totalSpendStr} 
+          sub="Reportado por Meta" 
         />
         <SummaryCard 
           label="Roas General" 
