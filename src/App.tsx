@@ -870,9 +870,9 @@ export default function App() {
                 />
               )}
               {activePage === 'accounts' && (
-                <div className="animate-in fade-in duration-500 max-w-4xl space-y-8 pb-20">
+                <div className="animate-in fade-in duration-500 max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 pb-20">
                   {/* --- SECCIÓN 1: GRUPOS DE CLIENTE --- */}
-                  <div className="bg-[#111] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl p-8">
+                  <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col">
                     <div className="flex items-center justify-between mb-8">
                       <div>
                         <h3 className="text-sm font-black text-white uppercase tracking-widest">Grupos de cliente</h3>
@@ -899,7 +899,7 @@ export default function App() {
                         </div>
                       )}
                       {groups.filter(g => g && g.id).map(group => (
-                        <div key={group.id} className="bg-[#1c1c1c] p-6 rounded-2xl border border-white/5 space-y-4">
+                        <div key={group.id} className="bg-[#1c1c1c] p-6 rounded-lg border border-white/5 space-y-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="font-black text-neutral-100">{group.name}</div>
@@ -969,7 +969,7 @@ export default function App() {
                   </div>
 
                   {/* --- SECCIÓN 2: CUENTAS INDIVIDUALES --- */}
-                  <div className="bg-[#111] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl p-8">
+                  <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col">
                     <div className="flex items-center justify-between mb-8">
                       <div>
                         <h3 className="text-sm font-black text-white uppercase tracking-widest">Cuentas Visibles</h3>
@@ -1006,7 +1006,7 @@ export default function App() {
                             key={acc.id}
                             onClick={() => toggleAccountVisibility(acc.id)}
                             className={cn(
-                              "flex items-center justify-between p-4 rounded-2xl border transition-all",
+                              "flex items-center justify-between p-4 rounded-lg border transition-all",
                               isVisible 
                                 ? "bg-blue-600/10 border-blue-600/30 text-white" 
                                 : "bg-transparent border-white/5 text-neutral-500 hover:bg-white/[0.02]"
@@ -1062,7 +1062,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-[#161616] border border-white/10 rounded-[2.5rem] shadow-2xl p-10 overflow-hidden"
+              className="relative w-full max-w-md bg-[#161616] border border-white/10 rounded-2xl shadow-2xl p-10 overflow-hidden"
             >
               <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/10 blur-[80px] rounded-full"></div>
               
@@ -1085,7 +1085,7 @@ export default function App() {
                         type="number"
                         defaultValue={overviewSettings[configEntity.id]?.objective || 0}
                         id="set_objective"
-                        className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600"
+                        className="w-full bg-black/40 border border-white/5 rounded-lg px-5 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600"
                       />
                     </div>
                     <div>
@@ -1094,7 +1094,7 @@ export default function App() {
                         type="number"
                         defaultValue={overviewSettings[configEntity.id]?.budget || 0}
                         id="set_budget"
-                        className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600"
+                        className="w-full bg-black/40 border border-white/5 rounded-lg px-5 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600"
                       />
                     </div>
                   </div>
