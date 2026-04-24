@@ -9,14 +9,12 @@ import {
 } from './services/facebook';
 import { AdAccount, AccountSettings, ClientGroup } from './types';
 import { Sidebar } from './components/Sidebar';
-import { AccountDetailExpansion } from './components/AccountDetailExpansion';
 import { IndividualReport } from './components/IndividualReport';
 import { Overview } from './components/Overview';
 import { AccountDetailView } from './components/AccountDetailView';
 import { formatCurrency, formatNumber, formatDecimal, cn } from './lib/utils';
 import { 
   ChevronDown, 
-  ChevronUp, 
   RefreshCw, 
   AlertCircle, 
   Facebook, 
@@ -118,8 +116,7 @@ export default function App() {
   });
   const [isCustomDate, setIsCustomDate] = useState(false);
 
-  // Settings & Expansion State
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Settings State
   const [settings, setSettings] = useState<Record<string, AccountSettings>>(() => {
     try {
       const saved = localStorage.getItem('cr_settings');
@@ -271,10 +268,6 @@ export default function App() {
   const onLogout = () => {
     localStorage.removeItem('cr_appid');
     window.location.reload();
-  };
-
-  const toggleExpand = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
   };
 
   const updateSetting = (id: string, field: keyof AccountSettings, value: any) => {
@@ -844,13 +837,6 @@ export default function App() {
                                 <td className="px-2 py-1.5 text-right pr-5">
                                   <div className="flex items-center justify-end gap-1">
                                     <button 
-                                      onClick={() => toggleExpand(acc.id)}
-                                      className="p-1.5 hover:bg-white/5 rounded-lg text-neutral-700 hover:text-white transition-all opacity-0 group-hover:opacity-100"
-                                      title={expandedId === acc.id ? "Ocultar anuncios" : "Ver anuncios"}
-                                    >
-                                      <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", expandedId === acc.id && "rotate-180")} />
-                                    </button>
-                                    <button 
                                       onClick={() => setConfigEntity(acc)}
                                       className="p-1.5 hover:bg-white/5 rounded-lg text-neutral-700 hover:text-blue-500 transition-all opacity-0 group-hover:opacity-100"
                                       title="Configurar cliente"
@@ -860,18 +846,6 @@ export default function App() {
                                   </div>
                                 </td>
                               </tr>
-                              {expandedId === acc.id && (
-                                <tr className="bg-white/[0.01]">
-                                  <td colSpan={visibleCols.length + 2} className="p-0 border-b border-white/5">
-                                    <AccountDetailExpansion 
-                                      account={acc}
-                                      settings={s}
-                                      dateRange={dateRange}
-                                      onOpenReport={setReportAccount}
-                                    />
-                                  </td>
-                                </tr>
-                              )}
                             </React.Fragment>
                             );
                           }))}
