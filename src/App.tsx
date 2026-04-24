@@ -871,7 +871,69 @@ export default function App() {
               )}
               {activePage === 'accounts' && (
                 <div className="animate-in fade-in duration-500 max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 pb-20">
-                  {/* --- SECCIÓN 1: GRUPOS DE CLIENTE --- */}
+                  {/* --- SECCIÓN 1: CUENTAS INDIVIDUALES --- */}
+                  <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col">
+                    <div className="flex items-center justify-between mb-8">
+                      <div>
+                        <h3 className="text-sm font-black text-white uppercase tracking-widest">Cuentas Visibles</h3>
+                        <p className="text-[10px] font-bold text-neutral-600 mt-1 uppercase tracking-widest">Selecciona qué cuentas mostrar en el panel</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => {
+                            const allIds = accounts.map(a => a.id);
+                            setVisibleAccountIds(allIds);
+                            localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
+                          }}
+                          className="text-[9px] font-black text-blue-500 uppercase tracking-widest hover:bg-blue-500/10 px-3 py-2 rounded-xl transition-all border border-blue-500/20"
+                        >
+                          Todas
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setVisibleAccountIds([]);
+                            localStorage.setItem('cr_visible_accounts', JSON.stringify([]));
+                          }}
+                          className="text-[9px] font-black text-neutral-600 uppercase tracking-widest hover:bg-white/5 px-3 py-2 rounded-xl transition-all border border-white/5"
+                        >
+                          Ninguna
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                      {accounts.map(acc => {
+                        const isVisible = visibleAccountIds.some(v => matchId(v, acc.id));
+                        return (
+                          <button
+                            key={acc.id}
+                            onClick={() => toggleAccountVisibility(acc.id)}
+                            className={cn(
+                              "flex items-center justify-between p-4 rounded-lg border transition-all",
+                              isVisible 
+                                ? "bg-blue-600/10 border-blue-600/30 text-white" 
+                                : "bg-transparent border-white/5 text-neutral-500 hover:bg-white/[0.02]"
+                            )}
+                          >
+                            <div className="flex items-center gap-4 min-w-0">
+                              <div className={cn("w-5 h-5 rounded-md border flex items-center justify-center transition-all shrink-0", isVisible ? "bg-blue-600 border-blue-600" : "bg-transparent border-neutral-700")}>
+                                {isVisible && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                              </div>
+                              <div className="text-left truncate">
+                                <div className="text-[11px] font-bold truncate tracking-tight">{acc.name}</div>
+                                <div className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest truncate">{acc.account_id}</div>
+                              </div>
+                            </div>
+                            <div className="text-[9px] font-black uppercase tracking-widest bg-neutral-900 px-2 py-1 rounded shrink-0 ml-2">
+                              {acc.currency}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* --- SECCIÓN 2: GRUPOS DE CLIENTE --- */}
                   <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col">
                     <div className="flex items-center justify-between mb-8">
                       <div>
@@ -965,68 +1027,6 @@ export default function App() {
                           </select>
                         </div>
                       ))}
-                    </div>
-                  </div>
-
-                  {/* --- SECCIÓN 2: CUENTAS INDIVIDUALES --- */}
-                  <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col">
-                    <div className="flex items-center justify-between mb-8">
-                      <div>
-                        <h3 className="text-sm font-black text-white uppercase tracking-widest">Cuentas Visibles</h3>
-                        <p className="text-[10px] font-bold text-neutral-600 mt-1 uppercase tracking-widest">Selecciona qué cuentas mostrar en el panel</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => {
-                            const allIds = accounts.map(a => a.id);
-                            setVisibleAccountIds(allIds);
-                            localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
-                          }}
-                          className="text-[9px] font-black text-blue-500 uppercase tracking-widest hover:bg-blue-500/10 px-3 py-2 rounded-xl transition-all border border-blue-500/20"
-                        >
-                          Todas
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setVisibleAccountIds([]);
-                            localStorage.setItem('cr_visible_accounts', JSON.stringify([]));
-                          }}
-                          className="text-[9px] font-black text-neutral-600 uppercase tracking-widest hover:bg-white/5 px-3 py-2 rounded-xl transition-all border border-white/5"
-                        >
-                          Ninguna
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                      {accounts.map(acc => {
-                        const isVisible = visibleAccountIds.some(v => matchId(v, acc.id));
-                        return (
-                          <button
-                            key={acc.id}
-                            onClick={() => toggleAccountVisibility(acc.id)}
-                            className={cn(
-                              "flex items-center justify-between p-4 rounded-lg border transition-all",
-                              isVisible 
-                                ? "bg-blue-600/10 border-blue-600/30 text-white" 
-                                : "bg-transparent border-white/5 text-neutral-500 hover:bg-white/[0.02]"
-                            )}
-                          >
-                            <div className="flex items-center gap-4 min-w-0">
-                              <div className={cn("w-5 h-5 rounded-md border flex items-center justify-center transition-all shrink-0", isVisible ? "bg-blue-600 border-blue-600" : "bg-transparent border-neutral-700")}>
-                                {isVisible && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
-                              </div>
-                              <div className="text-left truncate">
-                                <div className="text-[11px] font-bold truncate tracking-tight">{acc.name}</div>
-                                <div className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest truncate">{acc.account_id}</div>
-                              </div>
-                            </div>
-                            <div className="text-[9px] font-black uppercase tracking-widest bg-neutral-900 px-2 py-1 rounded shrink-0 ml-2">
-                              {acc.currency}
-                            </div>
-                          </button>
-                        );
-                      })}
                     </div>
                   </div>
                 </div>
