@@ -192,27 +192,20 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       
       const msgs = acc.messagesReal || acc.messages || 0;
       const cpm = acc.costPerMessageReal || acc.costPerMessage || 0;
-      
-      text += `- ${customName}\n`;
+          text += `- ${customName}\n`;
+      text += `Inversión: ${exportFormatCurrency(acc.spend || 0, currency)}\n`;
       
       if (sAcc.tracking === 'messaging') {
-         text += `Campañas de mensajería:\n`;
-         text += `Inversión: ${exportFormatCurrency(acc.spend || 0, currency)}\n`;
-         text += `Mensajes generados: ${msgs}\n`;
-         text += `Valor por mensaje: ${exportFormatCurrency(cpm, currency)}\n`;
+        text += `Mensajes: ${msgs}\n`;
+        text += `Costo x Mensaje: ${exportFormatCurrency(cpm, currency)}\n`;
       } else if (sAcc.tracking === 'both') {
-         text += `Campañas de conversión web:\n`;
-         text += `Inversión: ${exportFormatCurrency(acc.spend || 0, currency)}\n`;
-         text += `Facturación: ${exportFormatCurrency(acc.revenue || 0, currency)}\n`;
-         text += `ROAS General: ${roas}\n`;
-         text += `Campañas de mensajería:\n`;
-         text += `Inversión: ${exportFormatCurrency(acc.spend || 0, currency)}\n`;
-         text += `Mensajes generados: ${msgs}\n`;
-         text += `Valor por mensaje: ${exportFormatCurrency(cpm, currency)}\n`;
+        text += `Facturación: ${exportFormatCurrency(acc.revenue || 0, currency)}\n`;
+        text += `ROAS General: ${roas}\n`;
+        text += `Mensajes: ${msgs}\n`;
+        text += `Costo x Mensaje: ${exportFormatCurrency(cpm, currency)}\n`;
       } else {
-         text += `Inversión: ${exportFormatCurrency(acc.spend || 0, currency)}\n`;
-         text += `Facturación: ${exportFormatCurrency(acc.revenue || 0, currency)}\n`;
-         text += `ROAS General: ${roas}\n`;
+        text += `Facturación: ${exportFormatCurrency(acc.revenue || 0, currency)}\n`;
+        text += `ROAS General: ${roas}\n`;
       }
 
       if (sAcc.observations) {
@@ -337,10 +330,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     const stats = [
       { label: 'ROAS', value: `×${ad.roas.toFixed(2)}`, color: 'text-success print:text-green-600' },
       { label: 'CTR', value: `${ad.ctr.toFixed(2)}%` },
-      { label: 'Inversión', value: formatCurrency(ad.spend, selectedAccount?.currency) },
-      { label: 'Ventas', value: ad.purchases.toString() },
-      { label: 'Ingresos', value: formatCurrency(ad.revenue, selectedAccount?.currency) },
-      { label: 'Costo x Venta', value: formatCurrency(ad.purchases > 0 ? ad.spend / ad.purchases : 0, selectedAccount?.currency) }
+      { label: 'Inversión', value: formatCurrency(ad.spend, selectedAccount?.currency || 'ARS') },
+      sortBy === 'messages' || s?.tracking === 'messaging' ? 
+        { label: 'Mensajes', value: (ad.messages || 0).toString() } :
+        { label: 'Ventas', value: ad.purchases.toString() },
+      { label: 'Ingresos', value: formatCurrency(ad.revenue, selectedAccount?.currency || 'ARS') },
+      sortBy === 'messages' || s?.tracking === 'messaging' ?
+        { label: 'Costo x Mensaje', value: formatCurrency(ad.messages && ad.messages > 0 ? ad.spend / ad.messages : 0, selectedAccount?.currency || 'ARS') } :
+        { label: 'Costo x Venta', value: formatCurrency(ad.purchases > 0 ? ad.spend / ad.purchases : 0, selectedAccount?.currency || 'ARS') }
     ];
 
     return (
@@ -857,8 +854,11 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                          onChange={(e) => setSortBy(e.target.value)}
                          className="bg-transparent text-[9px] font-black text-neutral-400 outline-none uppercase tracking-widest cursor-pointer"
                        >
-                         <option value="roas">ROAS</option>
-                         <option value="purchases">Compras</option>
+                         <option value="roas">Ponderar por ROAS</option>
+                         <option value="messages">Ponderar por Mensajes</option>
+                         <option value="purchases">Ponderar por Compras</option>
+                         <option value="revenue">Ponderar por Facturación</option>
+                         <option value="spend">Ponderar por Gasto</option>
                        </select>
                     </div>
                     <div className="flex items-center gap-2 bg-[#111] px-2 py-1 rounded border border-white/5">

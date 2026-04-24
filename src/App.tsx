@@ -59,6 +59,7 @@ const COLUMN_DEFS: Record<string, { label: string; width: string }> = {
   facturado: { label: 'Facturado', width: 'w-28' },
   proyectado: { label: 'Proyectado', width: 'w-32' },
   roas: { label: 'ROAS', width: 'w-20' },
+  mensajes: { label: 'Mensajes', width: 'w-24' },
   progreso: { label: 'Progreso', width: 'w-32' },
   invertido: { label: 'Invertido', width: 'w-28' },
   presupuesto: { label: 'Presupuesto', width: 'w-28' },
@@ -88,8 +89,8 @@ export default function App() {
   const [calcError, setCalcError] = useState<string | null>(null);
   
   // Column Selection State
-  const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'proyectado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
-  const [colOrder, setColOrder] = useState<string[]>(['objetivo', 'facturado', 'proyectado', 'roas', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
+  const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'proyectado', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
+  const [colOrder, setColOrder] = useState<string[]>(['objetivo', 'facturado', 'proyectado', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -718,8 +719,9 @@ export default function App() {
                             const status = getStatusInfo();
 
                             return (
-                              <tr key={acc.id} className="hover:bg-white/[0.01] transition-colors group">
-                                 <td className="px-5 py-2.5">
+                              <React.Fragment key={acc.id}>
+                                <tr className="hover:bg-white/[0.01] transition-colors group">
+                                   <td className="px-5 py-2.5">
                                   <div className="flex items-center gap-2">
                                     <div className="relative group/name inline-block min-w-[100px]">
                                       {editingId === acc.id ? (
@@ -793,6 +795,12 @@ export default function App() {
                                     </td>
                                   );
 
+                                  if (colId === 'mensajes') return (
+                                    <td key={colId} className="px-2 py-2.5 text-center text-[10px] font-bold text-neutral-400">
+                                      {formatNumber(acc.messagesReal || acc.messages || 0)}
+                                    </td>
+                                  );
+
                                   if (colId === 'progreso') return (
                                     <td key={colId} className="px-2 py-2.5">
                                       <div className="flex flex-col gap-1.5 justify-center">
@@ -860,15 +868,37 @@ export default function App() {
                                 })}
 
                                 <td className="px-2 py-2.5 text-right pr-5">
-                                  <button 
-                                    onClick={() => setConfigEntity(acc)}
-                                    className="p-1.5 hover:bg-white/5 rounded-lg text-neutral-700 hover:text-blue-500 transition-all opacity-0 group-hover:opacity-100"
-                                    title="Configurar cliente"
-                                  >
-                                    <Settings className="w-3.5 h-3.5" />
-                                  </button>
+                                  <div className="flex items-center justify-end gap-1">
+                                    <button 
+                                      onClick={() => toggleExpand(acc.id)}
+                                      className="p-1.5 hover:bg-white/5 rounded-lg text-neutral-700 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                                      title={expandedId === acc.id ? "Ocultar anuncios" : "Ver anuncios"}
+                                    >
+                                      <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", expandedId === acc.id && "rotate-180")} />
+                                    </button>
+                                    <button 
+                                      onClick={() => setConfigEntity(acc)}
+                                      className="p-1.5 hover:bg-white/5 rounded-lg text-neutral-700 hover:text-blue-500 transition-all opacity-0 group-hover:opacity-100"
+                                      title="Configurar cliente"
+                                    >
+                                      <Settings className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
+                              {expandedId === acc.id && (
+                                <tr className="bg-white/[0.01]">
+                                  <td colSpan={visibleCols.length + 2} className="p-0 border-b border-white/5">
+                                    <AccountDetailExpansion 
+                                      account={acc}
+                                      settings={s}
+                                      dateRange={dateRange}
+                                      onOpenReport={setReportAccount}
+                                    />
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
                             );
                           }))}
                         </tbody>

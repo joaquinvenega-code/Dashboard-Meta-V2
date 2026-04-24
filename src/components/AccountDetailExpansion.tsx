@@ -75,6 +75,7 @@ export function AccountDetailExpansion({ account, settings, dateRange, onOpenRep
               <option value="purchases">Ordenar por Compras</option>
               <option value="revenue">Ordenar por Facturación</option>
               <option value="messages">Ordenar por Mensajes</option>
+              <option value="spend">Ordenar por Gasto</option>
             </select>
             <button 
               onClick={() => onOpenReport(account)}
