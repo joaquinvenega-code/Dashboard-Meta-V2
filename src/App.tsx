@@ -379,12 +379,11 @@ export default function App() {
       return { overviewEntities: entities, overviewSettings: virtualSettings };
     } catch (e: any) {
       console.error("Memo Error:", e);
-      if (calcError !== e.message) setCalcError(e.message);
       return { overviewEntities: [], overviewSettings: settings };
     }
   }, [accounts, groups, visibleAccountIds, settings]);
 
-  const filteredAccounts = accounts.filter(acc => 
+  const filteredAccounts = (accounts || []).filter(acc => 
     visibleAccountIds.some(vId => matchId(vId, acc.id) || matchId(vId, acc.account_id))
   );
 
@@ -803,19 +802,19 @@ export default function App() {
                                   );
 
                                   if (colId === 'invertido') return (
-                                    <td key={colId} className="px-2 py-2.5 text-center text-[10px] font-bold text-neutral-400 tabular-nums">
+                                    <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-400 tabular-nums">
                                       {formatCurrency(acc.spend || 0, s.currency)}
                                     </td>
                                   );
 
                                   if (colId === 'presupuesto') return (
-                                    <td key={colId} className="px-2 py-2.5 text-center text-[10px] font-medium text-neutral-500">
+                                    <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-medium text-neutral-500">
                                       {s.budget ? formatCurrency(s.budget, s.currency) : '—'}
                                     </td>
                                   );
 
                                   if (colId === 'prespct') return (
-                                    <td key={colId} className="px-2 py-2.5">
+                                    <td key={colId} className="px-2 py-1.5">
                                       <div className="flex flex-col gap-1.5 justify-center">
                                         <div className="flex justify-between items-center px-0.5">
                                           <span className={cn("text-[9px] font-black tracking-tight", 
@@ -839,7 +838,7 @@ export default function App() {
                                   );
 
                                   if (colId === 'estado') return (
-                                    <td key={colId} className="px-2 py-2.5 text-center">
+                                    <td key={colId} className="px-2 py-1.5 text-center">
                                       <div className="inline-flex items-center gap-1.5">
                                         <div className={cn("w-1 h-1 rounded-full", status.bg)}></div>
                                         <span className={cn("text-[9px] font-bold uppercase tracking-widest leading-none", status.color)}>
@@ -852,7 +851,7 @@ export default function App() {
                                   return null;
                                 })}
 
-                                <td className="px-2 py-2.5 text-right pr-5">
+                                <td className="px-2 py-1.5 text-right pr-5">
                                   <div className="flex items-center justify-end gap-1">
                                     <button 
                                       onClick={() => toggleExpand(acc.id)}

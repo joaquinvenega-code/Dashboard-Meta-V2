@@ -15,8 +15,8 @@ export function Overview({ accounts, settings }: OverviewProps) {
   const totalsByCurrency: Record<string, { spend: number; revenue: number }> = {};
   
   accounts.forEach(acc => {
-    const s = settings[acc.id] || { currency: acc.currency || 'ARS' };
-    const cur = s.currency.toUpperCase();
+    const s = settings[acc.id];
+    const cur = (s?.currency || acc.currency || 'ARS').toUpperCase();
     if (!totalsByCurrency[cur]) totalsByCurrency[cur] = { spend: 0, revenue: 0 };
     totalsByCurrency[cur].spend += (acc.spend || 0);
     totalsByCurrency[cur].revenue += (acc.revenue || 0);
