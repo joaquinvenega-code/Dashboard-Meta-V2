@@ -74,6 +74,7 @@ export function AccountDetailExpansion({ account, settings, dateRange, onOpenRep
               <option value="roas">Ordenar por ROAS</option>
               <option value="purchases">Ordenar por Compras</option>
               <option value="revenue">Ordenar por Facturación</option>
+              <option value="messages">Ordenar por Mensajes</option>
             </select>
             <button 
               onClick={() => onOpenReport(account)}
@@ -94,7 +95,7 @@ export function AccountDetailExpansion({ account, settings, dateRange, onOpenRep
           <div className="space-y-4">
             {topAds.map((ad, idx) => (
               <div key={ad.id}>
-                <AdCard ad={ad} rank={idx + 1} currency={account.currency} />
+                <AdCard ad={ad} rank={idx + 1} currency={account.currency} sortAdsBy={sortAdsBy} settings={settings} />
               </div>
             ))}
           </div>
@@ -119,7 +120,7 @@ function MetricBox({ label, value, highlight }: { label: string, value: string, 
   );
 }
 
-function AdCard({ ad, rank, currency }: { ad: Ad, rank: number, currency: string }) {
+function AdCard({ ad, rank, currency, sortAdsBy, settings }: { ad: Ad, rank: number, currency: string, sortAdsBy: string, settings: AccountSettings }) {
   const roas = ad.spend > 0 ? ad.revenue / ad.spend : 0;
   
   return (
@@ -144,7 +145,11 @@ function AdCard({ ad, rank, currency }: { ad: Ad, rank: number, currency: string
             <AdMetric label="Inversión" value={formatCurrency(ad.spend, currency)} />
             <AdMetric label="Revenue" value={formatCurrency(ad.revenue, currency)} />
             <AdMetric label="ROAS" value={`×${formatDecimal(roas)}`} bold />
-            <AdMetric label="Compras" value={formatNumber(ad.purchases)} />
+            {sortAdsBy === 'messages' || settings.tracking === 'messaging' ? (
+              <AdMetric label="Mensajes" value={formatNumber(ad.messages || 0)} bold={sortAdsBy === 'messages'} />
+            ) : (
+              <AdMetric label="Compras" value={formatNumber(ad.purchases)} bold={sortAdsBy === 'purchases'} />
+            )}
           </div>
         </div>
         

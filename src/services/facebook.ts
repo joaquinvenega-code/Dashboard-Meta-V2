@@ -282,12 +282,14 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
     return [];
   }
 
-  const sortKey = (sortBy === 'purchases' || sortBy === 'revenue') ? sortBy : 'roas';
+  const sortKey = (sortBy === 'purchases' || sortBy === 'revenue' || sortBy === 'messages') ? sortBy : 'roas';
   const ads = insRes.data
     .map((d: any) => {
       const spend = parseFloat(d.spend) || 0;
       const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase');
       const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase');
+      const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') ||
+                       getAction(d.actions, 'onsite_conversion.total_messaging_connection');
       const roas = spend > 0 ? revenue / spend : 0;
       return {
         id: d.ad_id,
@@ -295,6 +297,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         spend,
         purchases,
         revenue,
+        messages,
         ctr: parseFloat(d.ctr) || 0,
         roas,
         thumbnail: null,

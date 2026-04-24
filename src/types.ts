@@ -37,6 +37,7 @@ export interface Ad {
   spend: number;
   purchases: number;
   revenue: number;
+  messages?: number;
   ctr: number;
   roas: number;
   thumbnail: string | null;
