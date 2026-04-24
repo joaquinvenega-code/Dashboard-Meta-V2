@@ -16,32 +16,19 @@ export function Overview({ accounts, settings }: OverviewProps) {
   
   accounts.forEach(acc => {
     const s = settings[acc.id] || { currency: acc.currency || 'ARS' };
-    const cur = s.currency;
+    const cur = s.currency.toUpperCase();
     if (!totalsByCurrency[cur]) totalsByCurrency[cur] = { spend: 0, revenue: 0 };
     totalsByCurrency[cur].spend += (acc.spend || 0);
     totalsByCurrency[cur].revenue += (acc.revenue || 0);
   });
 
-  const currencies = Object.keys(totalsByCurrency);
+  const currencies = Object.keys(totalsByCurrency).filter(c => totalsByCurrency[c].spend > 0 || totalsByCurrency[c].revenue > 0);
   const totalSpendStr = currencies.map(c => formatCurrency(totalsByCurrency[c].spend, c)).join(' + ');
   const totalRevenueStr = currencies.map(c => formatCurrency(totalsByCurrency[c].revenue, c)).join(' + ');
   
-  // Forecasting Logic
-  const today = new Date();
-  const monthStart = startOfMonth(today);
-  const monthEnd = endOfMonth(today);
-  const daysPassed = Math.max(differenceInDays(today, monthStart), 1);
-  const daysInMonth = differenceInDays(monthEnd, monthStart) + 1;
-  const pacingMultiplier = daysInMonth / daysPassed;
-
   const totalSpendGlobal = accounts.reduce((a, c) => a + (c.spend || 0), 0);
   const totalRevenueGlobal = accounts.reduce((a, c) => a + (c.revenue || 0), 0);
   const avgRoas = totalSpendGlobal > 0 ? totalRevenueGlobal / totalSpendGlobal : 0;
-
-  const projectedRevenueStr = currencies.map(c => {
-    const projected = totalsByCurrency[c].revenue * pacingMultiplier;
-    return formatCurrency(projected, c);
-  }).join(' + ');
 
   const getStatus = (acc: AdAccount) => {
     const s = settings[acc.id] || { objective: 0 };
@@ -73,7 +60,6 @@ export function Overview({ accounts, settings }: OverviewProps) {
           label="Roas General" 
           value={`×${formatDecimal(avgRoas, 1)}`} 
           sub="Promedio de cuentas" 
-          highlight 
         />
         <SummaryCard 
           label="Cuentas en objetivo" 

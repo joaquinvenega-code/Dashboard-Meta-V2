@@ -88,7 +88,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [chartFilters, setChartFilters] = useState<Record<string, string[]>>({});
   const [copied, setCopied] = useState(false);
 
-  const defaultVisibleMetrics = ['spend', 'revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'projected_revenue', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
+  const defaultVisibleMetrics = ['spend', 'revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
   
   // Filter accounts for sidebar
   const sidebarAccounts = accounts.filter(acc => 
@@ -283,14 +283,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const renderMetric = (id: string, acc: AdAccount) => {
     const sAcc = settings[acc.id];
     
-    // Pacing calculations
-    const today = new Date();
-    const monthStart = startOfMonth(today);
-    const monthEnd = endOfMonth(today);
-    const daysPassed = Math.max(differenceInDays(today, monthStart), 1);
-    const daysInMonth = differenceInDays(monthEnd, monthStart) + 1;
-    const pacingMultiplier = daysInMonth / daysPassed;
-
     switch(id) {
       case 'spend': return <MetricBox key={id} label="Inversión" value={formatCurrency(acc.spend || 0, acc.currency)} />;
       case 'revenue': return <MetricBox key={id} label="Facturado" value={formatCurrency(acc.revenue || 0, acc.currency)} />;
@@ -298,8 +290,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       case 'objective': return <MetricBox key={id} label="Objetivo" value={formatCurrency(sAcc?.objective || 0, acc.currency)} isPlaceholder={!sAcc?.objective} />;
       case 'progress_revenue': return <MetricBox key={id} label="% Objetivo" value={`${getProgress(acc) || 0}%`} isPlaceholder={!getProgress(acc)} />;
       case 'progress_budget': return <MetricBox key={id} label="% Presupuesto" value={`${sAcc?.budget ? Math.round(((acc.spend || 0) / sAcc.budget) * 100) : 0}%`} isPlaceholder={!sAcc?.budget} />;
-      case 'projected_revenue': 
-        return <MetricBox key={id} label="Proy. Facturación" value={formatCurrency((acc.revenue || 0) * pacingMultiplier, acc.currency)} variant="highlight" />;
       case 'ctr': return <MetricBox key={id} label="CTR" value={`${formatDecimal(acc.ctr, 2)}%`} />;
       case 'clicks': return <MetricBox key={id} label="Clics" value={formatDecimal(acc.clicks, 0)} />;
       case 'purchases': return <MetricBox key={id} label="Compras" value={formatDecimal(acc.purchases, 0)} />;

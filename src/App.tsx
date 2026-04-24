@@ -57,7 +57,6 @@ import { CSS } from '@dnd-kit/utilities';
 const COLUMN_DEFS: Record<string, { label: string; width: string }> = {
   objetivo: { label: 'Objetivo', width: 'w-28' },
   facturado: { label: 'Facturado', width: 'w-28' },
-  proyectado: { label: 'Proyectado', width: 'w-32' },
   roas: { label: 'ROAS', width: 'w-20' },
   mensajes: { label: 'Mensajes', width: 'w-24' },
   progreso: { label: 'Progreso', width: 'w-32' },
@@ -89,8 +88,8 @@ export default function App() {
   const [calcError, setCalcError] = useState<string | null>(null);
   
   // Column Selection State
-  const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'proyectado', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
-  const [colOrder, setColOrder] = useState<string[]>(['objetivo', 'facturado', 'proyectado', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
+  const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
+  const [colOrder, setColOrder] = useState<string[]>(['objetivo', 'facturado', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -629,12 +628,12 @@ export default function App() {
                               strategy={horizontalListSortingStrategy}
                             >
                               <tr className="border-b border-white/5 bg-white/[0.01]">
-                                <th className="px-5 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] w-48">Cliente</th>
+                                <th className="px-5 py-2 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] w-48">Cliente</th>
                                 {colOrder.map((colId: string) => {
                                   if (!visibleCols.includes(colId)) return null;
                                   return <SortableHeader key={colId} id={colId} label={COLUMN_DEFS[colId].label} width={COLUMN_DEFS[colId].width} />;
                                 })}
-                                <th className="px-2 py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] text-right w-16 pr-5"></th>
+                                <th className="px-2 py-2 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] text-right w-16 pr-5"></th>
                               </tr>
                             </SortableContext>
                           </DndContext>
@@ -701,14 +700,6 @@ export default function App() {
                               const progress = s.objective > 0 ? Math.min((acc.revenue || 0) / s.objective, 1.2) : 0;
                               const budgetProgress = s.budget > 0 ? Math.min((acc.spend || 0) / s.budget, 1.2) : 0;
                              
-                              // Pacing Logic
-                              const today = new Date();
-                              const monthStart = startOfMonth(today);
-                              const monthEnd = endOfMonth(today);
-                              const daysPassed = Math.max(differenceInDays(today, monthStart), 1);
-                              const daysInMonth = differenceInDays(monthEnd, monthStart) + 1;
-                              const pacingMultiplier = daysInMonth / daysPassed;
-
                               // Semaphore Logic
                             const getStatusInfo = () => {
                               const p = (acc.revenue || 0) / (s.objective || 1);
@@ -721,7 +712,7 @@ export default function App() {
                             return (
                               <React.Fragment key={acc.id}>
                                 <tr className="hover:bg-white/[0.01] transition-colors group">
-                                   <td className="px-5 py-2.5">
+                                   <td className="px-5 py-1.5">
                                   <div className="flex items-center gap-2">
                                     <div className="relative group/name inline-block min-w-[100px]">
                                       {editingId === acc.id ? (
@@ -770,25 +761,19 @@ export default function App() {
                                   if (!visibleCols.includes(colId)) return null;
 
                                   if (colId === 'objetivo') return (
-                                    <td key={colId} className="px-2 py-2.5 text-center text-[10px] font-bold text-neutral-500">
+                                    <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-500">
                                       {s.objective ? formatCurrency(s.objective, s.currency) : '—'}
                                     </td>
                                   );
 
                                   if (colId === 'facturado') return (
-                                    <td key={colId} className="px-2 py-2.5 text-center text-[10px] font-bold text-neutral-200">
+                                    <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-200">
                                       {formatCurrency(acc.revenue || 0, s.currency)}
                                     </td>
                                   );
 
-                                  if (colId === 'proyectado') return (
-                                    <td key={colId} className="px-2 py-2.5 text-center text-[10px] font-black text-blue-400 tabular-nums bg-blue-600/[0.02]">
-                                      {formatCurrency((acc.revenue || 0) * pacingMultiplier, s.currency)}
-                                    </td>
-                                  );
-
                                   if (colId === 'roas') return (
-                                    <td key={colId} className="px-2 py-2.5 text-center">
+                                    <td key={colId} className="px-2 py-1.5 text-center">
                                       <span className={cn("text-[10px] font-bold", status.color)}>
                                         ×{formatDecimal(roas)}
                                       </span>
@@ -796,13 +781,13 @@ export default function App() {
                                   );
 
                                   if (colId === 'mensajes') return (
-                                    <td key={colId} className="px-2 py-2.5 text-center text-[10px] font-bold text-neutral-400">
+                                    <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-400">
                                       {formatNumber(acc.messagesReal || acc.messages || 0)}
                                     </td>
                                   );
 
                                   if (colId === 'progreso') return (
-                                    <td key={colId} className="px-2 py-2.5">
+                                    <td key={colId} className="px-2 py-1.5">
                                       <div className="flex flex-col gap-1.5 justify-center">
                                         <div className="flex justify-between items-center px-0.5">
                                           <span className={cn("text-[9px] font-black tracking-tight", status.color)}>{Math.round(progress * 100)}%</span>
