@@ -63,10 +63,11 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   const [funnelConfig, setFunnelConfig] = useState(() => {
     const saved = localStorage.getItem(`cr_funnel_${accountId}`);
     return saved ? JSON.parse(saved) : {
+      tofuY: 0,
       mofuY: 250,
       bofuY: 550,
       bofuEndY: 850,
-      fontSize: 48
+      fontSize: 54
     };
   });
   const [isDrawing, setIsDrawing] = useState(false);
@@ -228,22 +229,22 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
   // New sizing for nodes (more compact)
   const NODE_CONFIG = {
-    campaign: { w: 220, h: 70, fontSize: 11 },
-    adset: { w: 180, h: 60, fontSize: 10 },
-    ad: { w: 150, h: 38, fontSize: 9 },
+    campaign: { w: 230, h: 74, fontSize: 13 },
+    adset: { w: 190, h: 64, fontSize: 11 },
+    ad: { w: 160, h: 42, fontSize: 10 },
     spacing: {
-      campaign: 280, 
-      adset: 140,
-      ad: 48
+      campaign: 300, 
+      adset: 160,
+      ad: 54
     }
   };
 
   // Helper to determine stage based on objective if not explicitly set
   const getEffectiveStage = (c: Campaign) => {
     if (c.funnelStage) return c.funnelStage;
-    if (c.outcome === 'OUTCOME_TRAFFIC' || c.outcome === 'OUTCOME_AWARENESS') return 'TOFU';
-    if (c.outcome === 'OUTCOME_ENGAGEMENT' || c.outcome === 'OUTCOME_APP_PROMOTION') return 'MOFU';
-    if (c.outcome === 'OUTCOME_SALES' || c.outcome === 'OUTCOME_LEADS') return 'BOFU';
+    if (c.objective === 'OUTCOME_TRAFFIC' || c.objective === 'OUTCOME_AWARENESS') return 'TOFU';
+    if (c.objective === 'OUTCOME_ENGAGEMENT' || c.objective === 'OUTCOME_APP_PROMOTION') return 'MOFU';
+    if (c.objective === 'OUTCOME_SALES' || c.objective === 'OUTCOME_LEADS') return 'BOFU';
     return null;
   };
 
@@ -253,7 +254,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   const unknownCampaigns = campaigns.filter(c => !getEffectiveStage(c));
 
   // Dynamic start positions to fill space (more compact than hardcoded gaps)
-  const tofuY = 0;
+  const tofuY = funnelConfig.tofuY ?? 0;
   const mofuY = funnelConfig.mofuY;
   const bofuY = funnelConfig.bofuY;
   const bofuEndY = funnelConfig.bofuEndY || (funnelConfig.bofuY + 300);
@@ -517,9 +518,23 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
           <Layer>
             {/* FUNNEL SHAPE */}
             <Group x={-420} y={-100}>
+              {/* Handle for TOFU Y */}
+              {mode === 'draw' && (
+                <Circle 
+                  x={180} 
+                  y={tofuY} 
+                  radius={10} 
+                  fill="#3b82f6" 
+                  stroke="#ffffff"
+                  strokeWidth={2}
+                  draggable 
+                  onDragMove={(e) => setFunnelConfig({...funnelConfig, tofuY: e.target.y()})}
+                />
+              )}
+
               {/* TOFU SECTION - COLD BLUE */}
               <Line
-                points={[0, 0, 360, 0, 310, mofuY - 30, 50, mofuY - 30]}
+                points={[0, tofuY, 360, tofuY, 310, mofuY - 30, 50, mofuY - 30]}
                 fill="#1e40af"
                 stroke="#1e3a8a"
                 strokeWidth={1}
@@ -528,16 +543,16 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
               <Text 
                 text="TOFU" 
                 x={120} 
-                y={(mofuY - 30) / 2 - 20} 
+                y={tofuY + (mofuY - 30 - tofuY) / 2 - 24} 
                 fontSize={funnelConfig.fontSize} 
                 fontStyle="black" 
                 fill="#ffffff" 
                 width={120} 
                 align="center"
                 draggable={mode === 'draw'}
-                onDragEnd={(e) => setFunnelConfig({...funnelConfig, fontSize: Math.abs(e.target.y())})}
+                onDragEnd={(e) => setFunnelConfig({...funnelConfig, fontSize: Math.abs(e.target.y() - tofuY)})}
               />
-              <Text text="TOP OF FUNNEL" x={120} y={(mofuY - 30) / 2 + (funnelConfig.fontSize * 0.6)} fontSize={10} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
+              <Text text="TOP OF FUNNEL" x={120} y={tofuY + (mofuY - 30 - tofuY) / 2 + (funnelConfig.fontSize * 0.55)} fontSize={10} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
               
               {/* Handle for MOFU Y */}
               {mode === 'draw' && (
@@ -629,7 +644,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
               return (
                 <Arrow 
                   key={`conn-funnel-${c.id}`}
-                  points={[-60, (mofuY - 30) / 2 + 10, pos.x, pos.y + NODE_CONFIG.campaign.h / 2]} 
+                  points={[-60, (mofuY - 30) / 2 - 90, pos.x, pos.y + NODE_CONFIG.campaign.h / 2]} 
                   stroke="#3b82f6" strokeWidth={2} pointerLength={6} opacity={0.5} tension={0.4}
                 />
               );
@@ -640,7 +655,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
               return (
                 <Arrow 
                   key={`conn-funnel-${c.id}`}
-                  points={[-110, mofuY + (bofuY - mofuY - 30) / 2 + 10, pos.x, pos.y + NODE_CONFIG.campaign.h / 2]} 
+                  points={[-110, mofuY + (bofuY - mofuY - 30) / 2 - 90, pos.x, pos.y + NODE_CONFIG.campaign.h / 2]} 
                   stroke="#f59e0b" strokeWidth={2} pointerLength={6} opacity={0.5} tension={0.4}
                 />
               );
@@ -651,7 +666,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
               return (
                 <Arrow 
                   key={`conn-funnel-${c.id}`}
-                  points={[-160, bofuY + 140, pos.x, pos.y + NODE_CONFIG.campaign.h / 2]} 
+                  points={[-160, bofuY + (bofuEndY - bofuY) / 2 - 90, pos.x, pos.y + NODE_CONFIG.campaign.h / 2]} 
                   stroke="#ef4444" strokeWidth={2} pointerLength={6} opacity={0.5} tension={0.4}
                 />
               );
@@ -661,7 +676,8 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
             {campaigns.map(campaign => {
               const campaignAdSets = adsets.filter(s => s.campaignId === campaign.id);
               const campaignIdx = campaigns.indexOf(campaign);
-              const defaultCampaignY = (campaign.funnelStage === 'TOFU' ? tofuY : campaign.funnelStage === 'MOFU' ? mofuY : bofuY) + campaignIdx * NODE_CONFIG.spacing.campaign;
+              const stage = getEffectiveStage(campaign);
+              const defaultCampaignY = (stage === 'TOFU' ? tofuY : stage === 'MOFU' ? mofuY : stage === 'BOFU' ? bofuY : bofuY + 400) + campaignIdx * NODE_CONFIG.spacing.campaign;
               
               const cX = nodePositions[campaign.id]?.x ?? 0;
               const cY = nodePositions[campaign.id]?.y ?? defaultCampaignY;
@@ -717,14 +733,16 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
             {/* Render Actual Nodes (Flat) */}
             {campaigns.map((c, i) => {
-              const defaultY = (c.funnelStage === 'TOFU' ? tofuY : c.funnelStage === 'MOFU' ? mofuY : c.funnelStage === 'BOFU' ? bofuY : bofuY + 400) + i * NODE_CONFIG.spacing.campaign;
+              const stage = getEffectiveStage(c);
+              const defaultY = (stage === 'TOFU' ? tofuY : stage === 'MOFU' ? mofuY : stage === 'BOFU' ? bofuY : bofuY + 400) + i * NODE_CONFIG.spacing.campaign;
               return renderCampaign(c, 0, defaultY);
             })}
 
             {campaigns.map(campaign => {
               const campaignAdSets = adsets.filter(s => s.campaignId === campaign.id);
               const campaignIdx = campaigns.indexOf(campaign);
-              const defaultCampaignY = (campaign.funnelStage === 'TOFU' ? tofuY : campaign.funnelStage === 'MOFU' ? mofuY : bofuY) + campaignIdx * NODE_CONFIG.spacing.campaign;
+              const stage = getEffectiveStage(campaign);
+              const defaultCampaignY = (stage === 'TOFU' ? tofuY : stage === 'MOFU' ? mofuY : stage === 'BOFU' ? bofuY : bofuY + 400) + campaignIdx * NODE_CONFIG.spacing.campaign;
               const cX = nodePositions[campaign.id]?.x ?? 0;
               const cY = nodePositions[campaign.id]?.y ?? defaultCampaignY;
 

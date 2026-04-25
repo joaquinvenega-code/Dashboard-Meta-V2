@@ -493,15 +493,52 @@ export default function App() {
 
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 print:hidden">
-              <div>
-                <h2 className="text-xl font-black tracking-widest text-white uppercase opacity-80">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-black tracking-widest text-white uppercase opacity-80 flex items-center gap-3">
                   {activePage === 'overview' ? 'Vista general' : 
                    activePage === 'detail' ? 'Análisis individual de cuenta' : 
-                   activePage === 'accounts' ? 'Cuentas visibles' : activePage}
+                   activePage === 'accounts' ? 'Cuentas visibles' : 
+                   activePage === 'strategy' ? 'Lienzo Estratégico' : activePage}
+                  {activePage === 'strategy' && (
+                    <div className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-600/20 rounded-full text-[8px] text-blue-500 uppercase tracking-widest">Planificación</div>
+                  )}
                 </h2>
               </div>
 
-              {activePage === 'overview' && (
+              {activePage === 'strategy' ? (
+                <div className="flex items-center gap-4 bg-[#111] p-1.5 rounded-[1.25rem] border border-white/5 animate-in slide-in-from-right-4 duration-500">
+                   <div className="flex items-center gap-3 w-[450px]">
+                      <div className="flex-1">
+                        <AccountSelectorDropdown
+                          label="Visible"
+                          accounts={accounts.filter(a => visibleAccountIds.includes(a.id))}
+                          activeId={(structure as any)?.activeAccId}
+                          onSelect={async (acc) => {
+                            setLoadingStructure(true);
+                            const data = await fetchAccountStructure(acc.id);
+                            setStructure({ ...data, activeAccId: acc.id } as any);
+                            setLoadingStructure(false);
+                          }}
+                          variant="blue"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <AccountSelectorDropdown
+                          label="Ocultas"
+                          accounts={accounts.filter(a => !visibleAccountIds.includes(a.id))}
+                          activeId={(structure as any)?.activeAccId}
+                          onSelect={async (acc) => {
+                            setLoadingStructure(true);
+                            const data = await fetchAccountStructure(acc.id);
+                            setStructure({ ...data, activeAccId: acc.id } as any);
+                            setLoadingStructure(false);
+                          }}
+                          variant="neutral"
+                        />
+                      </div>
+                   </div>
+                </div>
+              ) : activePage === 'overview' && (
                 <div className="flex flex-wrap items-center gap-3 bg-[#111] p-2 rounded-lg border border-white/5">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-neutral-600 ml-2" />
@@ -1051,47 +1088,7 @@ export default function App() {
 
               {activePage === 'strategy' && (
                 <div className="space-y-4">
-                  <div className="flex flex-col gap-0.5">
-                    <h2 className="text-lg font-black text-white tracking-tight flex items-center gap-2">
-                      LIENZO ESTRATÉGICO
-                      <div className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-600/20 rounded-full text-[8px] text-blue-500 uppercase tracking-widest">Planificación</div>
-                    </h2>
-                    <p className="text-neutral-500 text-[9px] font-bold uppercase tracking-widest max-w-xl leading-relaxed">
-                      Visualiza la estructura publicitaria y esboza propuestas tácticas sobre el diagrama de flujo.
-                    </p>
-                  </div>
-
-                  <div className="bg-[#111] p-6 rounded-lg border border-white/5 space-y-6 animate-in fade-in duration-700">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Visible Accounts Dropdown */}
-                      <AccountSelectorDropdown
-                        label="Cuentas Visibles"
-                        accounts={accounts.filter(a => visibleAccountIds.includes(a.id))}
-                        activeId={(structure as any)?.activeAccId}
-                        onSelect={async (acc) => {
-                          setLoadingStructure(true);
-                          const data = await fetchAccountStructure(acc.id);
-                          setStructure({ ...data, activeAccId: acc.id } as any);
-                          setLoadingStructure(false);
-                        }}
-                        variant="blue"
-                      />
-
-                      {/* Not Visible Accounts Dropdown */}
-                      <AccountSelectorDropdown
-                        label="Otras Cuentas (No Visibles)"
-                        accounts={accounts.filter(a => !visibleAccountIds.includes(a.id))}
-                        activeId={(structure as any)?.activeAccId}
-                        onSelect={async (acc) => {
-                          setLoadingStructure(true);
-                          const data = await fetchAccountStructure(acc.id);
-                          setStructure({ ...data, activeAccId: acc.id } as any);
-                          setLoadingStructure(false);
-                        }}
-                        variant="neutral"
-                      />
-                    </div>
-
+                  <div className="bg-[#111] p-0 rounded-lg border border-white/0 lg:border-white/5 space-y-6 animate-in fade-in duration-700">
                     {loadingStructure && (
                       <div className="h-[500px] flex flex-col items-center justify-center gap-4 bg-black/20 rounded-lg border border-white/5">
                         <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
