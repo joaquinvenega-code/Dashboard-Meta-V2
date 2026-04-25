@@ -51,7 +51,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   const [mode, setMode] = useState<'view' | 'draw'>('view');
   const [tool, setTool] = useState<'select' | 'pen' | 'rect' | 'circle' | 'text' | 'arrow' | 'node' | 'eraser'>('select');
   const [zoom, setZoom] = useState(0.8);
-  const [pos, setPos] = useState({ x: 100, y: 100 });
+  const [pos, setPos] = useState({ x: 100, y: 150 });
   const [elements, setElements] = useState<CanvasElement[]>(() => {
     const saved = localStorage.getItem(`cr_canvas_${accountId}`);
     return saved ? JSON.parse(saved) : [];
@@ -63,9 +63,9 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   const [funnelConfig, setFunnelConfig] = useState(() => {
     const saved = localStorage.getItem(`cr_funnel_${accountId}`);
     return saved ? JSON.parse(saved) : {
-      mofuY: 350,
-      bofuY: 700,
-      bofuEndY: 1000,
+      mofuY: 250,
+      bofuY: 550,
+      bofuEndY: 850,
       fontSize: 48
     };
   });
@@ -253,7 +253,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   const unknownCampaigns = campaigns.filter(c => !getEffectiveStage(c));
 
   // Dynamic start positions to fill space (more compact than hardcoded gaps)
-  const tofuY = 100;
+  const tofuY = 0;
   const mofuY = funnelConfig.mofuY;
   const bofuY = funnelConfig.bofuY;
   const bofuEndY = funnelConfig.bofuEndY || (funnelConfig.bofuY + 300);
@@ -462,7 +462,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                  if (confirm('¿Limpiar canvas de propuesta?')) {
                    setElements([]);
                    setNodePositions({});
-                   setFunnelConfig({ mofuY: 350, bofuY: 700, bofuEndY: 1000, fontSize: 48 });
+                   setFunnelConfig({ mofuY: 250, bofuY: 550, bofuEndY: 850, fontSize: 48 });
                  }
                }} icon={Trash2} />
             </div>
@@ -516,7 +516,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
         >
           <Layer>
             {/* FUNNEL SHAPE */}
-            <Group x={-420} y={0}>
+            <Group x={-420} y={-100}>
               {/* TOFU SECTION - COLD BLUE */}
               <Line
                 points={[0, 0, 360, 0, 310, mofuY - 30, 50, mofuY - 30]}
