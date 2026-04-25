@@ -1051,12 +1051,12 @@ export default function App() {
 
               {activePage === 'strategy' && (
                 <div className="space-y-6">
-                  <div className="flex flex-col gap-2">
-                    <h2 className="text-3xl font-black text-white tracking-tight flex items-center gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <h2 className="text-xl font-black text-white tracking-tight flex items-center gap-3">
                       LIENZO ESTRATÉGICO
-                      <div className="px-3 py-1 bg-blue-600/10 border border-blue-600/20 rounded-full text-[10px] text-blue-500 uppercase tracking-widest">Planificación</div>
+                      <div className="px-2 py-0.5 bg-blue-600/10 border border-blue-600/20 rounded-full text-[9px] text-blue-500 uppercase tracking-widest">Planificación</div>
                     </h2>
-                    <p className="text-neutral-500 text-xs font-bold uppercase tracking-widest max-w-xl leading-relaxed">
+                    <p className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest max-w-xl leading-relaxed">
                       Visualiza la estructura publicitaria y esboza propuestas tácticas sobre el diagrama de flujo.
                     </p>
                   </div>

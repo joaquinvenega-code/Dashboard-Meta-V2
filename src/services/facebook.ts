@@ -528,10 +528,48 @@ export async function fetchAccountStructure(accountId: string): Promise<{ campai
 
 function inferFunnelStage(name: string, objective: string): 'TOFU' | 'MOFU' | 'BOFU' {
   const n = name.toUpperCase();
-  if (n.includes('TOFU') || n.includes('TRAFFIC') || n.includes('AWARENESS') || objective === 'OUTCOME_AWARENESS' || objective === 'OUTCOME_TRAFFIC') return 'TOFU';
-  if (n.includes('MOFU') || n.includes('CONSIDERATION') || objective === 'OUTCOME_ENGAGEMENT' || objective === 'OUTCOME_LEADS') return 'MOFU';
-  if (n.includes('BOFU') || n.includes('CONVERSION') || n.includes('SALES') || objective === 'OUTCOME_SALES') return 'BOFU';
-  return 'TOFU'; // Default
+  
+  // BOFU: Priority on explicit conversion keywords
+  if (
+    n.includes('BOFU') || 
+    n.includes('CONVERSION') || 
+    n.includes('SALES') || 
+    n.includes('REMARKETING') || 
+    n.includes('RETARGETING') || 
+    n.includes('RMKT') || 
+    n.includes('RTG') ||
+    objective === 'OUTCOME_SALES'
+  ) return 'BOFU';
+
+  // MOFU: Engagement, leads and consideration
+  if (
+    n.includes('MOFU') || 
+    n.includes('CONSIDERACION') || 
+    n.includes('CONSIDERATION') || 
+    n.includes('ENGAGEMENT') || 
+    n.includes('INTERACCION') || 
+    n.includes('LEAD') || 
+    n.includes('POTENCIALES') ||
+    objective === 'OUTCOME_ENGAGEMENT' || 
+    objective === 'OUTCOME_LEADS'
+  ) return 'MOFU';
+
+  // TOFU: Cold traffic, awareness, prospecting
+  if (
+    n.includes('TOFU') || 
+    n.includes('TRAFICO') || 
+    n.includes('TRAFFIC') || 
+    n.includes('AWARENESS') || 
+    n.includes('RECONOCIMIENTO') || 
+    n.includes('PROSPECTING') || 
+    n.includes('LAL') || 
+    n.includes('LOOKALIKE') || 
+    n.includes('FRIO') ||
+    objective === 'OUTCOME_AWARENESS' || 
+    objective === 'OUTCOME_TRAFFIC'
+  ) return 'TOFU';
+
+  return 'TOFU'; // Default to cold traffic if unknown
 }
 
 export async function fetchDailySeries(accountId: string, since: string, until: string, adIds: string[]): Promise<Record<string, DailyMetric[]>> {
