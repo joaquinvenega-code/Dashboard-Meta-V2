@@ -492,7 +492,7 @@ export default function App() {
           )}
 
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 print:hidden mb-1">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 print:hidden mb-4">
               <div className="flex-1 min-w-0">
                 <h2 className="text-xl font-black tracking-widest text-white uppercase opacity-80 flex items-center gap-3">
                   {activePage === 'overview' ? 'Vista general' : 
@@ -1087,7 +1087,7 @@ export default function App() {
               )}
 
               {activePage === 'strategy' && (
-                <div className="space-y-0 relative -mt-8">
+                <div className="space-y-0 relative">
                   <div className="bg-[#111] p-0 rounded-lg border border-white/0 lg:border-white/5 space-y-0 animate-in fade-in duration-700">
                     {loadingStructure && (
                       <div className="h-[500px] flex flex-col items-center justify-center gap-4 bg-black/20 rounded-lg border border-white/5">
