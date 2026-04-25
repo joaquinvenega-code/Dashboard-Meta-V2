@@ -484,7 +484,7 @@ export default function App() {
       <main className="flex-1 min-w-0 p-10 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-10">
           {error && (
-            <div className="bg-danger/10 border border-danger/20 p-4 rounded-2xl flex items-center gap-3 text-danger animate-in fade-in slide-in-from-top-2">
+            <div className="bg-danger/10 border border-danger/20 p-4 rounded-lg flex items-center gap-3 text-danger animate-in fade-in slide-in-from-top-2">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <div className="text-xs font-black uppercase tracking-widest">{error}</div>
               <button onClick={() => setError(null)} className="ml-auto p-1 hover:bg-danger/10 rounded-lg">×</button>
@@ -502,7 +502,7 @@ export default function App() {
               </div>
 
               {activePage === 'overview' && (
-                <div className="flex flex-wrap items-center gap-3 bg-[#111] p-2 rounded-2xl border border-white/5">
+                <div className="flex flex-wrap items-center gap-3 bg-[#111] p-2 rounded-lg border border-white/5">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-neutral-600 ml-2" />
                     <div className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mr-4">
@@ -894,7 +894,7 @@ export default function App() {
               {activePage === 'accounts' && (
                 <div className="animate-in fade-in duration-500 max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 pb-20">
                   {/* --- SECCIÓN 1: CUENTAS INDIVIDUALES --- */}
-                  <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col">
+                  <div className="bg-[#111] rounded-lg border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col">
                     <div className="flex items-center justify-between mb-8">
                       <div>
                         <h3 className="text-sm font-black text-white uppercase tracking-widest">Cuentas Visibles</h3>
@@ -907,7 +907,7 @@ export default function App() {
                             setVisibleAccountIds(allIds);
                             localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
                           }}
-                          className="text-[9px] font-black text-blue-500 uppercase tracking-widest hover:bg-blue-500/10 px-3 py-2 rounded-xl transition-all border border-blue-500/20"
+                          className="text-[9px] font-black text-blue-500 uppercase tracking-widest hover:bg-blue-500/10 px-3 py-2 rounded-lg transition-all border border-blue-500/20"
                         >
                           Todas
                         </button>
@@ -956,7 +956,7 @@ export default function App() {
                   </div>
 
                   {/* --- SECCIÓN 2: GRUPOS DE CLIENTE --- */}
-                  <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col">
+                  <div className="bg-[#111] rounded-lg border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col">
                     <div className="flex items-center justify-between mb-8">
                       <div>
                         <h3 className="text-sm font-black text-white uppercase tracking-widest">Grupos de cliente</h3>
@@ -966,7 +966,7 @@ export default function App() {
                         onClick={() => {
                           setGroupModal({ isOpen: true, type: 'create', inputValue: '' });
                         }}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center gap-2"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center gap-2"
                       >
                         <Settings2 className="w-3 h-3" />
                         Nuevo Grupo
@@ -1061,75 +1061,39 @@ export default function App() {
                     </p>
                   </div>
 
-                  <div className="bg-[#111] p-10 rounded-[2rem] border border-white/5 space-y-10 animate-in fade-in duration-700">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                      {/* Visible Accounts */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-4 ml-1">
-                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                          <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Cuentas Visibles</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {accounts.filter(a => visibleAccountIds.includes(a.id)).map(acc => (
-                            <button
-                              key={acc.id}
-                              onClick={async () => {
-                                setLoadingStructure(true);
-                                const data = await fetchAccountStructure(acc.id);
-                                setStructure({ ...data, activeAccId: acc.id } as any);
-                                setLoadingStructure(false);
-                              }}
-                              className={cn(
-                                "px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border",
-                                (structure as any)?.activeAccId === acc.id 
-                                  ? "bg-blue-600 text-white border-blue-600 shadow-xl shadow-blue-600/20"
-                                  : "bg-black/40 text-neutral-500 border-white/5 hover:border-white/10 hover:text-white"
-                              )}
-                            >
-                              {acc.name}
-                            </button>
-                          ))}
-                          {accounts.filter(a => visibleAccountIds.includes(a.id)).length === 0 && (
-                            <p className="text-[9px] font-bold text-neutral-700 uppercase tracking-widest p-4 bg-black/20 rounded-xl border border-white/5 w-full text-center italic">No hay cuentas seleccionadas como visibles</p>
-                          )}
-                        </div>
-                      </div>
+                  <div className="bg-[#111] p-8 rounded-lg border border-white/5 space-y-8 animate-in fade-in duration-700">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Visible Accounts Dropdown */}
+                      <AccountSelectorDropdown
+                        label="Cuentas Visibles"
+                        accounts={accounts.filter(a => visibleAccountIds.includes(a.id))}
+                        activeId={(structure as any)?.activeAccId}
+                        onSelect={async (acc) => {
+                          setLoadingStructure(true);
+                          const data = await fetchAccountStructure(acc.id);
+                          setStructure({ ...data, activeAccId: acc.id } as any);
+                          setLoadingStructure(false);
+                        }}
+                        variant="blue"
+                      />
 
-                      {/* Not Visible Accounts */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-4 ml-1">
-                          <div className="w-1.5 h-1.5 rounded-full bg-neutral-700" />
-                          <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Otras Cuentas (No Visibles)</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {accounts.filter(a => !visibleAccountIds.includes(a.id)).map(acc => (
-                            <button
-                              key={acc.id}
-                              onClick={async () => {
-                                setLoadingStructure(true);
-                                const data = await fetchAccountStructure(acc.id);
-                                setStructure({ ...data, activeAccId: acc.id } as any);
-                                setLoadingStructure(false);
-                              }}
-                              className={cn(
-                                "px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border",
-                                (structure as any)?.activeAccId === acc.id 
-                                  ? "bg-neutral-200 text-black border-white shadow-xl shadow-white/5"
-                                  : "bg-black/20 text-neutral-600 border-white/5 hover:border-white/10 hover:text-neutral-400"
-                              )}
-                            >
-                              {acc.name}
-                            </button>
-                          ))}
-                          {accounts.filter(a => !visibleAccountIds.includes(a.id)).length === 0 && (
-                            <p className="text-[9px] font-bold text-neutral-700 uppercase tracking-widest p-4 bg-black/20 rounded-xl border border-white/5 w-full text-center italic">Todas las cuentas están marcadas como visibles</p>
-                          )}
-                        </div>
-                      </div>
+                      {/* Not Visible Accounts Dropdown */}
+                      <AccountSelectorDropdown
+                        label="Otras Cuentas (No Visibles)"
+                        accounts={accounts.filter(a => !visibleAccountIds.includes(a.id))}
+                        activeId={(structure as any)?.activeAccId}
+                        onSelect={async (acc) => {
+                          setLoadingStructure(true);
+                          const data = await fetchAccountStructure(acc.id);
+                          setStructure({ ...data, activeAccId: acc.id } as any);
+                          setLoadingStructure(false);
+                        }}
+                        variant="neutral"
+                      />
                     </div>
 
                     {loadingStructure && (
-                      <div className="h-[500px] flex flex-col items-center justify-center gap-4 bg-black/20 rounded-3xl border border-white/5">
+                      <div className="h-[500px] flex flex-col items-center justify-center gap-4 bg-black/20 rounded-lg border border-white/5">
                         <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
                         <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] animate-pulse">Sincronizando jerarquía de Meta Ads...</span>
                       </div>
@@ -1147,7 +1111,7 @@ export default function App() {
                     )}
 
                     {!structure && !loadingStructure && (
-                      <div className="h-[500px] flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-3xl gap-6 group">
+                      <div className="h-[500px] flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-lg gap-6 group">
                         <div className="p-6 bg-white/5 rounded-full group-hover:scale-110 transition-transform duration-500">
                           <Share2 className="w-10 h-10 text-neutral-700" />
                         </div>
@@ -1306,7 +1270,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative w-full max-w-sm bg-[#111] border border-white/10 rounded-[2rem] shadow-2xl p-8 overflow-hidden"
+              className="relative w-full max-w-sm bg-[#111] border border-white/10 rounded-lg shadow-2xl p-8 overflow-hidden"
             >
               <div className="absolute -top-12 -right-12 w-32 h-32 bg-blue-600/10 blur-3xl rounded-full" />
               
@@ -1349,7 +1313,7 @@ export default function App() {
                             setGroupModal({ ...groupModal, isOpen: false });
                           }
                         }}
-                        className="w-full bg-black/50 border border-white/5 rounded-xl px-4 py-3.5 text-xs text-white font-bold outline-none focus:ring-2 focus:ring-blue-600 transition-all placeholder:text-neutral-800"
+                        className="w-full bg-black/50 border border-white/5 rounded-lg px-4 py-3.5 text-xs text-white font-bold outline-none focus:ring-2 focus:ring-blue-600 transition-all placeholder:text-neutral-800"
                       />
                     </div>
                     
@@ -1364,7 +1328,7 @@ export default function App() {
                         }
                         setGroupModal({ ...groupModal, isOpen: false });
                       }}
-                      className="w-full bg-blue-600 disabled:opacity-20 text-white h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20"
+                      className="w-full bg-blue-600 disabled:opacity-20 text-white h-12 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20"
                     >
                       {groupModal.type === 'create' ? 'Crear Grupo' : 'Guardar Cambios'}
                     </button>
@@ -1377,7 +1341,7 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-3 mt-8">
                        <button 
                          onClick={() => setGroupModal({ ...groupModal, isOpen: false })}
-                         className="h-12 rounded-xl text-[10px] font-black uppercase tracking-widest text-neutral-600 hover:text-white hover:bg-white/5 transition-all"
+                         className="h-12 rounded-lg text-[10px] font-black uppercase tracking-widest text-neutral-600 hover:text-white hover:bg-white/5 transition-all"
                        >
                          Cancelar
                        </button>
@@ -1388,7 +1352,7 @@ export default function App() {
                            }
                            setGroupModal({ ...groupModal, isOpen: false });
                          }}
-                         className="h-12 rounded-xl bg-red-600/10 border border-red-600/20 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all"
+                         className="h-12 rounded-lg bg-red-600/10 border border-red-600/20 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all"
                        >
                          Eliminar
                        </button>
@@ -1404,6 +1368,79 @@ export default function App() {
   );
 }
 
+const AccountSelectorDropdown: React.FC<{
+  label: string;
+  accounts: AdAccount[];
+  activeId?: string;
+  onSelect: (acc: AdAccount) => void;
+  variant: 'blue' | 'neutral';
+}> = ({ label, accounts, activeId, onSelect, variant }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const activeAccount = accounts.find(a => a.id === activeId);
+
+  return (
+    <div className="relative">
+      <div className="flex items-center gap-2 mb-3 ml-1">
+        <div className={cn("w-1.5 h-1.5 rounded-full", variant === 'blue' ? "bg-blue-500" : "bg-neutral-700")} />
+        <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">{label}</p>
+      </div>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "w-full bg-black/40 border border-white/5 rounded-lg px-4 py-3.5 text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-between group",
+          activeAccount ? "text-white border-white/20" : "text-neutral-500 hover:border-white/10"
+        )}
+      >
+        <span className="truncate">{activeAccount ? activeAccount.name : `Seleccionar ${label}...`}</span>
+        <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen ? "rotate-180" : "")} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40"
+              onClick={() => setIsOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              className="absolute top-full left-0 right-0 mt-2 z-50 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl overflow-hidden max-h-64 overflow-y-auto custom-scrollbar"
+            >
+              {accounts.length === 0 ? (
+                <div className="p-4 text-center text-[10px] font-bold text-neutral-600 uppercase tracking-widest italic">
+                  No hay cuentas disponibles
+                </div>
+              ) : (
+                accounts.map(acc => (
+                  <button
+                    key={acc.id}
+                    onClick={() => {
+                      onSelect(acc);
+                      setIsOpen(false);
+                    }}
+                    className={cn(
+                      "w-full text-left px-5 py-4 hover:bg-blue-600 text-neutral-300 hover:text-white transition-colors text-[11px] font-bold border-b border-white/5 last:border-0 flex items-center justify-between",
+                      activeId === acc.id ? "bg-blue-600/20 text-white" : ""
+                    )}
+                  >
+                    <span>{acc.name}</span>
+                    {activeId === acc.id && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-lg shadow-blue-500/50" />}
+                  </button>
+                ))
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const GroupAccountSelector: React.FC<{
   accounts: AdAccount[];
   onSelect: (id: string) => void;
@@ -1414,7 +1451,7 @@ const GroupAccountSelector: React.FC<{
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-neutral-400 hover:border-blue-600/30 transition-all flex items-center justify-between group"
+        className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-neutral-400 hover:border-blue-600/30 transition-all flex items-center justify-between group"
       >
         <span>+ Añadir cuenta al grupo</span>
         <ChevronDown className={cn("w-3 h-3 transition-transform", isOpen ? "rotate-180" : "")} />
@@ -1428,7 +1465,7 @@ const GroupAccountSelector: React.FC<{
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              className="absolute top-full left-0 right-0 mt-2 z-50 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar"
+              className="absolute top-full left-0 right-0 mt-2 z-50 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar"
             >
               {accounts.length === 0 ? (
                 <div className="p-4 text-center text-[10px] font-bold text-neutral-600 uppercase tracking-widest">

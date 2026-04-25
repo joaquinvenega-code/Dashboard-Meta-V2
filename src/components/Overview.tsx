@@ -69,7 +69,7 @@ export function Overview({ accounts, settings }: OverviewProps) {
       </div>
 
       {/* Evolution Section */}
-      <div className="bg-[#141414] rounded-xl p-4 border border-white/5 shadow-2xl relative overflow-hidden">
+      <div className="bg-[#141414] rounded-lg p-4 border border-white/5 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 blur-[100px] rounded-full -mr-32 -mt-32"></div>
         
         <div className="flex items-center justify-between mb-3 relative">
@@ -160,7 +160,7 @@ function StatusLegend({ color, label }: { color: string; label: string }) {
 function SummaryCard({ label, value, sub, icon, highlight }: { label: string; value: string; sub: string; icon?: React.ReactNode; highlight?: boolean }) {
   return (
     <div className={cn(
-      "border p-4 rounded-xl shadow-xl transition-all group relative overflow-hidden flex flex-col justify-between min-h-[95px]",
+      "border p-4 rounded-lg shadow-xl transition-all group relative overflow-hidden flex flex-col justify-between min-h-[95px]",
       highlight 
         ? "bg-blue-600/[0.03] border-blue-600/20 ring-1 ring-blue-600/10" 
         : "bg-[#111] border-white/5 hover:bg-[#141414]"

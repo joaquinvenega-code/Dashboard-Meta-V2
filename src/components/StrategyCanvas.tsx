@@ -337,15 +337,15 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#050505] rounded-3xl border border-white/5 overflow-hidden">
+    <div className="flex flex-col h-full bg-[#050505] rounded-lg border border-white/5 overflow-hidden">
       {/* Canvas Toolbar */}
       <div className="flex items-center justify-between p-4 border-b border-white/5 bg-[#0a0a0a]">
         <div className="flex items-center gap-4">
-          <div className="flex bg-black p-1 rounded-xl border border-white/5">
+          <div className="flex bg-black p-1 rounded-lg border border-white/5">
             <button
               onClick={() => setMode('view')}
               className={cn(
-                "px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                "px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
                 mode === 'view' ? "bg-blue-600 text-white" : "text-neutral-600 hover:text-neutral-400"
               )}
             >
@@ -355,7 +355,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
             <button
               onClick={() => setMode('draw')}
               className={cn(
-                "px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                "px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
                 mode === 'draw' ? "bg-purple-600 text-white" : "text-neutral-600 hover:text-neutral-400"
               )}
             >
@@ -365,7 +365,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
           </div>
 
           {mode === 'draw' && (
-            <div className="flex bg-black p-1 rounded-xl border border-white/5 gap-1">
+            <div className="flex bg-black p-1 rounded-lg border border-white/5 gap-1">
                <ToolbarButton active={tool === 'select'} onClick={() => setTool('select')} icon={MousePointer2} />
                <ToolbarButton active={tool === 'pen'} onClick={() => setTool('pen')} icon={PenTool} />
                <ToolbarButton active={tool === 'rect'} onClick={() => setTool('rect')} icon={Square} />
@@ -379,7 +379,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex bg-black p-1 rounded-xl border border-white/5">
+          <div className="flex bg-black p-1 rounded-lg border border-white/5">
             <button onClick={() => setZoom(z => z * 1.2)} className="p-2 text-neutral-600 hover:text-white transition-colors">
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
@@ -398,7 +398,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
               link.href = dataUrl;
               link.click();
             }}
-            className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-lg shadow-blue-600/20"
+            className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-lg shadow-blue-600/20"
           >
             <Download className="w-4 h-4" />
           </button>
@@ -422,6 +422,60 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
           ref={stageRef}
         >
           <Layer>
+            {/* Funnel Shape Visualization */}
+            <Group x={-STAGE_SPACING - 50}>
+              {/* TOFU Section */}
+              <Line
+                points={[0, -100, 250, -100, 230, 250, 20, 250]}
+                fill="#3b82f6"
+                opacity={0.03}
+                closed
+              />
+              <Line
+                points={[0, -100, 250, -100, 230, 250, 20, 250]}
+                stroke="#3b82f6"
+                strokeWidth={1}
+                opacity={0.1}
+                dash={[10, 10]}
+                closed
+              />
+              <Text text="TOFU" x={100} y={50} fontSize={20} fontStyle="black" fill="#3b82f6" opacity={0.2} />
+              
+              {/* MOFU Section */}
+              <Line
+                points={[20, 250, 230, 250, 210, 550, 40, 550]}
+                fill="#8b5cf6"
+                opacity={0.03}
+                closed
+              />
+              <Line
+                points={[20, 250, 230, 250, 210, 550, 40, 550]}
+                stroke="#8b5cf6"
+                strokeWidth={1}
+                opacity={0.1}
+                dash={[10, 10]}
+                closed
+              />
+              <Text text="MOFU" x={100} y={380} fontSize={20} fontStyle="black" fill="#8b5cf6" opacity={0.2} />
+
+              {/* BOFU Section */}
+              <Line
+                points={[40, 550, 210, 550, 180, 850, 70, 850]}
+                fill="#f43f5e"
+                opacity={0.03}
+                closed
+              />
+              <Line
+                points={[40, 550, 210, 550, 180, 850, 70, 850]}
+                stroke="#f43f5e"
+                strokeWidth={1}
+                opacity={0.1}
+                dash={[10, 10]}
+                closed
+              />
+              <Text text="BOFU" x={100} y={680} fontSize={20} fontStyle="black" fill="#f43f5e" opacity={0.2} />
+            </Group>
+
             {/* Background Grid */}
             {Array.from({ length: 40 }).map((_, i) => (
                 <Line
