@@ -15,13 +15,14 @@ import {
   Eraser,
   Save,
   MessageSquare,
-  Type
+  Type,
+  ArrowRight
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface CanvasElement {
   id: string;
-  type: 'rect' | 'circle' | 'text' | 'line';
+  type: 'rect' | 'circle' | 'text' | 'line' | 'arrow' | 'node';
   x: number;
   y: number;
   width?: number;
@@ -30,6 +31,8 @@ interface CanvasElement {
   text?: string;
   color: string;
   fontSize?: number;
+  startNodeId?: string;
+  endNodeId?: string;
 }
 
 interface StrategyCanvasProps {
@@ -46,7 +49,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   ads 
 }) => {
   const [mode, setMode] = useState<'view' | 'draw'>('view');
-  const [tool, setTool] = useState<'select' | 'pen' | 'rect' | 'circle' | 'text' | 'eraser'>('select');
+  const [tool, setTool] = useState<'select' | 'pen' | 'rect' | 'circle' | 'text' | 'arrow' | 'node' | 'eraser'>('select');
   const [zoom, setZoom] = useState(0.8);
   const [pos, setPos] = useState({ x: 100, y: 100 });
   const [elements, setElements] = useState<CanvasElement[]>(() => {
@@ -99,6 +102,15 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
         points: [point.x, point.y],
         color: '#3b82f6'
       });
+    } else if (tool === 'arrow') {
+      setNewElement({
+        id: Math.random().toString(36).substr(2, 9),
+        type: 'arrow',
+        x: 0,
+        y: 0,
+        points: [point.x, point.y, point.x, point.y],
+        color: '#3b82f6'
+      });
     } else if (tool === 'rect') {
       setNewElement({
         id: Math.random().toString(36).substr(2, 9),
@@ -109,6 +121,21 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
         height: 0,
         color: '#3b82f6'
       });
+    } else if (tool === 'node') {
+      const text = prompt('Nombre del módulo:');
+      if (text) {
+        setElements([...elements, {
+          id: `custom_${Math.random().toString(36).substr(2, 9)}`,
+          type: 'node',
+          x: point.x,
+          y: point.y,
+          width: 180,
+          height: 60,
+          text,
+          color: '#8b5cf6'
+        }]);
+      }
+      setIsDrawing(false);
     } else if (tool === 'circle') {
       setNewElement({
         id: Math.random().toString(36).substr(2, 9),
@@ -146,6 +173,11 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
       setNewElement({
         ...newElement,
         points: [...(newElement.points || []), point.x, point.y]
+      });
+    } else if (tool === 'arrow') {
+      setNewElement({
+        ...newElement,
+        points: [newElement.points![0], newElement.points![1], point.x, point.y]
       });
     } else if (tool === 'rect' || tool === 'circle') {
       setNewElement({
@@ -232,9 +264,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
   }, []);
-
   const renderCampaign = (campaign: Campaign, defaultX: number, defaultY: number) => {
-    const campaignAdSets = adsets.filter(s => s.campaignId === campaign.id);
     const color = campaign.funnelStage === 'TOFU' ? '#3b82f6' : 
                   campaign.funnelStage === 'MOFU' ? '#f59e0b' : 
                   campaign.funnelStage === 'BOFU' ? '#ef4444' : '#333';
@@ -243,6 +273,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
     return (
       <Group 
+        key={campaign.id}
         x={pos.x} 
         y={pos.y} 
         draggable={mode === 'draw' && tool === 'select'}
@@ -253,7 +284,6 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
           });
         }}
       >
-        {/* Campaign Box */}
         <Rect
           width={NODE_CONFIG.campaign.w}
           height={NODE_CONFIG.campaign.h}
@@ -291,116 +321,90 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
           y={44}
           fontStyle="bold"
         />
-        
-        {/* Connections to AdSets */}
-        {campaignAdSets.map((adset, idx) => {
-          const adsetY = idx * NODE_CONFIG.spacing.adset - ((campaignAdSets.length - 1) * NODE_CONFIG.spacing.adset / 2);
-          const adsetX = ADSET_X_OFFSET;
-          const aPos = nodePositions[adset.id] || { x: adsetX, y: adsetY };
-          
-          return (
-            <Group key={adset.id}>
-              <Arrow
-                points={[NODE_CONFIG.campaign.w, NODE_CONFIG.campaign.h / 2, aPos.x, aPos.y + NODE_CONFIG.adset.h / 2]}
-                stroke="#333"
-                strokeWidth={1}
-                pointerLength={6}
-                pointerWidth={6}
-                fill="#333"
-                tension={0.5}
-              />
-              <Group 
-                x={aPos.x} 
-                y={aPos.y}
-                draggable={mode === 'draw' && tool === 'select'}
-                onDragEnd={(e) => {
-                  setNodePositions({
-                    ...nodePositions,
-                    [adset.id]: { x: e.target.x(), y: e.target.y() }
-                  });
-                }}
-              >
-                <Rect
-                    width={NODE_CONFIG.adset.w}
-                    height={NODE_CONFIG.adset.h}
-                    fill="#0a0a0a"
-                    stroke="#8b5cf6"
-                    strokeWidth={1.5}
-                    cornerRadius={6}
-                />
-                <Text
-                    text="CONJUNTO"
-                    fontSize={7}
-                    fontStyle="black"
-                    fill="#8b5cf6"
-                    x={10}
-                    y={10}
-                    letterSpacing={0.8}
-                />
-                <Text
-                    text={adset.name}
-                    fontSize={NODE_CONFIG.adset.fontSize}
-                    fontStyle="bold"
-                    fill="#ccc"
-                    x={10}
-                    y={22}
-                    width={NODE_CONFIG.adset.w - 20}
-                    wrap="char"
-                />
+      </Group>
+    );
+  };
 
-                {/* Ads */}
-                {ads.filter(a => a.adsetId === adset.id).map((ad, aIdx) => {
-                  const adX = AD_X_OFFSET;
-                  const adCount = ads.filter(a => a.adsetId === adset.id).length;
-                  const adY = aIdx * NODE_CONFIG.spacing.ad - ((adCount - 1) * NODE_CONFIG.spacing.ad / 2);
-                  const adPos = nodePositions[ad.id] || { x: adX, y: adY };
+  const renderAdSet = (adset: AdSet, defaultX: number, defaultY: number) => {
+    const pos = nodePositions[adset.id] || { x: defaultX, y: defaultY };
 
-                  return (
-                    <Group key={ad.id}>
-                       <Arrow
-                        points={[NODE_CONFIG.adset.w, NODE_CONFIG.adset.h / 2, adPos.x, adPos.y + NODE_CONFIG.ad.h / 2]}
-                        stroke="#222"
-                        strokeWidth={1}
-                        pointerLength={5}
-                        pointerWidth={5}
-                        fill="#222"
-                      />
-                      <Group 
-                        x={adPos.x} 
-                        y={adPos.y}
-                        draggable={mode === 'draw' && tool === 'select'}
-                        onDragEnd={(e) => {
-                          setNodePositions({
-                            ...nodePositions,
-                            [ad.id]: { x: e.target.x(), y: e.target.y() }
-                          });
-                        }}
-                      >
-                        <Rect
-                            width={NODE_CONFIG.ad.w}
-                            height={NODE_CONFIG.ad.h}
-                            fill="#080808"
-                            stroke="#ffffff10"
-                            strokeWidth={1}
-                            cornerRadius={4}
-                        />
-                        <Text
-                            text={ad.name}
-                            fontSize={NODE_CONFIG.ad.fontSize}
-                            fill="#777"
-                            x={8}
-                            y={12}
-                            width={NODE_CONFIG.ad.w - 16}
-                            wrap="char"
-                        />
-                      </Group>
-                    </Group>
-                  );
-                })}
-              </Group>
-            </Group>
-          );
-        })}
+    return (
+      <Group 
+        key={adset.id}
+        x={pos.x} 
+        y={pos.y}
+        draggable={mode === 'draw' && tool === 'select'}
+        onDragEnd={(e) => {
+          setNodePositions({
+            ...nodePositions,
+            [adset.id]: { x: e.target.x(), y: e.target.y() }
+          });
+        }}
+      >
+        <Rect
+            width={NODE_CONFIG.adset.w}
+            height={NODE_CONFIG.adset.h}
+            fill="#0a0a0a"
+            stroke="#8b5cf6"
+            strokeWidth={1.5}
+            cornerRadius={6}
+        />
+        <Text
+            text="CONJUNTO"
+            fontSize={7}
+            fontStyle="black"
+            fill="#8b5cf6"
+            x={10}
+            y={10}
+            letterSpacing={0.8}
+        />
+        <Text
+            text={adset.name}
+            fontSize={NODE_CONFIG.adset.fontSize}
+            fontStyle="bold"
+            fill="#ccc"
+            x={10}
+            y={22}
+            width={NODE_CONFIG.adset.w - 20}
+            wrap="char"
+        />
+      </Group>
+    );
+  };
+
+  const renderAd = (ad: Ad, defaultX: number, defaultY: number) => {
+    const pos = nodePositions[ad.id] || { x: defaultX, y: defaultY };
+
+    return (
+      <Group 
+        key={ad.id}
+        x={pos.x} 
+        y={pos.y}
+        draggable={mode === 'draw' && tool === 'select'}
+        onDragEnd={(e) => {
+          setNodePositions({
+            ...nodePositions,
+            [ad.id]: { x: e.target.x(), y: e.target.y() }
+          });
+        }}
+      >
+        <Rect
+            width={NODE_CONFIG.ad.w}
+            height={NODE_CONFIG.ad.h}
+            fill="#080808"
+            stroke="#ffffff10"
+            strokeWidth={1}
+            cornerRadius={4}
+        />
+        <Text
+            text={ad.name}
+            fontSize={NODE_CONFIG.ad.fontSize}
+            fill="#777"
+            x={8}
+            y={12}
+            width={NODE_CONFIG.ad.w - 16}
+            wrap="char"
+        />
       </Group>
     );
   };
@@ -437,6 +441,8 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
             <div className="flex bg-black p-1 rounded-lg border border-white/5 gap-1">
                <ToolbarButton active={tool === 'select'} onClick={() => setTool('select')} icon={MousePointer2} />
                <ToolbarButton active={tool === 'pen'} onClick={() => setTool('pen')} icon={PenTool} />
+               <ToolbarButton active={tool === 'arrow'} onClick={() => setTool('arrow')} icon={ArrowRight} />
+               <ToolbarButton active={tool === 'node'} onClick={() => setTool('node')} icon={MessageSquare} />
                <ToolbarButton active={tool === 'rect'} onClick={() => setTool('rect')} icon={Square} />
                <ToolbarButton active={tool === 'circle'} onClick={() => setTool('circle')} icon={CircleIcon} />
                <ToolbarButton active={tool === 'text'} onClick={() => setTool('text')} icon={Type} />
@@ -586,77 +592,146 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 />
             ))}
 
-            {/* Actual Structure Nodes */}
-            <Group>
-              {tofuCampaigns.map((c, i) => {
-                const targetY = tofuY + i * NODE_CONFIG.spacing.campaign;
-                const pos = nodePositions[c.id] || { x: 0, y: targetY };
+            {/* Funnel Connections */}
+            {tofuCampaigns.map((c, i) => {
+              const targetY = tofuY + i * NODE_CONFIG.spacing.campaign;
+              const pos = nodePositions[c.id] || { x: 0, y: targetY };
+              return (
+                <Arrow 
+                  key={`conn-funnel-${c.id}`}
+                  points={[-60, (mofuY - 30) / 2 + 10, pos.x, pos.y + NODE_CONFIG.campaign.h / 2]} 
+                  stroke="#3b82f6" strokeWidth={2} pointerLength={6} opacity={0.5} tension={0.4}
+                />
+              );
+            })}
+            {mofuCampaigns.map((c, i) => {
+              const targetY = mofuY + i * NODE_CONFIG.spacing.campaign;
+              const pos = nodePositions[c.id] || { x: 0, y: targetY };
+              return (
+                <Arrow 
+                  key={`conn-funnel-${c.id}`}
+                  points={[-110, mofuY + (bofuY - mofuY - 30) / 2 + 10, pos.x, pos.y + NODE_CONFIG.campaign.h / 2]} 
+                  stroke="#f59e0b" strokeWidth={2} pointerLength={6} opacity={0.5} tension={0.4}
+                />
+              );
+            })}
+            {bofuCampaigns.map((c, i) => {
+              const targetY = bofuY + i * NODE_CONFIG.spacing.campaign;
+              const pos = nodePositions[c.id] || { x: 0, y: targetY };
+              return (
+                <Arrow 
+                  key={`conn-funnel-${c.id}`}
+                  points={[-160, bofuY + 140, pos.x, pos.y + NODE_CONFIG.campaign.h / 2]} 
+                  stroke="#ef4444" strokeWidth={2} pointerLength={6} opacity={0.5} tension={0.4}
+                />
+              );
+            })}
+
+            {/* Internal Node Connections (Dynamic) */}
+            {campaigns.map(campaign => {
+              const campaignAdSets = adsets.filter(s => s.campaignId === campaign.id);
+              const cPos = nodePositions[campaign.id] || { x: 0, y: 0 /* calculated below */ };
+              // We need the same logic for default Y as in render, so let's simplify and just use the same mapping
+              return campaignAdSets.map((adset, idx) => {
+                const campaignIdx = campaigns.indexOf(campaign);
+                const defaultCampaignY = (campaign.funnelStage === 'TOFU' ? tofuY : campaign.funnelStage === 'MOFU' ? mofuY : bofuY) + campaignIdx * NODE_CONFIG.spacing.campaign;
+                const cX = nodePositions[campaign.id]?.x ?? 0;
+                const cY = nodePositions[campaign.id]?.y ?? defaultCampaignY;
+
+                const adsetY = idx * NODE_CONFIG.spacing.adset - ((campaignAdSets.length - 1) * NODE_CONFIG.spacing.adset / 2) + cY;
+                const adsetX = cX + ADSET_X_OFFSET;
+                const aX = nodePositions[adset.id]?.x ?? adsetX;
+                const aY = nodePositions[adset.id]?.y ?? adsetY;
+
                 return (
-                  <Group key={c.id}>
-                    <Arrow 
-                      points={[-60, (mofuY - 30) / 2 + 10, pos.x, pos.y + NODE_CONFIG.campaign.h / 2]} 
-                      stroke="#3b82f6" 
-                      strokeWidth={2} 
-                      pointerLength={6} 
-                      opacity={0.5} 
-                      tension={0.4}
+                  <Group key={`conn-as-${adset.id}`}>
+                    <Arrow
+                      points={[cX + NODE_CONFIG.campaign.w, cY + NODE_CONFIG.campaign.h / 2, aX, aY + NODE_CONFIG.adset.h / 2]}
+                      stroke="#333" strokeWidth={1} pointerLength={6} pointerWidth={6} fill="#333" tension={0.5}
                     />
-                    {renderCampaign(c, 0, targetY)}
+                    {ads.filter(a => a.adsetId === adset.id).map((ad, aIdx) => {
+                      const adCount = ads.filter(a => a.adsetId === adset.id).length;
+                      const defAdX = aX + AD_X_OFFSET;
+                      const defAdY = aIdx * NODE_CONFIG.spacing.ad - ((adCount - 1) * NODE_CONFIG.spacing.ad / 2) + aY;
+                      const adX = nodePositions[ad.id]?.x ?? defAdX;
+                      const adY = nodePositions[ad.id]?.y ?? defAdY;
+
+                      return (
+                        <Arrow
+                          key={`conn-ad-${ad.id}`}
+                          points={[aX + NODE_CONFIG.adset.w, aY + NODE_CONFIG.adset.h / 2, adX, adY + NODE_CONFIG.ad.h / 2]}
+                          stroke="#222" strokeWidth={1} pointerLength={5} pointerWidth={5} fill="#222"
+                        />
+                      );
+                    })}
                   </Group>
                 );
-              })}
+              });
+            })}
 
-              {mofuCampaigns.map((c, i) => {
-                const targetY = mofuY + i * NODE_CONFIG.spacing.campaign;
-                const pos = nodePositions[c.id] || { x: 0, y: targetY };
+            {/* Render Actual Nodes (Flat) */}
+            {campaigns.map((c, i) => {
+              const defaultY = (c.funnelStage === 'TOFU' ? tofuY : c.funnelStage === 'MOFU' ? mofuY : c.funnelStage === 'BOFU' ? bofuY : bofuY + 400) + i * NODE_CONFIG.spacing.campaign;
+              return renderCampaign(c, 0, defaultY);
+            })}
+
+            {campaigns.map(campaign => {
+              const campaignAdSets = adsets.filter(s => s.campaignId === campaign.id);
+              const campaignIdx = campaigns.indexOf(campaign);
+              const defaultCampaignY = (campaign.funnelStage === 'TOFU' ? tofuY : campaign.funnelStage === 'MOFU' ? mofuY : bofuY) + campaignIdx * NODE_CONFIG.spacing.campaign;
+              const cX = nodePositions[campaign.id]?.x ?? 0;
+              const cY = nodePositions[campaign.id]?.y ?? defaultCampaignY;
+
+              return campaignAdSets.map((adset, idx) => {
+                const adsetY = idx * NODE_CONFIG.spacing.adset - ((campaignAdSets.length - 1) * NODE_CONFIG.spacing.adset / 2) + cY;
+                const adsetX = cX + ADSET_X_OFFSET;
+                
                 return (
-                  <Group key={c.id}>
-                    <Arrow 
-                      points={[-110, mofuY + (bofuY - mofuY - 30) / 2 + 10, pos.x, pos.y + NODE_CONFIG.campaign.h / 2]} 
-                      stroke="#f59e0b" 
-                      strokeWidth={2} 
-                      pointerLength={6} 
-                      opacity={0.5} 
-                      tension={0.4}
-                    />
-                    {renderCampaign(c, 0, targetY)}
+                  <Group key={`group-${adset.id}`}>
+                    {renderAdSet(adset, adsetX, adsetY)}
+                    {ads.filter(a => a.adsetId === adset.id).map((ad, aIdx) => {
+                      const adCount = ads.filter(a => a.adsetId === adset.id).length;
+                      const currentAdsetX = nodePositions[adset.id]?.x ?? adsetX;
+                      const currentAdsetY = nodePositions[adset.id]?.y ?? adsetY;
+                      const defAdX = currentAdsetX + AD_X_OFFSET;
+                      const defAdY = aIdx * NODE_CONFIG.spacing.ad - ((adCount - 1) * NODE_CONFIG.spacing.ad / 2) + currentAdsetY;
+                      return renderAd(ad, defAdX, defAdY);
+                    })}
                   </Group>
                 );
-              })}
-
-              {bofuCampaigns.map((c, i) => {
-                const targetY = bofuY + i * NODE_CONFIG.spacing.campaign;
-                const pos = nodePositions[c.id] || { x: 0, y: targetY };
-                return (
-                  <Group key={c.id}>
-                    <Arrow 
-                      points={[-160, bofuY + 140, pos.x, pos.y + NODE_CONFIG.campaign.h / 2]} 
-                      stroke="#ef4444" 
-                      strokeWidth={2} 
-                      pointerLength={6} 
-                      opacity={0.5} 
-                      tension={0.4}
-                    />
-                    {renderCampaign(c, 0, targetY)}
-                  </Group>
-                );
-              })}
-
-              {unknownCampaigns.map((c, i) => renderCampaign(c, 0, bofuY + 400 + i * NODE_CONFIG.spacing.campaign))}
-            </Group>
+              });
+            })}
 
             {/* Proposal / Drawing Layer */}
             {elements.map((el) => {
-              if (el.type === 'line') return <Line key={el.id} points={el.points} stroke={el.color} strokeWidth={3} tension={0.5} lineCap="round" />;
-              if (el.type === 'rect') return <Rect key={el.id} x={el.x} y={el.y} width={el.width} height={el.height} stroke={el.color} strokeWidth={2} dash={[5, 5]} />;
-              if (el.type === 'circle') return <Circle key={el.id} x={el.x} y={el.y} radius={Math.sqrt(Math.pow(el.width || 0, 2) + Math.pow(el.height || 0, 2))} stroke={el.color} strokeWidth={2} dash={[5, 5]} />;
-              if (el.type === 'text') return <Text key={el.id} x={el.x} y={el.y} text={el.text} fill={el.color} fontSize={el.fontSize} fontStyle="bold" />;
+              const isDraggable = mode === 'draw' && tool === 'select';
+              const onDragEnd = (e: any) => {
+                setElements(elements.map(item => 
+                  item.id === el.id ? { ...item, x: e.target.x(), y: e.target.y() } : item
+                ));
+              };
+
+              if (el.type === 'line') return <Line key={el.id} points={el.points} stroke={el.color} strokeWidth={3} tension={0.5} lineCap="round" draggable={isDraggable} onDragEnd={onDragEnd} />;
+              if (el.type === 'arrow') return <Arrow key={el.id} points={el.points} stroke={el.color} strokeWidth={3} tension={0.5} lineCap="round" pointerLength={6} pointerWidth={6} fill={el.color} draggable={isDraggable} onDragEnd={onDragEnd} />;
+              if (el.type === 'rect') return <Rect key={el.id} x={el.x} y={el.y} width={el.width} height={el.height} stroke={el.color} strokeWidth={2} dash={[5, 5]} draggable={isDraggable} onDragEnd={onDragEnd} />;
+              if (el.type === 'circle') return <Circle key={el.id} x={el.x} y={el.y} radius={Math.sqrt(Math.pow(el.width || 0, 2) + Math.pow(el.height || 0, 2))} stroke={el.color} strokeWidth={2} dash={[5, 5]} draggable={isDraggable} onDragEnd={onDragEnd} />;
+              if (el.type === 'text') return <Text key={el.id} x={el.x} y={el.y} text={el.text} fill={el.color} fontSize={el.fontSize} fontStyle="bold" draggable={isDraggable} onDragEnd={onDragEnd} />;
+              if (el.type === 'node') return (
+                <Group key={el.id} x={el.x} y={el.y} draggable={isDraggable} onDragEnd={onDragEnd}>
+                  <Rect width={el.width} height={el.height} fill="#1a1a1a" stroke={el.color} strokeWidth={2} cornerRadius={8} />
+                  <Text text={el.text} fill="#fff" fontSize={11} fontStyle="bold" x={10} y={el.height!/2 - 6} width={el.width! - 20} align="center" wrap="char" />
+                </Group>
+              );
               return null;
             })}
 
             {newElement && (
                 <>
-                {newElement.type === 'line' && <Line points={newElement.points} stroke={newElement.color} strokeWidth={3} tension={0.5} lineCap="round" />}
+                {(newElement.type === 'line' || newElement.type === 'arrow') && (
+                  newElement.type === 'line' ? 
+                    <Line points={newElement.points} stroke={newElement.color} strokeWidth={3} tension={0.5} lineCap="round" /> :
+                    <Arrow points={newElement.points} stroke={newElement.color} strokeWidth={3} tension={0.5} lineCap="round" pointerLength={6} pointerWidth={6} fill={newElement.color} />
+                )}
                 {newElement.type === 'rect' && <Rect x={newElement.x} y={newElement.y} width={newElement.width} height={newElement.height} stroke={newElement.color} strokeWidth={2} />}
                 {newElement.type === 'circle' && <Circle x={newElement.x} y={newElement.y} radius={Math.sqrt(Math.pow(newElement.width || 0, 2) + Math.pow(newElement.height || 0, 2))} stroke={newElement.color} strokeWidth={2} />}
                 </>
