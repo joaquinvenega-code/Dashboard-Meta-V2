@@ -63,9 +63,10 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   const [funnelConfig, setFunnelConfig] = useState(() => {
     const saved = localStorage.getItem(`cr_funnel_${accountId}`);
     return saved ? JSON.parse(saved) : {
-      mofuY: 300,
-      bofuY: 550,
-      fontSize: 32
+      mofuY: 350,
+      bofuY: 700,
+      bofuEndY: 1000,
+      fontSize: 48
     };
   });
   const [isDrawing, setIsDrawing] = useState(false);
@@ -221,19 +222,19 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   };
 
   // Layout constants
-  const STAGE_SPACING = 320;
-  const ADSET_X_OFFSET = 240;
-  const AD_X_OFFSET = 220;
+  const STAGE_SPACING = 340;
+  const ADSET_X_OFFSET = 260;
+  const AD_X_OFFSET = 240;
 
   // New sizing for nodes (more compact)
   const NODE_CONFIG = {
-    campaign: { w: 200, h: 65, fontSize: 10 },
-    adset: { w: 170, h: 55, fontSize: 9 },
-    ad: { w: 140, h: 36, fontSize: 8 },
+    campaign: { w: 220, h: 70, fontSize: 11 },
+    adset: { w: 180, h: 60, fontSize: 10 },
+    ad: { w: 150, h: 38, fontSize: 9 },
     spacing: {
-      campaign: 200, // Giving enough vertical room for branches
-      adset: 120,
-      ad: 42
+      campaign: 280, 
+      adset: 140,
+      ad: 48
     }
   };
 
@@ -243,9 +244,10 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   const unknownCampaigns = campaigns.filter(c => !c.funnelStage);
 
   // Dynamic start positions to fill space (more compact than hardcoded gaps)
-  const tofuY = 80;
+  const tofuY = 100;
   const mofuY = funnelConfig.mofuY;
   const bofuY = funnelConfig.bofuY;
+  const bofuEndY = funnelConfig.bofuEndY || (funnelConfig.bofuY + 300);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [stageSize, setStageSize] = useState({ width: 1200, height: 800 });
@@ -450,7 +452,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                  if (confirm('¿Limpiar canvas de propuesta?')) {
                    setElements([]);
                    setNodePositions({});
-                   setFunnelConfig({ mofuY: 300, bofuY: 550, fontSize: 32 });
+                   setFunnelConfig({ mofuY: 350, bofuY: 700, bofuEndY: 1000, fontSize: 48 });
                  }
                }} icon={Trash2} />
             </div>
@@ -516,26 +518,28 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
               <Text 
                 text="TOFU" 
                 x={120} 
-                y={(mofuY - 30) / 2 - 10} 
+                y={(mofuY - 30) / 2 - 20} 
                 fontSize={funnelConfig.fontSize} 
                 fontStyle="black" 
                 fill="#ffffff" 
                 width={120} 
                 align="center"
                 draggable={mode === 'draw'}
-                onDragEnd={(e) => setFunnelConfig({...funnelConfig, fontSize: Math.max(10, e.target.y())})}
+                onDragEnd={(e) => setFunnelConfig({...funnelConfig, fontSize: Math.abs(e.target.y())})}
               />
-              <Text text="TOP OF FUNNEL" x={120} y={(mofuY - 30) / 2 + 25} fontSize={10} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
+              <Text text="TOP OF FUNNEL" x={120} y={(mofuY - 30) / 2 + (funnelConfig.fontSize * 0.6)} fontSize={10} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
               
               {/* Handle for MOFU Y */}
               {mode === 'draw' && (
                 <Circle 
                   x={180} 
-                  y={mofuY} 
-                  radius={6} 
+                  y={mofuY - 15} 
+                  radius={10} 
                   fill="#f59e0b" 
+                  stroke="#ffffff"
+                  strokeWidth={2}
                   draggable 
-                  onDragMove={(e) => setFunnelConfig({...funnelConfig, mofuY: e.target.y()})}
+                  onDragMove={(e) => setFunnelConfig({...funnelConfig, mofuY: e.target.y() + 15})}
                 />
               )}
 
@@ -547,31 +551,47 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 strokeWidth={1}
                 closed
               />
-              <Text text="MOFU" x={120} y={mofuY + (bofuY - mofuY - 30) / 2 - 10} fontSize={funnelConfig.fontSize * 0.8} fontStyle="black" fill="#ffffff" width={120} align="center" />
-              <Text text="MIDDLE OF FUNNEL" x={120} y={mofuY + (bofuY - mofuY - 30) / 2 + 25} fontSize={10} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
+              <Text text="MOFU" x={120} y={mofuY + (bofuY - mofuY - 30) / 2 - 20} fontSize={funnelConfig.fontSize * 0.8} fontStyle="black" fill="#ffffff" width={120} align="center" />
+              <Text text="MIDDLE OF FUNNEL" x={120} y={mofuY + (bofuY - mofuY - 30) / 2 + (funnelConfig.fontSize * 0.5)} fontSize={10} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
 
               {/* Handle for BOFU Y */}
               {mode === 'draw' && (
                 <Circle 
                   x={180} 
-                  y={bofuY} 
-                  radius={6} 
+                  y={bofuY - 15} 
+                  radius={10} 
                   fill="#ef4444" 
+                  stroke="#ffffff"
+                  strokeWidth={2}
                   draggable 
-                  onDragMove={(e) => setFunnelConfig({...funnelConfig, bofuY: e.target.y()})}
+                  onDragMove={(e) => setFunnelConfig({...funnelConfig, bofuY: e.target.y() + 15})}
                 />
               )}
 
               {/* BOFU SECTION - HOT RED */}
               <Line
-                points={[100, bofuY, 260, bofuY, 210, bofuY + 300, 150, bofuY + 300]}
+                points={[100, bofuY, 260, bofuY, 210, bofuEndY, 150, bofuEndY]}
                 fill="#991b1b"
                 stroke="#b91c1c"
                 strokeWidth={1}
                 closed
               />
-              <Text text="BOFU" x={120} y={bofuY + 120} fontSize={funnelConfig.fontSize * 0.75} fontStyle="black" fill="#ffffff" width={120} align="center" />
-              <Text text="BOTTOM OF FUNNEL" x={120} y={bofuY + 155} fontSize={9} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
+              <Text text="BOFU" x={120} y={bofuY + (bofuEndY - bofuY) / 2 - 20} fontSize={funnelConfig.fontSize * 0.65} fontStyle="black" fill="#ffffff" width={120} align="center" />
+              <Text text="BOTTOM OF FUNNEL" x={120} y={bofuY + (bofuEndY - bofuY) / 2 + (funnelConfig.fontSize * 0.4)} fontSize={9} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
+
+              {/* Handle for BOFU Bottom */}
+              {mode === 'draw' && (
+                <Circle 
+                  x={180} 
+                  y={bofuEndY} 
+                  radius={10} 
+                  fill="#991b1b" 
+                  stroke="#ffffff"
+                  strokeWidth={2}
+                  draggable 
+                  onDragMove={(e) => setFunnelConfig({...funnelConfig, bofuEndY: e.target.y()})}
+                />
+              )}
             </Group>
 
             {/* Background Grid */}
@@ -630,16 +650,29 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
             {/* Internal Node Connections (Dynamic) */}
             {campaigns.map(campaign => {
               const campaignAdSets = adsets.filter(s => s.campaignId === campaign.id);
-              const cPos = nodePositions[campaign.id] || { x: 0, y: 0 /* calculated below */ };
-              // We need the same logic for default Y as in render, so let's simplify and just use the same mapping
-              return campaignAdSets.map((adset, idx) => {
-                const campaignIdx = campaigns.indexOf(campaign);
-                const defaultCampaignY = (campaign.funnelStage === 'TOFU' ? tofuY : campaign.funnelStage === 'MOFU' ? mofuY : bofuY) + campaignIdx * NODE_CONFIG.spacing.campaign;
-                const cX = nodePositions[campaign.id]?.x ?? 0;
-                const cY = nodePositions[campaign.id]?.y ?? defaultCampaignY;
+              const campaignIdx = campaigns.indexOf(campaign);
+              const defaultCampaignY = (campaign.funnelStage === 'TOFU' ? tofuY : campaign.funnelStage === 'MOFU' ? mofuY : bofuY) + campaignIdx * NODE_CONFIG.spacing.campaign;
+              
+              const cX = nodePositions[campaign.id]?.x ?? 0;
+              const cY = nodePositions[campaign.id]?.y ?? defaultCampaignY;
 
-                const adsetY = idx * NODE_CONFIG.spacing.adset - ((campaignAdSets.length - 1) * NODE_CONFIG.spacing.adset / 2) + cY;
+              let currentAdSetYTotal = 0;
+              const totalAdSetsHeight = campaignAdSets.reduce((sum, as) => {
+                const adCount = ads.filter(a => a.adsetId === as.id).length;
+                return sum + Math.max(NODE_CONFIG.adset.h, adCount * NODE_CONFIG.spacing.ad);
+              }, 0);
+
+              return campaignAdSets.map((adset, idx) => {
+                const adCount = ads.filter(a => a.adsetId === adset.id).length;
+                const adsetHeight = Math.max(NODE_CONFIG.adset.h, adCount * NODE_CONFIG.spacing.ad);
+                
+                // Centering the group of adsets relative to the campaign
+                const adsetYOffset = currentAdSetYTotal - (totalAdSetsHeight / 2) + (adsetHeight / 2);
+                currentAdSetYTotal += adsetHeight;
+
                 const adsetX = cX + ADSET_X_OFFSET;
+                const adsetY = cY + adsetYOffset;
+                
                 const aX = nodePositions[adset.id]?.x ?? adsetX;
                 const aY = nodePositions[adset.id]?.y ?? adsetY;
 
@@ -650,9 +683,12 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                       stroke="#333" strokeWidth={1} pointerLength={6} pointerWidth={6} fill="#333" tension={0.5}
                     />
                     {ads.filter(a => a.adsetId === adset.id).map((ad, aIdx) => {
-                      const adCount = ads.filter(a => a.adsetId === adset.id).length;
+                      const adCountInSet = ads.filter(a => a.adsetId === adset.id).length;
+                      const adYOffset = aIdx * NODE_CONFIG.spacing.ad - ((adCountInSet - 1) * NODE_CONFIG.spacing.ad / 2);
+                      
                       const defAdX = aX + AD_X_OFFSET;
-                      const defAdY = aIdx * NODE_CONFIG.spacing.ad - ((adCount - 1) * NODE_CONFIG.spacing.ad / 2) + aY;
+                      const defAdY = aY + adYOffset;
+                      
                       const adX = nodePositions[ad.id]?.x ?? defAdX;
                       const adY = nodePositions[ad.id]?.y ?? defAdY;
 
@@ -682,19 +718,34 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
               const cX = nodePositions[campaign.id]?.x ?? 0;
               const cY = nodePositions[campaign.id]?.y ?? defaultCampaignY;
 
+              let currentAdSetYTotal = 0;
+              const totalAdSetsHeight = campaignAdSets.reduce((sum, as) => {
+                const adCount = ads.filter(a => a.adsetId === as.id).length;
+                return sum + Math.max(NODE_CONFIG.adset.h, adCount * NODE_CONFIG.spacing.ad);
+              }, 0);
+
               return campaignAdSets.map((adset, idx) => {
-                const adsetY = idx * NODE_CONFIG.spacing.adset - ((campaignAdSets.length - 1) * NODE_CONFIG.spacing.adset / 2) + cY;
+                const adCount = ads.filter(a => a.adsetId === adset.id).length;
+                const adsetHeight = Math.max(NODE_CONFIG.adset.h, adCount * NODE_CONFIG.spacing.ad);
+                const adsetYOffset = currentAdSetYTotal - (totalAdSetsHeight / 2) + (adsetHeight / 2);
+                currentAdSetYTotal += adsetHeight;
+
                 const adsetX = cX + ADSET_X_OFFSET;
+                const adsetY = cY + adsetYOffset;
                 
                 return (
                   <Group key={`group-${adset.id}`}>
                     {renderAdSet(adset, adsetX, adsetY)}
                     {ads.filter(a => a.adsetId === adset.id).map((ad, aIdx) => {
-                      const adCount = ads.filter(a => a.adsetId === adset.id).length;
+                      const adCountInSet = ads.filter(a => a.adsetId === adset.id).length;
+                      const adYOffset = aIdx * NODE_CONFIG.spacing.ad - ((adCountInSet - 1) * NODE_CONFIG.spacing.ad / 2);
+                      
                       const currentAdsetX = nodePositions[adset.id]?.x ?? adsetX;
                       const currentAdsetY = nodePositions[adset.id]?.y ?? adsetY;
+                      
                       const defAdX = currentAdsetX + AD_X_OFFSET;
-                      const defAdY = aIdx * NODE_CONFIG.spacing.ad - ((adCount - 1) * NODE_CONFIG.spacing.ad / 2) + currentAdsetY;
+                      const defAdY = currentAdsetY + adYOffset;
+                      
                       return renderAd(ad, defAdX, defAdY);
                     })}
                   </Group>
