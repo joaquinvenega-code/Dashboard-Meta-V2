@@ -72,8 +72,24 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   });
   const [isDrawing, setIsDrawing] = useState(false);
   const [newElement, setNewElement] = useState<CanvasElement | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showNamingModal, setShowNamingModal] = useState<{ type: 'node' | 'text', x: number, y: number } | null>(null);
+  const [pendingText, setPendingText] = useState('');
 
   const stageRef = useRef<any>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+        // Prevent deletion if typing in a modal
+        if (showNamingModal) return;
+        setElements(prev => prev.filter(el => el.id !== selectedId));
+        setSelectedId(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedId, showNamingModal]);
 
   useEffect(() => {
     localStorage.setItem(`cr_canvas_${accountId}`, JSON.stringify(elements));
@@ -93,6 +109,15 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
     const stage = e.target.getStage();
     const point = stage.getRelativePointerPosition();
+
+    if (tool === 'select') {
+      const clickedOnElement = e.target !== stage;
+      if (!clickedOnElement) {
+        setSelectedId(null);
+      }
+      return;
+    }
+
     setIsDrawing(true);
 
     if (tool === 'pen') {
@@ -124,19 +149,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
         color: '#3b82f6'
       });
     } else if (tool === 'node') {
-      const text = prompt('Nombre del módulo:');
-      if (text) {
-        setElements([...elements, {
-          id: `custom_${Math.random().toString(36).substr(2, 9)}`,
-          type: 'node',
-          x: point.x,
-          y: point.y,
-          width: 180,
-          height: 60,
-          text,
-          color: '#8b5cf6'
-        }]);
-      }
+      setShowNamingModal({ type: 'node', x: point.x, y: point.y });
       setIsDrawing(false);
     } else if (tool === 'circle') {
       setNewElement({
@@ -149,18 +162,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
         color: '#3b82f6'
       });
     } else if (tool === 'text') {
-      const text = prompt('Texto:');
-      if (text) {
-        setElements([...elements, {
-          id: Math.random().toString(36).substr(2, 9),
-          type: 'text',
-          x: point.x,
-          y: point.y,
-          text,
-          color: '#ffffff',
-          fontSize: 16
-        }]);
-      }
+      setShowNamingModal({ type: 'text', x: point.x, y: point.y });
       setIsDrawing(false);
     }
   };
@@ -459,13 +461,26 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                <ToolbarButton active={tool === 'rect'} onClick={() => setTool('rect')} icon={Square} />
                <ToolbarButton active={tool === 'circle'} onClick={() => setTool('circle')} icon={CircleIcon} />
                <ToolbarButton active={tool === 'text'} onClick={() => setTool('text')} icon={Type} />
-               <ToolbarButton active={tool === 'eraser'} onClick={() => {
-                 if (confirm('¿Limpiar canvas de propuesta?')) {
-                   setElements([]);
-                   setNodePositions({});
-                   setFunnelConfig({ mofuY: 250, bofuY: 550, bofuEndY: 850, fontSize: 48 });
-                 }
-               }} icon={Trash2} />
+               {selectedId ? (
+                 <button 
+                  onClick={() => {
+                    setElements(prev => prev.filter(el => el.id !== selectedId));
+                    setSelectedId(null);
+                  }} 
+                  className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors"
+                  title="Eliminar seleccionado"
+                 >
+                   <Trash2 className="w-3.5 h-3.5" />
+                 </button>
+               ) : (
+                 <ToolbarButton active={tool === 'eraser'} onClick={() => {
+                   if (confirm('¿Limpiar canvas de propuesta?')) {
+                     setElements([]);
+                     setNodePositions({});
+                     setFunnelConfig({ ...funnelConfig, tofuY: 0, mofuY: 250, bofuY: 550, bofuEndY: 850 });
+                   }
+                 }} icon={Trash2} />
+               )}
             </div>
           )}
         </div>
@@ -783,21 +798,31 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
             {/* Proposal / Drawing Layer */}
             {elements.map((el) => {
+              const isSelected = selectedId === el.id;
               const isDraggable = mode === 'draw' && tool === 'select';
+              const shadowProps = isSelected ? { shadowColor: '#fff', shadowBlur: 10, shadowOpacity: 0.5 } : {};
+
               const onDragEnd = (e: any) => {
                 setElements(elements.map(item => 
-                  item.id === el.id ? { ...item, x: e.target.x(), y: e.target.y() } : item
+                   item.id === el.id ? { ...item, x: e.target.x(), y: e.target.y() } : item
                 ));
               };
 
-              if (el.type === 'line') return <Line key={el.id} points={el.points} stroke={el.color} strokeWidth={3} tension={0.5} lineCap="round" draggable={isDraggable} onDragEnd={onDragEnd} />;
-              if (el.type === 'arrow') return <Arrow key={el.id} points={el.points} stroke={el.color} strokeWidth={3} tension={0.5} lineCap="round" pointerLength={6} pointerWidth={6} fill={el.color} draggable={isDraggable} onDragEnd={onDragEnd} />;
-              if (el.type === 'rect') return <Rect key={el.id} x={el.x} y={el.y} width={el.width} height={el.height} stroke={el.color} strokeWidth={2} dash={[5, 5]} draggable={isDraggable} onDragEnd={onDragEnd} />;
-              if (el.type === 'circle') return <Circle key={el.id} x={el.x} y={el.y} radius={Math.sqrt(Math.pow(el.width || 0, 2) + Math.pow(el.height || 0, 2))} stroke={el.color} strokeWidth={2} dash={[5, 5]} draggable={isDraggable} onDragEnd={onDragEnd} />;
-              if (el.type === 'text') return <Text key={el.id} x={el.x} y={el.y} text={el.text} fill={el.color} fontSize={el.fontSize} fontStyle="bold" draggable={isDraggable} onDragEnd={onDragEnd} />;
+              const onClick = (e: any) => {
+                if (mode === 'draw' && tool === 'select') {
+                  e.cancelBubble = true;
+                  setSelectedId(el.id);
+                }
+              };
+
+              if (el.type === 'line') return <Line key={el.id} points={el.points} stroke={el.color} strokeWidth={isSelected ? 5 : 3} tension={0.5} lineCap="round" draggable={isDraggable} onDragEnd={onDragEnd} onClick={onClick} {...shadowProps} />;
+              if (el.type === 'arrow') return <Arrow key={el.id} points={el.points} stroke={el.color} strokeWidth={isSelected ? 5 : 3} tension={0.5} lineCap="round" pointerLength={6} pointerWidth={6} fill={el.color} draggable={isDraggable} onDragEnd={onDragEnd} onClick={onClick} {...shadowProps} />;
+              if (el.type === 'rect') return <Rect key={el.id} x={el.x} y={el.y} width={el.width} height={el.height} stroke={el.color} strokeWidth={isSelected ? 4 : 2} dash={[5, 5]} draggable={isDraggable} onDragEnd={onDragEnd} onClick={onClick} {...shadowProps} />;
+              if (el.type === 'circle') return <Circle key={el.id} x={el.x} y={el.y} radius={Math.sqrt(Math.pow(el.width || 0, 2) + Math.pow(el.height || 0, 2))} stroke={el.color} strokeWidth={isSelected ? 4 : 2} dash={[5, 5]} draggable={isDraggable} onDragEnd={onDragEnd} onClick={onClick} {...shadowProps} />;
+              if (el.type === 'text') return <Text key={el.id} x={el.x} y={el.y} text={el.text} fill={el.color} fontSize={el.fontSize} fontStyle="bold" draggable={isDraggable} onDragEnd={onDragEnd} onClick={onClick} {...shadowProps} />;
               if (el.type === 'node') return (
-                <Group key={el.id} x={el.x} y={el.y} draggable={isDraggable} onDragEnd={onDragEnd}>
-                  <Rect width={el.width} height={el.height} fill="#1a1a1a" stroke={el.color} strokeWidth={2} cornerRadius={8} />
+                <Group key={el.id} x={el.x} y={el.y} draggable={isDraggable} onDragEnd={onDragEnd} onClick={onClick} {...shadowProps}>
+                  <Rect width={el.width} height={el.height} fill="#1a1a1a" stroke={isSelected ? '#fff' : el.color} strokeWidth={2} cornerRadius={8} />
                   <Text text={el.text} fill="#fff" fontSize={11} fontStyle="bold" x={10} y={el.height!/2 - 6} width={el.width! - 20} align="center" wrap="char" />
                 </Group>
               );
@@ -829,6 +854,62 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
              <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-red-500" /> BOFU</div>
         </div>
       </div>
+      {/* Modal for Naming Blocks */}
+      {showNamingModal && (
+        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 px-4">
+          <div className="bg-[#111] border border-white/10 rounded-xl p-6 w-full max-w-sm shadow-2xl shadow-black animate-in zoom-in-95 duration-300">
+            <h3 className="text-white font-black text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-purple-500" />
+              {showNamingModal.type === 'node' ? 'Nuevo Módulo' : 'Añadir Texto'}
+            </h3>
+            <input
+              autoFocus
+              type="text"
+              value={pendingText}
+              onChange={(e) => setPendingText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && pendingText.trim()) {
+                  const payload: CanvasElement = showNamingModal.type === 'node' ? {
+                    id: `custom_${Math.random().toString(36).substr(2, 9)}`,
+                    type: 'node',
+                    x: showNamingModal.x,
+                    y: showNamingModal.y,
+                    width: 180,
+                    height: 60,
+                    text: pendingText,
+                    color: '#8b5cf6'
+                  } : {
+                    id: Math.random().toString(36).substr(2, 9),
+                    type: 'text',
+                    x: showNamingModal.x,
+                    y: showNamingModal.y,
+                    text: pendingText,
+                    color: '#ffffff',
+                    fontSize: 16
+                  };
+                  setElements([...elements, payload]);
+                  setShowNamingModal(null);
+                  setPendingText('');
+                } else if (e.key === 'Escape') {
+                  setShowNamingModal(null);
+                  setPendingText('');
+                }
+              }}
+              placeholder={showNamingModal.type === 'node' ? "Ej: Campaña Retargeting..." : "Escribe algo..."}
+              className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-blue-500 transition-all font-medium"
+            />
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider">Presiona Enter para confirmar</p>
+              <button 
+                onClick={() => { setShowNamingModal(null); setPendingText(''); }}
+                className="text-[10px] text-neutral-400 hover:text-white uppercase font-black tracking-widest transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

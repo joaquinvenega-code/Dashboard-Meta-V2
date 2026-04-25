@@ -492,7 +492,7 @@ export default function App() {
           )}
 
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 print:hidden">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 print:hidden">
               <div className="flex-1 min-w-0">
                 <h2 className="text-xl font-black tracking-widest text-white uppercase opacity-80 flex items-center gap-3">
                   {activePage === 'overview' ? 'Vista general' : 
@@ -506,7 +506,7 @@ export default function App() {
               </div>
 
               {activePage === 'strategy' ? (
-                <div className="flex items-center gap-4 bg-[#111] p-1.5 rounded-[1.25rem] border border-white/5 animate-in slide-in-from-right-4 duration-500">
+                <div className="flex items-center gap-4 bg-[#111] p-1.5 rounded-lg border border-white/5 animate-in slide-in-from-right-4 duration-500">
                    <div className="flex items-center gap-3 w-[450px]">
                       <div className="flex-1">
                         <AccountSelectorDropdown
@@ -1087,8 +1087,8 @@ export default function App() {
               )}
 
               {activePage === 'strategy' && (
-                <div className="space-y-4">
-                  <div className="bg-[#111] p-0 rounded-lg border border-white/0 lg:border-white/5 space-y-6 animate-in fade-in duration-700">
+                <div className="space-y-0 relative -mt-4">
+                  <div className="bg-[#111] p-0 rounded-lg border border-white/0 lg:border-white/5 space-y-0 animate-in fade-in duration-700">
                     {loadingStructure && (
                       <div className="h-[500px] flex flex-col items-center justify-center gap-4 bg-black/20 rounded-lg border border-white/5">
                         <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
