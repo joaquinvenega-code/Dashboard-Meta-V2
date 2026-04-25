@@ -1,4 +1,4 @@
-import { AdAccount, Ad, DailyMetric } from '../types';
+import { AdAccount, Ad, DailyMetric, Campaign, AdSet } from '../types';
 
 declare global {
   interface Window {
@@ -480,6 +480,57 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
   }
 
   return ads as Ad[];
+}
+
+export async function fetchAccountStructure(accountId: string): Promise<{ campaigns: Campaign[], adsets: AdSet[], ads: Ad[] }> {
+  try {
+    const [cData, sData, aData] = await Promise.all([
+      fetchAllPages(`/${accountId}/campaigns`, { fields: 'id,name,objective,status', limit: 500 }),
+      fetchAllPages(`/${accountId}/adsets`, { fields: 'id,name,campaign_id,status', limit: 500 }),
+      fetchAllPages(`/${accountId}/ads`, { fields: 'id,name,adset_id,status', limit: 500 })
+    ]);
+
+    const campaigns: Campaign[] = cData.map(c => ({
+      id: c.id,
+      name: c.name,
+      objective: c.objective,
+      status: c.status,
+      funnelStage: inferFunnelStage(c.name, c.objective)
+    }));
+
+    const adsets: AdSet[] = sData.map(s => ({
+      id: s.id,
+      name: s.name,
+      campaignId: s.campaign_id,
+      status: s.status
+    }));
+
+    const ads: Ad[] = aData.map(a => ({
+      id: a.id,
+      name: a.name,
+      spend: 0, 
+      purchases: 0,
+      revenue: 0,
+      ctr: 0,
+      roas: 0,
+      thumbnail: null,
+      previewUrl: null,
+      adsetId: a.adset_id
+    }));
+
+    return { campaigns, adsets, ads };
+  } catch (err) {
+    console.error("Error fetching structure:", err);
+    return { campaigns: [], adsets: [], ads: [] };
+  }
+}
+
+function inferFunnelStage(name: string, objective: string): 'TOFU' | 'MOFU' | 'BOFU' {
+  const n = name.toUpperCase();
+  if (n.includes('TOFU') || n.includes('TRAFFIC') || n.includes('AWARENESS') || objective === 'OUTCOME_AWARENESS' || objective === 'OUTCOME_TRAFFIC') return 'TOFU';
+  if (n.includes('MOFU') || n.includes('CONSIDERATION') || objective === 'OUTCOME_ENGAGEMENT' || objective === 'OUTCOME_LEADS') return 'MOFU';
+  if (n.includes('BOFU') || n.includes('CONVERSION') || n.includes('SALES') || objective === 'OUTCOME_SALES') return 'BOFU';
+  return 'TOFU'; // Default
 }
 
 export async function fetchDailySeries(accountId: string, since: string, until: string, adIds: string[]): Promise<Record<string, DailyMetric[]>> {

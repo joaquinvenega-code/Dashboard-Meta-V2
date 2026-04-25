@@ -5,13 +5,15 @@ import {
   getFacebookLoginStatus, 
   getUserProfile, 
   getAdAccounts, 
-  fetchInsights 
+  fetchInsights,
+  fetchAccountStructure 
 } from './services/facebook';
-import { AdAccount, AccountSettings, ClientGroup } from './types';
+import { AdAccount, AccountSettings, ClientGroup, Campaign, AdSet, Ad } from './types';
 import { Sidebar } from './components/Sidebar';
 import { IndividualReport } from './components/IndividualReport';
 import { Overview } from './components/Overview';
 import { AccountDetailView } from './components/AccountDetailView';
+import { StrategyCanvas } from './components/StrategyCanvas';
 import { formatCurrency, formatNumber, formatDecimal, cn } from './lib/utils';
 import { 
   ChevronDown, 
@@ -132,6 +134,14 @@ export default function App() {
   const [configEntity, setConfigEntity] = useState<AdAccount | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+
+  // Strategy Structure State
+  const [structure, setStructure] = useState<{
+    campaigns: Campaign[];
+    adsets: AdSet[];
+    ads: Ad[];
+  } | null>(null);
+  const [loadingStructure, setLoadingStructure] = useState(false);
 
   // Group Modal State
   const [groupModal, setGroupModal] = useState<{ 
@@ -1035,6 +1045,77 @@ export default function App() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {activePage === 'strategy' && (
+                <div className="space-y-6">
+                  <div className="flex flex-col gap-2">
+                    <h2 className="text-3xl font-black text-white tracking-tight flex items-center gap-4">
+                      LIENZO ESTRATÉGICO
+                      <div className="px-3 py-1 bg-blue-600/10 border border-blue-600/20 rounded-full text-[10px] text-blue-500 uppercase tracking-widest">Planificación</div>
+                    </h2>
+                    <p className="text-neutral-500 text-xs font-bold uppercase tracking-widest max-w-xl leading-relaxed">
+                      Visualiza la estructura publicitaria y esboza propuestas tácticas sobre el diagrama de flujo.
+                    </p>
+                  </div>
+
+                  <div className="bg-[#111] p-10 rounded-[2rem] border border-white/5 space-y-8 animate-in fade-in duration-700">
+                    <div>
+                      <p className="text-[10px] font-black text-neutral-600 uppercase tracking-widest mb-4 ml-1">Seleccionar Cliente para Estrategia</p>
+                      <div className="flex flex-wrap gap-2">
+                        {accounts.map(acc => (
+                          <button
+                            key={acc.id}
+                            onClick={async () => {
+                              setLoadingStructure(true);
+                              const data = await fetchAccountStructure(acc.id);
+                              setStructure({ ...data, activeAccId: acc.id } as any);
+                              setLoadingStructure(false);
+                            }}
+                            className={cn(
+                              "px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
+                              (structure as any)?.activeAccId === acc.id 
+                                ? "bg-blue-600 text-white border-blue-600 shadow-xl shadow-blue-600/20"
+                                : "bg-black/40 text-neutral-500 border-white/5 hover:border-white/10 hover:text-white"
+                            )}
+                          >
+                            {acc.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {loadingStructure && (
+                      <div className="h-[500px] flex flex-col items-center justify-center gap-4 bg-black/20 rounded-3xl border border-white/5">
+                        <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
+                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] animate-pulse">Sincronizando jerarquía de Meta Ads...</span>
+                      </div>
+                    )}
+
+                    {structure && !loadingStructure && (
+                      <div className="h-[750px] animate-in zoom-in-95 duration-500">
+                        <StrategyCanvas 
+                          accountId={(structure as any).activeAccId}
+                          campaigns={structure.campaigns}
+                          adsets={structure.adsets}
+                          ads={structure.ads}
+                        />
+                      </div>
+                    )}
+
+                    {!structure && !loadingStructure && (
+                      <div className="h-[500px] flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-3xl gap-6 group">
+                        <div className="p-6 bg-white/5 rounded-full group-hover:scale-110 transition-transform duration-500">
+                          <Share2 className="w-10 h-10 text-neutral-700" />
+                        </div>
+                        <div className="text-center space-y-2">
+                          <p className="text-[11px] font-black text-neutral-500 uppercase tracking-[0.2em]">Lienzo de Planificación Vacío</p>
+                          <p className="text-[9px] font-bold text-neutral-700 uppercase tracking-widest leading-relaxed">Selecciona un cliente de la lista superior para<br/>generar el diagrama de flujo automático.</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

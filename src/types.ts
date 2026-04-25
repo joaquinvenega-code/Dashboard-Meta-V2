@@ -44,6 +44,22 @@ export interface Ad {
   thumbnail: string | null;
   previewUrl: string | null;
   dailySeries?: DailyMetric[];
+  adsetId?: string;
+}
+
+export interface AdSet {
+  id: string;
+  name: string;
+  campaignId: string;
+  status: string;
+}
+
+export interface Campaign {
+  id: string;
+  name: string;
+  objective: string;
+  status: string;
+  funnelStage?: 'TOFU' | 'MOFU' | 'BOFU';
 }
 
 export interface DailyMetric {

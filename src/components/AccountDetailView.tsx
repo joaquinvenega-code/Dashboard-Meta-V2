@@ -193,7 +193,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
     let text = "";
     selectedAccounts.forEach((acc) => {
-      const sAcc = settings[acc.id] || {};
+      const sAcc = (settings[acc.id] || {}) as AccountSettings;
       const roas = acc.spend > 0 ? (acc.revenue / acc.spend).toFixed(2) : "0";
       const customName = sAcc.customName || acc.name;
       const currency = sAcc.currency || acc.currency || 'ARS';
