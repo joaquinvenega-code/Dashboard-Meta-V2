@@ -238,10 +238,19 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
     }
   };
 
-  const tofuCampaigns = campaigns.filter(c => c.funnelStage === 'TOFU');
-  const mofuCampaigns = campaigns.filter(c => c.funnelStage === 'MOFU');
-  const bofuCampaigns = campaigns.filter(c => c.funnelStage === 'BOFU');
-  const unknownCampaigns = campaigns.filter(c => !c.funnelStage);
+  // Helper to determine stage based on objective if not explicitly set
+  const getEffectiveStage = (c: Campaign) => {
+    if (c.funnelStage) return c.funnelStage;
+    if (c.outcome === 'OUTCOME_TRAFFIC' || c.outcome === 'OUTCOME_AWARENESS') return 'TOFU';
+    if (c.outcome === 'OUTCOME_ENGAGEMENT' || c.outcome === 'OUTCOME_APP_PROMOTION') return 'MOFU';
+    if (c.outcome === 'OUTCOME_SALES' || c.outcome === 'OUTCOME_LEADS') return 'BOFU';
+    return null;
+  };
+
+  const tofuCampaigns = campaigns.filter(c => getEffectiveStage(c) === 'TOFU');
+  const mofuCampaigns = campaigns.filter(c => getEffectiveStage(c) === 'MOFU');
+  const bofuCampaigns = campaigns.filter(c => getEffectiveStage(c) === 'BOFU');
+  const unknownCampaigns = campaigns.filter(c => !getEffectiveStage(c));
 
   // Dynamic start positions to fill space (more compact than hardcoded gaps)
   const tofuY = 100;
@@ -267,9 +276,10 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
     return () => window.removeEventListener('resize', updateSize);
   }, []);
   const renderCampaign = (campaign: Campaign, defaultX: number, defaultY: number) => {
-    const color = campaign.funnelStage === 'TOFU' ? '#3b82f6' : 
-                  campaign.funnelStage === 'MOFU' ? '#f59e0b' : 
-                  campaign.funnelStage === 'BOFU' ? '#ef4444' : '#333';
+    const stage = getEffectiveStage(campaign);
+    const color = stage === 'TOFU' ? '#3b82f6' : 
+                  stage === 'MOFU' ? '#f59e0b' : 
+                  stage === 'BOFU' ? '#ef4444' : '#333';
     
     const pos = nodePositions[campaign.id] || { x: defaultX, y: defaultY };
 
