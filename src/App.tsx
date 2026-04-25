@@ -474,7 +474,7 @@ export default function App() {
               <div>
                 <h2 className="text-xl font-black tracking-widest text-white uppercase opacity-80">
                   {activePage === 'overview' ? 'Vista general' : 
-                   activePage === 'detail' ? 'Dashboard De Creativos' : 
+                   activePage === 'detail' ? 'Análisis individual de cuenta' : 
                    activePage === 'accounts' ? 'Cuentas visibles' : activePage}
                 </h2>
               </div>

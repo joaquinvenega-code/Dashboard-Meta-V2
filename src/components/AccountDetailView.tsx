@@ -89,6 +89,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [chartFilters, setChartFilters] = useState<Record<string, string[]>>({});
   const [copied, setCopied] = useState(false);
 
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+
   const defaultVisibleMetrics = ['spend', 'revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
   
   const messagingDefaultMetrics = ['messages', 'cpm', 'ctr', 'spend', 'clicks', 'cpm_real'];
@@ -538,14 +540,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     <div className="space-y-4">
       {/* Top Toolbar */}
       <div className="flex items-center gap-4 print:hidden">
-        <div className="flex-1 relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600 group-focus-within:text-blue-500 transition-colors" />
+        <div className="w-64 relative group">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-600 group-focus-within:text-blue-500 transition-colors" />
           <input 
             type="text" 
-            placeholder="Buscar cuenta en el listado..."
+            placeholder="Buscar..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-[#111] border border-white/5 rounded-xl py-2.5 pl-11 pr-4 text-xs text-white placeholder-neutral-700 outline-none focus:border-blue-500/50 transition-all shadow-inner font-bold"
+            className="w-full bg-[#111] border border-white/5 rounded-xl py-2 pl-9 pr-3 text-[11px] text-white placeholder-neutral-700 outline-none focus:border-blue-500/50 transition-all shadow-inner font-bold"
           />
         </div>
 
@@ -617,13 +619,32 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
         </div>
       </div>
 
-      <div className="flex bg-transparent gap-4 h-[calc(100vh-200px)] print:h-auto">
-        {/* Sidebar - Accounts List */}
-        <div className="w-72 bg-[#111]/50 rounded-xl border border-white/5 overflow-hidden flex flex-col shadow-2xl backdrop-blur-sm print:hidden">
-          <div className="px-5 py-4 border-b border-white/5 bg-white/[0.01]">
-             <h3 className="text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em]">Cuentas Disponibles</h3>
+      <div className="flex bg-transparent gap-4 h-[calc(100vh-200px)] print:h-auto relative">
+        {/* Sidebar - Accounts List - Horizontal Expandable */}
+        <motion.div 
+          initial={false}
+          animate={{ 
+            width: isSidebarExpanded ? 280 : 48,
+          }}
+          onMouseEnter={() => setIsSidebarExpanded(true)}
+          onMouseLeave={() => setIsSidebarExpanded(false)}
+          className="bg-[#111]/80 rounded-xl border border-white/5 overflow-hidden flex flex-col shadow-2xl backdrop-blur-md print:hidden z-30 group/sidebar"
+        >
+          <div className="px-3 py-4 border-b border-white/5 bg-white/[0.01] flex items-center justify-between overflow-hidden whitespace-nowrap">
+             <div className="flex items-center gap-3">
+               <div className="w-5 h-5 rounded bg-blue-600/10 flex items-center justify-center shrink-0">
+                  <LayoutGrid className="w-3 h-3 text-blue-500" />
+               </div>
+               <motion.h3 
+                 animate={{ opacity: isSidebarExpanded ? 1 : 0 }}
+                 className="text-[9px] font-black text-neutral-400 uppercase tracking-[0.2em]"
+                >
+                  Cuentas
+                </motion.h3>
+             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar">
+          
+          <div className="flex-1 overflow-y-auto p-1.5 space-y-1 custom-scrollbar overflow-x-hidden">
             {sidebarAccounts.map(acc => {
               const isActive = selectedId === acc.id;
               const progress = getProgress(acc);
@@ -633,27 +654,35 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                 <button
                   key={acc.id}
                   onClick={() => setSelectedId(acc.id)}
-                  className={`w-full text-left p-3 rounded-lg transition-all relative group flex items-center justify-between overflow-hidden ${
+                  className={cn(
+                    "w-full text-left p-2.5 rounded-lg transition-all relative group flex items-center overflow-hidden h-10 shrink-0",
                     isActive 
                       ? 'bg-blue-600/10 border border-blue-600/20 text-white' 
                       : 'hover:bg-white/[0.02] border border-transparent text-neutral-500'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-1.5 h-1.5 rounded-full ${acc.account_status === 1 ? 'bg-success/50' : 'bg-neutral-800'}`} />
-                    <span className="text-xs font-bold tracking-tight truncate max-w-[140px] uppercase">{customName}</span>
-                  </div>
-                  {progress !== null && (
-                    <span className={`text-[9px] font-black ${progress >= 80 ? 'text-success' : 'text-neutral-500'}`}>
-                      {progress}%
-                    </span>
                   )}
-                  {isActive && <div className="absolute right-0 w-1 h-3 bg-blue-500 rounded-l-full" />}
+                >
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", acc.account_status === 1 ? 'bg-success/50' : 'bg-neutral-800')} />
+                    
+                    <motion.div 
+                      animate={{ opacity: isSidebarExpanded ? 1 : 0, x: isSidebarExpanded ? 0 : -10 }}
+                      className="flex items-center justify-between gap-2 grow overflow-hidden whitespace-nowrap"
+                      style={{ width: isSidebarExpanded ? 'auto' : 0 }}
+                    >
+                      <span className="text-[11px] font-bold tracking-tight truncate max-w-[150px] uppercase">{customName}</span>
+                      {progress !== null && (
+                        <span className={`text-[8px] font-black ml-auto shrink-0 ${progress >= 80 ? 'text-success' : 'text-neutral-500'}`}>
+                          {progress}%
+                        </span>
+                      )}
+                    </motion.div>
+                  </div>
+                  {isActive && <div className="absolute right-0 w-0.5 h-3 bg-blue-500 rounded-l-full" />}
                 </button>
               );
             })}
           </div>
-        </div>
+        </motion.div>
 
         {/* Dashboard Area */}
         {selectedAccount ? (
