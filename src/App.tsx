@@ -1050,18 +1050,18 @@ export default function App() {
               )}
 
               {activePage === 'strategy' && (
-                <div className="space-y-6">
-                  <div className="flex flex-col gap-1.5">
-                    <h2 className="text-xl font-black text-white tracking-tight flex items-center gap-3">
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-0.5">
+                    <h2 className="text-lg font-black text-white tracking-tight flex items-center gap-2">
                       LIENZO ESTRATÉGICO
-                      <div className="px-2 py-0.5 bg-blue-600/10 border border-blue-600/20 rounded-full text-[9px] text-blue-500 uppercase tracking-widest">Planificación</div>
+                      <div className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-600/20 rounded-full text-[8px] text-blue-500 uppercase tracking-widest">Planificación</div>
                     </h2>
-                    <p className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest max-w-xl leading-relaxed">
+                    <p className="text-neutral-500 text-[9px] font-bold uppercase tracking-widest max-w-xl leading-relaxed">
                       Visualiza la estructura publicitaria y esboza propuestas tácticas sobre el diagrama de flujo.
                     </p>
                   </div>
 
-                  <div className="bg-[#111] p-8 rounded-lg border border-white/5 space-y-8 animate-in fade-in duration-700">
+                  <div className="bg-[#111] p-6 rounded-lg border border-white/5 space-y-6 animate-in fade-in duration-700">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Visible Accounts Dropdown */}
                       <AccountSelectorDropdown

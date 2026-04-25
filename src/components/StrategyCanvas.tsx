@@ -170,174 +170,162 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
   // Layout calculations
   const STAGE_SPACING = 300;
-  const CAMPAIGN_SPACING = 160; 
-  const ADSET_X_OFFSET = 260;
-  const AD_X_OFFSET = 240;
+  const CAMPAIGN_SPACING = 220; 
+  const ADSET_X_OFFSET = 280;
+  const AD_X_OFFSET = 260;
 
   const tofuCampaigns = campaigns.filter(c => c.funnelStage === 'TOFU');
   const mofuCampaigns = campaigns.filter(c => c.funnelStage === 'MOFU');
   const bofuCampaigns = campaigns.filter(c => c.funnelStage === 'BOFU');
   const unknownCampaigns = campaigns.filter(c => !c.funnelStage);
 
-  const renderFunnelNode = (label: string, sub: string, y: number, color: string) => (
-    <Group x={0} y={y}>
-      <Rect
-        width={180}
-        height={60}
-        fill={color}
-        opacity={0.05}
-        stroke={color}
-        strokeWidth={1}
-        cornerRadius={4}
-      />
-      <Text
-        text={label}
-        fontSize={12}
-        fontStyle="black"
-        fill={color}
-        x={0}
-        y={15}
-        width={180}
-        align="center"
-      />
-      <Text
-        text={sub}
-        fontSize={8}
-        fontStyle="bold"
-        fill={color}
-        opacity={0.6}
-        x={0}
-        y={35}
-        width={180}
-        align="center"
-      />
-    </Group>
-  );
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [stageSize, setStageSize] = useState({ width: 1200, height: 800 });
+
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        setStageSize({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight
+        });
+      }
+    };
+    
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
 
   const renderCampaign = (campaign: Campaign, x: number, y: number) => {
     const campaignAdSets = adsets.filter(s => s.campaignId === campaign.id);
     
     return (
-      <Group key={campaign.id} x={x} y={y}>
+      <Group x={x} y={y}>
         {/* Campaign Box */}
         <Rect
-          width={220}
-          height={70}
+          width={240}
+          height={80}
           fill="#1a1a1a"
           stroke={
             campaign.funnelStage === 'TOFU' ? '#3b82f6' : 
-            campaign.funnelStage === 'MOFU' ? '#8b5cf6' : 
-            campaign.funnelStage === 'BOFU' ? '#f43f5e' : '#333'
+            campaign.funnelStage === 'MOFU' ? '#f59e0b' : 
+            campaign.funnelStage === 'BOFU' ? '#ef4444' : '#333'
           }
           strokeWidth={2}
-          cornerRadius={8}
+          cornerRadius={10}
           shadowBlur={10}
-          shadowOpacity={0.3}
+          shadowOpacity={0.4}
         />
         <Text
           text="CAMPAÑA"
-          fontSize={7}
+          fontSize={8}
           fontStyle="black"
           fill={
             campaign.funnelStage === 'TOFU' ? '#3b82f6' : 
-            campaign.funnelStage === 'MOFU' ? '#8b5cf6' : 
-            campaign.funnelStage === 'BOFU' ? '#f43f5e' : '#666'
+            campaign.funnelStage === 'MOFU' ? '#f59e0b' : 
+            campaign.funnelStage === 'BOFU' ? '#ef4444' : '#666'
           }
-          x={12}
-          y={12}
-          letterSpacing={1}
+          x={14}
+          y={14}
+          letterSpacing={1.2}
         />
         <Text
           text={campaign.name}
-          fontSize={10}
+          fontSize={11}
           fontStyle="bold"
           fill="#ffffff"
-          x={12}
-          y={24}
-          width={196}
+          x={14}
+          y={28}
+          width={210}
           wrap="char"
         />
         <Text
           text={campaign.objective}
-          fontSize={8}
+          fontSize={9}
           fill="#888"
-          x={12}
-          y={48}
+          x={14}
+          y={54}
           fontStyle="bold"
-        />        {/* Connections to AdSets */}
+        />
+        
+        {/* Connections to AdSets */}
         {campaignAdSets.map((adset, idx) => {
-          const adsetY = idx * 95 - ((campaignAdSets.length - 1) * 47.5);
+          const adsetY = idx * 110 - ((campaignAdSets.length - 1) * 55);
           const adsetX = ADSET_X_OFFSET;
           
           return (
             <Group key={adset.id}>
               <Arrow
-                points={[220, 35, adsetX, adsetY + 30]}
-                stroke="#333"
+                points={[240, 40, adsetX, adsetY + 35]}
+                stroke="#444"
                 strokeWidth={1}
                 pointerLength={6}
                 pointerWidth={6}
-                fill="#333"
+                fill="#444"
                 tension={0.5}
               />
               <Group x={adsetX} y={adsetY}>
                 <Rect
-                    width={180}
-                    height={60}
-                    fill="#151515"
+                    width={200}
+                    height={70}
+                    fill="#111111"
                     stroke="#8b5cf6"
                     strokeWidth={1.5}
-                    cornerRadius={6}
+                    cornerRadius={8}
+                    shadowBlur={5}
+                    shadowOpacity={0.2}
                 />
                 <Text
                     text="CONJUNTO"
                     fontSize={7}
                     fontStyle="black"
                     fill="#8b5cf6"
-                    x={10}
-                    y={10}
+                    x={12}
+                    y={12}
+                    letterSpacing={1}
                 />
                 <Text
                     text={adset.name}
-                    fontSize={9}
+                    fontSize={10}
                     fontStyle="bold"
-                    fill="#ccc"
-                    x={10}
-                    y={22}
-                    width={150}
+                    fill="#eee"
+                    x={12}
+                    y={28}
+                    width={176}
                     wrap="char"
                 />
- 
+
                 {/* Ads */}
                 {ads.filter(a => a.adsetId === adset.id).map((ad, aIdx) => {
                   const adX = AD_X_OFFSET;
-                  const adY = aIdx * 55 - ((ads.filter(a => a.adsetId === adset.id).length - 1) * 27.5);
+                  const adY = aIdx * 65 - ((ads.filter(a => a.adsetId === adset.id).length - 1) * 32.5);
                   return (
                     <Group key={ad.id}>
                        <Arrow
-                        points={[180, 30, adX, adY + 20]}
-                        stroke="#222"
+                        points={[200, 35, adX, adY + 25]}
+                        stroke="#333"
                         strokeWidth={1}
                         pointerLength={5}
                         pointerWidth={5}
-                        fill="#222"
+                        fill="#333"
                       />
                       <Group x={adX} y={adY}>
                         <Rect
-                            width={140}
-                            height={40}
+                            width={160}
+                            height={50}
                             fill="#0d0d0d"
                             stroke="#ffffff10"
                             strokeWidth={1}
-                            cornerRadius={4}
+                            cornerRadius={6}
                         />
                         <Text
                             text={ad.name}
-                            fontSize={8}
-                            fill="#888"
-                            x={8}
-                            y={14}
-                            width={120}
+                            fontSize={9}
+                            fill="#999"
+                            x={10}
+                            y={18}
+                            width={140}
                             wrap="char"
                         />
                       </Group>
@@ -408,11 +396,13 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
           </div>
           <button 
             onClick={() => {
-              const dataUrl = stageRef.current.toDataURL();
-              const link = document.createElement('a');
-              link.download = `estrategia-${accountId}.png`;
-              link.href = dataUrl;
-              link.click();
+              if (stageRef.current) {
+                const dataUrl = stageRef.current.toDataURL();
+                const link = document.createElement('a');
+                link.download = `estrategia-${accountId}.png`;
+                link.href = dataUrl;
+                link.click();
+              }
             }}
             className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-lg shadow-blue-600/20"
           >
@@ -422,10 +412,10 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
       </div>
 
       {/* Canvas Area */}
-      <div className="flex-1 relative cursor-crosshair">
+      <div className="flex-1 relative cursor-crosshair overflow-hidden" ref={containerRef}>
         <Stage
-          width={window.innerWidth - 300} // Adjust based on sidebar
-          height={window.innerHeight - 200}
+          width={stageSize.width}
+          height={stageSize.height}
           scaleX={zoom}
           scaleY={zoom}
           x={pos.x}
@@ -438,12 +428,12 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
           ref={stageRef}
         >
           <Layer>
-            {/* NEW FUNNEL SHAPE (Marketing Mix Style) */}
-            <Group x={-STAGE_SPACING - 120} y={0}>
-              {/* TOFU SECTION */}
+            {/* FUNNEL SHAPE */}
+            <Group x={-420} y={0}>
+              {/* TOFU SECTION - COLD BLUE */}
               <Line
                 points={[0, 0, 360, 0, 310, 280, 50, 280]}
-                fill="#1e3a8a" // Deep Cold Blue
+                fill="#1e3a8a"
                 stroke="#1e40af"
                 strokeWidth={1}
                 closed
@@ -451,10 +441,10 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
               <Text text="TOFU" x={120} y={110} fontSize={32} fontStyle="black" fill="#ffffff" width={120} align="center" />
               <Text text="TOP OF FUNNEL" x={120} y={150} fontSize={10} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
               
-              {/* MOFU SECTION */}
+              {/* MOFU SECTION - WARM AMBER */}
               <Line
                 points={[50, 310, 310, 310, 260, 580, 100, 580]}
-                fill="#b45309" // Warm Amber
+                fill="#b45309"
                 stroke="#d97706"
                 strokeWidth={1}
                 closed
@@ -462,10 +452,10 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
               <Text text="MOFU" x={120} y={420} fontSize={28} fontStyle="black" fill="#ffffff" width={120} align="center" />
               <Text text="MIDDLE OF FUNNEL" x={120} y={460} fontSize={10} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
 
-              {/* BOFU SECTION */}
+              {/* BOFU SECTION - HOT RED */}
               <Line
                 points={[100, 610, 260, 610, 220, 880, 140, 880]}
-                fill="#991b1b" // Hot Red
+                fill="#991b1b"
                 stroke="#b91c1c"
                 strokeWidth={1}
                 closed
@@ -475,36 +465,35 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
             </Group>
 
             {/* Background Grid */}
-            {Array.from({ length: 40 }).map((_, i) => (
+            {Array.from({ length: 50 }).map((_, i) => (
                 <Line
                     key={`v-${i}`}
-                    points={[i * 100, -2000, i * 100, 4000]}
-                    stroke="#ffffff03"
+                    points={[i * 100, -3000, i * 100, 5000]}
+                    stroke="#ffffff05"
                     strokeWidth={1}
                 />
             ))}
-            {Array.from({ length: 60 }).map((_, i) => (
+            {Array.from({ length: 70 }).map((_, i) => (
                 <Line
                     key={`h-${i}`}
-                    points={[-2000, i * 100, 4000, i * 100]}
-                    stroke="#ffffff03"
+                    points={[-3000, i * 100, 5000, i * 100]}
+                    stroke="#ffffff05"
                     strokeWidth={1}
                 />
             ))}
 
             {/* Actual Structure Nodes */}
             <Group>
-              {/* TOFU Campaigns and Connections */}
               {tofuCampaigns.map((c, i) => {
                 const targetY = 50 + i * CAMPAIGN_SPACING;
                 return (
                   <Group key={c.id}>
                     <Arrow 
-                      points={[-85, 140, 0, targetY + 35]} 
+                      points={[-85, 140, 0, targetY + 40]} 
                       stroke="#3b82f6" 
-                      strokeWidth={1.5} 
+                      strokeWidth={2} 
                       pointerLength={6} 
-                      opacity={0.6} 
+                      opacity={0.7} 
                       tension={0.4}
                     />
                     {renderCampaign(c, 0, targetY)}
@@ -512,17 +501,16 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 );
               })}
 
-              {/* MOFU Campaigns and Connections */}
               {mofuCampaigns.map((c, i) => {
-                const targetY = 350 + i * CAMPAIGN_SPACING;
+                const targetY = 380 + i * CAMPAIGN_SPACING;
                 return (
                   <Group key={c.id}>
                     <Arrow 
-                      points={[-135, 445, 0, targetY + 35]} 
+                      points={[-135, 445, 0, targetY + 40]} 
                       stroke="#f59e0b" 
-                      strokeWidth={1.5} 
+                      strokeWidth={2} 
                       pointerLength={6} 
-                      opacity={0.6} 
+                      opacity={0.7} 
                       tension={0.4}
                     />
                     {renderCampaign(c, 0, targetY)}
@@ -530,17 +518,16 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 );
               })}
 
-              {/* BOFU Campaigns and Connections */}
               {bofuCampaigns.map((c, i) => {
-                const targetY = 650 + i * CAMPAIGN_SPACING;
+                const targetY = 680 + i * CAMPAIGN_SPACING;
                 return (
                   <Group key={c.id}>
                     <Arrow 
-                      points={[-180, 745, 0, targetY + 35]} 
+                      points={[-180, 745, 0, targetY + 40]} 
                       stroke="#ef4444" 
-                      strokeWidth={1.5} 
+                      strokeWidth={2} 
                       pointerLength={6} 
-                      opacity={0.6} 
+                      opacity={0.7} 
                       tension={0.4}
                     />
                     {renderCampaign(c, 0, targetY)}
@@ -548,7 +535,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 );
               })}
 
-              {unknownCampaigns.map((c, i) => renderCampaign(c, 0, 950 + i * CAMPAIGN_SPACING))}
+              {unknownCampaigns.map((c, i) => renderCampaign(c, 0, 1000 + i * CAMPAIGN_SPACING))}
             </Group>
 
             {/* Proposal / Drawing Layer */}
@@ -577,8 +564,8 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
         </p>
         <div className="flex gap-2 text-[8px] font-black text-neutral-700 uppercase">
              <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> TOFU</div>
-             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-purple-500" /> MOFU</div>
-             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-rose-500" /> BOFU</div>
+             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> MOFU</div>
+             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-red-500" /> BOFU</div>
         </div>
       </div>
     </div>
