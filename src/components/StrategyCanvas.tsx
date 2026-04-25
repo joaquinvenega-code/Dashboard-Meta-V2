@@ -169,10 +169,10 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   };
 
   // Layout calculations
-  const STAGE_SPACING = 350;
-  const CAMPAIGN_SPACING = 85; 
-  const ADSET_X_OFFSET = 260;
-  const AD_X_OFFSET = 240;
+  const STAGE_SPACING = 300;
+  const CAMPAIGN_SPACING = 70; 
+  const ADSET_X_OFFSET = 230;
+  const AD_X_OFFSET = 210;
 
   const tofuCampaigns = campaigns.filter(c => c.funnelStage === 'TOFU');
   const mofuCampaigns = campaigns.filter(c => c.funnelStage === 'MOFU');
@@ -265,20 +265,19 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
           y={48}
           fontStyle="bold"
         />
-
         {/* Connections to AdSets */}
         {campaignAdSets.map((adset, idx) => {
-          const adsetY = idx * 100 - ((campaignAdSets.length - 1) * 50);
+          const adsetY = idx * 75 - ((campaignAdSets.length - 1) * 37.5);
           const adsetX = ADSET_X_OFFSET;
           
           return (
             <Group key={adset.id}>
               <Arrow
-                points={[220, 35, adsetX, adsetY + 35]}
+                points={[220, 35, adsetX, adsetY + 30]}
                 stroke="#333"
-                strokeWidth={1.5}
-                pointerLength={8}
-                pointerWidth={8}
+                strokeWidth={1}
+                pointerLength={6}
+                pointerWidth={6}
                 fill="#333"
                 tension={0.5}
               />
@@ -289,7 +288,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                     fill="#151515"
                     stroke="#8b5cf6"
                     strokeWidth={1.5}
-                    cornerRadius={8}
+                    cornerRadius={6}
                 />
                 <Text
                     text="CONJUNTO"
@@ -313,7 +312,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 {/* Ads */}
                 {ads.filter(a => a.adsetId === adset.id).map((ad, aIdx) => {
                   const adX = AD_X_OFFSET;
-                  const adY = aIdx * 70 - ((ads.filter(a => a.adsetId === adset.id).length - 1) * 35);
+                  const adY = aIdx * 45 - ((ads.filter(a => a.adsetId === adset.id).length - 1) * 22.5);
                   return (
                     <Group key={ad.id}>
                        <Arrow
@@ -344,7 +343,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                         />
                       </Group>
                     </Group>
-                  )
+                  );
                 })}
               </Group>
             </Group>
@@ -442,13 +441,6 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
           <Layer>
             {/* NEW FUNNEL SHAPE (Marketing Mix Style) */}
             <Group x={-STAGE_SPACING - 120} y={0}>
-              {/* Outer Shadow/Glow Case */}
-              <Line
-                points={[0, 0, 360, 0, 180, 950]}
-                fill="#ffffff03"
-                closed
-              />
-              
               {/* TOFU SECTION */}
               <Line
                 points={[0, 0, 360, 0, 310, 280, 50, 280]}
@@ -509,11 +501,11 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 return (
                   <Group key={c.id}>
                     <Arrow 
-                      points={[-STAGE_SPACING + 60, 140, 0, targetY + 35]} 
-                      stroke="#475569" 
-                      strokeWidth={1} 
+                      points={[-STAGE_SPACING + 215 - 120, 140, 0, targetY + 35]} 
+                      stroke="#3b82f6" 
+                      strokeWidth={1.5} 
                       pointerLength={6} 
-                      opacity={0.3} 
+                      opacity={0.6} 
                       tension={0.4}
                     />
                     {renderCampaign(c, 0, targetY)}
@@ -527,11 +519,11 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 return (
                   <Group key={c.id}>
                     <Arrow 
-                      points={[-STAGE_SPACING + 110, 445, 0, targetY + 35]} 
-                      stroke="#475569" 
-                      strokeWidth={1} 
+                      points={[-STAGE_SPACING + 165 - 120, 445, 0, targetY + 35]} 
+                      stroke="#8b5cf6" 
+                      strokeWidth={1.5} 
                       pointerLength={6} 
-                      opacity={0.3} 
+                      opacity={0.6} 
                       tension={0.4}
                     />
                     {renderCampaign(c, 0, targetY)}
@@ -545,11 +537,11 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 return (
                   <Group key={c.id}>
                     <Arrow 
-                      points={[-STAGE_SPACING + 160, 745, 0, targetY + 35]} 
-                      stroke="#475569" 
-                      strokeWidth={1} 
+                      points={[-STAGE_SPACING + 120 - 120, 745, 0, targetY + 35]} 
+                      stroke="#f43f5e" 
+                      strokeWidth={1.5} 
                       pointerLength={6} 
-                      opacity={0.3} 
+                      opacity={0.6} 
                       tension={0.4}
                     />
                     {renderCampaign(c, 0, targetY)}
