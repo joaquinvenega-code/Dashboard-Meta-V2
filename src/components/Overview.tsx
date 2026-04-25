@@ -88,7 +88,7 @@ export function Overview({ accounts, settings }: OverviewProps) {
           <div className="grid grid-cols-[140px_1fr_100px_60px] gap-3 px-2 text-[9px] font-bold text-neutral-700 uppercase tracking-widest border-b border-white/5 pb-1.5">
             <div>Cliente</div>
             <div className="text-center">Progreso</div>
-            <div className="text-right">Ingresos</div>
+            <div className="text-right">Facturación</div>
             <div className="text-right">ROAS</div>
           </div>
           {accounts.map(acc => {

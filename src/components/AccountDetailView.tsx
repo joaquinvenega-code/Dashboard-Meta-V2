@@ -249,7 +249,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
   const ALL_METRICS = [
     { id: 'spend', label: 'Inversión' },
-    { id: 'revenue', label: 'Facturado' },
+    { id: 'revenue', label: 'Facturación' },
     { id: 'roas', label: 'ROAS' },
     { id: 'objective', label: 'Objetivo' },
     { id: 'progress_revenue', label: '% Objetivo' },
@@ -293,7 +293,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     
     switch(id) {
       case 'spend': return <MetricBox key={id} label="Inversión" value={formatCurrency(acc.spend || 0, acc.currency)} />;
-      case 'revenue': return <MetricBox key={id} label="Facturado" value={formatCurrency(acc.revenue || 0, acc.currency)} />;
+      case 'revenue': return <MetricBox key={id} label="Facturación" value={formatCurrency(acc.revenue || 0, acc.currency)} />;
       case 'roas': return <MetricBox key={id} label="ROAS" value={`×${formatDecimal((acc.revenue || 0) / (acc.spend || 1))}`} />;
       case 'objective': return <MetricBox key={id} label="Objetivo" value={formatCurrency(sAcc?.objective || 0, acc.currency)} isPlaceholder={!sAcc?.objective} />;
       case 'progress_revenue': return <MetricBox key={id} label="% Objetivo" value={`${getProgress(acc) || 0}%`} isPlaceholder={!getProgress(acc)} />;
@@ -345,7 +345,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       { label: 'CTR', value: `${ad.ctr.toFixed(2)}%` },
       { label: 'Inversión', value: formatCurrency(ad.spend, selectedAccount?.currency || 'ARS') },
       { label: 'Ventas', value: ad.purchases.toString() },
-      { label: 'Ingresos', value: formatCurrency(ad.revenue, selectedAccount?.currency || 'ARS') },
+      { label: 'Facturación', value: formatCurrency(ad.revenue, selectedAccount?.currency || 'ARS') },
       { label: 'Costo x Venta', value: formatCurrency(ad.purchases > 0 ? ad.spend / ad.purchases : 0, selectedAccount?.currency || 'ARS') }
     ];
 
@@ -422,14 +422,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     <LegendButton 
                       active={showRevenue} 
                       color="#22c55e" 
-                      label="Ingresos" 
+                      label="Facturación" 
                       onClick={() => toggleChartMetric(ad.id, 'revenue')}
-                    />
-                    <LegendButton 
-                      active={showRoas} 
-                      color="#f97316" 
-                      label="ROAS" 
-                      onClick={() => toggleChartMetric(ad.id, 'roas')}
                     />
                   </>
                 )}
@@ -500,9 +494,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     {showCostPerMessage && (
                       <Area type="monotone" dataKey="costPerMessage" yAxisId="right" stroke="#06b6d4" strokeWidth={1} dot={false} fill={`url(#gCPM-${ad.id})`} strokeDasharray="3 2" />
                     )}
-                    {showRoas && (
-                      <Area type="monotone" dataKey="roas" yAxisId="right" stroke="#f97316" strokeWidth={1} dot={false} strokeDasharray="3 3" />
-                    )}
                   </AreaChart>
                </ResponsiveContainer>
              </div>
@@ -551,7 +542,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-auto">
             {/* New Date Picker in Detail View */}
             <div className="flex items-center gap-2 bg-[#111] p-1.5 rounded-xl border border-white/5 mr-2">
               <Calendar className="w-3.5 h-3.5 text-neutral-600 ml-1.5" />

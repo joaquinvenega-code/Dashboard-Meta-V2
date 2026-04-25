@@ -54,7 +54,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 const COLUMN_DEFS: Record<string, { label: string; width: string }> = {
   objetivo: { label: 'Objetivo', width: 'w-28' },
-  facturado: { label: 'Facturado', width: 'w-28' },
+  facturado: { label: 'Facturación', width: 'w-28' },
   roas: { label: 'ROAS', width: 'w-20' },
   mensajes: { label: 'Mensajes', width: 'w-24' },
   progreso: { label: 'Progreso', width: 'w-32' },
