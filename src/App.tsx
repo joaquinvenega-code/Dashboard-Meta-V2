@@ -133,6 +133,18 @@ export default function App() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
 
+  // Group Modal State
+  const [groupModal, setGroupModal] = useState<{ 
+    isOpen: boolean; 
+    type: 'create' | 'edit' | 'delete'; 
+    group?: ClientGroup;
+    inputValue: string;
+  }>({ 
+    isOpen: false, 
+    type: 'create', 
+    inputValue: '' 
+  });
+
   // Visibility State
   const [visibleAccountIds, setVisibleAccountIds] = useState<string[]>(() => {
     try {
@@ -942,10 +954,7 @@ export default function App() {
                       </div>
                       <button 
                         onClick={() => {
-                          const name = prompt('Nombre del nuevo grupo:');
-                          if (name) {
-                            saveGroups([...groups, { id: Math.random().toString(36).substr(2, 9), name, accountIds: [] }]);
-                          }
+                          setGroupModal({ isOpen: true, type: 'create', inputValue: '' });
                         }}
                         className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center gap-2"
                       >
@@ -967,8 +976,12 @@ export default function App() {
                               <div className="font-black text-neutral-100">{group.name}</div>
                               <button 
                                 onClick={() => {
-                                  const n = prompt('Nuevo nombre para el grupo:', group.name);
-                                  if (n) saveGroups(groups.map(g => g?.id === group.id ? { ...g, name: n } : g));
+                                  setGroupModal({ 
+                                    isOpen: true, 
+                                    type: 'edit', 
+                                    group: group, 
+                                    inputValue: group.name 
+                                  });
                                 }}
                                 className="p-1 hover:bg-neutral-800 rounded text-neutral-600 hover:text-white transition-all"
                               >
@@ -977,9 +990,12 @@ export default function App() {
                             </div>
                             <button 
                               onClick={() => {
-                                if (confirm('¿Eliminar este grupo?')) {
-                                  saveGroups(groups.filter(g => g && g.id !== group.id));
-                                }
+                                setGroupModal({ 
+                                  isOpen: true, 
+                                  type: 'delete', 
+                                  group: group, 
+                                  inputValue: '' 
+                                });
                               }}
                               className="text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 transition-all"
                             >
@@ -1010,21 +1026,12 @@ export default function App() {
                              </div>
                           </div>
 
-                          <select 
-                            onChange={(e) => {
-                              const accId = e.target.value;
-                              if (accId) {
-                                saveGroups(groups.map(g => g?.id === group.id ? { ...g, accountIds: [...new Set([...(g.accountIds || []), accId])] } : g));
-                                e.target.value = "";
-                              }
+                          <GroupAccountSelector 
+                            accounts={accounts.filter(a => !(group.accountIds || []).includes(a.id))}
+                            onSelect={(accId) => {
+                              saveGroups(groups.map(g => g?.id === group.id ? { ...g, accountIds: [...new Set([...(g.accountIds || []), accId])] } : g));
                             }}
-                            className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-[10px] font-bold text-neutral-400 outline-none hover:border-blue-600/30 transition-all cursor-pointer"
-                          >
-                            <option value="">+ Añadir cuenta al grupo</option>
-                            {accounts.filter(a => !(group.accountIds || []).includes(a.id)).map(a => (
-                              <option key={a.id} value={a.id}>{a.name}</option>
-                            ))}
-                          </select>
+                          />
                         </div>
                       ))}
                     </div>
@@ -1160,9 +1167,172 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Group Management Modal */}
+      <AnimatePresence>
+        {groupModal.isOpen && (
+          <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setGroupModal({ ...groupModal, isOpen: false })}
+              className="absolute inset-0 bg-black/90 backdrop-blur-md"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm bg-[#111] border border-white/10 rounded-[2rem] shadow-2xl p-8 overflow-hidden"
+            >
+              <div className="absolute -top-12 -right-12 w-32 h-32 bg-blue-600/10 blur-3xl rounded-full" />
+              
+              <div className="relative">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-black text-white tracking-widest uppercase">
+                      {groupModal.type === 'create' ? 'Nuevo Grupo' : groupModal.type === 'edit' ? 'Editar Grupo' : 'Eliminar Grupo'}
+                    </h3>
+                    <p className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest mt-1">
+                      {groupModal.type === 'delete' ? 'Esta acción no se puede deshacer' : 'Configura las propiedades del grupo'}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setGroupModal({ ...groupModal, isOpen: false })}
+                    className="p-2 hover:bg-white/5 rounded-full text-neutral-600 hover:text-white transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {groupModal.type !== 'delete' ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-2 ml-1">Nombre del Grupo</label>
+                      <input 
+                        autoFocus
+                        type="text" 
+                        placeholder="Ej: Marca Premium VIP"
+                        value={groupModal.inputValue}
+                        onChange={(e) => setGroupModal({ ...groupModal, inputValue: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && groupModal.inputValue) {
+                            const name = groupModal.inputValue;
+                            if (groupModal.type === 'create') {
+                              saveGroups([...groups, { id: Math.random().toString(36).substr(2, 9), name, accountIds: [] }]);
+                            } else if (groupModal.group) {
+                              saveGroups(groups.map(g => g.id === groupModal.group?.id ? { ...g, name } : g));
+                            }
+                            setGroupModal({ ...groupModal, isOpen: false });
+                          }
+                        }}
+                        className="w-full bg-black/50 border border-white/5 rounded-xl px-4 py-3.5 text-xs text-white font-bold outline-none focus:ring-2 focus:ring-blue-600 transition-all placeholder:text-neutral-800"
+                      />
+                    </div>
+                    
+                    <button 
+                      disabled={!groupModal.inputValue}
+                      onClick={() => {
+                        const name = groupModal.inputValue;
+                        if (groupModal.type === 'create') {
+                          saveGroups([...groups, { id: Math.random().toString(36).substr(2, 9), name, accountIds: [] }]);
+                        } else if (groupModal.group) {
+                          saveGroups(groups.map(g => g.id === groupModal.group?.id ? { ...g, name } : g));
+                        }
+                        setGroupModal({ ...groupModal, isOpen: false });
+                      }}
+                      className="w-full bg-blue-600 disabled:opacity-20 text-white h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20"
+                    >
+                      {groupModal.type === 'create' ? 'Crear Grupo' : 'Guardar Cambios'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <p className="text-xs text-neutral-400 font-bold text-center leading-relaxed px-4">
+                      ¿Seguro que quieres eliminar el grupo <span className="text-white">"{groupModal.group?.name}"</span>? Las cuentas vinculadas volverán a mostrarse individualmente.
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 mt-8">
+                       <button 
+                         onClick={() => setGroupModal({ ...groupModal, isOpen: false })}
+                         className="h-12 rounded-xl text-[10px] font-black uppercase tracking-widest text-neutral-600 hover:text-white hover:bg-white/5 transition-all"
+                       >
+                         Cancelar
+                       </button>
+                       <button 
+                         onClick={() => {
+                           if (groupModal.group) {
+                             saveGroups(groups.filter(g => g.id !== groupModal.group?.id));
+                           }
+                           setGroupModal({ ...groupModal, isOpen: false });
+                         }}
+                         className="h-12 rounded-xl bg-red-600/10 border border-red-600/20 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all"
+                       >
+                         Eliminar
+                       </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
+
+const GroupAccountSelector: React.FC<{
+  accounts: AdAccount[];
+  onSelect: (id: string) => void;
+}> = ({ accounts, onSelect }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-neutral-400 hover:border-blue-600/30 transition-all flex items-center justify-between group"
+      >
+        <span>+ Añadir cuenta al grupo</span>
+        <ChevronDown className={cn("w-3 h-3 transition-transform", isOpen ? "rotate-180" : "")} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              className="absolute top-full left-0 right-0 mt-2 z-50 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar"
+            >
+              {accounts.length === 0 ? (
+                <div className="p-4 text-center text-[10px] font-bold text-neutral-600 uppercase tracking-widest">
+                  No hay más cuentas disponibles
+                </div>
+              ) : (
+                accounts.map(acc => (
+                  <button
+                    key={acc.id}
+                    onClick={() => {
+                      onSelect(acc.id);
+                      setIsOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-blue-600 text-neutral-300 hover:text-white transition-colors text-[11px] font-bold border-b border-white/5 last:border-0"
+                  >
+                    {acc.name}
+                  </button>
+                ))
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 interface SortableHeaderProps {
   id: string;
