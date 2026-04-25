@@ -492,7 +492,7 @@ export default function App() {
           )}
 
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 print:hidden">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 print:hidden mb-1">
               <div className="flex-1 min-w-0">
                 <h2 className="text-xl font-black tracking-widest text-white uppercase opacity-80 flex items-center gap-3">
                   {activePage === 'overview' ? 'Vista general' : 
@@ -506,8 +506,8 @@ export default function App() {
               </div>
 
               {activePage === 'strategy' ? (
-                <div className="flex items-center gap-4 bg-[#111] p-1.5 rounded-lg border border-white/5 animate-in slide-in-from-right-4 duration-500">
-                   <div className="flex items-center gap-3 w-[450px]">
+                <div className="flex items-center gap-2 bg-[#111] p-1 rounded-lg border border-white/5 animate-in slide-in-from-right-4 duration-500">
+                   <div className="flex items-center gap-2 w-[380px]">
                       <div className="flex-1">
                         <AccountSelectorDropdown
                           label="Visible"
@@ -1087,7 +1087,7 @@ export default function App() {
               )}
 
               {activePage === 'strategy' && (
-                <div className="space-y-0 relative -mt-4">
+                <div className="space-y-0 relative -mt-8">
                   <div className="bg-[#111] p-0 rounded-lg border border-white/0 lg:border-white/5 space-y-0 animate-in fade-in duration-700">
                     {loadingStructure && (
                       <div className="h-[500px] flex flex-col items-center justify-center gap-4 bg-black/20 rounded-lg border border-white/5">
@@ -1097,7 +1097,7 @@ export default function App() {
                     )}
 
                     {structure && !loadingStructure && (
-                      <div className="h-[750px] animate-in zoom-in-95 duration-500">
+                      <div className="h-[730px] animate-in zoom-in-95 duration-500">
                         <StrategyCanvas 
                           accountId={(structure as any).activeAccId}
                           campaigns={structure.campaigns}
@@ -1377,19 +1377,19 @@ const AccountSelectorDropdown: React.FC<{
 
   return (
     <div className="relative">
-      <div className="flex items-center gap-2 mb-3 ml-1">
-        <div className={cn("w-1.5 h-1.5 rounded-full", variant === 'blue' ? "bg-blue-500" : "bg-neutral-700")} />
-        <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">{label}</p>
-      </div>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "w-full bg-black/40 border border-white/5 rounded-lg px-4 py-3.5 text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-between group",
+          "w-full bg-black/40 border border-white/5 rounded-lg pl-3 pr-2 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-between group",
           activeAccount ? "text-white border-white/20" : "text-neutral-500 hover:border-white/10"
         )}
       >
-        <span className="truncate">{activeAccount ? activeAccount.name : `Seleccionar ${label}...`}</span>
-        <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen ? "rotate-180" : "")} />
+        <div className="flex items-center gap-2 truncate">
+          <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", variant === 'blue' ? "bg-blue-500" : "bg-neutral-700")} />
+          <span className="truncate opacity-50 mr-1">{label}:</span>
+          <span className="truncate">{activeAccount ? activeAccount.name : `...`}</span>
+        </div>
+        <ChevronDown className={cn("w-3 h-3 transition-transform opacity-40 ml-1 shrink-0", isOpen ? "rotate-180" : "")} />
       </button>
 
       <AnimatePresence>
@@ -1403,10 +1403,10 @@ const AccountSelectorDropdown: React.FC<{
               onClick={() => setIsOpen(false)}
             />
             <motion.div
-              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              initial={{ opacity: 0, y: -5, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              className="absolute top-full left-0 right-0 mt-2 z-50 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl overflow-hidden max-h-64 overflow-y-auto custom-scrollbar"
+              exit={{ opacity: 0, y: -5, scale: 0.98 }}
+              className="absolute top-full left-0 right-0 mt-1 z-50 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl overflow-hidden max-h-64 overflow-y-auto custom-scrollbar"
             >
               {accounts.length === 0 ? (
                 <div className="p-4 text-center text-[10px] font-bold text-neutral-600 uppercase tracking-widest italic">

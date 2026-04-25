@@ -51,7 +51,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   const [mode, setMode] = useState<'view' | 'draw'>('view');
   const [tool, setTool] = useState<'select' | 'pen' | 'rect' | 'circle' | 'text' | 'arrow' | 'node' | 'eraser'>('select');
   const [zoom, setZoom] = useState(0.8);
-  const [pos, setPos] = useState({ x: 100, y: 150 });
+  const [pos, setPos] = useState({ x: 100, y: 40 });
   const [elements, setElements] = useState<CanvasElement[]>(() => {
     const saved = localStorage.getItem(`cr_canvas_${accountId}`);
     return saved ? JSON.parse(saved) : [];
@@ -532,7 +532,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
         >
           <Layer>
             {/* FUNNEL SHAPE */}
-            <Group x={-420} y={-100}>
+            <Group x={-420} y={-180}>
               {/* Handle for TOFU Y */}
               {mode === 'draw' && (
                 <Circle 
