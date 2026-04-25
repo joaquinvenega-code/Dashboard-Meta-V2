@@ -484,10 +484,11 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
 
 export async function fetchAccountStructure(accountId: string): Promise<{ campaigns: Campaign[], adsets: AdSet[], ads: Ad[] }> {
   try {
+    const filtering = JSON.stringify([{ field: 'effective_status', operator: 'IN', value: ['ACTIVE'] }]);
     const [cData, sData, aData] = await Promise.all([
-      fetchAllPages(`/${accountId}/campaigns`, { fields: 'id,name,objective,status', limit: 500 }),
-      fetchAllPages(`/${accountId}/adsets`, { fields: 'id,name,campaign_id,status', limit: 500 }),
-      fetchAllPages(`/${accountId}/ads`, { fields: 'id,name,adset_id,status', limit: 500 })
+      fetchAllPages(`/${accountId}/campaigns`, { fields: 'id,name,objective,status', limit: 500, filtering }),
+      fetchAllPages(`/${accountId}/adsets`, { fields: 'id,name,campaign_id,status', limit: 500, filtering }),
+      fetchAllPages(`/${accountId}/ads`, { fields: 'id,name,adset_id,status', limit: 500, filtering })
     ]);
 
     const campaigns: Campaign[] = cData.map(c => ({
