@@ -53,6 +53,18 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
     const saved = localStorage.getItem(`cr_canvas_${accountId}`);
     return saved ? JSON.parse(saved) : [];
   });
+  const [nodePositions, setNodePositions] = useState<Record<string, { x: number, y: number }>>(() => {
+    const saved = localStorage.getItem(`cr_nodes_${accountId}`);
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [funnelConfig, setFunnelConfig] = useState(() => {
+    const saved = localStorage.getItem(`cr_funnel_${accountId}`);
+    return saved ? JSON.parse(saved) : {
+      mofuY: 300,
+      bofuY: 550,
+      fontSize: 32
+    };
+  });
   const [isDrawing, setIsDrawing] = useState(false);
   const [newElement, setNewElement] = useState<CanvasElement | null>(null);
 
@@ -61,6 +73,14 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   useEffect(() => {
     localStorage.setItem(`cr_canvas_${accountId}`, JSON.stringify(elements));
   }, [elements, accountId]);
+
+  useEffect(() => {
+    localStorage.setItem(`cr_nodes_${accountId}`, JSON.stringify(nodePositions));
+  }, [nodePositions, accountId]);
+
+  useEffect(() => {
+    localStorage.setItem(`cr_funnel_${accountId}`, JSON.stringify(funnelConfig));
+  }, [funnelConfig, accountId]);
 
   const handleMouseDown = (e: any) => {
     if (mode === 'view') return;
@@ -192,8 +212,8 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
   // Dynamic start positions to fill space (more compact than hardcoded gaps)
   const tofuY = 80;
-  const mofuY = Math.max(300, tofuY + (tofuCampaigns.length * NODE_CONFIG.spacing.campaign) + 40);
-  const bofuY = Math.max(550, mofuY + (mofuCampaigns.length * NODE_CONFIG.spacing.campaign) + 40);
+  const mofuY = funnelConfig.mofuY;
+  const bofuY = funnelConfig.bofuY;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [stageSize, setStageSize] = useState({ width: 1200, height: 800 });
@@ -213,14 +233,26 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
     return () => window.removeEventListener('resize', updateSize);
   }, []);
 
-  const renderCampaign = (campaign: Campaign, x: number, y: number) => {
+  const renderCampaign = (campaign: Campaign, defaultX: number, defaultY: number) => {
     const campaignAdSets = adsets.filter(s => s.campaignId === campaign.id);
     const color = campaign.funnelStage === 'TOFU' ? '#3b82f6' : 
                   campaign.funnelStage === 'MOFU' ? '#f59e0b' : 
                   campaign.funnelStage === 'BOFU' ? '#ef4444' : '#333';
     
+    const pos = nodePositions[campaign.id] || { x: defaultX, y: defaultY };
+
     return (
-      <Group x={x} y={y}>
+      <Group 
+        x={pos.x} 
+        y={pos.y} 
+        draggable={mode === 'draw' && tool === 'select'}
+        onDragEnd={(e) => {
+          setNodePositions({
+            ...nodePositions,
+            [campaign.id]: { x: e.target.x(), y: e.target.y() }
+          });
+        }}
+      >
         {/* Campaign Box */}
         <Rect
           width={NODE_CONFIG.campaign.w}
@@ -262,14 +294,14 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
         
         {/* Connections to AdSets */}
         {campaignAdSets.map((adset, idx) => {
-          // Larger vertical spread for adsets to prevent ad collisions
           const adsetY = idx * NODE_CONFIG.spacing.adset - ((campaignAdSets.length - 1) * NODE_CONFIG.spacing.adset / 2);
           const adsetX = ADSET_X_OFFSET;
+          const aPos = nodePositions[adset.id] || { x: adsetX, y: adsetY };
           
           return (
             <Group key={adset.id}>
               <Arrow
-                points={[NODE_CONFIG.campaign.w, NODE_CONFIG.campaign.h / 2, adsetX, adsetY + NODE_CONFIG.adset.h / 2]}
+                points={[NODE_CONFIG.campaign.w, NODE_CONFIG.campaign.h / 2, aPos.x, aPos.y + NODE_CONFIG.adset.h / 2]}
                 stroke="#333"
                 strokeWidth={1}
                 pointerLength={6}
@@ -277,7 +309,17 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 fill="#333"
                 tension={0.5}
               />
-              <Group x={adsetX} y={adsetY}>
+              <Group 
+                x={aPos.x} 
+                y={aPos.y}
+                draggable={mode === 'draw' && tool === 'select'}
+                onDragEnd={(e) => {
+                  setNodePositions({
+                    ...nodePositions,
+                    [adset.id]: { x: e.target.x(), y: e.target.y() }
+                  });
+                }}
+              >
                 <Rect
                     width={NODE_CONFIG.adset.w}
                     height={NODE_CONFIG.adset.h}
@@ -311,17 +353,29 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                   const adX = AD_X_OFFSET;
                   const adCount = ads.filter(a => a.adsetId === adset.id).length;
                   const adY = aIdx * NODE_CONFIG.spacing.ad - ((adCount - 1) * NODE_CONFIG.spacing.ad / 2);
+                  const adPos = nodePositions[ad.id] || { x: adX, y: adY };
+
                   return (
                     <Group key={ad.id}>
                        <Arrow
-                        points={[NODE_CONFIG.adset.w, NODE_CONFIG.adset.h / 2, adX, adY + NODE_CONFIG.ad.h / 2]}
+                        points={[NODE_CONFIG.adset.w, NODE_CONFIG.adset.h / 2, adPos.x, adPos.y + NODE_CONFIG.ad.h / 2]}
                         stroke="#222"
                         strokeWidth={1}
                         pointerLength={5}
                         pointerWidth={5}
                         fill="#222"
                       />
-                      <Group x={adX} y={adY}>
+                      <Group 
+                        x={adPos.x} 
+                        y={adPos.y}
+                        draggable={mode === 'draw' && tool === 'select'}
+                        onDragEnd={(e) => {
+                          setNodePositions({
+                            ...nodePositions,
+                            [ad.id]: { x: e.target.x(), y: e.target.y() }
+                          });
+                        }}
+                      >
                         <Rect
                             width={NODE_CONFIG.ad.w}
                             height={NODE_CONFIG.ad.h}
@@ -387,7 +441,11 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                <ToolbarButton active={tool === 'circle'} onClick={() => setTool('circle')} icon={CircleIcon} />
                <ToolbarButton active={tool === 'text'} onClick={() => setTool('text')} icon={Type} />
                <ToolbarButton active={tool === 'eraser'} onClick={() => {
-                 if (confirm('¿Limpiar canvas de propuesta?')) setElements([]);
+                 if (confirm('¿Limpiar canvas de propuesta?')) {
+                   setElements([]);
+                   setNodePositions({});
+                   setFunnelConfig({ mofuY: 300, bofuY: 550, fontSize: 32 });
+                 }
                }} icon={Trash2} />
             </div>
           )}
@@ -449,9 +507,32 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 strokeWidth={1}
                 closed
               />
-              <Text text="TOFU" x={120} y={(mofuY - 30) / 2 - 10} fontSize={32} fontStyle="black" fill="#ffffff" width={120} align="center" />
+              <Text 
+                text="TOFU" 
+                x={120} 
+                y={(mofuY - 30) / 2 - 10} 
+                fontSize={funnelConfig.fontSize} 
+                fontStyle="black" 
+                fill="#ffffff" 
+                width={120} 
+                align="center"
+                draggable={mode === 'draw'}
+                onDragEnd={(e) => setFunnelConfig({...funnelConfig, fontSize: Math.max(10, e.target.y())})}
+              />
               <Text text="TOP OF FUNNEL" x={120} y={(mofuY - 30) / 2 + 25} fontSize={10} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
               
+              {/* Handle for MOFU Y */}
+              {mode === 'draw' && (
+                <Circle 
+                  x={180} 
+                  y={mofuY} 
+                  radius={6} 
+                  fill="#f59e0b" 
+                  draggable 
+                  onDragMove={(e) => setFunnelConfig({...funnelConfig, mofuY: e.target.y()})}
+                />
+              )}
+
               {/* MOFU SECTION - WARM AMBER */}
               <Line
                 points={[50, mofuY, 310, mofuY, 260, bofuY - 30, 100, bofuY - 30]}
@@ -460,8 +541,20 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 strokeWidth={1}
                 closed
               />
-              <Text text="MOFU" x={120} y={mofuY + (bofuY - mofuY - 30) / 2 - 10} fontSize={28} fontStyle="black" fill="#ffffff" width={120} align="center" />
+              <Text text="MOFU" x={120} y={mofuY + (bofuY - mofuY - 30) / 2 - 10} fontSize={funnelConfig.fontSize * 0.8} fontStyle="black" fill="#ffffff" width={120} align="center" />
               <Text text="MIDDLE OF FUNNEL" x={120} y={mofuY + (bofuY - mofuY - 30) / 2 + 25} fontSize={10} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
+
+              {/* Handle for BOFU Y */}
+              {mode === 'draw' && (
+                <Circle 
+                  x={180} 
+                  y={bofuY} 
+                  radius={6} 
+                  fill="#ef4444" 
+                  draggable 
+                  onDragMove={(e) => setFunnelConfig({...funnelConfig, bofuY: e.target.y()})}
+                />
+              )}
 
               {/* BOFU SECTION - HOT RED */}
               <Line
@@ -471,7 +564,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 strokeWidth={1}
                 closed
               />
-              <Text text="BOFU" x={120} y={bofuY + 120} fontSize={24} fontStyle="black" fill="#ffffff" width={120} align="center" />
+              <Text text="BOFU" x={120} y={bofuY + 120} fontSize={funnelConfig.fontSize * 0.75} fontStyle="black" fill="#ffffff" width={120} align="center" />
               <Text text="BOTTOM OF FUNNEL" x={120} y={bofuY + 155} fontSize={9} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
             </Group>
 
@@ -497,10 +590,11 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
             <Group>
               {tofuCampaigns.map((c, i) => {
                 const targetY = tofuY + i * NODE_CONFIG.spacing.campaign;
+                const pos = nodePositions[c.id] || { x: 0, y: targetY };
                 return (
                   <Group key={c.id}>
                     <Arrow 
-                      points={[-60, (mofuY - 30) / 2 + 10, 0, targetY + NODE_CONFIG.campaign.h / 2]} 
+                      points={[-60, (mofuY - 30) / 2 + 10, pos.x, pos.y + NODE_CONFIG.campaign.h / 2]} 
                       stroke="#3b82f6" 
                       strokeWidth={2} 
                       pointerLength={6} 
@@ -514,10 +608,11 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
               {mofuCampaigns.map((c, i) => {
                 const targetY = mofuY + i * NODE_CONFIG.spacing.campaign;
+                const pos = nodePositions[c.id] || { x: 0, y: targetY };
                 return (
                   <Group key={c.id}>
                     <Arrow 
-                      points={[-110, mofuY + (bofuY - mofuY - 30) / 2 + 10, 0, targetY + NODE_CONFIG.campaign.h / 2]} 
+                      points={[-110, mofuY + (bofuY - mofuY - 30) / 2 + 10, pos.x, pos.y + NODE_CONFIG.campaign.h / 2]} 
                       stroke="#f59e0b" 
                       strokeWidth={2} 
                       pointerLength={6} 
@@ -531,10 +626,11 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
               {bofuCampaigns.map((c, i) => {
                 const targetY = bofuY + i * NODE_CONFIG.spacing.campaign;
+                const pos = nodePositions[c.id] || { x: 0, y: targetY };
                 return (
                   <Group key={c.id}>
                     <Arrow 
-                      points={[-160, bofuY + 140, 0, targetY + NODE_CONFIG.campaign.h / 2]} 
+                      points={[-160, bofuY + 140, pos.x, pos.y + NODE_CONFIG.campaign.h / 2]} 
                       stroke="#ef4444" 
                       strokeWidth={2} 
                       pointerLength={6} 
