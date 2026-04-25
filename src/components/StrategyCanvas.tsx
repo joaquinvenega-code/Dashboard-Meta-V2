@@ -169,8 +169,8 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   };
 
   // Layout calculations
-  const STAGE_SPACING = 300;
-  const CAMPAIGN_SPACING = 140;
+  const STAGE_SPACING = 350;
+  const CAMPAIGN_SPACING = 85; 
   const ADSET_X_OFFSET = 260;
   const AD_X_OFFSET = 240;
 
@@ -179,28 +179,37 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   const bofuCampaigns = campaigns.filter(c => c.funnelStage === 'BOFU');
   const unknownCampaigns = campaigns.filter(c => !c.funnelStage);
 
-  const renderFunnelNode = (label: string, y: number, color: string) => (
+  const renderFunnelNode = (label: string, sub: string, y: number, color: string) => (
     <Group x={0} y={y}>
       <Rect
         width={180}
         height={60}
         fill={color}
-        opacity={0.1}
+        opacity={0.05}
         stroke={color}
-        strokeWidth={2}
-        cornerRadius={8}
+        strokeWidth={1}
+        cornerRadius={4}
       />
       <Text
         text={label}
-        fontSize={14}
+        fontSize={12}
         fontStyle="black"
         fill={color}
         x={0}
-        y={0}
+        y={15}
         width={180}
-        height={60}
         align="center"
-        verticalAlign="middle"
+      />
+      <Text
+        text={sub}
+        fontSize={8}
+        fontStyle="bold"
+        fill={color}
+        opacity={0.6}
+        x={0}
+        y={35}
+        width={180}
+        align="center"
       />
     </Group>
   );
@@ -431,61 +440,47 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
           ref={stageRef}
         >
           <Layer>
-            {/* Funnel Shape Visualization */}
-            <Group x={-STAGE_SPACING - 90} y={-50}>
-              {/* TOFU Section */}
+            {/* NEW FUNNEL SHAPE (Marketing Mix Style) */}
+            <Group x={-STAGE_SPACING - 120} y={0}>
+              {/* Outer Shadow/Glow Case */}
               <Line
-                points={[0, 0, 300, 0, 270, 300, 30, 300]}
-                fillLinearGradientStartPoint={{ x: 150, y: 0 }}
-                fillLinearGradientEndPoint={{ x: 150, y: 300 }}
-                fillLinearGradientColorStops={[0, '#3b82f620', 1, '#3b82f605']}
+                points={[0, 0, 360, 0, 180, 950]}
+                fill="#ffffff03"
                 closed
               />
-              <Line
-                points={[0, 0, 300, 0, 270, 300, 30, 300]}
-                stroke="#3b82f6"
-                strokeWidth={2}
-                opacity={0.3}
-                closed
-              />
-              <Text text="TOFU" x={150} y={140} fontSize={24} fontStyle="black" fill="#3b82f6" opacity={0.4} align="center" offsetX={30} />
-              <Text text="CONOCIMIENTO" x={150} y={170} fontSize={10} fontStyle="bold" fill="#3b82f6" opacity={0.3} align="center" offsetX={45} />
               
-              {/* MOFU Section */}
+              {/* TOFU SECTION */}
               <Line
-                points={[30, 300, 270, 300, 240, 600, 60, 600]}
-                fillLinearGradientStartPoint={{ x: 150, y: 300 }}
-                fillLinearGradientEndPoint={{ x: 150, y: 600 }}
-                fillLinearGradientColorStops={[0, '#8b5cf620', 1, '#8b5cf605']}
+                points={[0, 0, 360, 0, 310, 280, 50, 280]}
+                fill="#0f172a" // Deep Navy
+                stroke="#1e293b"
+                strokeWidth={1}
                 closed
               />
+              <Text text="TOFU" x={120} y={110} fontSize={32} fontStyle="black" fill="#ffffff" width={120} align="center" />
+              <Text text="TOP OF FUNNEL" x={120} y={150} fontSize={10} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
+              
+              {/* MOFU SECTION */}
               <Line
-                points={[30, 300, 270, 300, 240, 600, 60, 600]}
-                stroke="#8b5cf6"
-                strokeWidth={2}
-                opacity={0.3}
+                points={[50, 310, 310, 310, 260, 580, 100, 580]}
+                fill="#334155" // Slate Blue
+                stroke="#475569"
+                strokeWidth={1}
                 closed
               />
-              <Text text="MOFU" x={150} y={440} fontSize={24} fontStyle="black" fill="#8b5cf6" opacity={0.4} align="center" offsetX={35} />
-              <Text text="CONSIDERACIÓN" x={150} y={470} fontSize={10} fontStyle="bold" fill="#8b5cf6" opacity={0.3} align="center" offsetX={45} />
+              <Text text="MOFU" x={120} y={420} fontSize={28} fontStyle="black" fill="#ffffff" width={120} align="center" />
+              <Text text="MIDDLE OF FUNNEL" x={120} y={460} fontSize={10} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
 
-              {/* BOFU Section */}
+              {/* BOFU SECTION */}
               <Line
-                points={[60, 600, 240, 600, 200, 900, 100, 900]}
-                fillLinearGradientStartPoint={{ x: 150, y: 600 }}
-                fillLinearGradientEndPoint={{ x: 150, y: 900 }}
-                fillLinearGradientColorStops={[0, '#f43f5e20', 1, '#f43f5e05']}
+                points={[100, 610, 260, 610, 220, 880, 140, 880]}
+                fill="#64748b" // Lighter Slate
+                stroke="#94a3b8"
+                strokeWidth={1}
                 closed
               />
-              <Line
-                points={[60, 600, 240, 600, 200, 900, 100, 900]}
-                stroke="#f43f5e"
-                strokeWidth={2}
-                opacity={0.3}
-                closed
-              />
-              <Text text="BOFU" x={150} y={740} fontSize={24} fontStyle="black" fill="#f43f5e" opacity={0.4} align="center" offsetX={30} />
-              <Text text="CONVERSIÓN" x={150} y={770} fontSize={10} fontStyle="bold" fill="#f43f5e" opacity={0.3} align="center" offsetX={35} />
+              <Text text="BOFU" x={120} y={720} fontSize={24} fontStyle="black" fill="#ffffff" width={120} align="center" />
+              <Text text="BOTTOM OF FUNNEL" x={120} y={755} fontSize={9} fontStyle="bold" fill="#ffffff" opacity={0.4} width={120} align="center" />
             </Group>
 
             {/* Background Grid */}
@@ -493,7 +488,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 <Line
                     key={`v-${i}`}
                     points={[i * 100, -2000, i * 100, 4000]}
-                    stroke="#ffffff05"
+                    stroke="#ffffff03"
                     strokeWidth={1}
                 />
             ))}
@@ -501,28 +496,69 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 <Line
                     key={`h-${i}`}
                     points={[-2000, i * 100, 4000, i * 100]}
-                    stroke="#ffffff05"
+                    stroke="#ffffff03"
                     strokeWidth={1}
                 />
             ))}
 
-            {/* Funnel Labels */}
-            <Group x={-STAGE_SPACING} y={-50}>
-              {renderFunnelNode('TOFU - ATRACCIÓN', 120, '#3b82f6')}
-              {renderFunnelNode('MOFU - CONSIDERACIÓN', 420, '#8b5cf6')}
-              {renderFunnelNode('BOFU - CONVERSIÓN', 720, '#f43f5e')}
-
-              {/* Anchor Arrows */}
-              {tofuCampaigns.length > 0 && <Arrow points={[180, 150, 200, 150]} stroke="#3b82f6" strokeWidth={2} pointerLength={5} opacity={0.5} />}
-              {mofuCampaigns.length > 0 && <Arrow points={[180, 450, 200, 450]} stroke="#8b5cf6" strokeWidth={2} pointerLength={5} opacity={0.5} />}
-              {bofuCampaigns.length > 0 && <Arrow points={[180, 750, 200, 750]} stroke="#f43f5e" strokeWidth={2} pointerLength={5} opacity={0.5} />}
-            </Group>
-
             {/* Actual Structure Nodes */}
-            {tofuCampaigns.map((c, i) => renderCampaign(c, 0, 115 + i * CAMPAIGN_SPACING))}
-            {mofuCampaigns.map((c, i) => renderCampaign(c, 0, 415 + i * CAMPAIGN_SPACING))}
-            {bofuCampaigns.map((c, i) => renderCampaign(c, 0, 715 + i * CAMPAIGN_SPACING))}
-            {unknownCampaigns.map((c, i) => renderCampaign(c, 0, 1000 + i * CAMPAIGN_SPACING))}
+            <Group>
+              {/* TOFU Campaigns and Connections */}
+              {tofuCampaigns.map((c, i) => {
+                const targetY = 50 + i * CAMPAIGN_SPACING;
+                return (
+                  <Group key={c.id}>
+                    <Arrow 
+                      points={[-STAGE_SPACING + 60, 140, 0, targetY + 35]} 
+                      stroke="#475569" 
+                      strokeWidth={1} 
+                      pointerLength={6} 
+                      opacity={0.3} 
+                      tension={0.4}
+                    />
+                    {renderCampaign(c, 0, targetY)}
+                  </Group>
+                );
+              })}
+
+              {/* MOFU Campaigns and Connections */}
+              {mofuCampaigns.map((c, i) => {
+                const targetY = 350 + i * CAMPAIGN_SPACING;
+                return (
+                  <Group key={c.id}>
+                    <Arrow 
+                      points={[-STAGE_SPACING + 110, 445, 0, targetY + 35]} 
+                      stroke="#475569" 
+                      strokeWidth={1} 
+                      pointerLength={6} 
+                      opacity={0.3} 
+                      tension={0.4}
+                    />
+                    {renderCampaign(c, 0, targetY)}
+                  </Group>
+                );
+              })}
+
+              {/* BOFU Campaigns and Connections */}
+              {bofuCampaigns.map((c, i) => {
+                const targetY = 650 + i * CAMPAIGN_SPACING;
+                return (
+                  <Group key={c.id}>
+                    <Arrow 
+                      points={[-STAGE_SPACING + 160, 745, 0, targetY + 35]} 
+                      stroke="#475569" 
+                      strokeWidth={1} 
+                      pointerLength={6} 
+                      opacity={0.3} 
+                      tension={0.4}
+                    />
+                    {renderCampaign(c, 0, targetY)}
+                  </Group>
+                );
+              })}
+
+              {unknownCampaigns.map((c, i) => renderCampaign(c, 0, 950 + i * CAMPAIGN_SPACING))}
+            </Group>
 
             {/* Proposal / Drawing Layer */}
             {elements.map((el) => {
