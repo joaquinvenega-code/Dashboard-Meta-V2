@@ -245,17 +245,17 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
       <div className="bg-[#0a0a0a] rounded-lg border border-white/5 p-4 space-y-4 print:hidden sticky top-4 z-[100] shadow-2xl backdrop-blur-md bg-opacity-90">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="relative group">
-              <div className="flex items-center gap-2 bg-white/5 p-1 rounded-md border border-white/5 cursor-pointer">
-                <div className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-black text-white uppercase tracking-widest min-w-[200px]">
+            <div className="relative group/main">
+              <div className="flex items-center gap-2 bg-white/5 p-1 rounded-md border border-white/5 cursor-pointer hover:bg-white/10 transition-colors">
+                <div className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-black text-white uppercase tracking-widest min-w-[220px]">
                   <Users className="w-3.5 h-3.5 text-blue-500" />
                   <span className="truncate">{aggregatedData.name}</span>
                   <ChevronDown className="w-3 h-3 ml-auto opacity-40 shrink-0" />
                 </div>
                 
                 {/* Dropdown Menu */}
-                <div className="absolute top-full left-0 mt-2 w-[300px] bg-[#0c0c0c] border border-white/10 rounded-xl shadow-2xl overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[110]">
-                  <div className="p-2 max-h-[400px] overflow-y-auto">
+                <div className="absolute top-full left-0 mt-2 w-[320px] bg-[#0c0c0c] border border-white/10 rounded-xl shadow-2xl overflow-hidden opacity-0 invisible group-hover/main:opacity-100 group-hover/main:visible transition-all z-[110] border-t-blue-600/30">
+                  <div className="p-2 max-h-[440px] overflow-y-auto">
                     {Object.entries(groupedAccounts).map(([groupName, groupAccs]) => {
                       const allInGroupSelected = groupAccs.every(a => selectedAccountIds.includes(a.id));
                       const isExactlyThisGroup = allInGroupSelected && selectedAccountIds.length === groupAccs.length;
@@ -263,42 +263,28 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                       
                       return (
                         <div key={groupName} className="mb-1 last:mb-0">
-                          <div className="flex items-center gap-1 group/item">
+                          <div className="flex items-center gap-1">
                             <button
                               onClick={() => {
-                                if (isExactlyThisGroup) {
-                                  // Avoid total deselect if it's the only one
-                                  if (Object.keys(groupedAccounts).length > 1) {
-                                    // Optional: deselect logic if needed
-                                  }
-                                } else {
-                                  setSelectedAccountIds(groupAccs.map(ga => ga.id));
+                                if (groupAccs.length > 1) {
+                                  toggleGroup(groupName);
                                 }
+                                setSelectedAccountIds(groupAccs.map(ga => ga.id));
                               }}
                               className={cn(
-                                "flex-1 text-left px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-between",
+                                "flex-1 text-left px-3 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-between",
                                 isExactlyThisGroup ? "bg-blue-600 text-white" : "hover:bg-white/5 text-neutral-400"
                               )}
                             >
-                              {groupName}
+                              <span className="truncate">{groupName}</span>
                               {groupAccs.length > 1 && (
-                                <span className={cn("text-[7px] px-1.5 py-0.5 rounded-full ml-2", isExactlyThisGroup ? "bg-blue-400 text-white" : "bg-white/10 text-neutral-500")}>
-                                  {groupAccs.length}
-                                </span>
+                                <ChevronRight className={cn("w-3 h-3 transition-transform", isOpen && "rotate-90")} />
                               )}
                             </button>
-                            {groupAccs.length > 1 && (
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); toggleGroup(groupName); }}
-                                className="p-2 hover:bg-white/5 rounded-lg text-neutral-500"
-                              >
-                                <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", isOpen && "rotate-180")} />
-                              </button>
-                            )}
                           </div>
                           
-                          {isOpen && groupAccs.length > 1 && (
-                            <div className="ml-4 mt-1 border-l border-white/5 pl-2 space-y-1 py-1">
+                          {(isOpen || isExactlyThisGroup) && groupAccs.length > 1 && (
+                            <div className="ml-2 mt-1 border-l-2 border-white/5 pl-2 space-y-1 py-1 bg-white/[0.02] rounded-r-lg">
                               {groupAccs.map(acc => (
                                 <button
                                   key={acc.id}
@@ -317,15 +303,16 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                                     }
                                   }}
                                   className={cn(
-                                    "w-full text-left px-3 py-1.5 rounded-md text-[8px] font-bold uppercase tracking-wider transition-all",
-                                    selectedAccountIds.includes(acc.id) && selectedAccountIds.length === 1 
-                                      ? "bg-blue-500/20 text-blue-400" 
-                                      : selectedAccountIds.includes(acc.id)
-                                      ? "text-blue-400 bg-blue-500/5"
+                                    "w-full text-left px-3 py-2 rounded-md text-[8px] font-bold uppercase tracking-wider transition-all flex items-center justify-between",
+                                    selectedAccountIds.includes(acc.id)
+                                      ? "text-blue-400 bg-blue-500/10"
                                       : "text-neutral-600 hover:text-neutral-400 hover:bg-white/5"
                                   )}
                                 >
-                                  {(settings[acc.id]?.customName || acc.name).replace(groupName, '').replace(/^[\s\-|]+/, '') || 'Principal'}
+                                  <span className="truncate">
+                                    {(settings[acc.id]?.customName || acc.name).replace(groupName, '').replace(/^[\s\-|/]+/, '') || 'Principal'}
+                                  </span>
+                                  {selectedAccountIds.includes(acc.id) && <div className="w-1 h-1 rounded-full bg-blue-500" />}
                                 </button>
                               ))}
                             </div>
@@ -338,16 +325,42 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
               </div>
             </div>
 
-            <div className="bg-white/5 p-1 rounded-md border border-white/5">
-              <select 
-                value={reportMonth}
-                onChange={(e) => setReportMonth(e.target.value)}
-                className="bg-transparent px-3 py-1.5 text-[10px] font-black text-white outline-none cursor-pointer uppercase tracking-widest"
-              >
-                {monthOptions.map(opt => (
-                  <option key={opt.value} value={opt.value} className="bg-[#111]">{opt.label}</option>
-                ))}
-              </select>
+            <div className="flex items-center gap-2">
+              <div className="bg-white/5 p-1 rounded-md border border-white/5">
+                <select 
+                  value={reportMonth}
+                  onChange={(e) => setReportMonth(e.target.value)}
+                  className="bg-transparent px-3 py-1.5 text-[10px] font-black text-white outline-none cursor-pointer uppercase tracking-widest"
+                >
+                  {monthOptions.map(opt => (
+                    <option key={opt.value} value={opt.value} className="bg-[#111]">{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1 bg-white/5 p-1 rounded-md border border-white/5">
+                <button 
+                  onClick={() => setNoteScope('none')}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest transition-all",
+                    noteScope === 'none' ? "bg-red-600 text-white" : "text-neutral-500 hover:text-white"
+                  )}
+                >Sin Bitácora</button>
+                <button 
+                  onClick={() => setNoteScope('all')}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest transition-all",
+                    noteScope === 'all' ? "bg-blue-600 text-white" : "text-neutral-500 hover:text-white"
+                  )}
+                >Toda la Bitácora</button>
+                <button 
+                  onClick={() => setNoteScope('specific')}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest transition-all",
+                    noteScope === 'specific' ? "bg-purple-600 text-white" : "text-neutral-500 hover:text-white"
+                  )}
+                >Seleccionar Notas</button>
+              </div>
             </div>
           </div>
 
@@ -490,8 +503,8 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-8 self-center">Recorrido del Cliente</h3>
                   <div className="flex-1 min-h-0">
                     <TrafficFunnel 
-                      impressions={aggregatedData.spend ? Math.floor(aggregatedData.spend * 80) : 100000}
-                      clicks={aggregatedData.spend ? Math.floor(aggregatedData.spend * 1.1) : 5000}
+                      impressions={aggregatedData.spend ? Math.floor(aggregatedData.spend * 0.8) : 100000}
+                      clicks={aggregatedData.spend ? Math.floor(aggregatedData.spend * 0.012) : 5000}
                       actions={aggregatedData.purchases || aggregatedData.messages || 0}
                       type={selectedAccountIds.length === 1 ? (settings[selectedAccountIds[0]]?.tracking || 'ecommerce') : 'ecommerce'}
                     />
@@ -826,7 +839,7 @@ function TrafficFunnel({ impressions, clicks, actions, type }: { impressions: nu
           <div className="relative z-10 flex-1 grid grid-cols-3 gap-2">
             <div className="space-y-0.5 border-r border-white/10 pr-2">
                <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Impressions</span>
-               <div className="text-[11px] font-black tracking-tight">{formatDecimal(impressions / 1000000)}M</div>
+               <div className="text-[11px] font-black tracking-tight">{formatDecimal(impressions / 1000, 1)}K</div>
             </div>
             <div className="space-y-0.5 border-r border-white/10 px-2">
                <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Abs. Top %</span>
@@ -845,7 +858,7 @@ function TrafficFunnel({ impressions, clicks, actions, type }: { impressions: nu
           <div className="relative z-10 flex-1 grid grid-cols-3 gap-2">
             <div className="space-y-0.5 border-r border-white/10 pr-2">
                <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Clicks</span>
-               <div className="text-[11px] font-black tracking-tight">{formatDecimal(clicks / 1000)}K</div>
+               <div className="text-[11px] font-black tracking-tight">{formatDecimal(clicks, 0)}</div>
             </div>
             <div className="space-y-0.5 border-r border-white/10 px-2">
                <span className="text-[7px] font-black uppercase tracking-widest opacity-60">CTR</span>
@@ -872,7 +885,7 @@ function TrafficFunnel({ impressions, clicks, actions, type }: { impressions: nu
             </div>
             <div className="space-y-0.5 pl-2">
                <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Clicks</span>
-               <div className="text-[11px] font-black tracking-tight">{formatDecimal(clicks / 1000)}K</div>
+               <div className="text-[11px] font-black tracking-tight">{formatDecimal(clicks, 0)}</div>
             </div>
           </div>
         </div>
