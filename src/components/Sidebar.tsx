@@ -8,7 +8,8 @@ import {
   ChevronRight, 
   LogOut, 
   RefreshCcw,
-  Settings2
+  Settings2,
+  Bell
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -59,6 +60,7 @@ export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, l
         <div className="text-[10px] font-black text-neutral-700 uppercase tracking-[0.2em] px-3 mb-3 mt-8">Configuración</div>
         <NavItem id="accounts" icon={Settings} label="Cuentas visibles" />
         <NavItem id="history" icon={History} label="Historial" />
+        <NavItem id="alerts" icon={Bell} label="Alertas" />
         <NavItem id="share" icon={Share2} label="Snapshot" />
       </nav>
 

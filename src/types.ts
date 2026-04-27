@@ -77,3 +77,36 @@ export interface ClientGroup {
   name: string;
   accountIds: string[];
 }
+
+export type AlertType = 'performance' | 'budget' | 'anomaly' | 'health';
+export type AlertMetric = 'roas' | 'cpa' | 'spend' | 'frequency' | 'ctr' | 'cpc';
+export type AlertCondition = 'greater_than' | 'less_than' | 'change_percent';
+
+export interface AlertRule {
+  id: string;
+  name: string;
+  accountId: string; // "all" for all accounts
+  type: AlertType;
+  metric?: AlertMetric;
+  condition?: AlertCondition;
+  value: number;
+  timeframe: 'today' | 'last_7d' | 'last_30d';
+  channels: {
+    inApp: boolean;
+    email: boolean;
+    whatsapp: boolean;
+  };
+  isActive: boolean;
+  lastTriggered?: string;
+}
+
+export interface InAppNotification {
+  id: string;
+  ruleId: string;
+  accountId: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  isRead: boolean;
+  severity: 'low' | 'medium' | 'high';
+}

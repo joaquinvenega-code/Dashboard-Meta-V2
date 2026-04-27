@@ -8,12 +8,13 @@ import {
   fetchInsights,
   fetchAccountStructure 
 } from './services/facebook';
-import { AdAccount, AccountSettings, ClientGroup, Campaign, AdSet, Ad } from './types';
+import { AdAccount, AccountSettings, ClientGroup, Campaign, AdSet, Ad, AlertRule, InAppNotification } from './types';
 import { Sidebar } from './components/Sidebar';
 import { IndividualReport } from './components/IndividualReport';
 import { Overview } from './components/Overview';
 import { AccountDetailView } from './components/AccountDetailView';
 import { StrategyCanvas } from './components/StrategyCanvas';
+import { AlertsSection } from './components/AlertsSection';
 import { formatCurrency, formatNumber, formatDecimal, cn } from './lib/utils';
 import { 
   ChevronDown, 
@@ -32,7 +33,8 @@ import {
   RefreshCcw,
   CheckCircle2,
   X,
-  GripVertical
+  GripVertical,
+  Bell
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, subDays, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
@@ -131,6 +133,50 @@ export default function App() {
   // Report State
   const [reportAccount, setReportAccount] = useState<AdAccount | null>(null);
   const [showColSelectors, setShowColSelectors] = useState(false);
+  const [notifications, setNotifications] = useState<InAppNotification[]>(() => {
+    const saved = localStorage.getItem('cr_notifications');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('cr_notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
+  // Simulated Alert Triggering (Pulse)
+  useEffect(() => {
+    if (!isLogged || accounts.length === 0) return;
+
+    const rules: AlertRule[] = JSON.parse(localStorage.getItem('cr_alert_rules') || '[]');
+    if (rules.length === 0) return;
+
+    const interval = setInterval(() => {
+      // Simulate checking a random rule every 30 seconds
+      const randomRule = rules[Math.floor(Math.random() * rules.length)];
+      if (!randomRule.isActive) return;
+
+      const trigger = Math.random() > 0.8; // 20% chance to simulate a trigger
+      if (trigger) {
+        const accId = randomRule.accountId === 'all' ? accounts[0].id : randomRule.accountId;
+        const acc = accounts.find(a => a.id === accId);
+        
+        const newNotif: InAppNotification = {
+          id: Math.random().toString(36).substr(2, 9),
+          ruleId: randomRule.id,
+          accountId: accId,
+          title: `Alerta: ${randomRule.name}`,
+          message: `La cuenta ${acc?.name || 'anónima'} ha activado la regla "${randomRule.type}" con valor ${randomRule.value}.`,
+          timestamp: new Date().toISOString(),
+          isRead: false,
+          severity: randomRule.type === 'performance' ? 'medium' : 'high'
+        };
+
+        setNotifications(prev => [newNotif, ...prev].slice(0, 20));
+      }
+    }, 45000);
+
+    return () => clearInterval(interval);
+  }, [isLogged, accounts]);
   const [configEntity, setConfigEntity] = useState<AdAccount | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -498,11 +544,80 @@ export default function App() {
                   {activePage === 'overview' ? 'Vista general' : 
                    activePage === 'detail' ? 'Análisis individual de cuenta' : 
                    activePage === 'accounts' ? 'Cuentas visibles' : 
+                   activePage === 'alerts' ? 'Centro de Alertas' :
                    activePage === 'strategy' ? 'Lienzo Estratégico' : activePage}
                   {activePage === 'strategy' && (
                     <div className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-600/20 rounded-full text-[8px] text-blue-500 uppercase tracking-widest">Planificación</div>
                   )}
                 </h2>
+              </div>
+
+              <div className="flex items-center gap-4">
+                {/* Notification Bell */}
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowNotifications(!showNotifications)}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border ${notifications.some(n => !n.isRead) ? 'bg-blue-600/10 border-blue-600/20 text-blue-500' : 'bg-[#111] border-white/5 text-neutral-500 hover:text-white'}`}
+                  >
+                    <Bell className={`w-5 h-5 ${notifications.some(n => !n.isRead) ? 'animate-pulse' : ''}`} />
+                    {notifications.filter(n => !n.isRead).length > 0 && (
+                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full flex items-center justify-center text-[8px] font-black text-white border-2 border-[#0a0a0a]">
+                        {notifications.filter(n => !n.isRead).length}
+                      </div>
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                    {showNotifications && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 top-full mt-3 w-80 bg-[#161616] border border-white/10 rounded-2xl shadow-2xl z-[500] overflow-hidden"
+                      >
+                        <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                          <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Notificaciones</h3>
+                          <button 
+                            onClick={() => setNotifications(notifications.map(n => ({...n, isRead: true})))}
+                            className="text-[9px] font-bold text-blue-500 hover:text-blue-400 uppercase tracking-widest"
+                          >
+                            Marcar leídas
+                          </button>
+                        </div>
+                        <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                          {notifications.length === 0 ? (
+                            <div className="p-8 text-center text-neutral-600">
+                              <Bell className="w-8 h-8 mx-auto mb-3 opacity-20" />
+                              <p className="text-[9px] font-black uppercase tracking-widest">Sin notificaciones</p>
+                            </div>
+                          ) : (
+                            notifications.map(n => (
+                              <div key={n.id} className={`p-4 border-b border-white/5 hover:bg-white/[0.02] transition-colors relative ${!n.isRead ? 'bg-blue-600/[0.02]' : ''}`}>
+                                {!n.isRead && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600" />}
+                                <div className="flex items-start gap-3">
+                                  <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${n.severity === 'high' ? 'bg-red-500' : n.severity === 'medium' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                                  <div className="space-y-1">
+                                    <p className="text-[11px] font-black text-white leading-tight uppercase tracking-tight">{n.title}</p>
+                                    <p className="text-[10px] text-neutral-500 font-medium leading-relaxed">{n.message}</p>
+                                    <p className="text-[8px] text-neutral-700 font-black uppercase tracking-widest pt-1">{format(new Date(n.timestamp), 'HH:mm dd/MM')}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        {notifications.length > 0 && (
+                          <button 
+                            onClick={() => setNotifications([])}
+                            className="w-full p-3 text-[9px] font-black text-neutral-600 hover:text-red-500 uppercase tracking-widest border-t border-white/5 bg-black/20"
+                          >
+                            Limpiar todo
+                          </button>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
 
               {activePage === 'strategy' ? (
@@ -1083,6 +1198,12 @@ export default function App() {
                       ))}
                     </div>
                   </div>
+                </div>
+              )}
+
+              {activePage === 'alerts' && (
+                <div className="animate-in fade-in duration-500">
+                  <AlertsSection accounts={accounts} />
                 </div>
               )}
 

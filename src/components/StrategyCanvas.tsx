@@ -105,7 +105,6 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
   const handleMouseDown = (e: any) => {
     if (mode === 'view') return;
-    if (tool === 'select') return;
 
     const stage = e.target.getStage();
     const point = stage.getRelativePointerPosition();
