@@ -71,20 +71,26 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
   const [noteScope, setNoteScope] = useState<'none' | 'all' | 'specific'>('all');
   const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([]);
 
-  // Sync selected IDs if initial state was empty
+  // Sync selected IDs if initial state was empty - select first visible account
   useEffect(() => {
-    if (selectedAccountIds.length === 0 && accounts.length > 0) {
-      setSelectedAccountIds([accounts[0].id]);
+    const visibleAccounts = availableAccounts.filter(acc => settings[acc.id]?.visible !== false);
+    if (selectedAccountIds.length === 0 && visibleAccounts.length > 0) {
+      setSelectedAccountIds([visibleAccounts[0].id]);
+    } else if (selectedAccountIds.length > 1) {
+      // If somehow we had multiple, keep only the first one
+      setSelectedAccountIds([selectedAccountIds[0]]);
     }
-  }, [accounts, selectedAccountIds]);
+  }, [availableAccounts, settings, selectedAccountIds]);
 
-  // Group accounts by name (simply use custom name or account name now)
+  // Group accounts by name (simply use custom name or account name now) - ONLY VISIBLE ONES
   const availableAccounts = useMemo(() => {
-    return accounts.map(acc => ({
-      id: acc.id,
-      name: settings[acc.id]?.customName || acc.name,
-      original: acc
-    })).sort((a, b) => a.name.localeCompare(b.name));
+    return accounts
+      .filter(acc => settings[acc.id]?.visible !== false)
+      .map(acc => ({
+        id: acc.id,
+        name: settings[acc.id]?.customName || acc.name,
+        original: acc
+      })).sort((a, b) => a.name.localeCompare(b.name));
   }, [accounts, settings]);
 
   const selectedAccounts = accounts.filter(a => selectedAccountIds.includes(a.id));
@@ -247,17 +253,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                     {availableAccounts.map((acc) => (
                       <button
                         key={acc.id}
-                        onClick={() => {
-                          setSelectedAccountIds((prev) => {
-                            const isSelected = prev.includes(acc.id);
-                            if (isSelected) {
-                              // Don't unselect if it's the last one
-                              return prev.length > 1 ? prev.filter(id => id !== acc.id) : prev;
-                            } else {
-                              return [...prev, acc.id];
-                            }
-                          });
-                        }}
+                        onClick={() => setSelectedAccountIds([acc.id])}
                         className={cn(
                           "w-full text-left px-4 py-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-between mb-1 last:mb-0",
                           selectedAccountIds.includes(acc.id)
