@@ -50,6 +50,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 interface ReportsSectionProps {
   accounts: AdAccount[];
+  visibleAccountIds: string[];
   settings: Record<string, AccountSettings>;
   notes: AccountNote[];
 }
@@ -65,7 +66,7 @@ function ReportPage({ children, className }: { children: React.ReactNode, classN
   );
 }
 
-export function ReportsSection({ accounts, settings, notes }: ReportsSectionProps) {
+export function ReportsSection({ accounts, visibleAccountIds, settings, notes }: ReportsSectionProps) {
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [reportMonth, setReportMonth] = useState<string>(format(subMonths(new Date(), 1), 'yyyy-MM'));
   const [noteScope, setNoteScope] = useState<'none' | 'all' | 'specific'>('all');
@@ -74,13 +75,13 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
   // Group accounts by name (simply use custom name or account name now) - ONLY VISIBLE ONES
   const availableAccounts = useMemo(() => {
     return accounts
-      .filter(acc => settings[acc.id]?.visible !== false)
+      .filter(acc => visibleAccountIds.includes(acc.id))
       .map(acc => ({
         id: acc.id,
         name: settings[acc.id]?.customName || acc.name,
         original: acc
       })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [accounts, settings]);
+  }, [accounts, settings, visibleAccountIds]);
 
   // Sync selected IDs if initial state was empty - select first visible account
   useEffect(() => {
@@ -248,14 +249,23 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative group/main">
               <div className="flex items-center gap-2 bg-white/5 p-1 rounded-md border border-white/5 cursor-pointer hover:bg-white/10 transition-colors">
-                <div className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-black text-white uppercase tracking-widest min-w-[220px]">
+                <div className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-black text-white uppercase tracking-widest min-w-[240px]">
                   <BarChart3 className="w-3.5 h-3.5 text-blue-500" />
-                  <span className="truncate">{aggregatedData.name}</span>
+                  <div className="flex flex-col items-start leading-none">
+                    <span className="text-[7px] text-blue-500 mb-0.5 opacity-70">FILTRAR CUENTA</span>
+                    <span className="truncate max-w-[180px]">{aggregatedData.name}</span>
+                  </div>
                   <ChevronDown className="w-3 h-3 ml-auto opacity-40 shrink-0" />
                 </div>
                 
                 {/* Dropdown Menu */}
                 <div className="absolute top-full left-0 mt-2 w-[340px] bg-[#0c0c0c] border border-white/10 rounded-xl shadow-2xl overflow-hidden opacity-0 invisible group-hover/main:opacity-100 group-hover/main:visible transition-all z-[110] border-t-blue-600/30">
+                  <div className="px-4 py-3 border-b border-white/5 bg-white/[0.02]">
+                    <div className="text-[9px] font-black text-neutral-500 uppercase tracking-widest flex items-center gap-2">
+                      <Filter className="w-3 h-3" />
+                      Cuentas Visibles
+                    </div>
+                  </div>
                   <div className="p-2 max-h-[480px] overflow-y-auto">
                     {availableAccounts.map((acc) => (
                       <button
@@ -430,7 +440,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
               <div className="grid grid-cols-12 gap-8 h-96">
                 {/* Traffic Funnel */}
                 <div className="col-span-7 bg-neutral-50 rounded-xl p-8 border border-neutral-100 flex flex-col">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-8 self-center">Recorrido del Cliente</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-8 self-center">Embudo de Rendimiento</h3>
                   <div className="flex-1 min-h-0">
                     <TrafficFunnel 
                       impressions={aggregatedData.spend ? Math.floor(aggregatedData.spend * 120) : 100000}
