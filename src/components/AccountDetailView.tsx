@@ -185,12 +185,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
   // Initialize observations when account changes
   useEffect(() => {
-    if (s && s.observations) {
-      setObservations(s.observations);
-    } else {
-      setObservations('');
+    if (s) {
+      if (s.observations) {
+        setObservations(s.observations);
+      } else {
+        setObservations('');
+      }
     }
-  }, [selectedId, s]);
+  }, [selectedId]); // Only run when changing account, not when settings prop updates
 
   // Initialize local metrics - cuando cambia la cuenta o cuando los settings llegan por primera vez
   useEffect(() => {
@@ -245,11 +247,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     if (!selectedId || !s || !observations.trim()) return;
     setIsSavingObs(true);
     
+    // Capture current text before clearing
+    const textToSave = observations;
+    
     // Create a new formal note from the observation if it has content
     const newNote: AccountNote = {
       id: Math.random().toString(36).substr(2, 9),
       accountId: selectedId,
-      text: observations,
+      text: textToSave,
       timestamp: new Date().toISOString(),
       category: 'observation',
       tags: [s.tracking]
@@ -257,12 +262,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     
     onAddNote(newNote);
     
+    // Clear local state immediately for better UX
+    setObservations('');
+    
     // Clear current observation in settings as it's now in history
     onSaveSettings(selectedId, { ...s, observations: '' } as any);
     
     setTimeout(() => {
       setIsSavingObs(false);
-      setObservations(''); // Clear local state
     }, 800);
   };
 
