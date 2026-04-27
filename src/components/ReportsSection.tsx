@@ -80,44 +80,54 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
 
   // Group accounts by name (simple heuristic: same start before first space or dash)
   const groupedAccounts = useMemo(() => {
-    const groups: Record<string, AdAccount[]> = {};
+    const groups: Record<string, { label: string, accounts: AdAccount[] }> = {};
     accounts.forEach(acc => {
       const name = settings[acc.id]?.customName || acc.name;
       // Extract client name (e.g., "Client Name - Meta" -> "Client Name")
-      const clientName = name.split(' - ')[0].split(' | ')[0].trim();
-      if (!groups[clientName]) groups[clientName] = [];
-      groups[clientName].push(acc);
+      const clientName = name.split(' - ')[0].split(' | ')[0].split(' / ')[0].trim();
+      const key = clientName.toLowerCase();
+      
+      if (!groups[key]) {
+        groups[key] = { label: clientName, accounts: [] };
+      }
+      groups[key].accounts.push(acc);
     });
     return groups;
   }, [accounts, settings]);
 
-  const selectedAccounts = accounts.filter(a => selectedAccountIds.includes(a.id));
-  
-  const getAccountGroup = (accId: string) => {
-    const acc = accounts.find(a => a.id === accId);
-    if (!acc) return '';
-    const name = settings[acc.id]?.customName || acc.name;
-    return name.split(' - ')[0].split(' | ')[0].trim();
-  };
-
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
-  const toggleGroup = (group: string) => {
-    setOpenGroups(prev => ({ ...prev, [group]: !prev[group] }));
+  const toggleGroup = (groupKey: string) => {
+    setOpenGroups(prev => ({ ...prev, [groupKey]: !prev[groupKey] }));
+  };
+
+  const selectedAccounts = accounts.filter(a => selectedAccountIds.includes(a.id));
+  
+  const getAccountGroupData = (accId: string) => {
+    const acc = accounts.find(a => a.id === accId);
+    if (!acc) return { key: '', label: '' };
+    const name = settings[acc.id]?.customName || acc.name;
+    const label = name.split(' - ')[0].split(' | ')[0].split(' / ')[0].trim();
+    return { key: label.toLowerCase(), label };
   };
 
   // Aggregate data for the selected accounts
   const aggregatedData = useMemo(() => {
     if (selectedAccounts.length === 0) return null;
+    
+    const firstAcc = selectedAccounts[0];
+    const { label: groupLabel } = getAccountGroupData(firstAcc.id);
+
     return {
       name: selectedAccounts.length === 1 
-        ? (settings[selectedAccounts[0].id]?.customName || selectedAccounts[0].name)
-        : `${getAccountGroup(selectedAccounts[0].id)} (Grupo de Cuentas)`,
+        ? (settings[firstAcc.id]?.customName || firstAcc.name)
+        : `${groupLabel} (Grupo)`,
       spend: selectedAccounts.reduce((sum, a) => sum + (a.spend || 0), 0),
       revenue: selectedAccounts.reduce((sum, a) => sum + (a.revenue || 0), 0),
       purchases: selectedAccounts.reduce((sum, a) => sum + (a.purchases || 0), 0),
       messages: selectedAccounts.reduce((sum, a) => sum + (a.messages || 0), 0),
-      currency: selectedAccounts[0].currency || 'ARS'
+      ctr: selectedAccounts.reduce((sum, a) => sum + (a.ctr || 0), 0) / selectedAccounts.length,
+      currency: firstAcc.currency || 'ARS'
     };
   }, [selectedAccounts, settings, accounts]);
 
@@ -254,21 +264,23 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                 </div>
                 
                 {/* Dropdown Menu */}
-                <div className="absolute top-full left-0 mt-2 w-[320px] bg-[#0c0c0c] border border-white/10 rounded-xl shadow-2xl overflow-hidden opacity-0 invisible group-hover/main:opacity-100 group-hover/main:visible transition-all z-[110] border-t-blue-600/30">
-                  <div className="p-2 max-h-[440px] overflow-y-auto">
-                    {Object.entries(groupedAccounts).map(([groupName, groupAccs]) => {
+                <div className="absolute top-full left-0 mt-2 w-[340px] bg-[#0c0c0c] border border-white/10 rounded-xl shadow-2xl overflow-hidden opacity-0 invisible group-hover/main:opacity-100 group-hover/main:visible transition-all z-[110] border-t-blue-600/30">
+                  <div className="p-2 max-h-[480px] overflow-y-auto">
+                    {Object.entries(groupedAccounts).map(([groupKey, groupData]) => {
+                      const groupAccs = groupData.accounts;
+                      const groupName = groupData.label;
                       const allInGroupSelected = groupAccs.every(a => selectedAccountIds.includes(a.id));
                       const isExactlyThisGroup = allInGroupSelected && selectedAccountIds.length === groupAccs.length;
-                      const isOpen = openGroups[groupName] ?? isExactlyThisGroup;
+                      const isOpen = openGroups[groupKey] ?? isExactlyThisGroup;
                       
                       return (
-                        <div key={groupName} className="mb-1 last:mb-0">
+                        <div key={groupKey} className="mb-1 last:mb-0">
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => {
                                 setSelectedAccountIds(groupAccs.map(ga => ga.id));
                                 if (groupAccs.length > 1 && !isOpen) {
-                                  toggleGroup(groupName);
+                                  toggleGroup(groupKey);
                                 }
                               }}
                               className={cn(
@@ -280,7 +292,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                             </button>
                             {groupAccs.length > 1 && (
                               <button 
-                                onClick={(e) => { e.stopPropagation(); toggleGroup(groupName); }}
+                                onClick={(e) => { e.stopPropagation(); toggleGroup(groupKey); }}
                                 className="p-2.5 hover:bg-white/5 rounded-lg text-neutral-500 transition-colors"
                               >
                                 <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", isOpen && "rotate-180")} />
@@ -294,10 +306,12 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                                 <button
                                   key={acc.id}
                                   onClick={() => {
-                                    const currentGroup = getAccountGroup(acc.id);
-                                    const firstGroup = selectedAccountIds.length > 0 ? getAccountGroup(selectedAccountIds[0]) : '';
+                                    const { key: currentGroupKey } = getAccountGroupData(acc.id);
+                                    const { key: firstGroupKey } = selectedAccountIds.length > 0 
+                                      ? getAccountGroupData(selectedAccountIds[0]) 
+                                      : { key: '' };
                                     
-                                    if (currentGroup !== firstGroup) {
+                                    if (currentGroupKey !== firstGroupKey) {
                                       setSelectedAccountIds([acc.id]);
                                     } else {
                                       setSelectedAccountIds(prev => {
@@ -487,8 +501,8 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-8 self-center">Recorrido del Cliente</h3>
                   <div className="flex-1 min-h-0">
                     <TrafficFunnel 
-                      impressions={aggregatedData.spend ? Math.floor(aggregatedData.spend * 0.8) : 100000}
-                      clicks={aggregatedData.spend ? Math.floor(aggregatedData.spend * 0.012) : 5000}
+                      impressions={aggregatedData.spend ? Math.floor(aggregatedData.spend * 120) : 100000}
+                      clicks={aggregatedData.spend ? Math.floor(aggregatedData.spend * 120 * (aggregatedData.ctr / 100)) : 5000}
                       actions={aggregatedData.purchases || aggregatedData.messages || 0}
                       type={selectedAccountIds.length === 1 ? (settings[selectedAccountIds[0]]?.tracking || 'ecommerce') : 'ecommerce'}
                     />
