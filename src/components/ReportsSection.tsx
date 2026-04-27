@@ -259,17 +259,17 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                     {Object.entries(groupedAccounts).map(([groupName, groupAccs]) => {
                       const allInGroupSelected = groupAccs.every(a => selectedAccountIds.includes(a.id));
                       const isExactlyThisGroup = allInGroupSelected && selectedAccountIds.length === groupAccs.length;
-                      const isOpen = openGroups[groupName];
+                      const isOpen = openGroups[groupName] ?? isExactlyThisGroup;
                       
                       return (
                         <div key={groupName} className="mb-1 last:mb-0">
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => {
-                                if (groupAccs.length > 1) {
+                                setSelectedAccountIds(groupAccs.map(ga => ga.id));
+                                if (groupAccs.length > 1 && !isOpen) {
                                   toggleGroup(groupName);
                                 }
-                                setSelectedAccountIds(groupAccs.map(ga => ga.id));
                               }}
                               className={cn(
                                 "flex-1 text-left px-3 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-between",
@@ -277,14 +277,19 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                               )}
                             >
                               <span className="truncate">{groupName}</span>
-                              {groupAccs.length > 1 && (
-                                <ChevronRight className={cn("w-3 h-3 transition-transform", isOpen && "rotate-90")} />
-                              )}
                             </button>
+                            {groupAccs.length > 1 && (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); toggleGroup(groupName); }}
+                                className="p-2.5 hover:bg-white/5 rounded-lg text-neutral-500 transition-colors"
+                              >
+                                <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", isOpen && "rotate-180")} />
+                              </button>
+                            )}
                           </div>
                           
-                          {(isOpen || isExactlyThisGroup) && groupAccs.length > 1 && (
-                            <div className="ml-2 mt-1 border-l-2 border-white/5 pl-2 space-y-1 py-1 bg-white/[0.02] rounded-r-lg">
+                          {isOpen && groupAccs.length > 1 && (
+                            <div className="ml-2 mt-1 border-l-2 border-blue-500/30 pl-2 space-y-1 py-1 bg-white/[0.01] rounded-r-lg">
                               {groupAccs.map(acc => (
                                 <button
                                   key={acc.id}
@@ -295,11 +300,14 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                                     if (currentGroup !== firstGroup) {
                                       setSelectedAccountIds([acc.id]);
                                     } else {
-                                      setSelectedAccountIds(prev => 
-                                        prev.includes(acc.id) 
-                                          ? prev.length > 1 ? prev.filter(id => id !== acc.id) : prev
-                                          : [...prev, acc.id]
-                                      );
+                                      setSelectedAccountIds(prev => {
+                                        const isSelected = prev.includes(acc.id);
+                                        if (isSelected) {
+                                          return prev.length > 1 ? prev.filter(id => id !== acc.id) : prev;
+                                        } else {
+                                          return [...prev, acc.id];
+                                        }
+                                      });
                                     }
                                   }}
                                   className={cn(
@@ -310,7 +318,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                                   )}
                                 >
                                   <span className="truncate">
-                                    {(settings[acc.id]?.customName || acc.name).replace(groupName, '').replace(/^[\s\-|/]+/, '') || 'Principal'}
+                                    {(settings[acc.id]?.customName || acc.name)}
                                   </span>
                                   {selectedAccountIds.includes(acc.id) && <div className="w-1 h-1 rounded-full bg-blue-500" />}
                                 </button>
@@ -376,30 +384,6 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
               PDF
             </button>
           </div>
-        </div>
-
-        <div className="flex items-center gap-1 bg-white/5 p-1 rounded-md border border-white/5 w-fit">
-          <button 
-            onClick={() => setNoteScope('none')}
-            className={cn(
-              "px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest transition-all",
-              noteScope === 'none' ? "bg-red-600 text-white" : "text-neutral-500 hover:text-white"
-            )}
-          >Sin Bitácora</button>
-          <button 
-            onClick={() => setNoteScope('all')}
-            className={cn(
-              "px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest transition-all",
-              noteScope === 'all' ? "bg-blue-600 text-white" : "text-neutral-500 hover:text-white"
-            )}
-          >Toda la Bitácora</button>
-          <button 
-            onClick={() => setNoteScope('specific')}
-            className={cn(
-              "px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest transition-all",
-              noteScope === 'specific' ? "bg-purple-600 text-white" : "text-neutral-500 hover:text-white"
-            )}
-          >Seleccionar Notas</button>
         </div>
       </div>
 
