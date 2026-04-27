@@ -92,20 +92,27 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
 
   const selectedAccounts = accounts.filter(a => selectedAccountIds.includes(a.id));
   
+  const getAccountGroup = (accId: string) => {
+    const acc = accounts.find(a => a.id === accId);
+    if (!acc) return '';
+    const name = settings[acc.id]?.customName || acc.name;
+    return name.split(' - ')[0].split(' | ')[0].trim();
+  };
+
   // Aggregate data for the selected accounts
   const aggregatedData = useMemo(() => {
     if (selectedAccounts.length === 0) return null;
     return {
       name: selectedAccounts.length === 1 
         ? (settings[selectedAccounts[0].id]?.customName || selectedAccounts[0].name)
-        : `${selectedAccounts.length} Cuentas seleccionadas`,
+        : `${getAccountGroup(selectedAccounts[0].id)} (Grupo de Cuentas)`,
       spend: selectedAccounts.reduce((sum, a) => sum + (a.spend || 0), 0),
       revenue: selectedAccounts.reduce((sum, a) => sum + (a.revenue || 0), 0),
       purchases: selectedAccounts.reduce((sum, a) => sum + (a.purchases || 0), 0),
       messages: selectedAccounts.reduce((sum, a) => sum + (a.messages || 0), 0),
       currency: selectedAccounts[0].currency || 'ARS'
     };
-  }, [selectedAccounts, settings]);
+  }, [selectedAccounts, settings, accounts]);
 
   const accountNotes = notes.filter(n => selectedAccountIds.includes(n.accountId));
 
@@ -237,11 +244,14 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                     <div key={groupName} className="flex items-center bg-black/40 rounded-md p-1 border border-white/5">
                       <button
                         onClick={() => {
-                          const allSelected = groupAccs.every(a => selectedAccountIds.includes(a.id));
-                          if (allSelected) {
-                            setSelectedAccountIds(prev => prev.filter(id => !groupAccs.map(ga => ga.id).includes(id)));
+                          const isAlreadyExactlySelected = groupAccs.every(a => selectedAccountIds.includes(a.id)) && selectedAccountIds.length === groupAccs.length;
+                          if (isAlreadyExactlySelected) {
+                            // If only this group was selected, we don't allow total deselect for UX safety
+                            // but if multiple groups (theoretical) were, we'd clear. 
+                            // Since we only allow one group now, we just keep it or select the first account of the group
+                            setSelectedAccountIds([groupAccs[0].id]);
                           } else {
-                            setSelectedAccountIds(prev => Array.from(new Set([...prev, ...groupAccs.map(ga => ga.id)])));
+                            setSelectedAccountIds(groupAccs.map(ga => ga.id));
                           }
                         }}
                         className={cn(
@@ -256,11 +266,20 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                           <button
                             key={acc.id}
                             onClick={() => {
-                              setSelectedAccountIds(prev => 
-                                prev.includes(acc.id) 
-                                  ? prev.length > 1 ? prev.filter(id => id !== acc.id) : prev
-                                  : [...prev, acc.id]
-                              );
+                              const groupOfSelected = selectedAccountIds.length > 0 ? getAccountGroup(selectedAccountIds[0]) : '';
+                              const currentGroup = getAccountGroup(acc.id);
+
+                              if (groupOfSelected !== currentGroup) {
+                                // If switching groups, select only the new account
+                                setSelectedAccountIds([acc.id]);
+                              } else {
+                                // Within same group, toggle
+                                setSelectedAccountIds(prev => 
+                                  prev.includes(acc.id) 
+                                    ? prev.length > 1 ? prev.filter(id => id !== acc.id) : prev
+                                    : [...prev, acc.id]
+                                );
+                              }
                             }}
                             className={cn(
                               "px-1.5 py-0.5 rounded text-[7px] font-bold uppercase transition-all",
@@ -429,8 +448,8 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-8 self-center">Recorrido del Cliente</h3>
                   <div className="flex-1">
                     <TrafficFunnel 
-                      impressions={aggregatedData.spend ? Math.floor(aggregatedData.spend * 50) : 100000}
-                      clicks={aggregatedData.spend ? Math.floor(aggregatedData.spend * 0.8) : 5000}
+                      impressions={aggregatedData.spend ? Math.floor(aggregatedData.spend * 80) : 100000}
+                      clicks={aggregatedData.spend ? Math.floor(aggregatedData.spend * 1.1) : 5000}
                       actions={aggregatedData.purchases || aggregatedData.messages || 0}
                       type={selectedAccountIds.length === 1 ? (settings[selectedAccountIds[0]]?.tracking || 'ecommerce') : 'ecommerce'}
                     />
