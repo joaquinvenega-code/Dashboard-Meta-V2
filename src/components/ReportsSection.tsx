@@ -65,21 +65,34 @@ function ReportPage({ children, className }: { children: React.ReactNode, classN
 }
 
 export function ReportsSection({ accounts, settings, notes }: ReportsSectionProps) {
-  const [selectedAccountId, setSelectedAccountId] = useState<string>(accounts[0]?.id || '');
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [reportMonth, setReportMonth] = useState<string>(format(subMonths(new Date(), 1), 'yyyy-MM'));
   const [noteScope, setNoteScope] = useState<'none' | 'all' | 'specific'>('all');
   const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([]);
 
-  // Sync selected ID if initial state was empty
+  // Sync selected IDs if initial state was empty
   useEffect(() => {
-    if (!selectedAccountId && accounts.length > 0) {
-      setSelectedAccountId(accounts[0].id);
+    if (selectedAccountIds.length === 0 && accounts.length > 0) {
+      setSelectedAccountIds([accounts[0].id]);
     }
-  }, [accounts, selectedAccountId]);
+  }, [accounts, selectedAccountIds]);
 
-  const selectedAccount = accounts.find(a => a.id === selectedAccountId);
-  const accountSettings = selectedAccountId ? settings[selectedAccountId] : null;
-  const accountNotes = notes.filter(n => n.accountId === selectedAccountId);
+  const selectedAccounts = accounts.filter(a => selectedAccountIds.includes(a.id));
+  
+  // Aggregate data for the selected accounts
+  const aggregatedData = useMemo(() => {
+    if (selectedAccounts.length === 0) return null;
+    return {
+      name: selectedAccounts.length === 1 ? selectedAccounts[0].name : `${selectedAccounts.length} Cuentas seleccionadas`,
+      spend: selectedAccounts.reduce((sum, a) => sum + (a.spend || 0), 0),
+      revenue: selectedAccounts.reduce((sum, a) => sum + (a.revenue || 0), 0),
+      purchases: selectedAccounts.reduce((sum, a) => sum + (a.purchases || 0), 0),
+      messages: selectedAccounts.reduce((sum, a) => sum + (a.messages || 0), 0),
+      currency: selectedAccounts[0].currency || 'ARS'
+    };
+  }, [selectedAccounts]);
+
+  const accountNotes = notes.filter(n => selectedAccountIds.includes(n.accountId));
 
   // Generar opciones de meses (últimos 12 meses)
   const monthOptions = useMemo(() => {
@@ -119,7 +132,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
         spend: Math.floor(Math.random() * 5000) + 1000
       }))
     );
-  }, [selectedAccountId]);
+  }, [selectedAccountIds, reportMonth]);
 
   // Generate mock geographic data
   const geographicData: GeographicData[] = useMemo(() => {
@@ -140,7 +153,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
       purchases: Math.floor(Math.random() * 100) + 20,
       spend: Math.floor(Math.random() * 10000) + 2000
     })).sort((a, b) => b.purchases - a.purchases);
-  }, [selectedAccountId]);
+  }, [selectedAccountIds, reportMonth]);
 
   const COLORS = ['#3b82f6', '#ec4899', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
 
@@ -167,11 +180,11 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
     window.print();
   };
 
-  if (!selectedAccount) {
+  if (!aggregatedData) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-neutral-600 bg-[#111] rounded-2xl border border-white/5 border-dashed">
+      <div className="flex flex-col items-center justify-center py-20 text-neutral-600 bg-[#111] rounded-xl border border-white/5 border-dashed">
         <FileText className="w-12 h-12 mb-4 opacity-20" />
-        <p className="text-sm font-black uppercase tracking-widest">Selecciona una cuenta para generar el informe</p>
+        <p className="text-sm font-black uppercase tracking-widest">Selecciona al menos una cuenta para generar el informe</p>
       </div>
     );
   }
@@ -179,66 +192,82 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
   return (
     <div className="space-y-6 pb-20">
       {/* Configuración Compacta */}
-      <div className="bg-[#0a0a0a] rounded-xl border border-white/5 p-4 flex flex-wrap items-center justify-between gap-4 print:hidden sticky top-4 z-[100] shadow-2xl backdrop-blur-md bg-opacity-90">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2 bg-white/5 p-1 rounded-lg border border-white/5">
-            <select 
-              value={selectedAccountId}
-              onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="bg-transparent px-3 py-1.5 text-[10px] font-black text-white outline-none cursor-pointer uppercase tracking-widest min-w-[180px]"
-            >
-              {accounts.map(acc => (
-                <option key={acc.id} value={acc.id} className="bg-[#111]">{settings[acc.id]?.customName || acc.name}</option>
-              ))}
-            </select>
-            <div className="w-px h-4 bg-white/10" />
-            <select 
-              value={reportMonth}
-              onChange={(e) => setReportMonth(e.target.value)}
-              className="bg-transparent px-3 py-1.5 text-[10px] font-black text-white outline-none cursor-pointer uppercase tracking-widest"
-            >
-              {monthOptions.map(opt => (
-                <option key={opt.value} value={opt.value} className="bg-[#111]">{opt.label}</option>
-              ))}
-            </select>
+      <div className="bg-[#0a0a0a] rounded-xl border border-white/5 p-4 space-y-4 print:hidden sticky top-4 z-[100] shadow-2xl backdrop-blur-md bg-opacity-90">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2 bg-white/5 p-1 rounded-lg border border-white/5 overflow-hidden max-w-md">
+               <div className="flex flex-wrap gap-1 p-1 max-h-20 overflow-y-auto w-full">
+                  {accounts.map(acc => (
+                    <button
+                      key={acc.id}
+                      onClick={() => {
+                        setSelectedAccountIds(prev => 
+                          prev.includes(acc.id) 
+                            ? prev.length > 1 ? prev.filter(id => id !== acc.id) : prev
+                            : [...prev, acc.id]
+                        );
+                      }}
+                      className={cn(
+                        "px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest transition-all border",
+                        selectedAccountIds.includes(acc.id) 
+                          ? "bg-blue-600 border-blue-600 text-white" 
+                          : "bg-transparent border-white/5 text-neutral-500 hover:text-white"
+                      )}
+                    >
+                      {settings[acc.id]?.customName || acc.name}
+                    </button>
+                  ))}
+               </div>
+            </div>
+            <div className="bg-white/5 p-1 rounded-lg border border-white/5">
+              <select 
+                value={reportMonth}
+                onChange={(e) => setReportMonth(e.target.value)}
+                className="bg-transparent px-3 py-1.5 text-[10px] font-black text-white outline-none cursor-pointer uppercase tracking-widest"
+              >
+                {monthOptions.map(opt => (
+                  <option key={opt.value} value={opt.value} className="bg-[#111]">{opt.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="flex items-center gap-1 bg-white/5 p-1 rounded-lg border border-white/5">
+          <div className="flex items-center gap-2">
             <button 
-              onClick={() => setNoteScope('none')}
-              className={cn(
-                "px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest transition-all",
-                noteScope === 'none' ? "bg-red-600 text-white" : "text-neutral-500 hover:text-white"
-              )}
-            >Sin Bitácora</button>
-            <button 
-              onClick={() => setNoteScope('all')}
-              className={cn(
-                "px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest transition-all",
-                noteScope === 'all' ? "bg-blue-600 text-white" : "text-neutral-500 hover:text-white"
-              )}
-            >Toda la Bitácora</button>
-            <button 
-              onClick={() => setNoteScope('specific')}
-              className={cn(
-                "px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest transition-all",
-                noteScope === 'specific' ? "bg-purple-600 text-white" : "text-neutral-500 hover:text-white"
-              )}
-            >Seleccionar Notas</button>
+              onClick={handlePrint}
+              className="w-10 h-10 flex items-center justify-center bg-white text-black rounded-lg hover:bg-neutral-200 transition-all shadow-lg"
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+            <button className="h-10 px-4 flex items-center justify-center gap-2 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20">
+              <Download className="w-4 h-4" />
+              PDF
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 bg-white/5 p-1 rounded-lg border border-white/5 w-fit">
           <button 
-            onClick={handlePrint}
-            className="w-10 h-10 flex items-center justify-center bg-white text-black rounded-lg hover:bg-neutral-200 transition-all shadow-lg"
-          >
-            <Printer className="w-4 h-4" />
-          </button>
-          <button className="h-10 px-4 flex items-center justify-center gap-2 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20">
-            <Download className="w-4 h-4" />
-            PDF
-          </button>
+            onClick={() => setNoteScope('none')}
+            className={cn(
+              "px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest transition-all",
+              noteScope === 'none' ? "bg-red-600 text-white" : "text-neutral-500 hover:text-white"
+            )}
+          >Sin Bitácora</button>
+          <button 
+            onClick={() => setNoteScope('all')}
+            className={cn(
+              "px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest transition-all",
+              noteScope === 'all' ? "bg-blue-600 text-white" : "text-neutral-500 hover:text-white"
+            )}
+          >Toda la Bitácora</button>
+          <button 
+            onClick={() => setNoteScope('specific')}
+            className={cn(
+              "px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest transition-all",
+              noteScope === 'specific' ? "bg-purple-600 text-white" : "text-neutral-500 hover:text-white"
+            )}
+          >Seleccionar Notas</button>
         </div>
       </div>
 
@@ -287,20 +316,20 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
           <div id="report-view" className="space-y-0 text-black shadow-2xl print:space-y-0 print:shadow-none">
             
             {/* SHEET 1: EXECUTIVE DASHBOARD */}
-            <ReportPage className="flex flex-col gap-8 p-10 bg-white">
+            <ReportPage className="flex flex-col gap-8 p-10 bg-white rounded-none">
               {/* Header */}
               <div className="flex items-center justify-between border-b-2 border-neutral-100 pb-8">
                 <div className="flex items-center gap-5">
-                  <div className="w-16 h-16 bg-neutral-50 rounded-2xl border border-neutral-100 flex items-center justify-center p-3 shadow-inner">
-                    {accountSettings?.customLogo ? (
-                      <img src={accountSettings.customLogo} alt="" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                  <div className="w-16 h-16 bg-neutral-50 rounded-xl border border-neutral-100 flex items-center justify-center p-3 shadow-inner">
+                    {selectedAccountIds.length === 1 && settings[selectedAccountIds[0]]?.customLogo ? (
+                      <img src={settings[selectedAccountIds[0]].customLogo} alt="" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                     ) : (
                       <BarChart3 className="w-10 h-10 text-blue-600" />
                     )}
                   </div>
                   <div className="space-y-1">
                     <h1 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-600">Executive Performance Report</h1>
-                    <div className="text-3xl font-black tracking-tight text-neutral-900">{accountSettings?.customName || selectedAccount.name}</div>
+                    <div className="text-3xl font-black tracking-tight text-neutral-900">{aggregatedData.name}</div>
                   </div>
                 </div>
                 <div className="text-right">
@@ -315,22 +344,22 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
               <div className="grid grid-cols-4 gap-4">
                 <MiniMetricCard 
                   label="Inversión" 
-                  value={formatCurrency(selectedAccount.spend || 0, selectedAccount.currency)} 
+                  value={formatCurrency(aggregatedData.spend || 0, aggregatedData.currency)} 
                   color="#3b82f6" 
                 />
                 <MiniMetricCard 
                   label="Facturación" 
-                  value={formatCurrency(selectedAccount.revenue || 0, selectedAccount.currency)} 
+                  value={formatCurrency(aggregatedData.revenue || 0, aggregatedData.currency)} 
                   color="#10b981" 
                 />
                 <MiniMetricCard 
                   label="ROAS" 
-                  value={`×${formatDecimal((selectedAccount.revenue || 0) / (selectedAccount.spend || 1))}`} 
+                  value={`×${formatDecimal((aggregatedData.revenue || 0) / (aggregatedData.spend || 1))}`} 
                   color="#8b5cf6" 
                 />
                 <MiniMetricCard 
                   label="CPA / CPR" 
-                  value={formatCurrency(selectedAccount.spend / (selectedAccount.purchases || selectedAccount.messages || 1), selectedAccount.currency)} 
+                  value={formatCurrency(aggregatedData.spend / (aggregatedData.purchases || aggregatedData.messages || 1), aggregatedData.currency)} 
                   color="#f59e0b" 
                 />
               </div>
@@ -338,20 +367,20 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
               {/* Main Section: Funnel & Evolution */}
               <div className="grid grid-cols-12 gap-8 h-80">
                 {/* Traffic Funnel */}
-                <div className="col-span-4 bg-neutral-50 rounded-[2.5rem] p-8 border border-neutral-100 flex flex-col">
+                <div className="col-span-4 bg-neutral-50 rounded-xl p-8 border border-neutral-100 flex flex-col">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-8 self-center">Recorrido del Cliente</h3>
                   <div className="flex-1">
                     <TrafficFunnel 
-                      impressions={selectedAccount.spend ? Math.floor(selectedAccount.spend * 120) : 100000}
-                      clicks={selectedAccount.spend ? Math.floor(selectedAccount.spend * 1.8) : 5000}
-                      actions={selectedAccount.purchases || selectedAccount.messages || 0}
-                      type={accountSettings?.tracking || 'ecommerce'}
+                      impressions={aggregatedData.spend ? Math.floor(aggregatedData.spend * 50) : 100000}
+                      clicks={aggregatedData.spend ? Math.floor(aggregatedData.spend * 0.8) : 5000}
+                      actions={aggregatedData.purchases || aggregatedData.messages || 0}
+                      type={selectedAccountIds.length === 1 ? (settings[selectedAccountIds[0]]?.tracking || 'ecommerce') : 'ecommerce'}
                     />
                   </div>
                 </div>
 
                 {/* Trend Chart */}
-                <div className="col-span-8 bg-[#0a0a0a] rounded-[2.5rem] p-8 border border-white/5 flex flex-col shadow-2xl">
+                <div className="col-span-8 bg-[#0a0a0a] rounded-xl p-8 border border-white/5 flex flex-col shadow-2xl">
                   <div className="flex items-center justify-between mb-10">
                      <div className="space-y-1">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-500">Rendimiento Temporal</h3>
@@ -370,19 +399,45 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                   </div>
                   <div className="flex-1 min-h-0">
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={geographicData.slice(0, 15)} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <ComposedChart data={geographicData.slice(0, 15)} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff05" strokeWidth={0.5} />
-                        <XAxis dataKey="region" hide />
-                        <YAxis yAxisId="left" hide />
-                        <YAxis yAxisId="right" orientation="right" hide />
+                        <XAxis 
+                          dataKey="region" 
+                          stroke="#666" 
+                          fontSize={8} 
+                          tickLine={false} 
+                          axisLine={false}
+                          dy={10}
+                        />
+                        <YAxis 
+                          yAxisId="left" 
+                          stroke="#666" 
+                          fontSize={8} 
+                          tickLine={false} 
+                          axisLine={false}
+                          tickFormatter={(val) => `$${val}`}
+                        />
+                        <YAxis 
+                          yAxisId="right" 
+                          orientation="right" 
+                          stroke="#666" 
+                          fontSize={8} 
+                          tickLine={false} 
+                          axisLine={false}
+                        />
+                        <Tooltip 
+                           contentStyle={{ backgroundColor: '#111', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '10px' }}
+                           itemStyle={{ color: '#fff' }}
+                        />
+                        <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '10px', textTransform: 'uppercase', color: '#666' }} />
                         <defs>
                           <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
                             <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
-                        <Area yAxisId="left" type="monotone" dataKey="spend" fill="url(#colorSpend)" stroke="#3b82f6" strokeWidth={3} />
-                        <Line yAxisId="right" type="monotone" dataKey="purchases" stroke="#10b981" strokeWidth={4} dot={false} strokeLinecap="round" />
+                        <Area yAxisId="left" type="monotone" dataKey="spend" name="Inversión" fill="url(#colorSpend)" stroke="#3b82f6" strokeWidth={3} />
+                        <Line yAxisId="right" type="monotone" dataKey="purchases" name="Resultados" stroke="#10b981" strokeWidth={4} dot={false} strokeLinecap="round" />
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>
@@ -390,7 +445,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
               </div>
 
               {/* Bottom Breakdown Table */}
-              <div className="bg-neutral-50 rounded-[3rem] p-10 border border-neutral-100 mt-2">
+              <div className="bg-neutral-50 rounded-xl p-10 border border-neutral-100 mt-2">
                 <div className="flex items-center justify-between mb-8">
                   <div className="space-y-1">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Resultados Globales por Segmento</h3>
@@ -406,7 +461,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                         <TrendingUp className="w-4 h-4 text-blue-500" />
                         <span className="text-[10px] font-black text-neutral-400 uppercase">CTR AVG</span>
                       </div>
-                      <div className="text-3xl font-black text-neutral-900">{formatDecimal(1.85)}%</div>
+                      <div className="text-3xl font-black text-neutral-900">{formatDecimal(1.65)}%</div>
                       <div className="h-1 w-full bg-neutral-200 rounded-full overflow-hidden">
                         <div className="h-full bg-blue-500 w-[65%]" />
                       </div>
@@ -416,7 +471,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                         <TrendingUp className="w-4 h-4 text-emerald-500" />
                         <span className="text-[10px] font-black text-neutral-400 uppercase">CPM AVG</span>
                       </div>
-                      <div className="text-3xl font-black text-neutral-900">{formatCurrency(12.45, selectedAccount.currency)}</div>
+                      <div className="text-3xl font-black text-neutral-900">{formatCurrency(12.45, aggregatedData.currency)}</div>
                       <div className="h-1 w-full bg-neutral-200 rounded-full overflow-hidden">
                         <div className="h-full bg-emerald-500 w-[45%]" />
                       </div>
@@ -436,7 +491,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                         <TrendingUp className="w-4 h-4 text-amber-500" />
                         <span className="text-[10px] font-black text-neutral-400 uppercase">CPC AVG</span>
                       </div>
-                      <div className="text-3xl font-black text-neutral-900">{formatCurrency(selectedAccount.spend / (selectedAccount.spend * 1.8), selectedAccount.currency)}</div>
+                      <div className="text-3xl font-black text-neutral-900">{formatCurrency(aggregatedData.spend / (aggregatedData.spend * 0.8 || 1), aggregatedData.currency)}</div>
                       <div className="h-1 w-full bg-neutral-200 rounded-full overflow-hidden">
                         <div className="h-full bg-amber-500 w-[55%]" />
                       </div>
@@ -452,7 +507,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
             </ReportPage>
 
             {/* SHEET 2: AUDIENCE & CONTENT */}
-            <ReportPage className="flex flex-col gap-8 p-10 bg-white">
+            <ReportPage className="flex flex-col gap-8 p-10 bg-white rounded-none">
               <div className="flex items-center gap-4 border-b-2 border-neutral-100 pb-6">
                  <Users className="w-8 h-8 text-blue-600" />
                  <h2 className="text-2xl font-black uppercase tracking-tighter text-neutral-900">Análisis Profundo de Audiencia</h2>
@@ -460,14 +515,14 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
 
               <div className="grid grid-cols-2 gap-8">
                  {/* Geography & Heatmap List */}
-                 <div className="bg-neutral-50 rounded-[2.5rem] p-8 border border-neutral-100 space-y-6">
+                 <div className="bg-neutral-50 rounded-xl p-8 border border-neutral-100 space-y-6">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Rendimiento Geográfico</h3>
                     <div className="space-y-3">
                        {geographicData.slice(0, 6).map((reg, idx) => (
                          <div key={reg.region} className="flex flex-col gap-1.5">
                             <div className="flex items-center justify-between text-[10px] font-bold">
                                <span className="text-neutral-900">{reg.region}</span>
-                               <span className="text-blue-600">{(reg.purchases / (selectedAccount.purchases || selectedAccount.messages || 1) * 100).toFixed(1)}%</span>
+                               <span className="text-blue-600">{(reg.purchases / (aggregatedData.purchases || 1) * 100).toFixed(1)}%</span>
                             </div>
                             <div className="h-2 w-full bg-neutral-200 rounded-full overflow-hidden">
                                <div className="h-full bg-blue-600" style={{ width: `${(reg.purchases / geographicData[0].purchases) * 100}%` }} />
@@ -478,7 +533,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                  </div>
 
                  {/* Demographic Pie & Bars */}
-                 <div className="bg-neutral-50 rounded-[2.5rem] p-8 border border-neutral-100 flex flex-col gap-6">
+                 <div className="bg-neutral-50 rounded-xl p-8 border border-neutral-100 flex flex-col gap-6">
                     <div className="flex-1 flex flex-col items-center justify-center">
                        <PieChart width={250} height={160}>
                           <Pie 
@@ -505,8 +560,8 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                     <div className="flex-1">
                        <ResponsiveContainer width="100%" height={100}>
                           <BarChart data={ageData.slice(0, 5)}>
-                             <XAxis dataKey="name" tick={{fontSize: 8, fontWeight: 'black'}} axisLine={false} tickLine={false} />
-                             <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                             <XAxis dataKey="name" tick={{fontSize: 8, fontWeight: 'black', fill: '#999'}} axisLine={false} tickLine={false} />
+                             <Bar dataKey="value" fill="#3b82f6" radius={[2, 2, 0, 0]} />
                           </BarChart>
                        </ResponsiveContainer>
                     </div>
@@ -514,7 +569,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
               </div>
 
               {/* Winning Ads / Content Section */}
-              <div className="bg-neutral-50 rounded-[3rem] p-10 border border-neutral-100 h-96 flex flex-col">
+              <div className="bg-neutral-50 rounded-xl p-10 border border-neutral-100 h-96 flex flex-col">
                  <div className="flex items-center justify-between mb-8">
                     <div className="space-y-1">
                        <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Contenido Ganador</h3>
@@ -523,8 +578,8 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                  </div>
                  <div className="flex-1 grid grid-cols-3 gap-6 overflow-hidden">
                     {[1, 2, 3].map(i => (
-                      <div key={i} className="bg-white rounded-3xl border border-neutral-100 p-6 flex flex-col gap-4 hover:shadow-xl transition-all group">
-                         <div className="aspect-[4/5] bg-neutral-100 rounded-2xl flex items-center justify-center relative overflow-hidden group-hover:-translate-y-2 transition-transform">
+                      <div key={i} className="bg-white rounded-xl border border-neutral-100 p-6 flex flex-col gap-4 hover:shadow-xl transition-all group">
+                         <div className="aspect-[4/5] bg-neutral-100 rounded-lg flex items-center justify-center relative overflow-hidden group-hover:-translate-y-2 transition-transform">
                             <ImageIcon className="w-12 h-12 text-neutral-200" />
                             <div className="absolute top-4 left-4 bg-blue-600 text-white text-[8px] font-black px-2 py-1 rounded-lg">TOP {i}</div>
                          </div>
@@ -596,7 +651,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
 
 function MiniMetricCard({ label, value, color }: { label: string, value: string, color: string }) {
   return (
-    <div className="bg-white rounded-[2rem] p-6 border border-neutral-100 flex flex-col justify-between h-28 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+    <div className="bg-white rounded-xl p-6 border border-neutral-100 flex flex-col justify-between h-28 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
       <div className="absolute top-0 right-0 w-24 h-24 bg-neutral-50 rounded-full -mr-12 -mt-12 opacity-50" />
       <div className="relative z-10">
         <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2">{label}</div>
@@ -645,7 +700,7 @@ function TrafficFunnel({ impressions, clicks, actions, type }: { impressions: nu
 
 function SummaryCard({ label, value, subValue, icon: Icon, color = 'text-neutral-900' }: { label: string, value: string, subValue: string, icon: any, color?: string }) {
   return (
-    <div className="bg-neutral-50 rounded-2xl p-5 border border-neutral-100 flex flex-col justify-between h-32 hover:shadow-xl transition-all relative overflow-hidden group">
+    <div className="bg-neutral-50 rounded-xl p-5 border border-neutral-100 flex flex-col justify-between h-32 hover:shadow-xl transition-all relative overflow-hidden group">
       <div className="space-y-0.5">
         <div className="text-[7px] font-black uppercase tracking-widest text-neutral-400">{label}</div>
         <div className={cn("text-xl font-black tracking-tighter leading-none shrink-0 truncate", color)}>{value}</div>
