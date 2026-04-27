@@ -484,11 +484,11 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
               </div>
 
               {/* Main Section: Funnel & Evolution */}
-              <div className="grid grid-cols-12 gap-8 h-80">
+              <div className="grid grid-cols-12 gap-8 h-96">
                 {/* Traffic Funnel */}
-                <div className="col-span-4 bg-neutral-50 rounded-xl p-8 border border-neutral-100 flex flex-col">
+                <div className="col-span-7 bg-neutral-50 rounded-xl p-8 border border-neutral-100 flex flex-col">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-8 self-center">Recorrido del Cliente</h3>
-                  <div className="flex-1">
+                  <div className="flex-1 min-h-0">
                     <TrafficFunnel 
                       impressions={aggregatedData.spend ? Math.floor(aggregatedData.spend * 80) : 100000}
                       clicks={aggregatedData.spend ? Math.floor(aggregatedData.spend * 1.1) : 5000}
@@ -499,7 +499,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                 </div>
 
                 {/* Trend Chart */}
-                <div className="col-span-8 bg-[#0a0a0a] rounded-md p-8 border border-white/5 flex flex-col shadow-2xl">
+                <div className="col-span-5 bg-[#0a0a0a] rounded-md p-8 border border-white/5 flex flex-col shadow-2xl">
                   <div className="flex items-center justify-between mb-8">
                      <div className="space-y-1">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-500">Rendimiento Temporal</h3>
@@ -791,90 +791,90 @@ function TrafficFunnel({ impressions, clicks, actions, type }: { impressions: nu
   const cpc = 0.50;
 
   return (
-    <div className="w-full flex items-center gap-0 min-h-[320px]">
-      {/* Lateral Pills */}
-      <div className="flex-1 flex flex-col gap-3">
+    <div className="w-full flex items-center gap-6 h-full py-4">
+      {/* Funnel Vessel (Left) */}
+      <div className="w-[140px] flex flex-col gap-1.5 items-center justify-center shrink-0">
+        <div 
+          className="w-full h-24 bg-red-500 shadow-xl flex items-center justify-center relative overflow-hidden"
+          style={{ clipPath: 'polygon(0% 0%, 100% 0%, 90% 100%, 10% 100%)' }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+          <span className="text-[9px] font-black text-white uppercase tracking-[0.2em] relative z-10">VISIBILITY</span>
+        </div>
+        <div 
+          className="w-[82%] h-24 bg-blue-400 shadow-lg flex items-center justify-center relative overflow-hidden -mt-0.5"
+          style={{ clipPath: 'polygon(5% 0%, 95% 0%, 85% 100%, 15% 100%)' }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+          <span className="text-[9px] font-black text-white uppercase tracking-[0.2em] relative z-10">ENGAGEMENT</span>
+        </div>
+        <div 
+          className="w-[66%] h-24 bg-blue-600 shadow-2xl flex items-center justify-center relative overflow-hidden -mt-0.5"
+          style={{ clipPath: 'polygon(15% 0%, 85% 0%, 75% 100%, 25% 100%)' }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+          <hr className="absolute top-0 left-0 right-0 border-t border-white/20" />
+          <span className="text-[9px] font-black text-white uppercase tracking-[0.2em] relative z-10">CONVERSION</span>
+        </div>
+      </div>
+
+      {/* Lateral Pills (Right) */}
+      <div className="flex-1 flex flex-col gap-3 min-w-0">
         {/* Visibility Pill */}
-        <div className="bg-red-500 rounded-l-[1.5rem] rounded-r-md p-5 flex items-center justify-between text-white shadow-lg overflow-hidden relative">
+        <div className="bg-red-500 rounded-r-[1.5rem] rounded-l-md p-4 flex items-center justify-between text-white shadow-lg overflow-hidden relative">
           <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-red-500 opacity-80" />
-          <div className="relative z-10 flex-1 grid grid-cols-3 gap-0">
-            <div className="space-y-0.5 border-r border-white/10 pr-4">
+          <div className="relative z-10 flex-1 grid grid-cols-3 gap-2">
+            <div className="space-y-0.5 border-r border-white/10 pr-2">
                <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Impressions</span>
-               <div className="text-[13px] font-black tracking-tight">{formatDecimal(impressions / 1000000)}M</div>
+               <div className="text-[11px] font-black tracking-tight">{formatDecimal(impressions / 1000000)}M</div>
             </div>
-            <div className="space-y-0.5 border-r border-white/10 px-4">
+            <div className="space-y-0.5 border-r border-white/10 px-2">
                <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Abs. Top %</span>
-               <div className="text-[13px] font-black tracking-tight">68.2%</div>
+               <div className="text-[11px] font-black tracking-tight">68.2%</div>
             </div>
-            <div className="space-y-0.5 pl-4">
+            <div className="space-y-0.5 pl-2">
                <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Avg. CPM</span>
-               <div className="text-[13px] font-black tracking-tight">${cpm}</div>
+               <div className="text-[11px] font-black tracking-tight">${cpm}</div>
             </div>
           </div>
         </div>
 
         {/* Engagement Pill */}
-        <div className="bg-blue-400 rounded-l-[1.5rem] rounded-r-md p-5 flex items-center justify-between text-white shadow-md relative">
+        <div className="bg-blue-400 rounded-r-[1.5rem] rounded-l-md p-4 flex items-center justify-between text-white shadow-md relative">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-400 opacity-80" />
-          <div className="relative z-10 flex-1 grid grid-cols-3 gap-0">
-            <div className="space-y-0.5 border-r border-white/10 pr-4">
+          <div className="relative z-10 flex-1 grid grid-cols-3 gap-2">
+            <div className="space-y-0.5 border-r border-white/10 pr-2">
                <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Clicks</span>
-               <div className="text-[13px] font-black tracking-tight">{formatDecimal(clicks / 1000)}K</div>
+               <div className="text-[11px] font-black tracking-tight">{formatDecimal(clicks / 1000)}K</div>
             </div>
-            <div className="space-y-0.5 border-r border-white/10 px-4">
+            <div className="space-y-0.5 border-r border-white/10 px-2">
                <span className="text-[7px] font-black uppercase tracking-widest opacity-60">CTR</span>
-               <div className="text-[13px] font-black tracking-tight">{formatDecimal(ctr)}%</div>
+               <div className="text-[11px] font-black tracking-tight">{formatDecimal(ctr)}%</div>
             </div>
-            <div className="space-y-0.5 pl-4">
+            <div className="space-y-0.5 pl-2">
                <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Avg. CPC</span>
-               <div className="text-[13px] font-black tracking-tight">${cpc}</div>
+               <div className="text-[11px] font-black tracking-tight">${cpc}</div>
             </div>
           </div>
         </div>
 
         {/* Conversion Pill */}
-        <div className="bg-blue-600 rounded-l-[1.5rem] rounded-r-md p-5 flex items-center justify-between text-white shadow-lg relative">
+        <div className="bg-blue-600 rounded-r-[1.5rem] rounded-l-md p-4 flex items-center justify-between text-white shadow-lg relative">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-blue-600 opacity-80" />
-          <div className="relative z-10 flex-1 grid grid-cols-3 gap-0">
-            <div className="space-y-0.5 border-r border-white/10 pr-4">
+          <div className="relative z-10 flex-1 grid grid-cols-3 gap-2">
+            <div className="space-y-0.5 border-r border-white/10 pr-2">
                <span className="text-[7px] font-black uppercase tracking-widest opacity-60">{type === 'ecommerce' ? 'Conversions' : 'Messages'}</span>
-               <div className="text-[13px] font-black tracking-tight">{formatDecimal(actions, 0)}</div>
+               <div className="text-[11px] font-black tracking-tight">{formatDecimal(actions, 0)}</div>
             </div>
-            <div className="space-y-0.5 border-r border-white/10 px-4">
+            <div className="space-y-0.5 border-r border-white/10 px-2">
                <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Conv. Rate</span>
-               <div className="text-[13px] font-black tracking-tight">{formatDecimal(cr)}%</div>
+               <div className="text-[11px] font-black tracking-tight">{formatDecimal(cr)}%</div>
             </div>
-            <div className="space-y-0.5 pl-4">
+            <div className="space-y-0.5 pl-2">
                <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Clicks</span>
-               <div className="text-[13px] font-black tracking-tight">{formatDecimal(clicks / 1000)}K</div>
+               <div className="text-[11px] font-black tracking-tight">{formatDecimal(clicks / 1000)}K</div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Funnel Vessel */}
-      <div className="w-[180px] h-[300px] flex flex-col gap-1.5 items-center justify-center">
-        <div 
-          className="w-full h-[88px] bg-red-500 shadow-xl flex items-center justify-center relative overflow-hidden"
-          style={{ clipPath: 'polygon(0% 0%, 100% 0%, 90% 100%, 10% 100%)' }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
-          <span className="text-[10px] font-black text-white uppercase tracking-[0.3em] relative z-10">VISIBILITY</span>
-        </div>
-        <div 
-          className="w-[82%] h-[88px] bg-blue-400 shadow-lg flex items-center justify-center relative overflow-hidden -mt-0.5"
-          style={{ clipPath: 'polygon(5% 0%, 95% 0%, 85% 100%, 15% 100%)' }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
-          <span className="text-[10px] font-black text-white uppercase tracking-[0.3em] relative z-10">ENGAGEMENT</span>
-        </div>
-        <div 
-          className="w-[66%] h-[88px] bg-blue-600 shadow-2xl flex items-center justify-center relative overflow-hidden -mt-0.5"
-          style={{ clipPath: 'polygon(15% 0%, 85% 0%, 75% 100%, 25% 100%)' }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
-          <hr className="absolute top-0 left-0 right-0 border-t border-white/20" />
-          <span className="text-[10px] font-black text-white uppercase tracking-[0.3em] relative z-10">CONVERSION</span>
         </div>
       </div>
     </div>
