@@ -92,7 +92,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [topN, setTopN] = useState(5);
   const [observations, setObservations] = useState('');
   const [isSavingObs, setIsSavingObs] = useState(false);
-  const [noteCategory, setNoteCategory] = useState<AccountNote['category']>('observation');
   const [showMetrics, setShowMetrics] = useState(true);
   const [showObservations, setShowObservations] = useState(false);
   const [showMetricConfig, setShowMetricConfig] = useState(false);
@@ -102,9 +101,11 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [recognition, setRecognition] = useState<any>(null);
 
   const toggleListening = () => {
-    if (isListening) {
+    if (isListening && recognition) {
+      recognition.stop();
       setIsListening(false);
       return;
     }
@@ -115,36 +116,45 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       return;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'es-ES';
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    const newRecognition = new SpeechRecognition();
+    newRecognition.lang = 'es-ES';
+    newRecognition.continuous = true;
+    newRecognition.interimResults = true;
 
-    recognition.onstart = () => {
+    newRecognition.onstart = () => {
       setIsListening(true);
     };
 
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setObservations(prev => {
-        const lastChar = prev.trim().slice(-1);
-        const needsSpace = prev.length > 0 && !['.', ',', '!', '?'].includes(lastChar);
-        return prev + (needsSpace ? ' ' : '') + transcript;
-      });
-      setIsListening(false);
+    newRecognition.onresult = (event: any) => {
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        setObservations(prev => {
+          const trimmedPrev = prev.trim();
+          const lastChar = trimmedPrev.slice(-1);
+          const needsSpace = trimmedPrev.length > 0 && !['.', ',', '!', '?'].includes(lastChar);
+          return trimmedPrev + (needsSpace ? ' ' : '') + finalTranscript;
+        });
+      }
     };
 
-    recognition.onerror = (event: any) => {
+    newRecognition.onerror = (event: any) => {
       console.error("Speech recognition error", event.error);
       setIsListening(false);
     };
 
-    recognition.onend = () => {
+    newRecognition.onend = () => {
       setIsListening(false);
     };
 
     try {
-      recognition.start();
+      newRecognition.start();
+      setRecognition(newRecognition);
     } catch (e) {
       console.error("Failed to start recognition", e);
       setIsListening(false);
@@ -240,7 +250,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       accountId: selectedId,
       text: observations,
       timestamp: new Date().toISOString(),
-      category: noteCategory,
+      category: 'observation',
       tags: [s.tracking]
     };
     
@@ -937,36 +947,20 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                           onChange={(e) => setObservations(e.target.value)}
                           className="w-full bg-transparent border-none outline-none text-neutral-400 text-xs h-24 resize-none custom-scrollbar placeholder-neutral-800 leading-relaxed"
                         />
-                        <div className="flex items-center justify-between mt-3">
-                           <div className="flex gap-2">
-                             {(['observation', 'change', 'meeting', 'urgent'] as const).map(cat => (
-                               <button 
-                                 key={cat}
-                                 onClick={() => setNoteCategory(cat)}
-                                 className={cn(
-                                   "px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border transition-all",
-                                   noteCategory === cat 
-                                     ? "bg-blue-600/10 border-blue-600/20 text-blue-500" 
-                                     : "bg-black/20 border-white/5 text-neutral-600"
-                                 )}
-                               >
-                                 {cat}
-                               </button>
-                             ))}
-                           </div>
+                        <div className="flex items-center justify-end mt-3 gap-2">
                            <div className="flex justify-end gap-2 text-[9px] font-black uppercase tracking-widest">
                                <button 
                                  onClick={toggleListening}
                                  type="button"
+                                 title={isListening ? "Detener dictado" : "Iniciar dictado por voz"}
                                  className={cn(
-                                   "px-3 py-1.5 rounded-lg border transition-all flex items-center gap-2",
+                                   "p-2 rounded-lg border transition-all flex items-center justify-center",
                                    isListening 
                                      ? "bg-red-500 text-white animate-pulse border-red-500 shadow-lg shadow-red-500/20" 
                                      : "bg-white/5 border-white/5 text-neutral-400 hover:text-white hover:bg-white/10"
                                  )}
                                >
-                                 {isListening ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3 text-blue-500" />}
-                                 {isListening ? "Escuchando..." : "Dictar Voz"}
+                                 {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 text-blue-500" />}
                                </button>
                                <button 
                                  onClick={handleSaveObs}
@@ -995,14 +989,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                             <div key={note.id} className="bg-[#0c0c0c] p-4 rounded-xl border border-white/5 space-y-2 group/note relative">
                                <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2">
-                                     <span className={cn(
-                                       "px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-tighter border",
-                                       note.category === 'change' ? "bg-blue-600/10 border-blue-600/20 text-blue-500" :
-                                       note.category === 'urgent' ? "bg-red-600/10 border-red-600/20 text-red-500" :
-                                       "bg-white/5 border-white/5 text-neutral-600"
-                                     )}>
-                                       {note.category}
-                                     </span>
                                      <span className="text-[8px] font-bold text-neutral-700 uppercase tracking-widest">
                                        {format(new Date(note.timestamp), 'dd/MM HH:mm')}
                                      </span>
