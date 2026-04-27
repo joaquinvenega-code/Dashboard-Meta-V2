@@ -95,6 +95,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [showMetrics, setShowMetrics] = useState(true);
   const [showObservations, setShowObservations] = useState(false);
   const [showMetricConfig, setShowMetricConfig] = useState(false);
+  const [selectedNoteForView, setSelectedNoteForView] = useState<AccountNote | null>(null);
   const [localVisibleMetrics, setLocalVisibleMetrics] = useState<string[]>([]);
   const [chartFilters, setChartFilters] = useState<Record<string, string[]>>({});
   const [copied, setCopied] = useState(false);
@@ -256,12 +257,12 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     
     onAddNote(newNote);
     
-    // Also save as the current observation in settings for quick view
-    onSaveSettings(selectedId, { ...s, observations } as any);
+    // Clear current observation in settings as it's now in history
+    onSaveSettings(selectedId, { ...s, observations: '' } as any);
     
     setTimeout(() => {
       setIsSavingObs(false);
-      setObservations(''); // Clear after posting to history
+      setObservations(''); // Clear local state
     }, 800);
   };
 
@@ -982,29 +983,93 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                             <p className="text-[9px] font-black text-neutral-800 uppercase tracking-widest">No hay registros previos</p>
                           </div>
                         ) : (
-                          notes.filter(n => n.accountId === selectedId)
-                               .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-                               .slice(0, 5)
-                               .map(note => (
-                            <div key={note.id} className="bg-[#0c0c0c] p-4 rounded-xl border border-white/5 space-y-2 group/note relative">
-                               <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                     <span className="text-[8px] font-bold text-neutral-700 uppercase tracking-widest">
-                                       {format(new Date(note.timestamp), 'dd/MM HH:mm')}
-                                     </span>
-                                  </div>
-                                  <button 
-                                    onClick={() => onDeleteNote(note.id)}
-                                    className="p-1 text-neutral-800 hover:text-red-500 transition-all opacity-0 group-hover/note:opacity-100"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                               </div>
-                               <p className="text-xs text-neutral-400 font-medium leading-relaxed">{note.text}</p>
-                            </div>
-                          ))
+                          <div className="flex flex-wrap gap-2">
+                            {notes.filter(n => n.accountId === selectedId)
+                                 .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+                                 .slice(0, 10)
+                                 .map(note => (
+                              <div key={note.id} className="relative group/note">
+                                <button
+                                  onClick={() => setSelectedNoteForView(note)}
+                                  className="bg-[#0c0c0c] hover:bg-neutral-900 px-3 py-2 rounded-lg border border-white/5 transition-all flex items-center gap-2 group shadow-lg active:scale-95"
+                                >
+                                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                                  <span className="text-[10px] font-bold text-neutral-400 group-hover:text-white uppercase tracking-wider">
+                                    {format(new Date(note.timestamp), 'dd/MM')}
+                                  </span>
+                                  <span className="text-[9px] text-neutral-600 truncate max-w-[120px] font-medium hidden sm:inline">
+                                    {note.text.slice(0, 30)}...
+                                  </span>
+                                </button>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); onDeleteNote(note.id); }}
+                                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/note:opacity-100 transition-opacity z-10 hover:bg-red-600 shadow-lg"
+                                >
+                                  <X className="w-2 h-2" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
                         )}
                       </div>
+
+                      {/* Note Pop-up/Modal */}
+                      {selectedNoteForView && (
+                        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                          <div 
+                            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                            onClick={() => setSelectedNoteForView(null)}
+                          />
+                          <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            className="relative w-full max-w-lg bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+                          >
+                            <div className="p-6 space-y-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.6)]" />
+                                  <h3 className="text-xs font-black text-white uppercase tracking-widest">Detalle de Bitácora</h3>
+                                </div>
+                                <span className="text-[10px] font-bold text-neutral-500 uppercase">
+                                  {format(new Date(selectedNoteForView.timestamp), "eeee d 'de' MMMM, HH:mm", { locale: es })}
+                                </span>
+                              </div>
+                              
+                              <div className="bg-black/40 rounded-xl p-5 border border-white/5 min-h-[150px]">
+                                <p className="text-sm text-neutral-300 leading-relaxed font-medium whitespace-pre-wrap">
+                                  {selectedNoteForView.text}
+                                </p>
+                              </div>
+
+                              <div className="flex justify-end gap-3 pt-2">
+                                <button 
+                                  onClick={() => setSelectedNoteForView(null)}
+                                  className="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-neutral-400 hover:text-white transition-colors"
+                                >
+                                  Cerrar
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    onDeleteNote(selectedNoteForView.id);
+                                    setSelectedNoteForView(null);
+                                  }}
+                                  className="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                                >
+                                  Eliminar
+                                </button>
+                              </div>
+                            </div>
+                            
+                            <button 
+                              onClick={() => setSelectedNoteForView(null)}
+                              className="absolute top-4 right-4 p-2 text-neutral-600 hover:text-white transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </motion.div>
+                        </div>
+                      )}
                   </motion.div>
 
                   {/* Print Version of Observations */}
