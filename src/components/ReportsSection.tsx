@@ -78,50 +78,28 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
     }
   }, [accounts, selectedAccountIds]);
 
-  // Group accounts by name (simple heuristic: same start before first space or dash)
-  const groupedAccounts = useMemo(() => {
-    const groups: Record<string, { label: string, accounts: AdAccount[] }> = {};
-    accounts.forEach(acc => {
-      const name = settings[acc.id]?.customName || acc.name;
-      // Extract client name (e.g., "Client Name - Meta" -> "Client Name")
-      const clientName = name.split(' - ')[0].split(' | ')[0].split(' / ')[0].trim();
-      const key = clientName.toLowerCase();
-      
-      if (!groups[key]) {
-        groups[key] = { label: clientName, accounts: [] };
-      }
-      groups[key].accounts.push(acc);
-    });
-    return groups;
+  // Group accounts by name (simply use custom name or account name now)
+  const availableAccounts = useMemo(() => {
+    return accounts.map(acc => ({
+      id: acc.id,
+      name: settings[acc.id]?.customName || acc.name,
+      original: acc
+    })).sort((a, b) => a.name.localeCompare(b.name));
   }, [accounts, settings]);
-
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-
-  const toggleGroup = (groupKey: string) => {
-    setOpenGroups(prev => ({ ...prev, [groupKey]: !prev[groupKey] }));
-  };
 
   const selectedAccounts = accounts.filter(a => selectedAccountIds.includes(a.id));
   
-  const getAccountGroupData = (accId: string) => {
-    const acc = accounts.find(a => a.id === accId);
-    if (!acc) return { key: '', label: '' };
-    const name = settings[acc.id]?.customName || acc.name;
-    const label = name.split(' - ')[0].split(' | ')[0].split(' / ')[0].trim();
-    return { key: label.toLowerCase(), label };
-  };
-
   // Aggregate data for the selected accounts
   const aggregatedData = useMemo(() => {
     if (selectedAccounts.length === 0) return null;
     
     const firstAcc = selectedAccounts[0];
-    const { label: groupLabel } = getAccountGroupData(firstAcc.id);
+    const name = selectedAccounts.length === 1 
+      ? (settings[firstAcc.id]?.customName || firstAcc.name)
+      : `${selectedAccounts.length} Cuentas Seleccionadas`;
 
     return {
-      name: selectedAccounts.length === 1 
-        ? (settings[firstAcc.id]?.customName || firstAcc.name)
-        : `${groupLabel} (Grupo)`,
+      name,
       spend: selectedAccounts.reduce((sum, a) => sum + (a.spend || 0), 0),
       revenue: selectedAccounts.reduce((sum, a) => sum + (a.revenue || 0), 0),
       purchases: selectedAccounts.reduce((sum, a) => sum + (a.purchases || 0), 0),
@@ -129,7 +107,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
       ctr: selectedAccounts.reduce((sum, a) => sum + (a.ctr || 0), 0) / selectedAccounts.length,
       currency: firstAcc.currency || 'ARS'
     };
-  }, [selectedAccounts, settings, accounts]);
+  }, [selectedAccounts, settings]);
 
   const accountNotes = notes.filter(n => selectedAccountIds.includes(n.accountId));
 
@@ -258,7 +236,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
             <div className="relative group/main">
               <div className="flex items-center gap-2 bg-white/5 p-1 rounded-md border border-white/5 cursor-pointer hover:bg-white/10 transition-colors">
                 <div className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-black text-white uppercase tracking-widest min-w-[220px]">
-                  <Users className="w-3.5 h-3.5 text-blue-500" />
+                  <BarChart3 className="w-3.5 h-3.5 text-blue-500" />
                   <span className="truncate">{aggregatedData.name}</span>
                   <ChevronDown className="w-3 h-3 ml-auto opacity-40 shrink-0" />
                 </div>
@@ -266,82 +244,33 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                 {/* Dropdown Menu */}
                 <div className="absolute top-full left-0 mt-2 w-[340px] bg-[#0c0c0c] border border-white/10 rounded-xl shadow-2xl overflow-hidden opacity-0 invisible group-hover/main:opacity-100 group-hover/main:visible transition-all z-[110] border-t-blue-600/30">
                   <div className="p-2 max-h-[480px] overflow-y-auto">
-                    {Object.entries(groupedAccounts).map(([groupKey, groupData]) => {
-                      const groupAccs = groupData.accounts;
-                      const groupName = groupData.label;
-                      const allInGroupSelected = groupAccs.every(a => selectedAccountIds.includes(a.id));
-                      const isExactlyThisGroup = allInGroupSelected && selectedAccountIds.length === groupAccs.length;
-                      const isOpen = openGroups[groupKey] ?? isExactlyThisGroup;
-                      
-                      return (
-                        <div key={groupKey} className="mb-1 last:mb-0">
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => {
-                                setSelectedAccountIds(groupAccs.map(ga => ga.id));
-                                if (groupAccs.length > 1 && !isOpen) {
-                                  toggleGroup(groupKey);
-                                }
-                              }}
-                              className={cn(
-                                "flex-1 text-left px-3 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-between",
-                                isExactlyThisGroup ? "bg-blue-600 text-white" : "hover:bg-white/5 text-neutral-400"
-                              )}
-                            >
-                              <span className="truncate">{groupName}</span>
-                            </button>
-                            {groupAccs.length > 1 && (
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); toggleGroup(groupKey); }}
-                                className="p-2.5 hover:bg-white/5 rounded-lg text-neutral-500 transition-colors"
-                              >
-                                <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", isOpen && "rotate-180")} />
-                              </button>
-                            )}
-                          </div>
-                          
-                          {isOpen && groupAccs.length > 1 && (
-                            <div className="ml-2 mt-1 border-l-2 border-blue-500/30 pl-2 space-y-1 py-1 bg-white/[0.01] rounded-r-lg">
-                              {groupAccs.map(acc => (
-                                <button
-                                  key={acc.id}
-                                  onClick={() => {
-                                    const { key: currentGroupKey } = getAccountGroupData(acc.id);
-                                    const { key: firstGroupKey } = selectedAccountIds.length > 0 
-                                      ? getAccountGroupData(selectedAccountIds[0]) 
-                                      : { key: '' };
-                                    
-                                    if (currentGroupKey !== firstGroupKey) {
-                                      setSelectedAccountIds([acc.id]);
-                                    } else {
-                                      setSelectedAccountIds(prev => {
-                                        const isSelected = prev.includes(acc.id);
-                                        if (isSelected) {
-                                          return prev.length > 1 ? prev.filter(id => id !== acc.id) : prev;
-                                        } else {
-                                          return [...prev, acc.id];
-                                        }
-                                      });
-                                    }
-                                  }}
-                                  className={cn(
-                                    "w-full text-left px-3 py-2 rounded-md text-[8px] font-bold uppercase tracking-wider transition-all flex items-center justify-between",
-                                    selectedAccountIds.includes(acc.id)
-                                      ? "text-blue-400 bg-blue-500/10"
-                                      : "text-neutral-600 hover:text-neutral-400 hover:bg-white/5"
-                                  )}
-                                >
-                                  <span className="truncate">
-                                    {(settings[acc.id]?.customName || acc.name)}
-                                  </span>
-                                  {selectedAccountIds.includes(acc.id) && <div className="w-1 h-1 rounded-full bg-blue-500" />}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {availableAccounts.map((acc) => (
+                      <button
+                        key={acc.id}
+                        onClick={() => {
+                          setSelectedAccountIds((prev) => {
+                            const isSelected = prev.includes(acc.id);
+                            if (isSelected) {
+                              // Don't unselect if it's the last one
+                              return prev.length > 1 ? prev.filter(id => id !== acc.id) : prev;
+                            } else {
+                              return [...prev, acc.id];
+                            }
+                          });
+                        }}
+                        className={cn(
+                          "w-full text-left px-4 py-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-between mb-1 last:mb-0",
+                          selectedAccountIds.includes(acc.id)
+                            ? "bg-blue-600 text-white"
+                            : "hover:bg-white/5 text-neutral-400"
+                        )}
+                      >
+                        <span className="truncate">{acc.name}</span>
+                        {selectedAccountIds.includes(acc.id) && (
+                          <CheckCircle2 className="w-3 h-3" />
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -458,7 +387,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
                     )}
                   </div>
                   <div className="space-y-1">
-                    <h1 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-600">Executive Performance Report</h1>
+                    <h1 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-600">Informe de Rendimiento Publicitario</h1>
                     <div className="text-3xl font-black tracking-tight text-neutral-900">{aggregatedData.name}</div>
                   </div>
                 </div>
@@ -579,7 +508,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
               <div className="bg-neutral-50 rounded-xl p-10 border border-neutral-100 mt-2">
                 <div className="flex items-center justify-between mb-8">
                   <div className="space-y-1">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Resultados Globales por Segmento</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Resultados por Cuenta</h3>
                     <p className="text-[9px] font-bold text-neutral-300 uppercase tracking-widest">Atribución 7-días click + 1-día vista</p>
                   </div>
                   <div className="bg-white px-4 py-2 rounded-xl border border-neutral-100 shadow-sm">
@@ -744,7 +673,7 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
 
                   <div className="flex-1 space-y-6 overflow-hidden">
                     <p className="text-neutral-500 font-medium text-[10px] leading-relaxed max-w-2xl italic">
-                      Cronología de acciones y cambios técnicos realizados para alcanzar los objetivos en {aggregatedData.name}.
+                      Cronología de acciones y observaciones estratégicas para los objetivos de rendimiento.
                     </p>
 
                     <div className="relative pl-6 space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-0 before:w-px before:bg-neutral-100">
