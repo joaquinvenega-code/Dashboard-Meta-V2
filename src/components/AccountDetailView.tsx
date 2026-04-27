@@ -36,7 +36,9 @@ import {
   Facebook,
   Copy,
   Check,
-  X
+  X,
+  Mic,
+  MicOff
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { startOfMonth, endOfMonth, differenceInDays, subDays } from 'date-fns';
@@ -99,6 +101,55 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [copied, setCopied] = useState(false);
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+
+  const toggleListening = () => {
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Tu navegador no soporta el dictado por voz.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-ES';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setObservations(prev => {
+        const lastChar = prev.trim().slice(-1);
+        const needsSpace = prev.length > 0 && !['.', ',', '!', '?'].includes(lastChar);
+        return prev + (needsSpace ? ' ' : '') + transcript;
+      });
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error("Failed to start recognition", e);
+      setIsListening(false);
+    }
+  };
 
   const defaultVisibleMetrics = ['spend', 'revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
   
@@ -904,14 +955,27 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                              ))}
                            </div>
                            <div className="flex justify-end gap-2 text-[9px] font-black uppercase tracking-widest">
-                              <button 
-                                onClick={handleSaveObs}
-                                disabled={isSavingObs || !observations.trim()}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-1.5 rounded-lg transition-all shadow-xl shadow-blue-600/20 flex items-center gap-2 disabled:opacity-50 active:scale-95"
-                              >
-                                {isSavingObs ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                                Publicar en Bitácora
-                              </button>
+                               <button 
+                                 onClick={toggleListening}
+                                 type="button"
+                                 className={cn(
+                                   "px-3 py-1.5 rounded-lg border transition-all flex items-center gap-2",
+                                   isListening 
+                                     ? "bg-red-500 text-white animate-pulse border-red-500 shadow-lg shadow-red-500/20" 
+                                     : "bg-white/5 border-white/5 text-neutral-400 hover:text-white hover:bg-white/10"
+                                 )}
+                               >
+                                 {isListening ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3 text-blue-500" />}
+                                 {isListening ? "Escuchando..." : "Dictar Voz"}
+                               </button>
+                               <button 
+                                 onClick={handleSaveObs}
+                                 disabled={isSavingObs || !observations.trim()}
+                                 className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-1.5 rounded-lg transition-all shadow-xl shadow-blue-600/20 flex items-center gap-2 disabled:opacity-50 active:scale-95"
+                               >
+                                 {isSavingObs ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                                 Publicar en Bitácora
+                               </button>
                            </div>
                         </div>
                       </div>
