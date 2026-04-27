@@ -1064,7 +1064,7 @@ export default function App() {
               {activePage === 'reports' && (
                 <div className="animate-in fade-in duration-500">
                   <ReportsSection 
-                    accounts={accounts} 
+                    accounts={overviewEntities} 
                     settings={settings} 
                     notes={notes} 
                   />

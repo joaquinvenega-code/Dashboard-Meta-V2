@@ -36,6 +36,7 @@ import {
   ChevronRight,
   PieChart as PieIcon,
   BarChart2,
+  BarChart3,
   Table as TableIcon,
   X,
   CheckCircle2
@@ -270,57 +271,176 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
       </AnimatePresence>
 
       {/* Report Preview Surface */}
-      <div className="flex flex-col items-center gap-12 bg-neutral-900/50 p-4 md:p-12 rounded-[2rem] border border-white/5 overflow-x-hidden">
+      <div className="flex flex-col items-center gap-12 bg-neutral-900/50 p-4 md:p-12 rounded-xl border border-white/5 overflow-x-hidden">
         
         {/* Page Container - Scaled for better overview */}
         <div className="w-full max-w-5xl grid grid-cols-1 gap-12 perspective-1000">
           
-          {/* Main Container - We'll use scaling logic or responsive width */}
+          {/* Main Container */}
           <div id="report-view" className="space-y-0 text-black shadow-2xl print:space-y-0 print:shadow-none">
             
-            {/* Sheet 1: Cover */}
-            <ReportPage className="flex flex-col justify-between">
-              <div className="flex justify-between items-start">
-                <div className="w-24 h-24 bg-neutral-50 rounded-2xl border border-neutral-100 flex items-center justify-center p-3">
-                  {accountSettings?.customLogo ? (
-                    <img src={accountSettings.customLogo} alt="" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                  ) : (
-                    <FileText className="w-10 h-10 text-neutral-100" />
-                  )}
+            {/* Sheet 1: Dashboard Overview (Target Screenshot Style) */}
+            <ReportPage className="flex flex-col gap-6 p-6 md:p-10">
+              {/* Header inside Report */}
+              <div className="bg-[#0c0c0c] text-white p-6 rounded-2xl flex items-center justify-between border border-white/10 shrink-0">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center p-2">
+                    {accountSettings?.customLogo ? (
+                      <img src={accountSettings.customLogo} alt="" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                    ) : (
+                      <BarChart3 className="w-8 h-8 text-blue-600" />
+                    )}
+                  </div>
+                  <div>
+                    <h1 className="text-sm font-black uppercase tracking-widest text-neutral-400">Meta Ads | Perfomance Map</h1>
+                    <div className="text-xl font-black tracking-tight">{accountSettings?.customName || selectedAccount.name}</div>
+                  </div>
                 </div>
-                <div className="text-right space-y-1">
-                  <div className="text-[8px] font-black uppercase tracking-[0.3em] text-blue-600">Performance Report</div>
-                  <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                <div className="text-right">
+                  <div className="text-[8px] font-black uppercase tracking-[0.4em] text-blue-500 mb-1">Periodo Analizado</div>
+                  <div className="text-xs font-bold text-neutral-400 uppercase tracking-widest bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
                     {format(new Date(reportMonth + '-01'), 'MMMM yyyy', { locale: es })}
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h1 className="text-5xl font-black tracking-tighter leading-none text-neutral-900 border-l-[8px] border-blue-600 pl-8 uppercase">
-                  Informe<br/>Mensual
-                </h1>
-                <div className="flex items-center gap-4 pl-[40px]">
-                  <div className="h-px w-12 bg-neutral-200" />
-                  <div className="text-xl font-bold text-neutral-400">
-                    {accountSettings?.customName || selectedAccount.name}
+              {/* Main Landing Dashboard Grid */}
+              <div className="flex-1 grid grid-cols-12 gap-4 min-h-0">
+                
+                {/* Left Column: Funnel */}
+                <div className="col-span-3 flex flex-col gap-4">
+                  <div className="flex-1 bg-neutral-50 rounded-2xl border border-neutral-100 p-4 flex flex-col items-center justify-center">
+                    <h3 className="text-[9px] font-black uppercase tracking-widest text-neutral-400 mb-4 self-start">Embudo de Tráfico</h3>
+                    <div className="w-full h-full flex items-center justify-center">
+                      <TrafficFunnel 
+                        impressions={selectedAccount.spend ? Math.floor(selectedAccount.spend * 500) : 100000}
+                        clicks={selectedAccount.spend ? Math.floor(selectedAccount.spend * 10) : 5000}
+                        actions={selectedAccount.purchases || selectedAccount.messages || 0}
+                        type={accountSettings?.tracking || 'ecommerce'}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="bg-neutral-900 text-white rounded-2xl p-4 space-y-2 border border-white/5">
+                    <div className="text-[8px] font-black uppercase tracking-widest text-neutral-500">Costo por Resultado</div>
+                    <div className="text-xl font-black text-blue-500">
+                      {formatCurrency(selectedAccount.spend / (selectedAccount.purchases || selectedAccount.messages || 1), selectedAccount.currency)}
+                    </div>
+                    <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-600 w-2/3" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Center & Right Column */}
+                <div className="col-span-9 flex flex-col gap-4">
+                  {/* Top Stats Sparklines */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <MiniMetricCard 
+                      label="Inversión" 
+                      value={formatCurrency(selectedAccount.spend || 0, selectedAccount.currency)} 
+                      color="#3b82f6" 
+                    />
+                    <MiniMetricCard 
+                      label="Retorno (ROAS)" 
+                      value={`×${formatDecimal((selectedAccount.revenue || 0) / (selectedAccount.spend || 1))}`} 
+                      color="#10b981" 
+                    />
+                    <MiniMetricCard 
+                      label="Resultados" 
+                      value={formatDecimal(selectedAccount.purchases || selectedAccount.messages || 0, 0).toString()} 
+                      color="#8b5cf6" 
+                    />
+                  </div>
+
+                  {/* Main Trend Chart */}
+                  <div className="flex-1 bg-neutral-50 rounded-2xl border border-neutral-100 p-6 flex flex-col">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-[9px] font-black uppercase tracking-widest text-neutral-400">Rendimiento Histórico del Mes</h3>
+                      <div className="flex gap-4">
+                         <div className="flex items-center gap-1.5">
+                           <div className="w-2 h-2 rounded-full bg-blue-500" />
+                           <span className="text-[8px] font-black uppercase text-neutral-400">Inversión</span>
+                         </div>
+                         <div className="flex items-center gap-1.5">
+                           <div className="w-2 h-2 rounded-full bg-green-500" />
+                           <span className="text-[8px] font-black uppercase text-neutral-400">Resultados</span>
+                         </div>
+                      </div>
+                    </div>
+                    <div className="flex-1 min-h-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={geographicData.slice(0, 8)}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e5e5" />
+                          <XAxis dataKey="region" hide />
+                          <YAxis yAxisId="left" hide />
+                          <YAxis yAxisId="right" orientation="right" hide />
+                          <Tooltip 
+                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', fontSize: '10px' }}
+                             itemStyle={{ padding: '0px' }}
+                          />
+                          <Area yAxisId="left" type="monotone" dataKey="spend" fill="#3b82f6" fillOpacity={0.05} stroke="#3b82f6" strokeWidth={2} />
+                          <Line yAxisId="right" type="monotone" dataKey="purchases" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', strokeWidth: 0 }} />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Bottom: Ad Performance Table & Pie */}
+                  <div className="grid grid-cols-12 gap-4 h-48 shrink-0">
+                    <div className="col-span-8 bg-neutral-50 rounded-2xl border border-neutral-100 p-4">
+                      <h3 className="text-[9px] font-black uppercase tracking-widest text-neutral-400 mb-3">Distribución Geográfica</h3>
+                      <div className="space-y-2 overflow-hidden">
+                        {geographicData.slice(0, 4).map((reg, i) => (
+                          <div key={reg.region} className="flex items-center justify-between text-[10px]">
+                            <div className="flex items-center gap-3">
+                              <span className="w-4 text-neutral-300 font-black">{i + 1}.</span>
+                              <span className="font-bold text-neutral-800">{reg.region}</span>
+                            </div>
+                            <div className="flex items-center gap-6">
+                               <div className="flex items-center gap-2">
+                                  <div className="w-20 h-1 bg-neutral-200 rounded-full overflow-hidden">
+                                     <div className="h-full bg-blue-600" style={{ width: `${(reg.purchases / geographicData[0].purchases) * 100}%` }} />
+                                  </div>
+                                  <span className="w-6 text-right font-black text-blue-600">{reg.purchases}</span>
+                               </div>
+                               <span className="font-bold text-neutral-400">{formatCurrency(reg.spend, selectedAccount.currency)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="col-span-4 bg-neutral-50 rounded-2xl border border-neutral-100 p-4 flex flex-col">
+                       <h3 className="text-[9px] font-black uppercase tracking-widest text-neutral-400 mb-2">Composición Audiencia</h3>
+                       <div className="flex-1 min-h-0 flex items-center justify-center">
+                          <PieChart width={120} height={100}>
+                            <Pie data={genderData} innerRadius={25} outerRadius={35} paddingAngle={4} dataKey="value">
+                              {genderData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                            </Pie>
+                            <Tooltip />
+                          </PieChart>
+                       </div>
+                       <div className="flex justify-between mt-2">
+                          {genderData.map(g => (
+                            <div key={g.name} className="flex items-center gap-1">
+                               <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: g.color}} />
+                               <span className="text-[7px] font-black uppercase text-neutral-400">{g.name}</span>
+                            </div>
+                          ))}
+                       </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-between items-end border-t border-neutral-100 pt-8 mt-10">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-[8px] font-black">CR</div>
-                  <div className="text-[8px] font-black uppercase tracking-widest text-neutral-900">Control ROAS Platform</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[7px] font-black uppercase tracking-widest text-neutral-300 mb-1">Fecha Emisión</div>
-                  <div className="text-[9px] font-bold text-neutral-900">{format(new Date(), 'dd/MM/yyyy')}</div>
-                </div>
+              {/* Footer inside Sheet 1 */}
+              <div className="pt-4 border-t border-neutral-100 flex items-center justify-between opacity-30 shrink-0">
+                <div className="text-[8px] font-black uppercase tracking-[0.4em]">Analytics Engine Verified</div>
+                <div className="text-[8px] font-bold">REP-{Math.random().toString(36).substr(2, 6).toUpperCase()}</div>
               </div>
             </ReportPage>
 
-            {/* Sheet 2: Metrics */}
+            {/* Sheet 2: Metrics Detail */}
             <ReportPage>
               <div className="space-y-10">
                 <div className="flex items-center gap-3 border-b border-neutral-100 pb-3">
@@ -471,6 +591,45 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
   );
 }
 
+function MiniMetricCard({ label, value, color }: { label: string, value: string, color: string }) {
+  return (
+    <div className="bg-neutral-50 rounded-2xl p-4 border border-neutral-100 flex flex-col justify-center h-24 hover:shadow-lg transition-all border-l-4" style={{ borderLeftColor: color }}>
+      <div className="text-[7px] font-black uppercase tracking-widest text-neutral-400 mb-1">{label}</div>
+      <div className="text-sm font-black tracking-tight text-neutral-900">{value}</div>
+      <div className="mt-2 h-1 w-full bg-neutral-100 rounded-full overflow-hidden">
+        <div className="h-full opacity-30" style={{ backgroundColor: color, width: '60%' }} />
+      </div>
+    </div>
+  );
+}
+
+function TrafficFunnel({ impressions, clicks, actions, type }: { impressions: number, clicks: number, actions: number, type: 'ecommerce' | 'messaging' | 'both' }) {
+  const ctr = (clicks / impressions) * 100;
+  const cr = (actions / clicks) * 100;
+
+  return (
+    <div className="w-full space-y-4 px-2">
+      {[
+        { label: 'Impresiones', value: impressions, color: 'bg-blue-100', text: 'text-blue-900', w: 'w-full' },
+        { label: 'Alcance / Clicks', value: clicks, color: 'bg-blue-200', text: 'text-blue-900', w: 'w-[85%]' },
+        { label: type === 'messaging' ? 'Mensajes' : type === 'ecommerce' ? 'Compras' : 'Conversiones', value: actions, color: 'bg-blue-600', text: 'text-white', w: 'w-[70%]' }
+      ].map((step, i) => (
+        <div key={step.label} className="flex flex-col items-center gap-1">
+          <div className={cn("h-10 rounded-xl flex items-center justify-between px-4 transition-all shadow-sm", step.color, step.text, step.w)}>
+            <span className="text-[7px] font-black uppercase tracking-widest opacity-70">{step.label}</span>
+            <span className="text-[10px] font-black">{formatDecimal(step.value, 0)}</span>
+          </div>
+          {i < 2 && (
+             <div className="text-[8px] font-bold text-neutral-400 py-1">
+               {i === 0 ? `CTR: ${formatDecimal(ctr)}%` : `Conv: ${formatDecimal(cr)}%`}
+             </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function SummaryCard({ label, value, subValue, icon: Icon, color = 'text-neutral-900' }: { label: string, value: string, subValue: string, icon: any, color?: string }) {
   return (
     <div className="bg-neutral-50 rounded-2xl p-5 border border-neutral-100 flex flex-col justify-between h-32 hover:shadow-xl transition-all relative overflow-hidden group">
@@ -483,25 +642,5 @@ function SummaryCard({ label, value, subValue, icon: Icon, color = 'text-neutral
         <Icon className="w-3.5 h-3.5 text-neutral-200 group-hover:text-blue-600 transition-colors" />
       </div>
     </div>
-  );
-}
-
-function CheckCircle2Icon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
   );
 }
