@@ -71,17 +71,6 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
   const [noteScope, setNoteScope] = useState<'none' | 'all' | 'specific'>('all');
   const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([]);
 
-  // Sync selected IDs if initial state was empty - select first visible account
-  useEffect(() => {
-    const visibleAccounts = availableAccounts.filter(acc => settings[acc.id]?.visible !== false);
-    if (selectedAccountIds.length === 0 && visibleAccounts.length > 0) {
-      setSelectedAccountIds([visibleAccounts[0].id]);
-    } else if (selectedAccountIds.length > 1) {
-      // If somehow we had multiple, keep only the first one
-      setSelectedAccountIds([selectedAccountIds[0]]);
-    }
-  }, [availableAccounts, settings, selectedAccountIds]);
-
   // Group accounts by name (simply use custom name or account name now) - ONLY VISIBLE ONES
   const availableAccounts = useMemo(() => {
     return accounts
@@ -92,6 +81,24 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
         original: acc
       })).sort((a, b) => a.name.localeCompare(b.name));
   }, [accounts, settings]);
+
+  // Sync selected IDs if initial state was empty - select first visible account
+  useEffect(() => {
+    if (selectedAccountIds.length === 0 && availableAccounts.length > 0) {
+      setSelectedAccountIds([availableAccounts[0].id]);
+    } else if (selectedAccountIds.length > 1) {
+      // If somehow we had multiple, keep only the first one
+      setSelectedAccountIds([selectedAccountIds[0]]);
+    }
+    
+    // Si la cuenta seleccionada ya no es visible, seleccionar la primera visible
+    if (selectedAccountIds.length === 1) {
+      const isVisible = availableAccounts.some(acc => acc.id === selectedAccountIds[0]);
+      if (!isVisible && availableAccounts.length > 0) {
+        setSelectedAccountIds([availableAccounts[0].id]);
+      }
+    }
+  }, [availableAccounts, selectedAccountIds]);
 
   const selectedAccounts = accounts.filter(a => selectedAccountIds.includes(a.id));
   
