@@ -8,13 +8,14 @@ import {
   fetchInsights,
   fetchAccountStructure 
 } from './services/facebook';
-import { AdAccount, AccountSettings, ClientGroup, Campaign, AdSet, Ad, AlertRule, InAppNotification } from './types';
+import { AdAccount, AccountSettings, ClientGroup, Campaign, AdSet, Ad, AlertRule, InAppNotification, AccountNote } from './types';
 import { Sidebar } from './components/Sidebar';
 import { IndividualReport } from './components/IndividualReport';
 import { Overview } from './components/Overview';
 import { AccountDetailView } from './components/AccountDetailView';
 import { StrategyCanvas } from './components/StrategyCanvas';
 import { AlertsSection } from './components/AlertsSection';
+import { ReportsSection } from './components/ReportsSection';
 import { formatCurrency, formatNumber, formatDecimal, cn } from './lib/utils';
 import { 
   ChevronDown, 
@@ -129,6 +130,19 @@ export default function App() {
       return {};
     }
   });
+
+  const [notes, setNotes] = useState<AccountNote[]>(() => {
+    try {
+      const saved = localStorage.getItem('cr_notes');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('cr_notes', JSON.stringify(notes));
+  }, [notes]);
   
   // Report State
   const [reportAccount, setReportAccount] = useState<AdAccount | null>(null);
@@ -545,6 +559,7 @@ export default function App() {
                    activePage === 'detail' ? 'Análisis individual de cuenta' : 
                    activePage === 'accounts' ? 'Cuentas visibles' : 
                    activePage === 'alerts' ? 'Centro de Alertas' :
+                   activePage === 'reports' ? 'Informes Mensuales' :
                    activePage === 'strategy' ? 'Lienzo Estratégico' : activePage}
                   {activePage === 'strategy' && (
                     <div className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-600/20 rounded-full text-[8px] text-blue-500 uppercase tracking-widest">Planificación</div>
@@ -1041,7 +1056,19 @@ export default function App() {
                   isCustomDate={isCustomDate}
                   setIsCustomDate={setIsCustomDate}
                   onRefresh={loadData}
+                  notes={notes}
+                  onAddNote={(note) => setNotes([...notes, note])}
+                  onDeleteNote={(id) => setNotes(notes.filter(n => n.id !== id))}
                 />
+              )}
+              {activePage === 'reports' && (
+                <div className="animate-in fade-in duration-500">
+                  <ReportsSection 
+                    accounts={accounts} 
+                    settings={settings} 
+                    notes={notes} 
+                  />
+                </div>
               )}
               {activePage === 'accounts' && (
                 <div className="animate-in fade-in duration-500 max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 pb-20">

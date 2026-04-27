@@ -110,3 +110,28 @@ export interface InAppNotification {
   isRead: boolean;
   severity: 'low' | 'medium' | 'high';
 }
+
+export interface AccountNote {
+  id: string;
+  accountId: string;
+  text: string;
+  timestamp: string;
+  category: 'observation' | 'change' | 'meeting' | 'urgent';
+  tags?: string[];
+}
+
+export interface DemographicData {
+  age: string;
+  gender: 'male' | 'female' | 'unknown';
+  purchases: number;
+  spend: number;
+}
+
+export interface GeographicData {
+  region: string;
+  city: string;
+  purchases: number;
+  spend: number;
+  lat?: number;
+  lng?: number;
+}

@@ -9,7 +9,8 @@ import {
   LogOut, 
   RefreshCcw,
   Settings2,
-  Bell
+  Bell,
+  FileText
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -55,6 +56,7 @@ export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, l
         <div className="text-[10px] font-black text-neutral-700 uppercase tracking-[0.2em] px-3 mb-3 mt-4">Vistas</div>
         <NavItem id="overview" icon={LayoutDashboard} label="Vista general" />
         <NavItem id="detail" icon={BarChart3} label="Detalle de cuentas" />
+        <NavItem id="reports" icon={FileText} label="Informes" />
         <NavItem id="strategy" icon={Share2} label="Estrategia" />
 
         <div className="text-[10px] font-black text-neutral-700 uppercase tracking-[0.2em] px-3 mb-3 mt-8">Configuración</div>

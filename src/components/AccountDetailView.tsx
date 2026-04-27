@@ -3,7 +3,8 @@ import {
   AdAccount, 
   AccountSettings, 
   Ad, 
-  DailyMetric 
+  DailyMetric,
+  AccountNote
 } from '../types';
 import { 
   fetchTopAds, 
@@ -34,7 +35,8 @@ import {
   Instagram,
   Facebook,
   Copy,
-  Check
+  Check,
+  X
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { startOfMonth, endOfMonth, differenceInDays, subDays } from 'date-fns';
@@ -61,6 +63,9 @@ interface AccountDetailViewProps {
   isCustomDate: boolean;
   setIsCustomDate: (val: boolean) => void;
   onRefresh: () => void;
+  notes: AccountNote[];
+  onAddNote: (note: AccountNote) => void;
+  onDeleteNote: (id: string) => void;
 }
 
 export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
@@ -72,7 +77,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   setDateRange,
   isCustomDate,
   setIsCustomDate,
-  onRefresh
+  onRefresh,
+  notes,
+  onAddNote,
+  onDeleteNote
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -82,6 +90,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [topN, setTopN] = useState(5);
   const [observations, setObservations] = useState('');
   const [isSavingObs, setIsSavingObs] = useState(false);
+  const [noteCategory, setNoteCategory] = useState<AccountNote['category']>('observation');
   const [showMetrics, setShowMetrics] = useState(true);
   const [showObservations, setShowObservations] = useState(false);
   const [showMetricConfig, setShowMetricConfig] = useState(false);
@@ -171,10 +180,28 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   };
 
   const handleSaveObs = () => {
-    if (!selectedId || !s) return;
+    if (!selectedId || !s || !observations.trim()) return;
     setIsSavingObs(true);
+    
+    // Create a new formal note from the observation if it has content
+    const newNote: AccountNote = {
+      id: Math.random().toString(36).substr(2, 9),
+      accountId: selectedId,
+      text: observations,
+      timestamp: new Date().toISOString(),
+      category: noteCategory,
+      tags: [s.tracking]
+    };
+    
+    onAddNote(newNote);
+    
+    // Also save as the current observation in settings for quick view
     onSaveSettings(selectedId, { ...s, observations } as any);
-    setTimeout(() => setIsSavingObs(false), 800);
+    
+    setTimeout(() => {
+      setIsSavingObs(false);
+      setObservations(''); // Clear after posting to history
+    }, 800);
   };
 
   const handleCopyText = () => {
@@ -853,24 +880,81 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                        <h3 className="text-[9px] font-black text-neutral-700 uppercase tracking-widest">Bitácora de cuenta</h3>
                      </div>
                      <div className="bg-[#111] rounded-xl border border-white/5 p-4 shadow-xl hover:bg-[#131313] transition-colors group">
-                       <textarea 
-                         placeholder="Escribe aquí las observaciones, experimentos o cambios realizados..."
-                         value={observations}
-                         onChange={(e) => setObservations(e.target.value)}
-                         className="w-full bg-transparent border-none outline-none text-neutral-400 text-xs h-24 resize-none custom-scrollbar placeholder-neutral-800 leading-relaxed"
-                       />
-                       <div className="flex justify-end gap-2 mt-3 text-[9px] font-black uppercase tracking-widest">
-                          <button className="bg-neutral-900 border border-white/5 hover:bg-neutral-800 text-white px-4 py-1.5 rounded-lg transition-all">Metas</button>
-                          <button 
-                            onClick={handleSaveObs}
-                            disabled={isSavingObs}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-1.5 rounded-lg transition-all shadow-xl shadow-blue-600/20 flex items-center gap-2 disabled:opacity-50 active:scale-95"
-                          >
-                            {isSavingObs ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                            Actualizar
-                          </button>
-                       </div>
-                     </div>
+                        <textarea 
+                          placeholder="Escribe aquí las observaciones, experimentos o cambios realizados..."
+                          value={observations}
+                          onChange={(e) => setObservations(e.target.value)}
+                          className="w-full bg-transparent border-none outline-none text-neutral-400 text-xs h-24 resize-none custom-scrollbar placeholder-neutral-800 leading-relaxed"
+                        />
+                        <div className="flex items-center justify-between mt-3">
+                           <div className="flex gap-2">
+                             {(['observation', 'change', 'meeting', 'urgent'] as const).map(cat => (
+                               <button 
+                                 key={cat}
+                                 onClick={() => setNoteCategory(cat)}
+                                 className={cn(
+                                   "px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border transition-all",
+                                   noteCategory === cat 
+                                     ? "bg-blue-600/10 border-blue-600/20 text-blue-500" 
+                                     : "bg-black/20 border-white/5 text-neutral-600"
+                                 )}
+                               >
+                                 {cat}
+                               </button>
+                             ))}
+                           </div>
+                           <div className="flex justify-end gap-2 text-[9px] font-black uppercase tracking-widest">
+                              <button 
+                                onClick={handleSaveObs}
+                                disabled={isSavingObs || !observations.trim()}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-1.5 rounded-lg transition-all shadow-xl shadow-blue-600/20 flex items-center gap-2 disabled:opacity-50 active:scale-95"
+                              >
+                                {isSavingObs ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                                Publicar en Bitácora
+                              </button>
+                           </div>
+                        </div>
+                      </div>
+
+                      {/* Notes History List */}
+                      <div className="space-y-3 mt-6 print:hidden">
+                        <h4 className="text-[10px] font-black text-neutral-700 uppercase tracking-widest px-1">Historial reciente</h4>
+                        {notes.filter(n => n.accountId === selectedId).length === 0 ? (
+                          <div className="py-8 text-center bg-white/[0.01] rounded-xl border border-dashed border-white/5">
+                            <p className="text-[9px] font-black text-neutral-800 uppercase tracking-widest">No hay registros previos</p>
+                          </div>
+                        ) : (
+                          notes.filter(n => n.accountId === selectedId)
+                               .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+                               .slice(0, 5)
+                               .map(note => (
+                            <div key={note.id} className="bg-[#0c0c0c] p-4 rounded-xl border border-white/5 space-y-2 group/note relative">
+                               <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                     <span className={cn(
+                                       "px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-tighter border",
+                                       note.category === 'change' ? "bg-blue-600/10 border-blue-600/20 text-blue-500" :
+                                       note.category === 'urgent' ? "bg-red-600/10 border-red-600/20 text-red-500" :
+                                       "bg-white/5 border-white/5 text-neutral-600"
+                                     )}>
+                                       {note.category}
+                                     </span>
+                                     <span className="text-[8px] font-bold text-neutral-700 uppercase tracking-widest">
+                                       {format(new Date(note.timestamp), 'dd/MM HH:mm')}
+                                     </span>
+                                  </div>
+                                  <button 
+                                    onClick={() => onDeleteNote(note.id)}
+                                    className="p-1 text-neutral-800 hover:text-red-500 transition-all opacity-0 group-hover/note:opacity-100"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                               </div>
+                               <p className="text-xs text-neutral-400 font-medium leading-relaxed">{note.text}</p>
+                            </div>
+                          ))
+                        )}
+                      </div>
                   </motion.div>
 
                   {/* Print Version of Observations */}
