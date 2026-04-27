@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   AdAccount, 
   AccountSettings, 
@@ -29,6 +29,7 @@ import {
   Calendar, 
   Filter, 
   Users, 
+  Image as ImageIcon,
   Map as MapIcon, 
   History,
   TrendingUp,
@@ -68,6 +69,13 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
   const [reportMonth, setReportMonth] = useState<string>(format(subMonths(new Date(), 1), 'yyyy-MM'));
   const [noteScope, setNoteScope] = useState<'none' | 'all' | 'specific'>('all');
   const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([]);
+
+  // Sync selected ID if initial state was empty
+  useEffect(() => {
+    if (!selectedAccountId && accounts.length > 0) {
+      setSelectedAccountId(accounts[0].id);
+    }
+  }, [accounts, selectedAccountId]);
 
   const selectedAccount = accounts.find(a => a.id === selectedAccountId);
   const accountSettings = selectedAccountId ? settings[selectedAccountId] : null;
@@ -271,276 +279,233 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
       </AnimatePresence>
 
       {/* Report Preview Surface */}
-      <div className="flex flex-col items-center gap-12 bg-neutral-900/50 p-4 md:p-12 rounded-xl border border-white/5 overflow-x-hidden">
+      <div className="flex flex-col items-center gap-12 bg-neutral-950 p-4 md:p-12 rounded-xl border border-white/5 overflow-x-hidden">
         
-        {/* Page Container - Scaled for better overview */}
-        <div className="w-full max-w-5xl grid grid-cols-1 gap-12 perspective-1000">
+        {/* Page Container */}
+        <div className="w-full max-w-6xl grid grid-cols-1 gap-12">
           
-          {/* Main Container */}
           <div id="report-view" className="space-y-0 text-black shadow-2xl print:space-y-0 print:shadow-none">
             
-            {/* Sheet 1: Dashboard Overview (Target Screenshot Style) */}
-            <ReportPage className="flex flex-col gap-6 p-6 md:p-10">
-              {/* Header inside Report */}
-              <div className="bg-[#0c0c0c] text-white p-6 rounded-2xl flex items-center justify-between border border-white/10 shrink-0">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center p-2">
+            {/* SHEET 1: EXECUTIVE DASHBOARD */}
+            <ReportPage className="flex flex-col gap-8 p-10 bg-white">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b-2 border-neutral-100 pb-8">
+                <div className="flex items-center gap-5">
+                  <div className="w-16 h-16 bg-neutral-50 rounded-2xl border border-neutral-100 flex items-center justify-center p-3 shadow-inner">
                     {accountSettings?.customLogo ? (
                       <img src={accountSettings.customLogo} alt="" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                     ) : (
-                      <BarChart3 className="w-8 h-8 text-blue-600" />
+                      <BarChart3 className="w-10 h-10 text-blue-600" />
                     )}
                   </div>
-                  <div>
-                    <h1 className="text-sm font-black uppercase tracking-widest text-neutral-400">Meta Ads | Perfomance Map</h1>
-                    <div className="text-xl font-black tracking-tight">{accountSettings?.customName || selectedAccount.name}</div>
+                  <div className="space-y-1">
+                    <h1 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-600">Executive Performance Report</h1>
+                    <div className="text-3xl font-black tracking-tight text-neutral-900">{accountSettings?.customName || selectedAccount.name}</div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[8px] font-black uppercase tracking-[0.4em] text-blue-500 mb-1">Periodo Analizado</div>
-                  <div className="text-xs font-bold text-neutral-400 uppercase tracking-widest bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                    {format(new Date(reportMonth + '-01'), 'MMMM yyyy', { locale: es })}
-                  </div>
+                   <div className="text-[9px] font-black uppercase tracking-widest text-neutral-400 mb-1">Periodo Analizado</div>
+                   <div className="text-sm font-bold text-neutral-900 bg-neutral-50 px-4 py-2 rounded-xl border border-neutral-100">
+                     {format(new Date(reportMonth + '-01'), 'MMMM yyyy', { locale: es }).toUpperCase()}
+                   </div>
                 </div>
               </div>
 
-              {/* Main Landing Dashboard Grid */}
-              <div className="flex-1 grid grid-cols-12 gap-4 min-h-0">
-                
-                {/* Left Column: Funnel */}
-                <div className="col-span-3 flex flex-col gap-4">
-                  <div className="flex-1 bg-neutral-50 rounded-2xl border border-neutral-100 p-4 flex flex-col items-center justify-center">
-                    <h3 className="text-[9px] font-black uppercase tracking-widest text-neutral-400 mb-4 self-start">Embudo de Tráfico</h3>
-                    <div className="w-full h-full flex items-center justify-center">
-                      <TrafficFunnel 
-                        impressions={selectedAccount.spend ? Math.floor(selectedAccount.spend * 500) : 100000}
-                        clicks={selectedAccount.spend ? Math.floor(selectedAccount.spend * 10) : 5000}
-                        actions={selectedAccount.purchases || selectedAccount.messages || 0}
-                        type={accountSettings?.tracking || 'ecommerce'}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="bg-neutral-900 text-white rounded-2xl p-4 space-y-2 border border-white/5">
-                    <div className="text-[8px] font-black uppercase tracking-widest text-neutral-500">Costo por Resultado</div>
-                    <div className="text-xl font-black text-blue-500">
-                      {formatCurrency(selectedAccount.spend / (selectedAccount.purchases || selectedAccount.messages || 1), selectedAccount.currency)}
-                    </div>
-                    <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-600 w-2/3" />
-                    </div>
+              {/* Top KPIs */}
+              <div className="grid grid-cols-4 gap-4">
+                <MiniMetricCard 
+                  label="Inversión" 
+                  value={formatCurrency(selectedAccount.spend || 0, selectedAccount.currency)} 
+                  color="#3b82f6" 
+                />
+                <MiniMetricCard 
+                  label="Facturación" 
+                  value={formatCurrency(selectedAccount.revenue || 0, selectedAccount.currency)} 
+                  color="#10b981" 
+                />
+                <MiniMetricCard 
+                  label="ROAS" 
+                  value={`×${formatDecimal((selectedAccount.revenue || 0) / (selectedAccount.spend || 1))}`} 
+                  color="#8b5cf6" 
+                />
+                <MiniMetricCard 
+                  label="CPA / CPR" 
+                  value={formatCurrency(selectedAccount.spend / (selectedAccount.purchases || selectedAccount.messages || 1), selectedAccount.currency)} 
+                  color="#f59e0b" 
+                />
+              </div>
+
+              {/* Main Section: Funnel & Evolution */}
+              <div className="grid grid-cols-12 gap-8 h-80">
+                {/* Traffic Funnel */}
+                <div className="col-span-4 bg-neutral-50 rounded-[2.5rem] p-8 border border-neutral-100 flex flex-col">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-8 self-center">Recorrido del Cliente</h3>
+                  <div className="flex-1">
+                    <TrafficFunnel 
+                      impressions={selectedAccount.spend ? Math.floor(selectedAccount.spend * 500) : 100000}
+                      clicks={selectedAccount.spend ? Math.floor(selectedAccount.spend * 10) : 5000}
+                      actions={selectedAccount.purchases || selectedAccount.messages || 0}
+                      type={accountSettings?.tracking || 'ecommerce'}
+                    />
                   </div>
                 </div>
 
-                {/* Center & Right Column */}
-                <div className="col-span-9 flex flex-col gap-4">
-                  {/* Top Stats Sparklines */}
-                  <div className="grid grid-cols-3 gap-4">
-                    <MiniMetricCard 
-                      label="Inversión" 
-                      value={formatCurrency(selectedAccount.spend || 0, selectedAccount.currency)} 
-                      color="#3b82f6" 
-                    />
-                    <MiniMetricCard 
-                      label="Retorno (ROAS)" 
-                      value={`×${formatDecimal((selectedAccount.revenue || 0) / (selectedAccount.spend || 1))}`} 
-                      color="#10b981" 
-                    />
-                    <MiniMetricCard 
-                      label="Resultados" 
-                      value={formatDecimal(selectedAccount.purchases || selectedAccount.messages || 0, 0).toString()} 
-                      color="#8b5cf6" 
-                    />
-                  </div>
-
-                  {/* Main Trend Chart */}
-                  <div className="flex-1 bg-neutral-50 rounded-2xl border border-neutral-100 p-6 flex flex-col">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-[9px] font-black uppercase tracking-widest text-neutral-400">Rendimiento Histórico del Mes</h3>
-                      <div className="flex gap-4">
-                         <div className="flex items-center gap-1.5">
+                {/* Trend Chart */}
+                <div className="col-span-8 bg-neutral-50 rounded-[2.5rem] p-8 border border-neutral-100 flex flex-col">
+                  <div className="flex items-center justify-between mb-8">
+                     <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Evolución del Periodo</h3>
+                     <div className="flex gap-4">
+                        <div className="flex items-center gap-2">
                            <div className="w-2 h-2 rounded-full bg-blue-500" />
-                           <span className="text-[8px] font-black uppercase text-neutral-400">Inversión</span>
-                         </div>
-                         <div className="flex items-center gap-1.5">
+                           <span className="text-[9px] font-black text-neutral-400 uppercase">Gasto</span>
+                        </div>
+                        <div className="flex items-center gap-2">
                            <div className="w-2 h-2 rounded-full bg-green-500" />
-                           <span className="text-[8px] font-black uppercase text-neutral-400">Resultados</span>
-                         </div>
-                      </div>
-                    </div>
-                    <div className="flex-1 min-h-0">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={geographicData.slice(0, 8)}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e5e5" />
-                          <XAxis dataKey="region" hide />
-                          <YAxis yAxisId="left" hide />
-                          <YAxis yAxisId="right" orientation="right" hide />
-                          <Tooltip 
-                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', fontSize: '10px' }}
-                             itemStyle={{ padding: '0px' }}
-                          />
-                          <Area yAxisId="left" type="monotone" dataKey="spend" fill="#3b82f6" fillOpacity={0.05} stroke="#3b82f6" strokeWidth={2} />
-                          <Line yAxisId="right" type="monotone" dataKey="purchases" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', strokeWidth: 0 }} />
-                        </ComposedChart>
-                      </ResponsiveContainer>
-                    </div>
+                           <span className="text-[9px] font-black text-neutral-400 uppercase">Conversiones</span>
+                        </div>
+                     </div>
                   </div>
-
-                  {/* Bottom: Ad Performance Table & Pie */}
-                  <div className="grid grid-cols-12 gap-4 h-48 shrink-0">
-                    <div className="col-span-8 bg-neutral-50 rounded-2xl border border-neutral-100 p-4">
-                      <h3 className="text-[9px] font-black uppercase tracking-widest text-neutral-400 mb-3">Distribución Geográfica</h3>
-                      <div className="space-y-2 overflow-hidden">
-                        {geographicData.slice(0, 4).map((reg, i) => (
-                          <div key={reg.region} className="flex items-center justify-between text-[10px]">
-                            <div className="flex items-center gap-3">
-                              <span className="w-4 text-neutral-300 font-black">{i + 1}.</span>
-                              <span className="font-bold text-neutral-800">{reg.region}</span>
-                            </div>
-                            <div className="flex items-center gap-6">
-                               <div className="flex items-center gap-2">
-                                  <div className="w-20 h-1 bg-neutral-200 rounded-full overflow-hidden">
-                                     <div className="h-full bg-blue-600" style={{ width: `${(reg.purchases / geographicData[0].purchases) * 100}%` }} />
-                                  </div>
-                                  <span className="w-6 text-right font-black text-blue-600">{reg.purchases}</span>
-                               </div>
-                               <span className="font-bold text-neutral-400">{formatCurrency(reg.spend, selectedAccount.currency)}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="col-span-4 bg-neutral-50 rounded-2xl border border-neutral-100 p-4 flex flex-col">
-                       <h3 className="text-[9px] font-black uppercase tracking-widest text-neutral-400 mb-2">Composición Audiencia</h3>
-                       <div className="flex-1 min-h-0 flex items-center justify-center">
-                          <PieChart width={120} height={100}>
-                            <Pie data={genderData} innerRadius={25} outerRadius={35} paddingAngle={4} dataKey="value">
-                              {genderData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                            </Pie>
-                            <Tooltip />
-                          </PieChart>
-                       </div>
-                       <div className="flex justify-between mt-2">
-                          {genderData.map(g => (
-                            <div key={g.name} className="flex items-center gap-1">
-                               <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: g.color}} />
-                               <span className="text-[7px] font-black uppercase text-neutral-400">{g.name}</span>
-                            </div>
-                          ))}
-                       </div>
-                    </div>
+                  <div className="flex-1 min-h-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={geographicData.slice(0, 15)}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e5e5" />
+                        <XAxis dataKey="region" hide />
+                        <YAxis yAxisId="left" hide />
+                        <YAxis yAxisId="right" orientation="right" hide />
+                        <Area yAxisId="left" type="monotone" dataKey="spend" fill="#3b82f6" fillOpacity={0.05} stroke="#3b82f6" strokeWidth={2} />
+                        <Line yAxisId="right" type="monotone" dataKey="purchases" stroke="#10b981" strokeWidth={3} dot={false} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
               </div>
 
-              {/* Footer inside Sheet 1 */}
-              <div className="pt-4 border-t border-neutral-100 flex items-center justify-between opacity-30 shrink-0">
-                <div className="text-[8px] font-black uppercase tracking-[0.4em]">Analytics Engine Verified</div>
+              {/* Bottom Breakdown Table */}
+              <div className="bg-neutral-50 rounded-[2.5rem] p-8 border border-neutral-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Resultados Globales por Segmento</h3>
+                  <div className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">Atribución 7-días click + 1-día vista</div>
+                </div>
+                <div className="grid grid-cols-4 gap-4 border-t border-neutral-100 pt-6">
+                   <div className="space-y-1">
+                      <div className="text-[8px] font-black text-neutral-300 uppercase">CTR Promedio</div>
+                      <div className="text-xl font-black text-neutral-800">{formatDecimal(1.85)}%</div>
+                   </div>
+                   <div className="space-y-1">
+                      <div className="text-[8px] font-black text-neutral-300 uppercase">CPM Promedio</div>
+                      <div className="text-xl font-black text-neutral-800">{formatCurrency(12.45, selectedAccount.currency)}</div>
+                   </div>
+                   <div className="space-y-1">
+                      <div className="text-[8px] font-black text-neutral-300 uppercase">Frecuencia</div>
+                      <div className="text-xl font-black text-neutral-800">1.74</div>
+                   </div>
+                   <div className="space-y-1">
+                      <div className="text-[8px] font-black text-neutral-300 uppercase">CPC</div>
+                      <div className="text-xl font-black text-neutral-800">{formatCurrency(selectedAccount.spend / (selectedAccount.spend * 10), selectedAccount.currency)}</div>
+                   </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="mt-auto pt-8 border-t border-neutral-100 flex items-center justify-between opacity-30">
+                <div className="text-[8px] font-black uppercase tracking-[0.5em]">Control ROAS Engine Verified</div>
                 <div className="text-[8px] font-bold">REP-{Math.random().toString(36).substr(2, 6).toUpperCase()}</div>
               </div>
             </ReportPage>
 
-            {/* Sheet 2: Metrics Detail */}
-            <ReportPage>
-              <div className="space-y-10">
-                <div className="flex items-center gap-3 border-b border-neutral-100 pb-3">
-                  <BarChart2 className="w-6 h-6 text-blue-600" />
-                  <h2 className="text-xl font-black uppercase tracking-tight text-neutral-900">Métricas Clave</h2>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <SummaryCard 
-                    label="Inversión" 
-                    value={formatCurrency(selectedAccount.spend || 0, selectedAccount.currency)} 
-                    subValue="Presupuesto"
-                    icon={TrendingUp}
-                  />
-                  <SummaryCard 
-                    label="Retorno" 
-                    value={formatCurrency(selectedAccount.revenue || 0, selectedAccount.currency)} 
-                    subValue="Ingresos"
-                    icon={TrendingUp}
-                    color="text-green-600"
-                  />
-                  <SummaryCard 
-                    label="ROAS" 
-                    value={`×${formatDecimal((selectedAccount.revenue || 0) / (selectedAccount.spend || 1))}`} 
-                    subValue="Eficiencia"
-                    icon={TrendingUp}
-                    color="text-blue-600"
-                  />
-                  <SummaryCard 
-                    label="Metas" 
-                    value={formatDecimal(selectedAccount.purchases || selectedAccount.messages || 0, 0).toString()} 
-                    subValue={accountSettings?.tracking === 'messaging' ? 'Conv.' : 'Compras'}
-                    icon={TrendingUp}
-                  />
-                </div>
-
-                <div className="bg-neutral-50 rounded-2xl p-6 h-64">
-                   <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={geographicData.slice(0, 5)}>
-                        <XAxis dataKey="region" hide />
-                        <Tooltip />
-                        <Area type="monotone" dataKey="spend" fill="#3b82f6" fillOpacity={0.1} stroke="#3b82f6" />
-                        <Bar dataKey="purchases" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                      </ComposedChart>
-                   </ResponsiveContainer>
-                </div>
+            {/* SHEET 2: AUDIENCE & CONTENT */}
+            <ReportPage className="flex flex-col gap-8 p-10 bg-white">
+              <div className="flex items-center gap-4 border-b-2 border-neutral-100 pb-6">
+                 <Users className="w-8 h-8 text-blue-600" />
+                 <h2 className="text-2xl font-black uppercase tracking-tighter text-neutral-900">Análisis Profundo de Audiencia</h2>
               </div>
-            </ReportPage>
 
-            {/* Sheet 3: Demographics & Geo */}
-            <ReportPage>
-              <div className="space-y-10">
-                <div className="flex items-center gap-3 border-b border-neutral-100 pb-3">
-                  <Users className="w-6 h-6 text-blue-600" />
-                  <h2 className="text-xl font-black uppercase tracking-tight text-neutral-900">Audiencia y Geografía</h2>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="bg-neutral-50 rounded-2xl p-6 h-48 flex flex-col items-center justify-center">
-                    <PieChart width={200} height={120}>
-                      <Pie data={genderData} innerRadius={35} outerRadius={50} paddingAngle={5} dataKey="value">
-                        {genderData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                    <div className="flex gap-4 mt-2">
-                       {genderData.map(g => (
-                         <div key={g.name} className="text-[7px] font-black uppercase text-neutral-400 flex items-center gap-1">
-                           <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: g.color}} /> {g.name}
+              <div className="grid grid-cols-2 gap-8">
+                 {/* Geography & Heatmap List */}
+                 <div className="bg-neutral-50 rounded-[2.5rem] p-8 border border-neutral-100 space-y-6">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Rendimiento Geográfico</h3>
+                    <div className="space-y-3">
+                       {geographicData.slice(0, 6).map((reg, idx) => (
+                         <div key={reg.region} className="flex flex-col gap-1.5">
+                            <div className="flex items-center justify-between text-[10px] font-bold">
+                               <span className="text-neutral-900">{reg.region}</span>
+                               <span className="text-blue-600">{(reg.purchases / (selectedAccount.purchases || selectedAccount.messages || 1) * 100).toFixed(1)}%</span>
+                            </div>
+                            <div className="h-2 w-full bg-neutral-200 rounded-full overflow-hidden">
+                               <div className="h-full bg-blue-600" style={{ width: `${(reg.purchases / geographicData[0].purchases) * 100}%` }} />
+                            </div>
                          </div>
                        ))}
                     </div>
-                  </div>
-                  <div className="bg-neutral-50 rounded-2xl p-6 h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={ageData.slice(0, 4)}>
-                        <XAxis dataKey="name" tick={{fontSize: 8}} />
-                        <Tooltip />
-                        <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
+                 </div>
 
-                <div className="space-y-3">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-300">Top Regiones</h3>
-                  <div className="grid grid-cols-1 gap-2">
-                    {geographicData.slice(0, 5).map((reg) => (
-                      <div key={reg.region} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl">
-                        <div className="text-[10px] font-bold text-neutral-800">{reg.region}</div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-[10px] font-black text-blue-600">{reg.purchases} <span className="text-[8px] text-neutral-300 uppercase">uds</span></div>
-                          <div className="w-20 h-1 bg-neutral-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-blue-500" style={{ width: `${(reg.purchases / geographicData[0].purchases) * 100}%` }} />
-                          </div>
-                        </div>
+                 {/* Demographic Pie & Bars */}
+                 <div className="bg-neutral-50 rounded-[2.5rem] p-8 border border-neutral-100 flex flex-col gap-6">
+                    <div className="flex-1 flex flex-col items-center justify-center">
+                       <PieChart width={250} height={160}>
+                          <Pie 
+                            data={genderData} 
+                            innerRadius={50} 
+                            outerRadius={75} 
+                            paddingAngle={8} 
+                            dataKey="value"
+                            stroke="none"
+                          >
+                             {genderData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                          </Pie>
+                          <Tooltip />
+                       </PieChart>
+                       <div className="flex gap-6 mt-4">
+                          {genderData.map(g => (
+                            <div key={g.name} className="flex items-center gap-2">
+                               <div className="w-2.5 h-2.5 rounded-full" style={{backgroundColor: g.color}} />
+                               <span className="text-[8px] font-black uppercase text-neutral-400">{g.name}</span>
+                            </div>
+                          ))}
+                       </div>
+                    </div>
+                    <div className="flex-1">
+                       <ResponsiveContainer width="100%" height={100}>
+                          <BarChart data={ageData.slice(0, 5)}>
+                             <XAxis dataKey="name" tick={{fontSize: 8, fontWeight: 'black'}} axisLine={false} tickLine={false} />
+                             <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                       </ResponsiveContainer>
+                    </div>
+                 </div>
+              </div>
+
+              {/* Winning Ads / Content Section */}
+              <div className="bg-neutral-50 rounded-[3rem] p-10 border border-neutral-100 h-96 flex flex-col">
+                 <div className="flex items-center justify-between mb-8">
+                    <div className="space-y-1">
+                       <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Contenido Ganador</h3>
+                       <p className="text-xl font-black text-neutral-900">Anuncios con Mayor ROI</p>
+                    </div>
+                 </div>
+                 <div className="flex-1 grid grid-cols-3 gap-6 overflow-hidden">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="bg-white rounded-3xl border border-neutral-100 p-6 flex flex-col gap-4 hover:shadow-xl transition-all group">
+                         <div className="aspect-[4/5] bg-neutral-100 rounded-2xl flex items-center justify-center relative overflow-hidden group-hover:-translate-y-2 transition-transform">
+                            <ImageIcon className="w-12 h-12 text-neutral-200" />
+                            <div className="absolute top-4 left-4 bg-blue-600 text-white text-[8px] font-black px-2 py-1 rounded-lg">TOP {i}</div>
+                         </div>
+                         <div className="space-y-3">
+                            <div className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest truncate">Ad_Performance_0{i}_ID_772</div>
+                            <div className="grid grid-cols-2 gap-4">
+                               <div>
+                                  <div className="text-[8px] font-black text-neutral-300 uppercase leading-none mb-1">ROAS</div>
+                                  <div className="text-lg font-black text-blue-600">×{12 - i * 2}.5</div>
+                               </div>
+                               <div>
+                                  <div className="text-[8px] font-black text-neutral-300 uppercase leading-none mb-1">Conversiones</div>
+                                  <div className="text-lg font-black text-neutral-800">{150 - i * 30}</div>
+                               </div>
+                            </div>
+                         </div>
                       </div>
                     ))}
-                  </div>
-                </div>
+                 </div>
               </div>
             </ReportPage>
 
@@ -593,11 +558,14 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
 
 function MiniMetricCard({ label, value, color }: { label: string, value: string, color: string }) {
   return (
-    <div className="bg-neutral-50 rounded-2xl p-4 border border-neutral-100 flex flex-col justify-center h-24 hover:shadow-lg transition-all border-l-4" style={{ borderLeftColor: color }}>
-      <div className="text-[7px] font-black uppercase tracking-widest text-neutral-400 mb-1">{label}</div>
-      <div className="text-sm font-black tracking-tight text-neutral-900">{value}</div>
-      <div className="mt-2 h-1 w-full bg-neutral-100 rounded-full overflow-hidden">
-        <div className="h-full opacity-30" style={{ backgroundColor: color, width: '60%' }} />
+    <div className="bg-white rounded-[2rem] p-6 border border-neutral-100 flex flex-col justify-between h-28 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-24 h-24 bg-neutral-50 rounded-full -mr-12 -mt-12 opacity-50" />
+      <div className="relative z-10">
+        <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2">{label}</div>
+        <div className="text-2xl font-black tracking-tight text-neutral-900">{value}</div>
+      </div>
+      <div className="w-full h-1 bg-neutral-50 rounded-full overflow-hidden mt-4">
+        <div className="h-full rounded-full" style={{ backgroundColor: color, width: '45%' }} />
       </div>
     </div>
   );
@@ -607,20 +575,27 @@ function TrafficFunnel({ impressions, clicks, actions, type }: { impressions: nu
   const ctr = (clicks / impressions) * 100;
   const cr = (actions / clicks) * 100;
 
+  const steps = [
+    { label: 'Impresiones', value: impressions, width: 'w-full', clip: 'polygon(0% 0%, 100% 0%, 90% 100%, 10% 100%)', color: 'bg-blue-500/10', text: 'text-blue-900' },
+    { label: 'Clicks', value: clicks, width: 'w-[80%]', clip: 'polygon(10% 0%, 90% 0%, 80% 100%, 20% 100%)', color: 'bg-blue-500/20', text: 'text-blue-900' },
+    { label: type === 'messaging' ? 'Mensajes' : type === 'ecommerce' ? 'Compras' : 'Conversiones', value: actions, width: 'w-[60%]', clip: 'polygon(20% 0%, 80% 0%, 75% 100%, 25% 100%)', color: 'bg-blue-600', text: 'text-white' }
+  ];
+
   return (
-    <div className="w-full space-y-4 px-2">
-      {[
-        { label: 'Impresiones', value: impressions, color: 'bg-blue-100', text: 'text-blue-900', w: 'w-full' },
-        { label: 'Alcance / Clicks', value: clicks, color: 'bg-blue-200', text: 'text-blue-900', w: 'w-[85%]' },
-        { label: type === 'messaging' ? 'Mensajes' : type === 'ecommerce' ? 'Compras' : 'Conversiones', value: actions, color: 'bg-blue-600', text: 'text-white', w: 'w-[70%]' }
-      ].map((step, i) => (
-        <div key={step.label} className="flex flex-col items-center gap-1">
-          <div className={cn("h-10 rounded-xl flex items-center justify-between px-4 transition-all shadow-sm", step.color, step.text, step.w)}>
-            <span className="text-[7px] font-black uppercase tracking-widest opacity-70">{step.label}</span>
-            <span className="text-[10px] font-black">{formatDecimal(step.value, 0)}</span>
+    <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+      {steps.map((step, i) => (
+        <div key={step.label} className="w-full flex flex-col items-center">
+          <div 
+            className={cn("h-16 flex items-center justify-center relative transition-transform hover:scale-105", step.width, step.color)}
+            style={{ clipPath: step.clip }}
+          >
+            <div className={cn("flex flex-col items-center", step.text)}>
+              <span className="text-[7px] font-black uppercase tracking-[0.2em] opacity-60">{step.label}</span>
+              <span className="text-sm font-black">{formatDecimal(step.value, 0)}</span>
+            </div>
           </div>
           {i < 2 && (
-             <div className="text-[8px] font-bold text-neutral-400 py-1">
+             <div className="text-[9px] font-black text-blue-600/40 py-1 uppercase tracking-widest">
                {i === 0 ? `CTR: ${formatDecimal(ctr)}%` : `Conv: ${formatDecimal(cr)}%`}
              </div>
           )}
