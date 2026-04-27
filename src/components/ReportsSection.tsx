@@ -35,6 +35,7 @@ import {
   TrendingUp,
   MapPin,
   ChevronRight,
+  ChevronDown,
   PieChart as PieIcon,
   BarChart2,
   BarChart3,
@@ -97,6 +98,12 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
     if (!acc) return '';
     const name = settings[acc.id]?.customName || acc.name;
     return name.split(' - ')[0].split(' | ')[0].trim();
+  };
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroup = (group: string) => {
+    setOpenGroups(prev => ({ ...prev, [group]: !prev[group] }));
   };
 
   // Aggregate data for the selected accounts
@@ -238,64 +245,99 @@ export function ReportsSection({ accounts, settings, notes }: ReportsSectionProp
       <div className="bg-[#0a0a0a] rounded-lg border border-white/5 p-4 space-y-4 print:hidden sticky top-4 z-[100] shadow-2xl backdrop-blur-md bg-opacity-90">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="bg-white/5 p-1 rounded-md border border-white/5 max-w-2xl">
-               <div className="flex flex-wrap gap-2 p-1 max-h-32 overflow-y-auto">
-                  {Object.entries(groupedAccounts).map(([groupName, groupAccs]) => (
-                    <div key={groupName} className="flex items-center bg-black/40 rounded-md p-1 border border-white/5">
-                      <button
-                        onClick={() => {
-                          const isAlreadyExactlySelected = groupAccs.every(a => selectedAccountIds.includes(a.id)) && selectedAccountIds.length === groupAccs.length;
-                          if (isAlreadyExactlySelected) {
-                            // If only this group was selected, we don't allow total deselect for UX safety
-                            // but if multiple groups (theoretical) were, we'd clear. 
-                            // Since we only allow one group now, we just keep it or select the first account of the group
-                            setSelectedAccountIds([groupAccs[0].id]);
-                          } else {
-                            setSelectedAccountIds(groupAccs.map(ga => ga.id));
-                          }
-                        }}
-                        className={cn(
-                          "px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest transition-all mr-2",
-                          groupAccs.every(a => selectedAccountIds.includes(a.id)) ? "bg-blue-600 text-white" : "bg-white/5 text-neutral-400 hover:text-white"
-                        )}
-                      >
-                        {groupName}
-                      </button>
-                      <div className="flex gap-1">
-                        {groupAccs.map(acc => (
-                          <button
-                            key={acc.id}
-                            onClick={() => {
-                              const groupOfSelected = selectedAccountIds.length > 0 ? getAccountGroup(selectedAccountIds[0]) : '';
-                              const currentGroup = getAccountGroup(acc.id);
-
-                              if (groupOfSelected !== currentGroup) {
-                                // If switching groups, select only the new account
-                                setSelectedAccountIds([acc.id]);
-                              } else {
-                                // Within same group, toggle
-                                setSelectedAccountIds(prev => 
-                                  prev.includes(acc.id) 
-                                    ? prev.length > 1 ? prev.filter(id => id !== acc.id) : prev
-                                    : [...prev, acc.id]
-                                );
-                              }
-                            }}
-                            className={cn(
-                              "px-1.5 py-0.5 rounded text-[7px] font-bold uppercase transition-all",
-                              selectedAccountIds.includes(acc.id) 
-                                ? "bg-blue-500/20 text-blue-400 border border-blue-500/30" 
-                                : "bg-transparent text-neutral-600 hover:text-neutral-400 border border-transparent"
+            <div className="relative group">
+              <div className="flex items-center gap-2 bg-white/5 p-1 rounded-md border border-white/5 cursor-pointer">
+                <div className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-black text-white uppercase tracking-widest min-w-[200px]">
+                  <Users className="w-3.5 h-3.5 text-blue-500" />
+                  <span className="truncate">{aggregatedData.name}</span>
+                  <ChevronDown className="w-3 h-3 ml-auto opacity-40 shrink-0" />
+                </div>
+                
+                {/* Dropdown Menu */}
+                <div className="absolute top-full left-0 mt-2 w-[300px] bg-[#0c0c0c] border border-white/10 rounded-xl shadow-2xl overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[110]">
+                  <div className="p-2 max-h-[400px] overflow-y-auto">
+                    {Object.entries(groupedAccounts).map(([groupName, groupAccs]) => {
+                      const allInGroupSelected = groupAccs.every(a => selectedAccountIds.includes(a.id));
+                      const isExactlyThisGroup = allInGroupSelected && selectedAccountIds.length === groupAccs.length;
+                      const isOpen = openGroups[groupName];
+                      
+                      return (
+                        <div key={groupName} className="mb-1 last:mb-0">
+                          <div className="flex items-center gap-1 group/item">
+                            <button
+                              onClick={() => {
+                                if (isExactlyThisGroup) {
+                                  // Avoid total deselect if it's the only one
+                                  if (Object.keys(groupedAccounts).length > 1) {
+                                    // Optional: deselect logic if needed
+                                  }
+                                } else {
+                                  setSelectedAccountIds(groupAccs.map(ga => ga.id));
+                                }
+                              }}
+                              className={cn(
+                                "flex-1 text-left px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-between",
+                                isExactlyThisGroup ? "bg-blue-600 text-white" : "hover:bg-white/5 text-neutral-400"
+                              )}
+                            >
+                              {groupName}
+                              {groupAccs.length > 1 && (
+                                <span className={cn("text-[7px] px-1.5 py-0.5 rounded-full ml-2", isExactlyThisGroup ? "bg-blue-400 text-white" : "bg-white/10 text-neutral-500")}>
+                                  {groupAccs.length}
+                                </span>
+                              )}
+                            </button>
+                            {groupAccs.length > 1 && (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); toggleGroup(groupName); }}
+                                className="p-2 hover:bg-white/5 rounded-lg text-neutral-500"
+                              >
+                                <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", isOpen && "rotate-180")} />
+                              </button>
                             )}
-                          >
-                            {(settings[acc.id]?.customName || acc.name).replace(groupName, '').replace(/^[\s\-|]+/, '') || 'Principal'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-               </div>
+                          </div>
+                          
+                          {isOpen && groupAccs.length > 1 && (
+                            <div className="ml-4 mt-1 border-l border-white/5 pl-2 space-y-1 py-1">
+                              {groupAccs.map(acc => (
+                                <button
+                                  key={acc.id}
+                                  onClick={() => {
+                                    const currentGroup = getAccountGroup(acc.id);
+                                    const firstGroup = selectedAccountIds.length > 0 ? getAccountGroup(selectedAccountIds[0]) : '';
+                                    
+                                    if (currentGroup !== firstGroup) {
+                                      setSelectedAccountIds([acc.id]);
+                                    } else {
+                                      setSelectedAccountIds(prev => 
+                                        prev.includes(acc.id) 
+                                          ? prev.length > 1 ? prev.filter(id => id !== acc.id) : prev
+                                          : [...prev, acc.id]
+                                      );
+                                    }
+                                  }}
+                                  className={cn(
+                                    "w-full text-left px-3 py-1.5 rounded-md text-[8px] font-bold uppercase tracking-wider transition-all",
+                                    selectedAccountIds.includes(acc.id) && selectedAccountIds.length === 1 
+                                      ? "bg-blue-500/20 text-blue-400" 
+                                      : selectedAccountIds.includes(acc.id)
+                                      ? "text-blue-400 bg-blue-500/5"
+                                      : "text-neutral-600 hover:text-neutral-400 hover:bg-white/5"
+                                  )}
+                                >
+                                  {(settings[acc.id]?.customName || acc.name).replace(groupName, '').replace(/^[\s\-|]+/, '') || 'Principal'}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
+
             <div className="bg-white/5 p-1 rounded-md border border-white/5">
               <select 
                 value={reportMonth}
@@ -745,33 +787,96 @@ function MiniMetricCard({ label, value, color }: { label: string, value: string,
 function TrafficFunnel({ impressions, clicks, actions, type }: { impressions: number, clicks: number, actions: number, type: 'ecommerce' | 'messaging' | 'both' }) {
   const ctr = (clicks / impressions) * 100;
   const cr = (actions / clicks) * 100;
-
-  const steps = [
-    { label: 'Impresiones', value: impressions, width: 'w-full', clip: 'polygon(0% 0%, 100% 0%, 90% 100%, 10% 100%)', color: 'bg-blue-500/10', text: 'text-blue-900' },
-    { label: 'Clicks', value: clicks, width: 'w-[80%]', clip: 'polygon(10% 0%, 90% 0%, 80% 100%, 20% 100%)', color: 'bg-blue-500/20', text: 'text-blue-900' },
-    { label: type === 'messaging' ? 'Mensajes' : type === 'ecommerce' ? 'Compras' : 'Conversiones', value: actions, width: 'w-[60%]', clip: 'polygon(20% 0%, 80% 0%, 75% 100%, 25% 100%)', color: 'bg-blue-600', text: 'text-white' }
-  ];
+  const cpm = 12.45;
+  const cpc = 0.50;
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center gap-1">
-      {steps.map((step, i) => (
-        <div key={step.label} className="w-full flex flex-col items-center">
-          <div 
-            className={cn("h-16 flex items-center justify-center relative transition-transform hover:scale-105", step.width, step.color)}
-            style={{ clipPath: step.clip }}
-          >
-            <div className={cn("flex flex-col items-center", step.text)}>
-              <span className="text-[7px] font-black uppercase tracking-[0.2em] opacity-60">{step.label}</span>
-              <span className="text-sm font-black">{formatDecimal(step.value, 0)}</span>
+    <div className="w-full flex items-center gap-0 min-h-[320px]">
+      {/* Lateral Pills */}
+      <div className="flex-1 flex flex-col gap-3">
+        {/* Visibility Pill */}
+        <div className="bg-red-500 rounded-l-[1.5rem] rounded-r-md p-5 flex items-center justify-between text-white shadow-lg overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-red-500 opacity-80" />
+          <div className="relative z-10 flex-1 grid grid-cols-3 gap-0">
+            <div className="space-y-0.5 border-r border-white/10 pr-4">
+               <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Impressions</span>
+               <div className="text-[13px] font-black tracking-tight">{formatDecimal(impressions / 1000000)}M</div>
+            </div>
+            <div className="space-y-0.5 border-r border-white/10 px-4">
+               <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Abs. Top %</span>
+               <div className="text-[13px] font-black tracking-tight">68.2%</div>
+            </div>
+            <div className="space-y-0.5 pl-4">
+               <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Avg. CPM</span>
+               <div className="text-[13px] font-black tracking-tight">${cpm}</div>
             </div>
           </div>
-          {i < 2 && (
-             <div className="text-[9px] font-black text-blue-600/40 py-1 uppercase tracking-widest">
-               {i === 0 ? `CTR: ${formatDecimal(ctr)}%` : `Conv: ${formatDecimal(cr)}%`}
-             </div>
-          )}
         </div>
-      ))}
+
+        {/* Engagement Pill */}
+        <div className="bg-blue-400 rounded-l-[1.5rem] rounded-r-md p-5 flex items-center justify-between text-white shadow-md relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-400 opacity-80" />
+          <div className="relative z-10 flex-1 grid grid-cols-3 gap-0">
+            <div className="space-y-0.5 border-r border-white/10 pr-4">
+               <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Clicks</span>
+               <div className="text-[13px] font-black tracking-tight">{formatDecimal(clicks / 1000)}K</div>
+            </div>
+            <div className="space-y-0.5 border-r border-white/10 px-4">
+               <span className="text-[7px] font-black uppercase tracking-widest opacity-60">CTR</span>
+               <div className="text-[13px] font-black tracking-tight">{formatDecimal(ctr)}%</div>
+            </div>
+            <div className="space-y-0.5 pl-4">
+               <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Avg. CPC</span>
+               <div className="text-[13px] font-black tracking-tight">${cpc}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Conversion Pill */}
+        <div className="bg-blue-600 rounded-l-[1.5rem] rounded-r-md p-5 flex items-center justify-between text-white shadow-lg relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-blue-600 opacity-80" />
+          <div className="relative z-10 flex-1 grid grid-cols-3 gap-0">
+            <div className="space-y-0.5 border-r border-white/10 pr-4">
+               <span className="text-[7px] font-black uppercase tracking-widest opacity-60">{type === 'ecommerce' ? 'Conversions' : 'Messages'}</span>
+               <div className="text-[13px] font-black tracking-tight">{formatDecimal(actions, 0)}</div>
+            </div>
+            <div className="space-y-0.5 border-r border-white/10 px-4">
+               <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Conv. Rate</span>
+               <div className="text-[13px] font-black tracking-tight">{formatDecimal(cr)}%</div>
+            </div>
+            <div className="space-y-0.5 pl-4">
+               <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Clicks</span>
+               <div className="text-[13px] font-black tracking-tight">{formatDecimal(clicks / 1000)}K</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Funnel Vessel */}
+      <div className="w-[180px] h-[300px] flex flex-col gap-1.5 items-center justify-center">
+        <div 
+          className="w-full h-[88px] bg-red-500 shadow-xl flex items-center justify-center relative overflow-hidden"
+          style={{ clipPath: 'polygon(0% 0%, 100% 0%, 90% 100%, 10% 100%)' }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+          <span className="text-[10px] font-black text-white uppercase tracking-[0.3em] relative z-10">VISIBILITY</span>
+        </div>
+        <div 
+          className="w-[82%] h-[88px] bg-blue-400 shadow-lg flex items-center justify-center relative overflow-hidden -mt-0.5"
+          style={{ clipPath: 'polygon(5% 0%, 95% 0%, 85% 100%, 15% 100%)' }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+          <span className="text-[10px] font-black text-white uppercase tracking-[0.3em] relative z-10">ENGAGEMENT</span>
+        </div>
+        <div 
+          className="w-[66%] h-[88px] bg-blue-600 shadow-2xl flex items-center justify-center relative overflow-hidden -mt-0.5"
+          style={{ clipPath: 'polygon(15% 0%, 85% 0%, 75% 100%, 25% 100%)' }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+          <hr className="absolute top-0 left-0 right-0 border-t border-white/20" />
+          <span className="text-[10px] font-black text-white uppercase tracking-[0.3em] relative z-10">CONVERSION</span>
+        </div>
+      </div>
     </div>
   );
 }
