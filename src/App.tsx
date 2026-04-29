@@ -477,7 +477,7 @@ export default function App() {
             <div className="w-20 h-20 bg-blue-600 rounded-[2rem] flex items-center justify-center mb-6 shadow-2xl shadow-blue-600/40 transform -rotate-6">
               <BarChart3 className="w-12 h-12 text-white" />
             </div>
-            <h1 className="text-3xl font-black tracking-tighter text-white">Control ROAS</h1>
+            <h1 className="text-3xl font-black tracking-tighter text-white">Orion Metrics</h1>
             <p className="text-neutral-500 text-center text-sm font-bold uppercase tracking-widest mt-2 px-10">Meta Ads Dashboard</p>
           </div>
 

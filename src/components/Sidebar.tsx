@@ -47,7 +47,7 @@ export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, l
           <BarChart3 className="w-6 h-6 text-blue-500" />
         </div>
         <div>
-          <div className="font-black text-sm leading-tight tracking-tighter text-white">Control ROAS</div>
+          <div className="font-black text-sm leading-tight tracking-tighter text-white">Orion Metrics</div>
           <div className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest leading-none mt-1">Meta Ads Dashboard</div>
         </div>
       </div>

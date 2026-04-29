@@ -120,7 +120,7 @@ export function IndividualReport({ account, settings, dateLabel, onClose }: Indi
             in the expansion. We could fetch them here as well or pass them as props.
         */}
         <footer className="mt-20 pt-8 border-t border-neutral-100 text-center text-neutral-400 text-xs">
-          Este informe ha sido generado automáticamente por Control ROAS Dashboard.
+          Este informe ha sido generado automáticamente por Orion Metrics Dashboard.
           &copy; {new Date().getFullYear()} — Análisis de rendimiento publicitario.
         </footer>
       </div>

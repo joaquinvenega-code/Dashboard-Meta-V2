@@ -574,7 +574,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes }:
 
               {/* Footer */}
               <div className="mt-auto pt-8 border-t border-neutral-100 flex items-center justify-between opacity-30">
-                <div className="text-[8px] font-black uppercase tracking-[0.5em]">Control ROAS Engine Verified</div>
+                <div className="text-[8px] font-black uppercase tracking-[0.5em]">Orion Metrics Engine Verified</div>
                 <div className="text-[8px] font-bold">REP-{Math.random().toString(36).substr(2, 6).toUpperCase()}</div>
               </div>
             </ReportPage>
@@ -710,7 +710,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes }:
                   </div>
 
                   <div className="pt-6 border-t border-neutral-50 text-center mt-auto">
-                    <div className="text-[8px] font-black uppercase tracking-[0.4em] text-neutral-200">Control ROAS Analytics</div>
+                    <div className="text-[8px] font-black uppercase tracking-[0.4em] text-neutral-200">Orion Metrics Analytics</div>
                   </div>
                 </div>
               </ReportPage>
