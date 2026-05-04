@@ -26,8 +26,8 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
   const generateSummary = async () => {
     const apiKey = process.env.GEMINI_API_KEY;
     
-    if (!apiKey || apiKey === 'undefined') {
-      setSummary('Error: La API Key de Gemini no está configurada. Por favor, asegúrate de haberla agregado en el menú "Settings" (Ajustes) de AI Studio con el nombre GEMINI_API_KEY.');
+    if (!apiKey || apiKey === 'undefined' || apiKey === '') {
+      setSummary('Error: La conexión con Gemini AI no está activa. Asegúrate de que en "Settings > Secrets" aparezca "GEMINI_API_KEY" con el valor "AI Studio Free Tier" o tu propia clave. Luego, refresca la página.');
       return;
     }
 
@@ -67,7 +67,7 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-flash-latest",
+        model: "gemini-3-flash-preview",
         contents: prompt,
       });
 
@@ -78,7 +78,13 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
       setSummary(response.text);
     } catch (error: any) {
       console.error('Error generating summary:', error);
-      setSummary(`Error al generar el resumen: ${error?.message || 'Error de conexión con Gemini'}. Verifica tu conexión o intenta nuevamente.`);
+      let errorMsg = 'Error al conectar con la IA.';
+      if (error?.message?.includes('API key')) {
+        errorMsg = 'Error: Clave de API inválida o no configurada correctamente.';
+      } else if (error?.message?.includes('quota')) {
+        errorMsg = 'Error: Se ha alcanzado el límite de uso gratuito de la IA.';
+      }
+      setSummary(`${errorMsg} Detalles: ${error?.message || 'Error de conexión'}`);
     } finally {
       setLoading(false);
     }
