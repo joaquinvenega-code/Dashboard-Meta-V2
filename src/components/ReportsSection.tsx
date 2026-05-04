@@ -100,6 +100,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes }:
       revenue: selectedAccounts.reduce((sum, a) => sum + (a.revenue || 0), 0),
       purchases: selectedAccounts.reduce((sum, a) => sum + (a.purchases || 0), 0),
       messages: selectedAccounts.reduce((sum, a) => sum + (a.messages || 0), 0),
+      atc: selectedAccounts.reduce((sum, a) => sum + (a.addToCart || 0), 0),
       ctr: selectedAccounts.reduce((sum, a) => sum + (a.ctr || 0), 0) / selectedAccounts.length,
       currency: firstAcc.currency || 'ARS'
     };
@@ -392,6 +393,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes }:
                     ctr={aggregatedData.ctr}
                     purchases={aggregatedData.purchases}
                     messages={aggregatedData.messages}
+                    atc={aggregatedData.atc}
                     tracking={selectedAccountIds.length === 1 ? (settings[selectedAccountIds[0]]?.tracking || 'ecommerce') : 'ecommerce'}
                   />
                 </div>
