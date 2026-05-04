@@ -26,23 +26,15 @@ async function startServer() {
   });
 
   // API Routes
-  app.all('/api/v1/ai-summary', async (req, res) => {
-    console.log(`[API] ${req.method} /api/v1/ai-summary`);
-    
-    if (req.method === 'GET') {
-      return res.json({ status: 'ok', message: 'Endpoint listo para recibir POST' });
-    }
-
-    if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Método no permitido. Usa POST.' });
-    }
-
+  app.post('/api/summary', async (req, res) => {
+    console.log(`[API] Processing summary request...`);
     const { metrics, notes, monthName } = req.body;
     
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === 'undefined' || apiKey === '') {
+      console.error('[API] Error: Missing GEMINI_API_KEY');
       return res.status(500).json({ 
-        error: 'GEMINI_API_KEY no encontrada. Por favor agrégala en Settings > Secrets.' 
+        error: 'Llave de Gemini no encontrada. Agrégala en Settings > Secrets con el nombre GEMINI_API_KEY.' 
       });
     }
 
@@ -88,11 +80,16 @@ async function startServer() {
       const response = await result.response;
       const text = response.text();
 
+      console.log('[API] Summary generated successfully');
       res.json({ text });
     } catch (error: any) {
-      console.error('Error en API Gemini:', error);
-      res.status(500).json({ error: error.message || 'Error al conectar con Gemini' });
+      console.error('[API] Gemini Error:', error);
+      res.status(500).json({ error: `Error de Gemini: ${error.message}` });
     }
+  });
+
+  app.get('/api/status', (req, res) => {
+    res.json({ status: 'ok', time: new Date().toISOString(), env: !!process.env.GEMINI_API_KEY });
   });
 
   // Vite middleware for development

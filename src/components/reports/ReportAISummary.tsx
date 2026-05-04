@@ -26,22 +26,32 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     setLoading(true);
     setSummary('');
     try {
-      const response = await fetch(`/api/v1/ai-summary?t=${Date.now()}`, {
+      const response = await fetch(`/api/summary?t=${Date.now()}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({ metrics, notes, monthName })
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Error del servidor: ${response.status}`);
+        const text = await response.text().catch(() => 'No body');
+        let errorData = {};
+        try {
+          if (text) errorData = JSON.parse(text);
+        } catch (e) {
+          // Si no es JSON, mostramos el inicio del texto (podría ser HTML de error)
+          throw new Error(`Servidor: ${response.status} - ${text.substring(0, 30)}...`);
+        }
+        throw new Error((errorData as any).error || `Error del servidor: ${response.status}`);
       }
 
       const data = await response.json();
       setSummary(data.text || 'No se pudo generar el resumen.');
     } catch (error: any) {
       console.error('Error generating summary:', error);
-      setSummary(`Error al generar el resumen: ${error?.message || 'Error de conexión'}. Si acabas de configurar el Secret, intenta recargar la página.`);
+      setSummary(`Error: ${error?.message || 'Error de conexión'}. Verifica que Gemini esté activo en Settings.`);
     } finally {
       setLoading(false);
     }
