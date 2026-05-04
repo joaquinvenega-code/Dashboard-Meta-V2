@@ -1063,11 +1063,12 @@ export default function App() {
               )}
               {activePage === 'reports' && (
                 <div className="animate-in fade-in duration-500">
-                  <ReportsSection 
+                   <ReportsSection 
                     accounts={accounts} 
                     visibleAccountIds={visibleAccountIds}
                     settings={settings} 
                     notes={notes} 
+                    setDateRange={setDateRange}
                   />
                 </div>
               )}

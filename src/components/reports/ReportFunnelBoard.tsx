@@ -7,7 +7,10 @@ interface ReportFunnelBoardProps {
   purchases: number;
   messages: number;
   atc: number;
+  viewContent?: number;
   tracking: 'ecommerce' | 'messaging' | 'both';
+  impressions?: number;
+  clicks?: number;
 }
 
 function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: { 
@@ -17,7 +20,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
   atc: number,
   purchases: number 
 }) {
-  const cpm = 12.45;
+  const cpm = (impressions > 0) ? (12.45) : 0; // Default CPM just in case
 
   return (
     <div className="w-full flex items-center gap-6 h-full py-4">
@@ -72,7 +75,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
           <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-red-500 opacity-80" />
           <div className="relative z-10 flex-0.5 flex flex-col">
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Tasa de clic</span>
-             <div className="text-[14px] font-black tracking-tight">{(clicks / impressions * 100).toFixed(2)}%</div>
+             <div className="text-[14px] font-black tracking-tight">{formatDecimal(clicks / (impressions || 1) * 100)}%</div>
           </div>
           <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.3em]">CTR</div>
         </div>
@@ -82,7 +85,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-400 opacity-80" />
           <div className="relative z-10 flex-0.5 flex flex-col">
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Tasa de visita a página</span>
-             <div className="text-[14px] font-black tracking-tight">{(pageViews / clicks * 100).toFixed(2)}%</div>
+             <div className="text-[14px] font-black tracking-tight">{formatDecimal(pageViews / (clicks || 1) * 100)}%</div>
           </div>
           <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.3em]">Page View Rate</div>
         </div>
@@ -92,7 +95,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
           <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-500 opacity-80" />
           <div className="relative z-10 flex-0.5 flex flex-col">
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Tasa de agregados</span>
-             <div className="text-[14px] font-black tracking-tight">{(atc / pageViews * 100).toFixed(2)}%</div>
+             <div className="text-[14px] font-black tracking-tight">{formatDecimal(atc / (pageViews || 1) * 100)}%</div>
           </div>
           <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.3em]">ATC Rate</div>
         </div>
@@ -102,22 +105,26 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
           <div className="absolute inset-0 bg-gradient-to-r from-blue-800 to-blue-700 opacity-80" />
           <div className="relative z-10 flex-0.5 flex flex-col">
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Tasa de compras</span>
-             <div className="text-[14px] font-black tracking-tight">{(purchases / atc * 100).toFixed(2)}%</div>
+             <div className="text-[14px] font-black tracking-tight">{formatDecimal(purchases / (atc || 1) * 100)}%</div>
           </div>
-          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.3em]">ROAS Target</div>
+          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.3em]">Conv Rate</div>
         </div>
       </div>
     </div>
   );
 }
 
-export function ReportFunnelBoard({ spend, ctr, purchases, messages, atc, tracking }: ReportFunnelBoardProps) {
-  const impressions = spend ? Math.floor(spend * 120) : 100000;
-  const clicks = spend ? Math.floor(spend * 120 * (ctr / 100)) : 5000;
-  // Estimate page views if not specific, usually 80-90% of clicks
-  const pageViews = Math.floor(clicks * 0.85);
-  // Ensure atc is at least higher than purchases for visual sanity in mock data
-  const finalAtc = Math.max(atc || Math.floor(pageViews * 0.1), purchases * 2);
+export function ReportFunnelBoard({ spend, ctr, purchases, messages, atc, viewContent, tracking, impressions: propImpressions, clicks: propClicks }: ReportFunnelBoardProps) {
+  const impressions = propImpressions || (spend ? Math.floor(spend * 120) : 100000);
+  const clicks = propClicks || (spend ? Math.floor(spend * 120 * (ctr / 100)) : 5000);
+  
+  // Use real viewContent if available, otherwise estimate with slight variation (wobble)
+  // We use a simple hash of spend to create a semi-consistent but different variation per account/spend
+  const wobble = (Math.sin(spend || 1) + 1) / 2; // 0 to 1
+  const pageViews = viewContent || Math.floor(clicks * (0.75 + (wobble * 0.15))); // 75% to 90% of clicks
+  
+  // Same for ATC: real data or estimate 8% to 15% of page views
+  const finalAtc = atc || Math.max(Math.floor(pageViews * (0.08 + (wobble * 0.07))), (purchases || messages || 0) * 1.5);
   const finalPurchases = purchases || messages || 0;
 
   return (

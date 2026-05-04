@@ -11,6 +11,7 @@ export interface AdAccount {
   revenue?: number;
   purchases?: number;
   addToCart?: number;
+  viewContent?: number;
   checkouts?: number;
   costPerPurchase?: number;
   messages?: number;

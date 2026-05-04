@@ -176,6 +176,7 @@ export async function fetchInsights(accountId: string, since: string, until: str
     revenue,
     purchases,
     addToCart: getAction(d.actions, 'add_to_cart') || getAction(d.actions, 'offsite_conversion.fb_pixel_add_to_cart'),
+    viewContent: getAction(d.actions, 'view_content') || getAction(d.actions, 'offsite_conversion.fb_pixel_view_content'),
     checkouts: getAction(d.actions, 'initiate_checkout') || getAction(d.actions, 'offsite_conversion.fb_pixel_initiate_checkout'),
     costPerPurchase: purchases > 0 ? spend / purchases : 0,
     messages,

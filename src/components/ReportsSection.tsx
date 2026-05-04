@@ -35,6 +35,7 @@ interface ReportsSectionProps {
   visibleAccountIds: string[];
   settings: Record<string, AccountSettings>;
   notes: AccountNote[];
+  setDateRange?: (range: { since: string; until: string }) => void;
 }
 
 function ReportPage({ children, className }: { children: React.ReactNode, className?: string }) {
@@ -48,7 +49,7 @@ function ReportPage({ children, className }: { children: React.ReactNode, classN
   );
 }
 
-export function ReportsSection({ accounts, visibleAccountIds, settings, notes }: ReportsSectionProps) {
+export function ReportsSection({ accounts, visibleAccountIds, settings, notes, setDateRange }: ReportsSectionProps) {
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [reportMonth, setReportMonth] = useState<string>(format(subMonths(new Date(), 1), 'yyyy-MM'));
   const [noteScope, setNoteScope] = useState<'none' | 'all' | 'specific'>('all');
@@ -101,8 +102,11 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes }:
       purchases: selectedAccounts.reduce((sum, a) => sum + (a.purchases || 0), 0),
       messages: selectedAccounts.reduce((sum, a) => sum + (a.messages || 0), 0),
       atc: selectedAccounts.reduce((sum, a) => sum + (a.addToCart || 0), 0),
+      viewContent: selectedAccounts.reduce((sum, a) => sum + (a.viewContent || 0), 0),
       ctr: selectedAccounts.reduce((sum, a) => sum + (a.ctr || 0), 0) / selectedAccounts.length,
-      currency: firstAcc.currency || 'ARS'
+      currency: firstAcc.currency || 'ARS',
+      impressions: selectedAccounts.reduce((sum, a) => sum + (a.impressions || 0), 0),
+      clicks: selectedAccounts.reduce((sum, a) => sum + (a.clicks || 0), 0)
     };
   }, [selectedAccounts, settings]);
 
@@ -276,7 +280,18 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes }:
               <div className="bg-white/5 p-1 rounded-md border border-white/5">
                 <select 
                   value={reportMonth}
-                  onChange={(e) => setReportMonth(e.target.value)}
+                  onChange={(e) => {
+                    const newMonth = e.target.value;
+                    setReportMonth(newMonth);
+                    if (setDateRange) {
+                      const start = startOfMonth(parseISO(newMonth + '-01'));
+                      const end = endOfMonth(start);
+                      setDateRange({
+                        since: format(start, 'yyyy-MM-dd'),
+                        until: format(end, 'yyyy-MM-dd')
+                      });
+                    }
+                  }}
                   className="bg-transparent px-3 py-1.5 text-[10px] font-black text-white outline-none cursor-pointer uppercase tracking-widest"
                 >
                   {monthOptions.map(opt => (
@@ -394,6 +409,9 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes }:
                     purchases={aggregatedData.purchases}
                     messages={aggregatedData.messages}
                     atc={aggregatedData.atc}
+                    viewContent={aggregatedData.viewContent}
+                    impressions={aggregatedData.impressions}
+                    clicks={aggregatedData.clicks}
                     tracking={selectedAccountIds.length === 1 ? (settings[selectedAccountIds[0]]?.tracking || 'ecommerce') : 'ecommerce'}
                   />
                 </div>
