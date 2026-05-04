@@ -26,7 +26,7 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     setLoading(true);
     setSummary('');
     try {
-      const response = await fetch(`/orchestrator-summary-v1?t=${Date.now()}`, {
+      const response = await fetch('/api/generate-summary', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -36,22 +36,27 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
       });
 
       if (!response.ok) {
-        const text = await response.text().catch(() => 'No body');
-        let errorData = {};
-        try {
-          if (text) errorData = JSON.parse(text);
-        } catch (e) {
-          // Si no es JSON, mostramos el inicio del texto (podría ser HTML de error)
-          throw new Error(`Servidor: ${response.status} - ${text.substring(0, 30)}...`);
+        const text = await response.text().catch(() => 'Sin cuerpo');
+        console.error('Error del servidor:', response.status, text);
+        
+        if (response.status === 405) {
+          throw new Error('El servidor no permite esta operación (405). Intenta recargar la página o espera unos segundos.');
         }
-        throw new Error((errorData as any).error || `Error del servidor: ${response.status}`);
+
+        let errorData = { error: '' };
+        try {
+          if (text.startsWith('{')) errorData = JSON.parse(text);
+        } catch (e) {
+          throw new Error(`Servidor: ${response.status} - ${text.substring(0, 50).replace(/<[^>]*>/g, '')}`);
+        }
+        throw new Error(errorData.error || `Error del servidor: ${response.status}`);
       }
 
       const data = await response.json();
       setSummary(data.text || 'No se pudo generar el resumen.');
     } catch (error: any) {
       console.error('Error generating summary:', error);
-      setSummary(`Error: ${error?.message || 'Error de conexión'}. Verifica que Gemini esté activo en Settings.`);
+      setSummary(`Error: ${error?.message || 'Error de conexión'}. Si el error persiste, verifica la clave GEMINI_API_KEY en Settings.`);
     } finally {
       setLoading(false);
     }

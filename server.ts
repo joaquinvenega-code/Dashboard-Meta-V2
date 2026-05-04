@@ -26,8 +26,17 @@ async function startServer() {
   });
 
   // Rutas de la Aplicación
-  app.post('/orchestrator-summary-v1', async (req, res) => {
-    console.log(`[ORCHESTRATOR] Solicitud recibida: ${req.method} ${req.url}`);
+  app.all('/api/generate-summary', async (req, res) => {
+    console.log(`[SERVER] Request to /api/generate-summary: ${req.method}`);
+    
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Solo se permite el método POST' });
+    }
+
     const { metrics, notes, monthName } = req.body;
     
     const apiKey = process.env.GEMINI_API_KEY;
@@ -83,12 +92,12 @@ async function startServer() {
       console.log('[ORCHESTRATOR] Resumen generado con éxito');
       res.json({ text });
     } catch (error: any) {
-      console.error('[ORCHESTRATOR] Error de Gemini:', error);
+      console.error('[SERVER] Gemini Error:', error);
       res.status(500).json({ error: `Error de Gemini: ${error.message}` });
     }
   });
 
-  app.get('/server-status', (req, res) => {
+  app.get('/api/health', (req, res) => {
     res.json({ 
       status: 'online', 
       time: new Date().toISOString(), 
