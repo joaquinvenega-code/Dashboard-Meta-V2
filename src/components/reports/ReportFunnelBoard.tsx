@@ -25,7 +25,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
   return (
     <div className="w-full flex items-center gap-2 h-full py-4">
       {/* Funnel Vessel (Left) */}
-      <div className="w-[150px] flex flex-col gap-1 items-center justify-center shrink-0">
+      <div className="w-[240px] flex flex-col gap-1 items-center justify-center shrink-0">
         <div 
           className="w-full h-[68px] bg-red-500 shadow-xl flex items-center justify-center relative overflow-hidden"
           style={{ clipPath: 'polygon(0% 0%, 100% 0%, 92% 100%, 8% 100%)' }}
