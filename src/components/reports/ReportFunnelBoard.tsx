@@ -23,9 +23,9 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
   const cpm = (impressions > 0) ? (12.45) : 0; // Default CPM just in case
 
   return (
-    <div className="w-full flex items-center gap-6 h-full py-4">
+    <div className="w-full flex items-center gap-2 h-full py-4">
       {/* Funnel Vessel (Left) */}
-      <div className="w-[200px] flex flex-col gap-1 items-center justify-center shrink-0">
+      <div className="w-[150px] flex flex-col gap-1 items-center justify-center shrink-0">
         <div 
           className="w-full h-[68px] bg-red-500 shadow-xl flex items-center justify-center relative overflow-hidden"
           style={{ clipPath: 'polygon(0% 0%, 100% 0%, 92% 100%, 8% 100%)' }}
@@ -71,43 +71,43 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
       {/* Lateral Pills (Right) */}
       <div className="flex-1 flex flex-col gap-2 min-w-0 h-full justify-between py-1">
         {/* Tasa de Clics (CTR) */}
-        <div className="bg-red-500 rounded-r-[1.5rem] rounded-l-md p-3 flex items-center justify-between text-white shadow-lg relative overflow-hidden">
+        <div className="bg-red-500 rounded-r-[1.5rem] rounded-l-md px-2 py-3 flex items-center justify-between text-white shadow-lg relative overflow-hidden">
           <div className="absolute inset-0 bg-red-600 opacity-20" />
-          <div className="relative z-10 flex-0.5 flex flex-col">
-             <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Tasa de clic</span>
+          <div className="relative z-10 flex-0.5 flex flex-col min-w-0">
+             <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa de clic</span>
              <div className="text-[14px] font-black tracking-tight">{formatDecimal(clicks / (impressions || 1) * 100)}%</div>
           </div>
-          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.3em]">CTR</div>
+          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.2em] ml-1">CTR</div>
         </div>
 
         {/* Tasa de Visita a Página */}
-        <div className="bg-blue-400 rounded-r-[1.5rem] rounded-l-md p-3 flex items-center justify-between text-white shadow-md relative overflow-hidden">
+        <div className="bg-blue-400 rounded-r-[1.5rem] rounded-l-md px-2 py-3 flex items-center justify-between text-white shadow-md relative overflow-hidden">
           <div className="absolute inset-0 bg-blue-500 opacity-20" />
-          <div className="relative z-10 flex-0.5 flex flex-col">
-             <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Tasa de visita a página</span>
+          <div className="relative z-10 flex-0.5 flex flex-col min-w-0">
+             <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa de visita</span>
              <div className="text-[14px] font-black tracking-tight">{formatDecimal(pageViews / (clicks || 1) * 100)}%</div>
           </div>
-          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.15em]">Page View Rate</div>
+          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.1em] ml-1">PV Rate</div>
         </div>
 
         {/* Tasa de Agregado al Carrito */}
-        <div className="bg-blue-500 rounded-r-[1.5rem] rounded-l-md p-3 flex items-center justify-between text-white shadow-lg relative overflow-hidden">
+        <div className="bg-blue-500 rounded-r-[1.5rem] rounded-l-md px-2 py-3 flex items-center justify-between text-white shadow-lg relative overflow-hidden">
           <div className="absolute inset-0 bg-blue-600 opacity-20" />
-          <div className="relative z-10 flex-0.5 flex flex-col">
-             <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Tasa de agregados al carrito</span>
+          <div className="relative z-10 flex-0.5 flex flex-col min-w-0">
+             <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa agregados</span>
              <div className="text-[14px] font-black tracking-tight">{formatDecimal(atc / (pageViews || 1) * 100)}%</div>
           </div>
-          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.3em]">ATC Rate</div>
+          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.2em] ml-1">ATC Rate</div>
         </div>
 
         {/* Tasa de Compras (Conversion Rate) */}
-        <div className="bg-blue-700 rounded-r-[1.5rem] rounded-l-md p-3 flex items-center justify-between text-white shadow-2xl relative overflow-hidden">
+        <div className="bg-blue-700 rounded-r-[1.5rem] rounded-l-md px-2 py-3 flex items-center justify-between text-white shadow-2xl relative overflow-hidden">
           <div className="absolute inset-0 bg-blue-800 opacity-20" />
-          <div className="relative z-10 flex-0.5 flex flex-col">
-             <span className="text-[7px] font-black uppercase tracking-widest opacity-60">Tasa de compras</span>
+          <div className="relative z-10 flex-0.5 flex flex-col min-w-0">
+             <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa compras</span>
              <div className="text-[14px] font-black tracking-tight">{formatDecimal(purchases / (atc || 1) * 100)}%</div>
           </div>
-          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.3em]">Conv Rate</div>
+          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.2em] ml-1">Conv</div>
         </div>
       </div>
     </div>

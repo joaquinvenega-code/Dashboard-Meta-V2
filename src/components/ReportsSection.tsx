@@ -402,7 +402,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               />
 
               <div className="grid grid-cols-12 gap-8 h-96">
-                <div className="col-span-7">
+                <div className="col-span-5">
                   <ReportFunnelBoard 
                     spend={aggregatedData.spend}
                     ctr={aggregatedData.ctr}
@@ -415,7 +415,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
                     tracking={selectedAccountIds.length === 1 ? (settings[selectedAccountIds[0]]?.tracking || 'ecommerce') : 'ecommerce'}
                   />
                 </div>
-                <div className="col-span-5">
+                <div className="col-span-7">
                   <ReportTrendChart data={dailyTrendData} />
                 </div>
               </div>
