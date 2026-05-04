@@ -26,23 +26,29 @@ async function startServer() {
   });
 
   // API Routes
-  app.get('/health', (req, res) => {
-    res.json({ status: 'ok', time: new Date().toISOString() });
-  });
+  app.all('/api/v1/ai-summary', async (req, res) => {
+    console.log(`[API] ${req.method} /api/v1/ai-summary`);
+    
+    if (req.method === 'GET') {
+      return res.json({ status: 'ok', message: 'Endpoint listo para recibir POST' });
+    }
 
-  app.post('/generate-ai-summary', async (req, res) => {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Método no permitido. Usa POST.' });
+    }
+
     const { metrics, notes, monthName } = req.body;
     
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === 'undefined') {
+    if (!apiKey || apiKey === 'undefined' || apiKey === '') {
       return res.status(500).json({ 
-        error: 'GEMINI_API_KEY no está configurada en el servidor. Revisa los Secrets en AI Studio.' 
+        error: 'GEMINI_API_KEY no encontrada. Por favor agrégala en Settings > Secrets.' 
       });
     }
 
     try {
       const genAI = new GoogleGenAI({ apiKey }); 
-      // @ts-ignore - The property exists at runtime
+      // @ts-ignore
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
       const roas = metrics.revenue / (metrics.spend || 1);
