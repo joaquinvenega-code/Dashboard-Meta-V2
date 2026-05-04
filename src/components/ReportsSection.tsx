@@ -401,8 +401,8 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
                 currency={aggregatedData.currency}
               />
 
-              <div className="grid grid-cols-12 gap-8 h-96">
-                <div className="col-span-5">
+              <div className="grid grid-cols-12 gap-4 h-96">
+                <div className="col-span-6">
                   <ReportFunnelBoard 
                     spend={aggregatedData.spend}
                     ctr={aggregatedData.ctr}
@@ -415,7 +415,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
                     tracking={selectedAccountIds.length === 1 ? (settings[selectedAccountIds[0]]?.tracking || 'ecommerce') : 'ecommerce'}
                   />
                 </div>
-                <div className="col-span-7">
+                <div className="col-span-6">
                   <ReportTrendChart data={dailyTrendData} />
                 </div>
               </div>
