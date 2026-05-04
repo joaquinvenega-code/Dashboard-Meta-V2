@@ -26,7 +26,7 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     setLoading(true);
     setSummary('');
     try {
-      const response = await fetch(`/api/summary?t=${Date.now()}`, {
+      const response = await fetch(`/orchestrator-summary-v1?t=${Date.now()}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

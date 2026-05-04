@@ -25,9 +25,9 @@ async function startServer() {
     next();
   });
 
-  // API Routes
-  app.post('/api/summary', async (req, res) => {
-    console.log(`[API] Processing summary request...`);
+  // Rutas de la Aplicación
+  app.post('/orchestrator-summary-v1', async (req, res) => {
+    console.log(`[ORCHESTRATOR] Solicitud recibida: ${req.method} ${req.url}`);
     const { metrics, notes, monthName } = req.body;
     
     const apiKey = process.env.GEMINI_API_KEY;
@@ -80,16 +80,20 @@ async function startServer() {
       const response = await result.response;
       const text = response.text();
 
-      console.log('[API] Summary generated successfully');
+      console.log('[ORCHESTRATOR] Resumen generado con éxito');
       res.json({ text });
     } catch (error: any) {
-      console.error('[API] Gemini Error:', error);
+      console.error('[ORCHESTRATOR] Error de Gemini:', error);
       res.status(500).json({ error: `Error de Gemini: ${error.message}` });
     }
   });
 
-  app.get('/api/status', (req, res) => {
-    res.json({ status: 'ok', time: new Date().toISOString(), env: !!process.env.GEMINI_API_KEY });
+  app.get('/server-status', (req, res) => {
+    res.json({ 
+      status: 'online', 
+      time: new Date().toISOString(), 
+      hasKey: !!process.env.GEMINI_API_KEY 
+    });
   });
 
   // Vite middleware for development
