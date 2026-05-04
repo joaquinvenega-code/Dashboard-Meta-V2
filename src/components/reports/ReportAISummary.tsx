@@ -27,7 +27,7 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     const apiKey = process.env.GEMINI_API_KEY;
     
     if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-      setSummary('Error: La conexión con Gemini AI no está activa. Asegúrate de que en "Settings > Secrets" aparezca "GEMINI_API_KEY" con el valor "AI Studio Free Tier" o tu propia clave. Luego, refresca la página.');
+      setSummary('Error: La conexión con Gemini AI no está activa. 1) Asegúrate de que en "Settings > Secrets" aparezca "GEMINI_API_KEY". 2) Si acabas de agregarla, debes RECARGAR LA PÁGINA (F5) para que los cambios surtan efecto.');
       return;
     }
 
