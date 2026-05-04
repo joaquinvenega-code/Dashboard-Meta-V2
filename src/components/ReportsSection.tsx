@@ -23,9 +23,9 @@ import { motion, AnimatePresence } from 'motion/react';
 
 import { ReportHeader } from './reports/ReportHeader';
 import { ReportSummaryCards } from './reports/ReportSummaryCards';
+import { ReportAISummary } from './reports/ReportAISummary';
 import { ReportFunnelBoard } from './reports/ReportFunnelBoard';
 import { ReportTrendChart } from './reports/ReportTrendChart';
-import { ReportBreakdownSection } from './reports/ReportBreakdownSection';
 import { ReportAudienceSection } from './reports/ReportAudienceSection';
 import { ReportContentSection } from './reports/ReportContentSection';
 import { ReportNotesSection } from './reports/ReportNotesSection';
@@ -401,6 +401,21 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
                 currency={aggregatedData.currency}
               />
 
+              <ReportAISummary 
+                metrics={{
+                  spend: aggregatedData.spend,
+                  revenue: aggregatedData.revenue,
+                  purchases: aggregatedData.purchases,
+                  messages: aggregatedData.messages,
+                  currency: aggregatedData.currency,
+                  ctr: aggregatedData.ctr,
+                  impressions: aggregatedData.impressions,
+                  clicks: aggregatedData.clicks
+                }}
+                notes={accountNotes.filter(n => n.timestamp.startsWith(reportMonth))}
+                monthName={monthOptions.find(o => o.value === reportMonth)?.label || reportMonth}
+              />
+
               <div className="grid grid-cols-12 gap-4 h-96">
                 <div className="col-span-6">
                   <ReportFunnelBoard 
@@ -419,11 +434,6 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
                   <ReportTrendChart data={dailyTrendData} />
                 </div>
               </div>
-
-              <ReportBreakdownSection 
-                spend={aggregatedData.spend}
-                currency={aggregatedData.currency}
-              />
 
               {/* Footer */}
               <div className="mt-auto pt-8 border-t border-neutral-100 flex items-center justify-between opacity-30">
