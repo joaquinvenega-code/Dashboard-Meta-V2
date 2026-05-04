@@ -100,6 +100,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [chartFilters, setChartFilters] = useState<Record<string, string[]>>({});
   const [copied, setCopied] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [noteDate, setNoteDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -255,11 +256,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     const textToSave = observations;
     
     // Create a new formal note from the observation if it has content
+    // Use the selected noteDate if provided, otherwise current time
+    const timestamp = noteDate ? new Date(noteDate + 'T12:00:00').toISOString() : new Date().toISOString();
+    
     const newNote: AccountNote = {
       id: Math.random().toString(36).substr(2, 9),
       accountId: selectedId,
       text: textToSave,
-      timestamp: new Date().toISOString(),
+      timestamp,
       category: 'observation',
       tags: [s.tracking]
     };
@@ -980,7 +984,18 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                           onChange={(e) => setObservations(e.target.value)}
                           className="w-full bg-transparent border-none outline-none text-neutral-400 text-xs h-24 resize-none custom-scrollbar placeholder-neutral-800 leading-relaxed"
                         />
-                        <div className="flex items-center justify-end mt-3 gap-2">
+                        <div className="flex items-center justify-between mt-3 gap-2">
+                           <div className="flex items-center gap-2">
+                             <div className="flex items-center gap-2 bg-black/20 border border-white/5 rounded-lg px-2 py-1.5">
+                               <Calendar className="w-3 h-3 text-neutral-600" />
+                               <input 
+                                 type="date"
+                                 value={noteDate}
+                                 onChange={(e) => setNoteDate(e.target.value)}
+                                 className="bg-transparent text-[10px] font-bold text-neutral-400 outline-none cursor-pointer"
+                               />
+                             </div>
+                           </div>
                            <div className="flex justify-end gap-2 text-[9px] font-black uppercase tracking-widest">
                                <button 
                                  onClick={toggleListening}
