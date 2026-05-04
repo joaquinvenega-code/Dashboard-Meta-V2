@@ -1107,11 +1107,11 @@ export default function App() {
                       {accounts.map(acc => {
                         const isVisible = visibleAccountIds.some(v => matchId(v, acc.id));
                         return (
-                          <button
+                          <div
                             key={acc.id}
                             onClick={() => toggleAccountVisibility(acc.id)}
                             className={cn(
-                              "flex items-center justify-between p-4 rounded-lg border transition-all",
+                              "flex items-center justify-between p-4 rounded-lg border transition-all cursor-pointer",
                               isVisible 
                                 ? "bg-blue-600/10 border-blue-600/30 text-white" 
                                 : "bg-transparent border-white/5 text-neutral-500 hover:bg-white/[0.02]"
@@ -1126,10 +1126,22 @@ export default function App() {
                                 <div className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest truncate">{acc.account_id}</div>
                               </div>
                             </div>
-                            <div className="text-[9px] font-black uppercase tracking-widest bg-neutral-900 px-2 py-1 rounded shrink-0 ml-2">
-                              {acc.currency}
+                            <div className="flex items-center gap-2 shrink-0 ml-2">
+                              <div className="text-[9px] font-black uppercase tracking-widest bg-neutral-900 px-2 py-1 rounded">
+                                {acc.currency}
+                              </div>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfigEntity(acc);
+                                }}
+                                className="p-1.5 hover:bg-white/10 rounded-md text-neutral-500 hover:text-white transition-all"
+                                title="Configurar cuenta"
+                              >
+                                <Settings className="w-3.5 h-3.5" />
+                              </button>
                             </div>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
