@@ -13,8 +13,24 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Full CORS and logging
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    console.log(`[SERVER] ${new Date().toISOString()} - ${req.method} ${req.url}`);
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+
   // API Routes
-  app.post('/api/ai/summary', async (req, res) => {
+  app.get('/health', (req, res) => {
+    res.json({ status: 'ok', time: new Date().toISOString() });
+  });
+
+  app.post('/generate-ai-summary', async (req, res) => {
     const { metrics, notes, monthName } = req.body;
     
     const apiKey = process.env.GEMINI_API_KEY;
