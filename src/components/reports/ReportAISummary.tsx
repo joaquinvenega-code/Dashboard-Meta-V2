@@ -32,7 +32,7 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
       const cpa = metrics.spend / (metrics.purchases || metrics.messages || 1);
       
       const notesContext = notes.length > 0 
-        ? notes.map(n => `- [${n.timestamp.split('T')[0]}] ${n.text}`).join('\n')
+        ? notes.map(n => `- [${(n.timestamp || '').split('T')[0] || 'S/F'}] ${n.text}`).join('\n')
         : 'No hay notas registradas en la bitácora para este período.';
 
       const prompt = `
@@ -86,8 +86,8 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
             <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div className="space-y-0.5">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Resumen del Informe</h3>
-            <p className="text-xs font-black text-neutral-900">Análisis Inteligente por Orion AI</p>
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-600">Resumen Ejecutivo</h3>
+            <p className="text-xl font-black text-neutral-900 tracking-tight">Análisis Orion AI</p>
           </div>
         </div>
         

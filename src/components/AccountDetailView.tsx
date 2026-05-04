@@ -984,40 +984,43 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                           onChange={(e) => setObservations(e.target.value)}
                           className="w-full bg-transparent border-none outline-none text-neutral-400 text-xs h-24 resize-none custom-scrollbar placeholder-neutral-800 leading-relaxed"
                         />
-                        <div className="flex items-center justify-between mt-3 gap-2">
-                           <div className="flex items-center gap-2">
-                             <div className="flex items-center gap-2 bg-black/20 border border-white/5 rounded-lg px-2 py-1.5">
-                               <Calendar className="w-3 h-3 text-neutral-600" />
-                               <input 
-                                 type="date"
-                                 value={noteDate}
-                                 onChange={(e) => setNoteDate(e.target.value)}
-                                 className="bg-transparent text-[10px] font-bold text-neutral-400 outline-none cursor-pointer"
-                               />
-                             </div>
-                           </div>
-                           <div className="flex justify-end gap-2 text-[9px] font-black uppercase tracking-widest">
-                               <button 
-                                 onClick={toggleListening}
-                                 type="button"
-                                 title={isListening ? "Detener dictado" : "Iniciar dictado por voz"}
-                                 className={cn(
-                                   "p-2 rounded-lg border transition-all flex items-center justify-center",
-                                   isListening 
-                                     ? "bg-red-500 text-white animate-pulse border-red-500 shadow-lg shadow-red-500/20" 
-                                     : "bg-white/5 border-white/5 text-neutral-400 hover:text-white hover:bg-white/10"
-                                 )}
-                               >
-                                 {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 text-blue-500" />}
-                               </button>
-                               <button 
-                                 onClick={handleSaveObs}
-                                 disabled={isSavingObs || !observations.trim()}
-                                 className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-1.5 rounded-lg transition-all shadow-xl shadow-blue-600/20 flex items-center gap-2 disabled:opacity-50 active:scale-95"
-                               >
-                                 {isSavingObs ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                                 Publicar en Bitácora
-                               </button>
+                        <div className="flex flex-col gap-4 mt-4 p-4 bg-white/5 rounded-2xl border border-white/5">
+                           <div className="flex flex-col md:flex-row items-end justify-between gap-4">
+                              <div className="w-full md:w-auto flex-1 group/date">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-neutral-600 mb-2 block group-hover/date:text-blue-500 transition-colors">Fecha de registro manual</label>
+                                <div className="flex items-center gap-3 bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white hover:border-blue-500/50 transition-all">
+                                  <Calendar className="w-4 h-4 text-blue-500" />
+                                  <input 
+                                    type="date"
+                                    value={noteDate}
+                                    onChange={(e) => setNoteDate(e.target.value)}
+                                    className="bg-transparent border-none outline-none text-[11px] font-bold w-full uppercase cursor-pointer"
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 w-full md:w-auto">
+                                <button 
+                                  onClick={toggleListening}
+                                  type="button"
+                                  title={isListening ? "Detener dictado" : "Iniciar dictado por voz"}
+                                  className={cn(
+                                    "p-3 rounded-xl border transition-all flex items-center justify-center min-w-[44px]",
+                                    isListening 
+                                      ? "bg-red-500 text-white animate-pulse border-red-500 shadow-lg shadow-red-500/20" 
+                                      : "bg-white/5 border-white/5 text-neutral-400 hover:text-white hover:bg-white/10"
+                                  )}
+                                >
+                                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                                </button>
+                                <button 
+                                  onClick={handleSaveObs}
+                                  disabled={isSavingObs || !observations.trim()}
+                                  className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white h-[44px] px-8 rounded-xl transition-all shadow-xl shadow-blue-600/30 flex items-center justify-center gap-3 disabled:opacity-50 active:scale-95 text-[10px] font-black uppercase tracking-widest"
+                                >
+                                  {isSavingObs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                  Cargar en Bitácora
+                                </button>
+                              </div>
                            </div>
                         </div>
                       </div>
