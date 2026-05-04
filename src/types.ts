@@ -29,6 +29,7 @@ export interface AccountSettings {
   customLogo?: string;
   observations?: string;
   visibleMetrics?: string[];
+  category?: string;
 }
 
 export interface Ad {

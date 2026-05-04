@@ -11,10 +11,19 @@ interface OverviewProps {
 }
 
 export function Overview({ accounts, settings }: OverviewProps) {
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+
+  // Filter accounts based on category
+  const filteredAccounts = accounts.filter(acc => {
+    if (filterCategory === 'all') return true;
+    const cat = settings[acc.id]?.category || '';
+    return cat === filterCategory;
+  });
+
   // Aggregation logic...
   const totalsByCurrency: Record<string, { spend: number; revenue: number }> = {};
   
-  accounts.forEach(acc => {
+  filteredAccounts.forEach(acc => {
     const s = settings[acc.id];
     const cur = (s?.currency || acc.currency || 'ARS').toUpperCase();
     if (!totalsByCurrency[cur]) totalsByCurrency[cur] = { spend: 0, revenue: 0 };
@@ -26,8 +35,8 @@ export function Overview({ accounts, settings }: OverviewProps) {
   const totalSpendStr = currencies.map(c => formatCurrency(totalsByCurrency[c].spend, c)).join(' + ');
   const totalRevenueStr = currencies.map(c => formatCurrency(totalsByCurrency[c].revenue, c)).join(' + ');
   
-  const totalSpendGlobal = accounts.reduce((a, c) => a + (c.spend || 0), 0);
-  const totalRevenueGlobal = accounts.reduce((a, c) => a + (c.revenue || 0), 0);
+  const totalSpendGlobal = filteredAccounts.reduce((a, c) => a + (c.spend || 0), 0);
+  const totalRevenueGlobal = filteredAccounts.reduce((a, c) => a + (c.revenue || 0), 0);
   const avgRoas = totalSpendGlobal > 0 ? totalRevenueGlobal / totalSpendGlobal : 0;
 
   const getStatus = (acc: AdAccount) => {
@@ -39,10 +48,35 @@ export function Overview({ accounts, settings }: OverviewProps) {
     return { label: 'Fuera de objetivo', color: 'bg-danger', text: 'text-danger', border: 'border-danger/10' };
   };
 
-  const onTrackCount = accounts.filter(acc => getStatus(acc).label === 'En objetivo').length;
+  const onTrackCount = filteredAccounts.filter(acc => getStatus(acc).label === 'En objetivo').length;
 
   return (
     <div className="space-y-6">
+      {/* Category Filter Selector */}
+      <div className="flex items-center gap-3 bg-[#111] border border-white/5 p-2 rounded-xl self-start w-fit">
+        <label className="text-[9px] font-black text-neutral-600 uppercase tracking-widest ml-2">Grupo:</label>
+        <div className="flex gap-1">
+          {[
+            { id: 'all', label: 'Todos' },
+            { id: 'independiente', label: 'Independientes' },
+            { id: 'agencia', label: 'Agencia' }
+          ].map(btn => (
+            <button
+              key={btn.id}
+              onClick={() => setFilterCategory(btn.id)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                filterCategory === btn.id 
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
+                  : "bg-white/5 text-neutral-500 hover:text-neutral-300 hover:bg-white/10"
+              )}
+            >
+              {btn.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Top Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard 
@@ -63,7 +97,7 @@ export function Overview({ accounts, settings }: OverviewProps) {
         />
         <SummaryCard 
           label="Cuentas en objetivo" 
-          value={`${onTrackCount} / ${accounts.length}`} 
+          value={`${onTrackCount} / ${filteredAccounts.length}`} 
           sub="Cuentas en meta" 
         />
       </div>
@@ -91,7 +125,7 @@ export function Overview({ accounts, settings }: OverviewProps) {
             <div className="text-right">Facturación</div>
             <div className="text-right">ROAS</div>
           </div>
-          {accounts.map(acc => {
+          {filteredAccounts.map(acc => {
             const s = settings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS' };
             const status = getStatus(acc);
             const progress = s.objective > 0 ? Math.min((acc.revenue || 0) / s.objective, 1) : 0;

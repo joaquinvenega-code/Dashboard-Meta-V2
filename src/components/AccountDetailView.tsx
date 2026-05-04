@@ -99,6 +99,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [localVisibleMetrics, setLocalVisibleMetrics] = useState<string[]>([]);
   const [chartFilters, setChartFilters] = useState<Record<string, string[]>>({});
   const [copied, setCopied] = useState(false);
+  const [filterCategory, setFilterCategory] = useState<string>('all');
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -169,7 +170,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   // Filter accounts for sidebar
   const sidebarAccounts = accounts.filter(acc => 
     visibleAccountIds.some(vId => vId === acc.id || vId === acc.account_id)
-  ).filter(acc => 
+  ).filter(acc => {
+    if (filterCategory === 'all') return true;
+    return settings[acc.id]?.category === filterCategory;
+  }).filter(acc => 
     acc.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -626,7 +630,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Toolbar */}
-      <div className="flex items-center gap-4 print:hidden">
+      <div className="flex flex-wrap items-center gap-4 print:hidden">
         <div className="w-64 relative group">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-600 group-focus-within:text-blue-500 transition-colors" />
           <input 
@@ -636,6 +640,27 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-[#111] border border-white/5 rounded-xl py-2 pl-9 pr-3 text-[11px] text-white placeholder-neutral-700 outline-none focus:border-blue-500/50 transition-all shadow-inner font-bold"
           />
+        </div>
+
+        <div className="flex items-center gap-1 bg-[#111] border border-white/5 p-1 rounded-xl">
+          {[
+            { id: 'all', label: 'Todos' },
+            { id: 'independiente', label: 'Propios' },
+            { id: 'agencia', label: 'Agencia' }
+          ].map(btn => (
+            <button
+              key={btn.id}
+              onClick={() => setFilterCategory(btn.id)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                filterCategory === btn.id 
+                  ? "bg-blue-600 text-white shadow-lg" 
+                  : "text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
+              )}
+            >
+              {btn.label}
+            </button>
+          ))}
         </div>
 
         <div className="flex items-center gap-2 ml-auto">

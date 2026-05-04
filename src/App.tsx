@@ -1355,6 +1355,22 @@ export default function App() {
                       </select>
                     </div>
                     <div>
+                      <label className="block text-[9px] font-black text-neutral-600 uppercase tracking-widest mb-2 ml-1">Categoría / Agencia</label>
+                      <select 
+                        id="set_category"
+                        defaultValue={overviewSettings[configEntity.id]?.category || ''}
+                        className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
+                      >
+                        <option value="">Sin Categoría</option>
+                        <option value="independiente">Cliente Independiente</option>
+                        <option value="agencia">Agencia Colaboradora</option>
+                        <option value="otro">Otro Grupo</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1">
+                    <div>
                       <label className="block text-[9px] font-black text-neutral-600 uppercase tracking-widest mb-2 ml-1">Tracking</label>
                       <select 
                         id="set_tracking"
@@ -1374,6 +1390,7 @@ export default function App() {
                       const bud = Number((document.getElementById('set_budget') as HTMLInputElement).value);
                       const cur = (document.getElementById('set_currency') as HTMLSelectElement).value;
                       const trk = (document.getElementById('set_tracking') as HTMLSelectElement).value as any;
+                      const cat = (document.getElementById('set_category') as HTMLSelectElement).value;
 
                       const newSettings = {
                         ...settings,
@@ -1382,7 +1399,8 @@ export default function App() {
                           objective: obj,
                           budget: bud,
                           currency: cur,
-                          tracking: trk
+                          tracking: trk,
+                          category: cat
                         }
                       };
                       setSettings(newSettings);
