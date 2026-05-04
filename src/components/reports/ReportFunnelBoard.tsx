@@ -33,7 +33,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
           <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
           <div className="flex flex-col items-center relative z-10">
             <span className="text-[7px] font-black text-white/60 uppercase tracking-[0.2em]">CLICS</span>
-            <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(clicks)}</span>
+            <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(clicks, 0)}</span>
           </div>
         </div>
         <div 
@@ -43,7 +43,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
           <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
           <div className="flex flex-col items-center relative z-10">
             <span className="text-[7px] font-black text-white/60 uppercase tracking-[0.2em]">VISITA A PÁGINA</span>
-            <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(pageViews)}</span>
+            <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(pageViews, 0)}</span>
           </div>
         </div>
         <div 
@@ -53,7 +53,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
           <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
           <div className="flex flex-col items-center relative z-10">
             <span className="text-[7px] font-black text-white/60 uppercase tracking-[0.2em]">AGREGADOS</span>
-            <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(atc)}</span>
+            <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(atc, 0)}</span>
           </div>
         </div>
         <div 
@@ -63,7 +63,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
           <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
           <div className="flex flex-col items-center relative z-10">
             <span className="text-[7px] font-black text-white/60 uppercase tracking-[0.2em]">COMPRAS</span>
-            <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(purchases)}</span>
+            <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(purchases, 0)}</span>
           </div>
         </div>
       </div>
