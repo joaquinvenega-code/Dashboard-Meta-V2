@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Sparkles, Loader2, RefreshCw } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
 import { AccountNote } from '../../types';
 import { formatCurrency, formatDecimal, cn } from '../../lib/utils';
 
@@ -24,67 +23,25 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
   const [loading, setLoading] = useState(false);
 
   const generateSummary = async () => {
-    const apiKey = process.env.GEMINI_API_KEY;
-    
-    if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-      setSummary('Error: La conexión con Gemini AI no está activa. 1) Asegúrate de que en "Settings > Secrets" aparezca "GEMINI_API_KEY". 2) Si acabas de agregarla, debes RECARGAR LA PÁGINA (F5) para que los cambios surtan efecto.');
-      return;
-    }
-
     setLoading(true);
+    setSummary('');
     try {
-      const ai = new GoogleGenAI({ apiKey });
-      
-      const roas = metrics.revenue / (metrics.spend || 1);
-      const cpa = metrics.spend / (metrics.purchases || metrics.messages || 1);
-      
-      const currentNotes = notes || [];
-      const notesContext = currentNotes.length > 0 
-        ? currentNotes.map(n => `- [${(n.timestamp || '').split('T')[0] || 'S/F'}] ${n.text}`).join('\n')
-        : 'No hay notas registradas en la bitácora para este período.';
-
-      const prompt = `
-        Eres un experto analista de marketing digital para una agencia llamada Orion.
-        Debes generar un resumen ejecutivo profesional para un cliente sobre el rendimiento de sus campañas durante el mes de ${monthName}.
-        
-        MÉTRICAS CLAVE DEL MES:
-        - Inversión: ${formatCurrency(metrics.spend, metrics.currency)}
-        - Facturación: ${formatCurrency(metrics.revenue, metrics.currency)}
-        - ROAS: ×${formatDecimal(roas)}
-        - CPA/CPR: ${formatCurrency(cpa, metrics.currency)}
-        - CTR: ${formatDecimal(metrics.ctr)}%
-        - Clics: ${metrics.clicks}
-        
-        BITÁCORA DE TRABAJO REALIZADO:
-        ${notesContext}
-        
-        ESTRUCTURA DEL RESUMEN:
-        1. Intro: Resumen del trabajo en la bitácora.
-        2. Análisis: Comentar ROAS, Facturación y CPA.
-        3. Próximos pasos: Sugerencias para el mes entrante.
-        
-        FORMATO: Profesional, directo, máximo 150 palabras. Sin negritas ni markdown especial. Castellano (Argentina).
-      `;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
+      const response = await fetch('/api/ai/summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metrics, notes, monthName })
       });
 
-      if (!response.text) {
-        throw new Error('La respuesta de la IA está vacía.');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Error del servidor: ${response.status}`);
       }
 
-      setSummary(response.text);
+      const data = await response.json();
+      setSummary(data.text || 'No se pudo generar el resumen.');
     } catch (error: any) {
       console.error('Error generating summary:', error);
-      let errorMsg = 'Error al conectar con la IA.';
-      if (error?.message?.includes('API key')) {
-        errorMsg = 'Error: Clave de API inválida o no configurada correctamente.';
-      } else if (error?.message?.includes('quota')) {
-        errorMsg = 'Error: Se ha alcanzado el límite de uso gratuito de la IA.';
-      }
-      setSummary(`${errorMsg} Detalles: ${error?.message || 'Error de conexión'}`);
+      setSummary(`Error al generar el resumen: ${error?.message || 'Error de conexión'}. Si acabas de configurar el Secret, intenta recargar la página.`);
     } finally {
       setLoading(false);
     }
