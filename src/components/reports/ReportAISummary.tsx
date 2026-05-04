@@ -24,55 +24,61 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
   const [loading, setLoading] = useState(false);
 
   const generateSummary = async () => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    
+    if (!apiKey || apiKey === 'undefined') {
+      setSummary('Error: La API Key de Gemini no está configurada. Por favor, asegúrate de haberla agregado en el menú "Settings" (Ajustes) de AI Studio con el nombre GEMINI_API_KEY.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
       
       const roas = metrics.revenue / (metrics.spend || 1);
       const cpa = metrics.spend / (metrics.purchases || metrics.messages || 1);
       
-      const notesContext = notes.length > 0 
-        ? notes.map(n => `- [${(n.timestamp || '').split('T')[0] || 'S/F'}] ${n.text}`).join('\n')
+      const currentNotes = notes || [];
+      const notesContext = currentNotes.length > 0 
+        ? currentNotes.map(n => `- [${(n.timestamp || '').split('T')[0] || 'S/F'}] ${n.text}`).join('\n')
         : 'No hay notas registradas en la bitácora para este período.';
 
       const prompt = `
         Eres un experto analista de marketing digital para una agencia llamada Orion.
         Debes generar un resumen ejecutivo profesional para un cliente sobre el rendimiento de sus campañas durante el mes de ${monthName}.
         
-        MÉTRICAS DEL MES:
+        MÉTRICAS CLAVE DEL MES:
         - Inversión: ${formatCurrency(metrics.spend, metrics.currency)}
         - Facturación: ${formatCurrency(metrics.revenue, metrics.currency)}
         - ROAS: ×${formatDecimal(roas)}
         - CPA/CPR: ${formatCurrency(cpa, metrics.currency)}
         - CTR: ${formatDecimal(metrics.ctr)}%
-        - Impresiones: ${metrics.impressions}
         - Clics: ${metrics.clicks}
         
-        BITÁCORA DE CAMBIOS Y TRABAJO REALIZADO:
+        BITÁCORA DE TRABAJO REALIZADO:
         ${notesContext}
         
-        INSTRUCCIONES PARA EL RESUMEN:
-        1. Comienza con una breve introducción sobre el trabajo realizado basado en la bitácora.
-        2. Analiza los rendimientos clave (Facturación, ROAS, CPA).
-        3. Menciona la variación o tendencia general observada.
-        4. Proporciona 2-3 sugerencias concretas para el mes siguiente para mejorar los resultados.
+        ESTRUCTURA DEL RESUMEN:
+        1. Intro: Resumen del trabajo en la bitácora.
+        2. Análisis: Comentar ROAS, Facturación y CPA.
+        3. Próximos pasos: Sugerencias para el mes entrante.
         
-        FORMATO:
-        Utiliza un tono profesional, directo y alentador. 
-        Escribe en párrafos claros. No uses más de 200 palabras.
-        El idioma debe ser Español (Argentina/Latinoamérica).
-        NO utilices negritas ni formatos Markdown complejos, solo texto plano con saltos de línea.
+        FORMATO: Profesional, directo, máximo 150 palabras. Sin negritas ni markdown especial. Castellano (Argentina).
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-flash-latest",
         contents: prompt,
       });
 
-      setSummary(response.text || 'No se pudo generar el resumen.');
-    } catch (error) {
+      if (!response.text) {
+        throw new Error('La respuesta de la IA está vacía.');
+      }
+
+      setSummary(response.text);
+    } catch (error: any) {
       console.error('Error generating summary:', error);
-      setSummary('Error al generar el resumen. Por favor, verifica la configuración de la API.');
+      setSummary(`Error al generar el resumen: ${error?.message || 'Error de conexión con Gemini'}. Verifica tu conexión o intenta nuevamente.`);
     } finally {
       setLoading(false);
     }

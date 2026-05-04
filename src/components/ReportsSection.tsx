@@ -412,7 +412,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
                   impressions: aggregatedData.impressions,
                   clicks: aggregatedData.clicks
                 }}
-                notes={accountNotes.filter(n => n.timestamp.startsWith(reportMonth))}
+                notes={accountNotes.filter(n => n.timestamp && n.timestamp.startsWith(reportMonth))}
                 monthName={monthOptions.find(o => o.value === reportMonth)?.label || reportMonth}
               />
 
