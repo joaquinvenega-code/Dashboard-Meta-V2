@@ -26,19 +26,24 @@ async function startServer() {
   });
 
   // Rutas de la Aplicación
-  app.post('/api/generate-ai-v3', async (req, res) => {
-    console.log('[API V3] POST request received');
-    const { metrics, notes, monthName, type = 'full' } = req.body;
+  app.all('/generate-ai-orchestrator', async (req, res) => {
+    console.log(`[ORCHESTRATOR] Request received: ${req.method}`);
+    
+    // El frontend mandará POST, pero aceptamos todo para evitar el 405
+    if (req.method === 'OPTIONS') return res.sendStatus(200);
+
+    const data = req.method === 'POST' ? req.body : req.query;
+    const { metrics, notes, monthName, type = 'full' } = data;
     
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === 'undefined' || apiKey === '') {
       return res.status(500).json({ 
-        error: 'Llave de Gemini no encontrada. Verifica en Settings > Secrets.' 
+        error: 'Llave de Gemini no válida. Verifica en Settings.' 
       });
     }
 
     if (!metrics) {
-      return res.status(400).json({ error: 'Faltan métricas en el cuerpo de la petición' });
+      return res.status(400).json({ error: 'Faltan los datos de métricas' });
     }
     
     try {
@@ -46,30 +51,47 @@ async function startServer() {
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
       const roas = metrics.revenue / (metrics.spend || 1);
-      const cpa = metrics.spend / (metrics.purchases || metrics.messages || 1);
       
       let prompt = '';
       if (type === 'metrics') {
-        prompt = `Analizá como experto en Meta Ads el mes de ${monthName}. Inversión: ${metrics.spend}, Facturación: ${metrics.revenue}, ROAS: ×${roas.toFixed(2)}. Escribí un párrafo breve (80 palabras) analítico. Castellano Argentina.`;
+        prompt = `Actuá como analista Senior de Meta Ads. Hacé una lectura crítica y breve del mes de ${monthName} basándote SOLO en estos números:
+        - Inversión: ${metrics.spend}
+        - Facturación: ${metrics.revenue}
+        - ROAS: ×${roas.toFixed(2)}
+        - CTR: ${metrics.ctr ? metrics.ctr.toFixed(2) : 'N/A'}%
+        - Clics: ${metrics.clicks}
+
+        Escribí UN SOLO párrafo (max 80 palabras) con tono profesional. Sé directo. Sin negritas ni markdown. Castellano de Argentina.`;
       } else {
         const notesContext = notes && notes.length > 0 
           ? notes.map((n: any) => `- ${n.text}`).join('\n')
-          : 'Sin notas.';
-        prompt = `Generá un resumen ejecutivo para ${monthName}. Métricas: ROAS: ${roas.toFixed(2)}, Inversión: ${metrics.spend}. Bitácora: ${notesContext}. Máximo 180 palabras. Tono profesional. Castellano Argentina.`;
+          : 'No hay registros en la bitácora.';
+
+        prompt = `Actuá como Director de Estrategia Digital. Generá un resumen ejecutivo integral del mes de ${monthName}.
+        
+        MÉTRICAS:
+        - Inversión: ${metrics.spend}
+        - Facturación: ${metrics.revenue}
+        - ROAS: ×${roas.toFixed(2)}
+        
+        BITÁCORA DE ACCIONES:
+        ${notesContext}
+        
+        ESTRUCTURA DEL RESUMEN:
+        1. Resumen de resultados.
+        2. Impacto de las acciones de la bitácora.
+        3. 1 consejo estratégico a futuro.
+
+        REQUISITOS: Max 180 palabras. Tono ejecutivo. Sin negritas. Castellano de Argentina. Solo texto plano con saltos de línea.`;
       }
 
       const result = await model.generateContent(prompt);
       const text = result.response.text();
       res.json({ text });
     } catch (error: any) {
-      console.error('[API V3] Gemini Error:', error);
-      res.status(500).json({ error: `Error de Gemini: ${error.message}` });
+      console.error('[ORCHESTRATOR] Error:', error);
+      res.status(500).json({ error: `Error de IA: ${error.message}` });
     }
-  });
-
-  // Alias para depuración
-  app.get('/api/generate-ai-v3', (req, res) => {
-    res.json({ message: 'Esta ruta solo acepta POST. Si ves esto en el navegador, la ruta está activa pero la llamada debe ser POST.' });
   });
 
   app.get('/api/health', (req, res) => {

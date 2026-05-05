@@ -26,7 +26,7 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     setLoading(type);
     setSummary('');
     try {
-      const response = await fetch('/api/generate-ai-v3', {
+      const response = await fetch('/generate-ai-orchestrator', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
