@@ -26,70 +26,83 @@ async function startServer() {
   });
 
   // Rutas de la Aplicación
-  app.all('/api/ai-summary', async (req, res) => {
-    console.log(`[API] AI Summary Request: ${req.method} ${req.url}`);
+  app.all('/api/v2/ai-summary', async (req, res) => {
+    console.log(`[API V2] Request: ${req.method} ${req.url}`);
     
     if (req.method === 'OPTIONS') {
       return res.sendStatus(200);
     }
 
-    if (req.method !== 'POST') {
-      return res.status(405).json({ error: `Método ${req.method} no permitido. Usa POST.` });
-    }
-
-    const { metrics, notes, monthName } = req.body;
+    // Aceptar tanto POST como GET (para debug) pero avisar en el prompt si no hay body
+    const isPost = req.method === 'POST';
+    const body = isPost ? req.body : {};
+    const { metrics, notes, monthName, type = 'full' } = body;
     
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-      console.error('[API] Error: Missing GEMINI_API_KEY');
       return res.status(500).json({ 
         error: 'Llave de Gemini no encontrada. Agrégala en Settings > Secrets con el nombre GEMINI_API_KEY.' 
       });
     }
 
+    if (!metrics && isPost) {
+      return res.status(400).json({ error: 'Faltan métricas en la solicitud' });
+    }
+
     try {
       const genAI = new GoogleGenAI({ apiKey }); 
-      // @ts-ignore
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-      const roas = metrics.revenue / (metrics.spend || 1);
-      const cpa = metrics.spend / (metrics.purchases || metrics.messages || 1);
+      const roas = metrics ? metrics.revenue / (metrics.spend || 1) : 0;
+      const cpa = metrics ? metrics.spend / (metrics.purchases || metrics.messages || 1) : 0;
       
-      const notesContext = notes && notes.length > 0 
-        ? notes.map((n: any) => `- [${(n.timestamp || '').split('T')[0] || 'S/F'}] ${n.text}`).join('\n')
-        : 'No hay notas registradas para este período.';
+      let prompt = '';
 
-      const prompt = `
-        Generá un resumen ejecutivo profesional para un cliente sobre el rendimiento de sus campañas de ${monthName}.
-        
-        MÉTRICAS CLAVE:
-        - Inversión: ${metrics.spend}
-        - Facturación: ${metrics.revenue}
-        - ROAS: ×${roas.toFixed(2)}
-        - CPA/CPR: ${cpa.toFixed(2)}
-        - CTR: ${metrics.ctr ? metrics.ctr.toFixed(2) : 'N/A'}%
-        - Clics: ${metrics.clicks}
-        
-        BITÁCORA DE TRABAJO:
-        ${notesContext}
-        
-        ESTRUCTURA DEL RESUMEN:
-        1. Intro: Resumen breve del trabajo realizado.
-        2. Análisis: Comentar brevemente ROAS, Facturación y CPA.
-        3. Próximos pasos: Sugerencias concretas.
-        
-        REQUISITOS:
-        - Tono: Profesional y directo.
-        - Idioma: Castellano (Argentina).
-        - Extensión: Máximo 150 palabras.
-        - Formato: Solo texto plano con saltos de línea (sin negritas ni markdown).
-      `;
+      if (type === 'metrics') {
+        prompt = `
+          Sos un analista experto en Meta Ads. Hacé una lectura crítica y profesional del rendimiento del mes de ${monthName}.
+          
+          MÉTRICAS:
+          - Inversión: ${metrics.spend}
+          - Facturación: ${metrics.revenue}
+          - ROAS: ×${roas.toFixed(2)}
+          - CTR: ${metrics.ctr ? metrics.ctr.toFixed(2) : 'N/A'}%
+          
+          TAREA:
+          Escribí un párrafo breve (80 palabras) analizando estos números. Sé directo y objetivo. 
+          No uses negritas ni markdown. Castellano de Argentina.
+        `;
+      } else {
+        const notesContext = notes && notes.length > 0 
+          ? notes.map((n: any) => `- [${(n.timestamp || '').split('T')[0] || 'S/F'}] ${n.text}`).join('\n')
+          : 'No hay notas registradas.';
+
+        prompt = `
+          Sos un Director de Estrategia Digital. Generá un resumen integral para el cliente sobre ${monthName}.
+          
+          DATOS DUROS:
+          - Inversión: ${metrics.spend}
+          - Facturación: ${metrics.revenue}
+          - ROAS: ×${roas.toFixed(2)}
+          - CPA: ${cpa.toFixed(2)}
+          
+          BITÁCORA DE ACCIONES:
+          ${notesContext}
+          
+          ESTRUCTURA:
+          1. Rendimiento: Análisis de los KPIs principales.
+          2. Valor Agregado: Relacionar las acciones de la bitácora con los resultados.
+          3. Siguiente Nivel: 1 o 2 consejos estratégicos.
+          
+          REQUISITOS:
+          Máximo 180 palabras. Tono ejecutivo. Sin negritas. Castellano de Argentina. Solo texto plano.
+        `;
+      }
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
 
-      console.log('[ORCHESTRATOR] Resumen generado con éxito');
       res.json({ text });
     } catch (error: any) {
       console.error('[SERVER] Gemini Error:', error);

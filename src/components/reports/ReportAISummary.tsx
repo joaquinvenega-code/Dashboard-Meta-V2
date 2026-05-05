@@ -20,35 +20,32 @@ interface ReportAISummaryProps {
 
 export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryProps) {
   const [summary, setSummary] = useState<string>('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<'metrics' | 'full' | null>(null);
 
-  const generateSummary = async () => {
-    setLoading(true);
+  const generateSummary = async (type: 'metrics' | 'full') => {
+    setLoading(type);
     setSummary('');
     try {
-      const response = await fetch('/api/ai-summary', {
+      const response = await fetch('/api/v2/ai-summary', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({ metrics, notes, monthName })
+        body: JSON.stringify({ metrics, notes, monthName, type })
       });
 
       if (!response.ok) {
         const text = await response.text().catch(() => 'Sin cuerpo');
         console.error('Error del servidor:', response.status, text);
         
-        if (response.status === 405) {
-          throw new Error('El servidor no permite esta operación (405). Intenta recargar la página o espera unos segundos.');
-        }
-
         let errorData = { error: '' };
         try {
           if (text.startsWith('{')) errorData = JSON.parse(text);
         } catch (e) {
           throw new Error(`Servidor: ${response.status} - ${text.substring(0, 50).replace(/<[^>]*>/g, '')}`);
         }
+        
         throw new Error(errorData.error || `Error del servidor: ${response.status}`);
       }
 
@@ -58,13 +55,13 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
       console.error('Error generating summary:', error);
       setSummary(`Error: ${error?.message || 'Error de conexión'}. Si el error persiste, verifica la clave GEMINI_API_KEY en Settings.`);
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   };
 
   return (
     <div className="bg-neutral-50 rounded-xl p-8 border border-neutral-100 mt-4 flex flex-col gap-4 shadow-sm">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-white" />
@@ -76,23 +73,49 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
         </div>
         
         {!summary ? (
-          <button 
-            onClick={generateSummary}
-            disabled={loading}
-            className="flex items-center gap-2 bg-neutral-900 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-black transition-all disabled:opacity-50 cursor-pointer"
-          >
-            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-            {loading ? 'Generando...' : 'Generar Lectura'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => generateSummary('metrics')}
+              disabled={!!loading}
+              className="flex items-center gap-2 bg-white border border-neutral-200 text-neutral-700 px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-neutral-50 transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {loading === 'metrics' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              Paso 1: Métricas
+            </button>
+            <button 
+              onClick={() => generateSummary('full')}
+              disabled={!!loading}
+              className="flex items-center gap-2 bg-neutral-900 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-black transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {loading === 'full' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              Paso 2: Resumen Total
+            </button>
+          </div>
         ) : (
-          <button 
-            onClick={generateSummary}
-            disabled={loading}
-            className="text-neutral-400 hover:text-blue-600 transition-colors cursor-pointer p-2"
-            title="Regenerar resumen"
-          >
-            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-          </button>
+          <div className="flex items-center gap-2">
+             <button 
+              onClick={() => generateSummary('metrics')}
+              disabled={!!loading}
+              className="flex items-center gap-2 text-neutral-400 hover:text-blue-600 transition-colors cursor-pointer p-2 text-[8px] font-black uppercase tracking-widest"
+            >
+              Métricas
+            </button>
+            <button 
+              onClick={() => generateSummary('full')}
+              disabled={!!loading}
+              className="flex items-center gap-2 text-neutral-400 hover:text-blue-600 transition-colors cursor-pointer p-2 text-[8px] font-black uppercase tracking-widest"
+            >
+              Total
+            </button>
+            <button 
+              onClick={() => setSummary('')}
+              disabled={!!loading}
+              className="text-neutral-400 hover:text-red-600 transition-colors cursor-pointer p-2"
+              title="Limpiar"
+            >
+              <RefreshCw className={cn("w-4 h-4", !!loading && "animate-spin")} />
+            </button>
+          </div>
         )}
       </div>
 
