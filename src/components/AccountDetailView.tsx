@@ -164,9 +164,9 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     }
   };
 
-  const defaultVisibleMetrics = ['spend', 'revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
+  const defaultVisibleMetrics = ['spend', 'revenue', 'manual_revenue', 'total_revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
   
-  const messagingDefaultMetrics = ['messages', 'cpm', 'ctr', 'spend', 'clicks', 'cpm_real'];
+  const messagingDefaultMetrics = ['messages', 'cpm', 'manual_revenue', 'total_revenue', 'roas', 'ctr', 'spend', 'clicks', 'cpm_real'];
   
   // Filter accounts for sidebar
   const sidebarAccounts = accounts.filter(acc => 
@@ -298,26 +298,44 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     let text = "";
     selectedAccounts.forEach((acc) => {
       const sAcc = (settings[acc.id] || {}) as AccountSettings;
-      const roas = acc.spend > 0 ? (acc.revenue / acc.spend).toFixed(2) : "0";
       const customName = sAcc.customName || acc.name;
       const currency = sAcc.currency || acc.currency || 'ARS';
+      const manualRevenue = sAcc.manualRevenue || 0;
+      const totalRevenue = (acc.revenue || 0) + manualRevenue;
+      const roas = acc.spend > 0 ? (totalRevenue / acc.spend).toFixed(2) : "0";
       
       const msgs = acc.messagesReal || acc.messages || 0;
       const cpm = acc.costPerMessageReal || acc.costPerMessage || 0;
-          text += `- ${customName}\n`;
+      
+      text += `- ${customName}\n`;
       text += `Inversión: ${exportFormatCurrency(acc.spend || 0, currency)}\n`;
       
-      if (sAcc.tracking === 'messaging') {
+      if (sAcc.tracking === 'ecommerce') {
+        text += `Facturación Ads: ${exportFormatCurrency(acc.revenue || 0, currency)}\n`;
+        if (manualRevenue > 0) {
+          text += `Ventas Manuales: ${exportFormatCurrency(manualRevenue, currency)}\n`;
+          text += `Facturación Total: ${exportFormatCurrency(totalRevenue, currency)}\n`;
+        }
+        text += `ROAS Real: ${roas}\n`;
+      } else if (sAcc.tracking === 'messaging') {
         text += `Mensajes: ${msgs}\n`;
         text += `Costo x Mensaje: ${exportFormatCurrency(cpm, currency)}\n`;
+        if (manualRevenue > 0) {
+          text += `Ventas Manuales: ${exportFormatCurrency(manualRevenue, currency)}\n`;
+          text += `ROAS Real: ${roas}\n`;
+        }
       } else if (sAcc.tracking === 'both') {
-        text += `Facturación: ${exportFormatCurrency(acc.revenue || 0, currency)}\n`;
-        text += `ROAS General: ${roas}\n`;
+        text += `Facturación Ads: ${exportFormatCurrency(acc.revenue || 0, currency)}\n`;
+        if (manualRevenue > 0) {
+          text += `Ventas Manuales: ${exportFormatCurrency(manualRevenue, currency)}\n`;
+          text += `Facturación Total: ${exportFormatCurrency(totalRevenue, currency)}\n`;
+        }
+        text += `ROAS Real: ${roas}\n`;
         text += `Mensajes: ${msgs}\n`;
         text += `Costo x Mensaje: ${exportFormatCurrency(cpm, currency)}\n`;
       } else {
-        text += `Facturación: ${exportFormatCurrency(acc.revenue || 0, currency)}\n`;
-        text += `ROAS General: ${roas}\n`;
+        text += `Facturación Total: ${exportFormatCurrency(totalRevenue, currency)}\n`;
+        text += `ROAS Real: ${roas}\n`;
       }
 
       if (sAcc.observations) {
@@ -353,8 +371,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
   const ALL_METRICS = [
     { id: 'spend', label: 'Inversión' },
-    { id: 'revenue', label: 'Facturación' },
-    { id: 'roas', label: 'ROAS' },
+    { id: 'revenue', label: 'Facturación Ads' },
+    { id: 'manual_revenue', label: 'Ventas Offline' },
+    { id: 'total_revenue', label: 'Facturación Total' },
+    { id: 'roas', label: 'ROAS Real' },
     { id: 'objective', label: 'Objetivo' },
     { id: 'progress_revenue', label: '% Objetivo' },
     { id: 'progress_budget', label: '% Presupuesto' },
@@ -394,13 +414,34 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
   const renderMetric = (id: string, acc: AdAccount) => {
     const sAcc = settings[acc.id];
+    const manualRevenue = sAcc?.manualRevenue || 0;
+    const totalRevenue = (acc.revenue || 0) + manualRevenue;
     
     switch(id) {
       case 'spend': return <MetricBox key={id} label="Inversión" value={formatCurrency(acc.spend || 0, acc.currency)} />;
-      case 'revenue': return <MetricBox key={id} label="Facturación" value={formatCurrency(acc.revenue || 0, acc.currency)} />;
-      case 'roas': return <MetricBox key={id} label="ROAS" value={`×${formatDecimal((acc.revenue || 0) / (acc.spend || 1))}`} />;
+      case 'revenue': return <MetricBox key={id} label="Facturación Ads" value={formatCurrency(acc.revenue || 0, acc.currency)} />;
+      case 'manual_revenue': return (
+        <div key={id} className="p-3 rounded-xl border border-white/5 bg-[#111] hover:bg-[#141414] transition-all shadow-lg group overflow-hidden">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover:text-neutral-500 transition-colors">Ventas Offline</div>
+            <Save className="w-2.5 h-2.5 text-blue-500 opacity-30" />
+          </div>
+          <input 
+            type="number"
+            value={manualRevenue || ''}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value) || 0;
+              onSaveSettings(acc.id, { ...(sAcc || {}), manualRevenue: val } as any);
+            }}
+            placeholder="Ingresar..."
+            className="bg-transparent border-none outline-none text-white text-sm md:text-base font-black tracking-tight w-full placeholder:text-neutral-800"
+          />
+        </div>
+      );
+      case 'total_revenue': return <MetricBox key={id} label="Facturación Total" value={formatCurrency(totalRevenue, acc.currency)} variant="highlight" />;
+      case 'roas': return <MetricBox key={id} label="ROAS Real" value={`×${formatDecimal(totalRevenue / (acc.spend || 1))}`} variant="highlight" />;
       case 'objective': return <MetricBox key={id} label="Objetivo" value={formatCurrency(sAcc?.objective || 0, acc.currency)} isPlaceholder={!sAcc?.objective} />;
-      case 'progress_revenue': return <MetricBox key={id} label="% Objetivo" value={`${getProgress(acc) || 0}%`} isPlaceholder={!getProgress(acc)} />;
+      case 'progress_revenue': return <MetricBox key={id} label="% Objetivo" value={`${sAcc?.objective ? Math.round((totalRevenue / sAcc.objective) * 100) : 0}%`} isPlaceholder={!sAcc?.objective} />;
       case 'progress_budget': return <MetricBox key={id} label="% Presupuesto" value={`${sAcc?.budget ? Math.round(((acc.spend || 0) / sAcc.budget) * 100) : 0}%`} isPlaceholder={!sAcc?.budget} />;
       case 'ctr': return <MetricBox key={id} label="CTR" value={`${formatDecimal(acc.ctr, 2)}%`} />;
       case 'clicks': return <MetricBox key={id} label="Clics" value={formatDecimal(acc.clicks, 0)} />;

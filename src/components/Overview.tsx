@@ -28,7 +28,8 @@ export function Overview({ accounts, settings }: OverviewProps) {
     const cur = (s?.currency || acc.currency || 'ARS').toUpperCase();
     if (!totalsByCurrency[cur]) totalsByCurrency[cur] = { spend: 0, revenue: 0 };
     totalsByCurrency[cur].spend += (acc.spend || 0);
-    totalsByCurrency[cur].revenue += (acc.revenue || 0);
+    // Include manual revenue in total revenue calculation
+    totalsByCurrency[cur].revenue += (acc.revenue || 0) + (s?.manualRevenue || 0);
   });
 
   const currencies = Object.keys(totalsByCurrency).filter(c => totalsByCurrency[c].spend > 0 || totalsByCurrency[c].revenue > 0);
@@ -36,13 +37,17 @@ export function Overview({ accounts, settings }: OverviewProps) {
   const totalRevenueStr = currencies.map(c => formatCurrency(totalsByCurrency[c].revenue, c)).join(' + ');
   
   const totalSpendGlobal = filteredAccounts.reduce((a, c) => a + (c.spend || 0), 0);
-  const totalRevenueGlobal = filteredAccounts.reduce((a, c) => a + (c.revenue || 0), 0);
+  const totalRevenueGlobal = filteredAccounts.reduce((a, c) => {
+    const s = settings[c.id];
+    return a + (c.revenue || 0) + (s?.manualRevenue || 0);
+  }, 0);
   const avgRoas = totalSpendGlobal > 0 ? totalRevenueGlobal / totalSpendGlobal : 0;
 
   const getStatus = (acc: AdAccount) => {
-    const s = settings[acc.id] || { objective: 0 };
+    const s = settings[acc.id] || { objective: 0, manualRevenue: 0 };
     if (!s.objective) return { label: 'Sin objetivo', color: 'bg-neutral-500', text: 'text-neutral-500', border: 'border-neutral-500/10' };
-    const progress = (acc.revenue || 0) / s.objective;
+    const totalRevenue = (acc.revenue || 0) + (s.manualRevenue || 0);
+    const progress = totalRevenue / s.objective;
     if (progress >= 1) return { label: 'En objetivo', color: 'bg-success', text: 'text-success', border: 'border-success/10' };
     if (progress >= 0.7) return { label: 'En riesgo', color: 'bg-warning', text: 'text-warning', border: 'border-warning/10' };
     return { label: 'Fuera de objetivo', color: 'bg-danger', text: 'text-danger', border: 'border-danger/10' };
@@ -126,12 +131,13 @@ export function Overview({ accounts, settings }: OverviewProps) {
             <div className="text-right">ROAS</div>
           </div>
           {filteredAccounts.map(acc => {
-            const s = settings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS' };
+            const s = settings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', manualRevenue: 0 };
             const status = getStatus(acc);
-            const progress = s.objective > 0 ? Math.min((acc.revenue || 0) / s.objective, 1) : 0;
+            const totalRevenue = (acc.revenue || 0) + (s.manualRevenue || 0);
+            const progress = s.objective > 0 ? Math.min(totalRevenue / s.objective, 1) : 0;
             const progressPct = Math.round(progress * 100);
-            const roas = acc.spend && acc.spend > 0 ? (acc.revenue || 0) / acc.spend : 0;
- 
+            const roas = acc.spend && acc.spend > 0 ? totalRevenue / acc.spend : 0;
+
             return (
               <div key={acc.id} className="group relative">
                 <div className="grid grid-cols-[140px_1fr_100px_60px] gap-3 items-center py-1.5 border-b border-white/[0.03] group-hover:bg-white/[0.01] transition-all px-2 rounded-lg">
@@ -145,22 +151,22 @@ export function Overview({ accounts, settings }: OverviewProps) {
                       <div className="flex items-center gap-2">
                         <span className={cn("text-[10px] font-bold uppercase tracking-tight", status.text)}>{progressPct}%</span>
                       </div>
-                      <span className="text-[8px] font-semibold text-neutral-500 uppercase tracking-widest tabular-nums">
-                        {formatCurrency(acc.revenue || 0, s.currency)} / {formatCurrency(s.objective || 0, s.currency)}
+                      <span className="text-[8px] font-semibold text-neutral-500 uppercase tracking-widest tabular-nums font-mono">
+                        {formatCurrency(totalRevenue, s.currency)} / {formatCurrency(s.objective || 0, s.currency)}
                       </span>
                     </div>
                     <div className="relative h-1.5 bg-white/[0.05] rounded-full overflow-hidden border border-white/5">
                       <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progress * 100}%` }}
-                        transition={{ duration: 0.8, ease: "easeOut" }}
-                        className={cn("h-full rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]", status.color)}
+                         initial={{ width: 0 }}
+                         animate={{ width: `${progress * 100}%` }}
+                         transition={{ duration: 0.8, ease: "easeOut" }}
+                         className={cn("h-full rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]", status.color)}
                       />
                     </div>
                   </div>
  
                   <div className="text-right text-[11px] font-medium text-neutral-300 font-mono tracking-tighter">
-                    {formatCurrency(acc.revenue || 0, s.currency)}
+                    {formatCurrency(totalRevenue, s.currency)}
                   </div>
  
                   <div className="flex flex-col items-end gap-1">

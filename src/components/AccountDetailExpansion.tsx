@@ -16,7 +16,9 @@ export function AccountDetailExpansion({ account, settings, dateRange, onOpenRep
   const [loadingAds, setLoadingAds] = useState(false);
   const [sortAdsBy, setSortAdsBy] = useState('roas');
 
-  const roas = account.spend && account.spend > 0 ? (account.revenue || 0) / account.spend : 0;
+  const manualRevenue = settings.manualRevenue || 0;
+  const totalRevenue = (account.revenue || 0) + manualRevenue;
+  const roas = account.spend && account.spend > 0 ? totalRevenue / account.spend : 0;
   
   const showMessaging = settings.tracking === 'messaging' || settings.tracking === 'both' || (account.messagesReal && account.messagesReal > 0);
 
@@ -46,9 +48,11 @@ export function AccountDetailExpansion({ account, settings, dateRange, onOpenRep
       {/* Metrics Section */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <MetricBox label="Inversión" value={formatCurrency(account.spend || 0, account.currency)} />
-        <MetricBox label="Facturación" value={formatCurrency(account.revenue || 0, account.currency)} />
-        <MetricBox label="ROAS" value={`×${formatDecimal(roas)}`} highlight />
-        <MetricBox label="Compras" value={formatNumber(account.purchases || 0)} />
+        <MetricBox label="Facturación Meta" value={formatCurrency(account.revenue || 0, account.currency)} />
+        <MetricBox label="Ventas Offline" value={formatCurrency(manualRevenue, account.currency)} />
+        <MetricBox label="Facturación Total" value={formatCurrency(totalRevenue, account.currency)} highlight />
+        <MetricBox label="ROAS Real" value={`×${formatDecimal(roas)}`} highlight />
+        <MetricBox label="Compras Ads" value={formatNumber(account.purchases || 0)} />
         
         {showMessaging && (
           <>
