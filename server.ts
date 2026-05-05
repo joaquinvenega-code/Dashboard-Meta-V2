@@ -26,8 +26,17 @@ async function startServer() {
   });
 
   // Rutas de la Aplicación
-  app.post('/api/ai-summary-service/v1', async (req, res) => {
-    console.log(`[SERVER] Generating summary request received`);
+  app.all('/api/ai-summary', async (req, res) => {
+    console.log(`[API] AI Summary Request: ${req.method} ${req.url}`);
+    
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: `Método ${req.method} no permitido. Usa POST.` });
+    }
+
     const { metrics, notes, monthName } = req.body;
     
     const apiKey = process.env.GEMINI_API_KEY;

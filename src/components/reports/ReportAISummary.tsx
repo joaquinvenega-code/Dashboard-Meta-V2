@@ -26,7 +26,7 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     setLoading(true);
     setSummary('');
     try {
-      const response = await fetch('/api/ai-summary-service/v1', {
+      const response = await fetch('/api/ai-summary', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
