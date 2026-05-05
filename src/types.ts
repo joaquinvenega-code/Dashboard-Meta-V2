@@ -31,7 +31,7 @@ export interface AccountSettings {
   observations?: string;
   visibleMetrics?: string[];
   category?: string;
-  manualRevenue?: number;
+  manualRevenueByMonth?: Record<string, number>;
 }
 
 export interface Ad {

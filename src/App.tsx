@@ -38,7 +38,7 @@ import {
   Bell
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { format, subDays, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
+import { format, parseISO, subDays, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
 import {
   DndContext, 
   closestCenter,
@@ -120,6 +120,7 @@ export default function App() {
     until: format(new Date(), 'yyyy-MM-dd')
   });
   const [isCustomDate, setIsCustomDate] = useState(false);
+  const periodKey = format(parseISO(dateRange.since), 'yyyy-MM');
 
   // Settings State
   const [settings, setSettings] = useState<Record<string, AccountSettings>>(() => {
@@ -735,7 +736,7 @@ export default function App() {
             <>
               {activePage === 'overview' && (
                 <div className="space-y-10 animate-in fade-in duration-1000">
-                  <Overview accounts={overviewEntities} settings={overviewSettings} />
+                  <Overview accounts={overviewEntities} settings={overviewSettings} dateRange={dateRange} />
                   
                   {/* Column Toggles Toggle */}
                   <div className="flex justify-end">
@@ -867,13 +868,15 @@ export default function App() {
                           ) : (
                             overviewEntities.map((acc) => {
                               const s = overviewSettings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', tracking: 'ecommerce' };
-                              const roas = acc.spend && acc.spend > 0 ? (acc.revenue || 0) / acc.spend : 0;
-                              const progress = s.objective > 0 ? Math.min((acc.revenue || 0) / s.objective, 1.2) : 0;
+                              const manualRevenue = s.manualRevenueByMonth?.[periodKey] || 0;
+                              const totalRevenue = (acc.revenue || 0) + manualRevenue;
+                              const roas = acc.spend && acc.spend > 0 ? totalRevenue / acc.spend : 0;
+                              const progress = s.objective > 0 ? Math.min(totalRevenue / s.objective, 1.2) : 0;
                               const budgetProgress = s.budget > 0 ? Math.min((acc.spend || 0) / s.budget, 1.2) : 0;
                              
                               // Semaphore Logic
                             const getStatusInfo = () => {
-                              const p = (acc.revenue || 0) / (s.objective || 1);
+                              const p = totalRevenue / (s.objective || 1);
                               if (p >= 1) return { label: 'Objetivo', color: 'text-success', bg: 'bg-success' };
                               if (p >= 0.7) return { label: 'Riesgo', color: 'text-warning', bg: 'bg-warning' };
                               return { label: 'Alerta', color: 'text-danger', bg: 'bg-danger' };
@@ -939,7 +942,7 @@ export default function App() {
 
                                   if (colId === 'facturado') return (
                                     <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-200">
-                                      {formatCurrency(acc.revenue || 0, s.currency)}
+                                      {formatCurrency(totalRevenue, s.currency)}
                                     </td>
                                   );
 

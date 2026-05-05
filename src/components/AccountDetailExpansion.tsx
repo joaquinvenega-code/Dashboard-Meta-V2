@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AdAccount, Ad, AccountSettings } from '../types';
 import { formatCurrency, formatNumber, formatDecimal, cn } from '../lib/utils';
 import { fetchTopAds, fetchDailySeries } from '../services/facebook';
+import { format, parseISO } from 'date-fns';
 import { Trophy, ExternalLink, RefreshCw, FileText } from 'lucide-react';
 
 interface AccountDetailExpansionProps {
@@ -16,7 +17,8 @@ export function AccountDetailExpansion({ account, settings, dateRange, onOpenRep
   const [loadingAds, setLoadingAds] = useState(false);
   const [sortAdsBy, setSortAdsBy] = useState('roas');
 
-  const manualRevenue = settings.manualRevenue || 0;
+  const periodKey = format(parseISO(dateRange.since), 'yyyy-MM');
+  const manualRevenue = settings.manualRevenueByMonth?.[periodKey] || 0;
   const totalRevenue = (account.revenue || 0) + manualRevenue;
   const roas = account.spend && account.spend > 0 ? totalRevenue / account.spend : 0;
   

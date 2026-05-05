@@ -84,6 +84,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   onAddNote,
   onDeleteNote
 }) => {
+  const periodKey = format(parseISO(dateRange.since), 'yyyy-MM');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [adsLoading, setAdsLoading] = useState(false);
@@ -300,7 +301,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       const sAcc = (settings[acc.id] || {}) as AccountSettings;
       const customName = sAcc.customName || acc.name;
       const currency = sAcc.currency || acc.currency || 'ARS';
-      const manualRevenue = sAcc.manualRevenue || 0;
+      const manualRevenue = sAcc.manualRevenueByMonth?.[periodKey] || 0;
       const totalRevenue = (acc.revenue || 0) + manualRevenue;
       const roas = acc.spend > 0 ? (totalRevenue / acc.spend).toFixed(2) : "0";
       
@@ -414,7 +415,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
   const renderMetric = (id: string, acc: AdAccount) => {
     const sAcc = settings[acc.id];
-    const manualRevenue = sAcc?.manualRevenue || 0;
+    const manualRevenue = sAcc?.manualRevenueByMonth?.[periodKey] || 0;
     const totalRevenue = (acc.revenue || 0) + manualRevenue;
     
     switch(id) {
@@ -423,7 +424,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       case 'manual_revenue': return (
         <div key={id} className="p-3 rounded-xl border border-white/5 bg-[#111] hover:bg-[#141414] transition-all shadow-lg group overflow-hidden">
           <div className="flex items-center justify-between mb-1.5">
-            <div className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover:text-neutral-500 transition-colors">Ventas Offline</div>
+            <div className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover:text-neutral-500 transition-colors">Ventas Offline ({periodKey})</div>
             <Save className="w-2.5 h-2.5 text-blue-500 opacity-30" />
           </div>
           <input 
@@ -431,7 +432,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
             value={manualRevenue || ''}
             onChange={(e) => {
               const val = parseFloat(e.target.value) || 0;
-              onSaveSettings(acc.id, { ...(sAcc || {}), manualRevenue: val } as any);
+              const currentMonthly = sAcc?.manualRevenueByMonth || {};
+              onSaveSettings(acc.id, { 
+                ...(sAcc || {}), 
+                manualRevenueByMonth: {
+                  ...currentMonthly,
+                  [periodKey]: val
+                }
+              } as any);
             }}
             placeholder="Ingresar..."
             className="bg-transparent border-none outline-none text-white text-sm md:text-base font-black tracking-tight w-full placeholder:text-neutral-800"
