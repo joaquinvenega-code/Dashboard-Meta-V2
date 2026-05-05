@@ -26,88 +26,50 @@ async function startServer() {
   });
 
   // Rutas de la Aplicación
-  app.all('/api/v2/ai-summary', async (req, res) => {
-    console.log(`[API V2] Request: ${req.method} ${req.url}`);
-    
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(200);
-    }
-
-    // Aceptar tanto POST como GET (para debug) pero avisar en el prompt si no hay body
-    const isPost = req.method === 'POST';
-    const body = isPost ? req.body : {};
-    const { metrics, notes, monthName, type = 'full' } = body;
+  app.post('/api/generate-ai-v3', async (req, res) => {
+    console.log('[API V3] POST request received');
+    const { metrics, notes, monthName, type = 'full' } = req.body;
     
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === 'undefined' || apiKey === '') {
       return res.status(500).json({ 
-        error: 'Llave de Gemini no encontrada. Agrégala en Settings > Secrets con el nombre GEMINI_API_KEY.' 
+        error: 'Llave de Gemini no encontrada. Verifica en Settings > Secrets.' 
       });
     }
 
-    if (!metrics && isPost) {
-      return res.status(400).json({ error: 'Faltan métricas en la solicitud' });
+    if (!metrics) {
+      return res.status(400).json({ error: 'Faltan métricas en el cuerpo de la petición' });
     }
-
+    
     try {
       const genAI = new GoogleGenAI({ apiKey }); 
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-      const roas = metrics ? metrics.revenue / (metrics.spend || 1) : 0;
-      const cpa = metrics ? metrics.spend / (metrics.purchases || metrics.messages || 1) : 0;
+      const roas = metrics.revenue / (metrics.spend || 1);
+      const cpa = metrics.spend / (metrics.purchases || metrics.messages || 1);
       
       let prompt = '';
-
       if (type === 'metrics') {
-        prompt = `
-          Sos un analista experto en Meta Ads. Hacé una lectura crítica y profesional del rendimiento del mes de ${monthName}.
-          
-          MÉTRICAS:
-          - Inversión: ${metrics.spend}
-          - Facturación: ${metrics.revenue}
-          - ROAS: ×${roas.toFixed(2)}
-          - CTR: ${metrics.ctr ? metrics.ctr.toFixed(2) : 'N/A'}%
-          
-          TAREA:
-          Escribí un párrafo breve (80 palabras) analizando estos números. Sé directo y objetivo. 
-          No uses negritas ni markdown. Castellano de Argentina.
-        `;
+        prompt = `Analizá como experto en Meta Ads el mes de ${monthName}. Inversión: ${metrics.spend}, Facturación: ${metrics.revenue}, ROAS: ×${roas.toFixed(2)}. Escribí un párrafo breve (80 palabras) analítico. Castellano Argentina.`;
       } else {
         const notesContext = notes && notes.length > 0 
-          ? notes.map((n: any) => `- [${(n.timestamp || '').split('T')[0] || 'S/F'}] ${n.text}`).join('\n')
-          : 'No hay notas registradas.';
-
-        prompt = `
-          Sos un Director de Estrategia Digital. Generá un resumen integral para el cliente sobre ${monthName}.
-          
-          DATOS DUROS:
-          - Inversión: ${metrics.spend}
-          - Facturación: ${metrics.revenue}
-          - ROAS: ×${roas.toFixed(2)}
-          - CPA: ${cpa.toFixed(2)}
-          
-          BITÁCORA DE ACCIONES:
-          ${notesContext}
-          
-          ESTRUCTURA:
-          1. Rendimiento: Análisis de los KPIs principales.
-          2. Valor Agregado: Relacionar las acciones de la bitácora con los resultados.
-          3. Siguiente Nivel: 1 o 2 consejos estratégicos.
-          
-          REQUISITOS:
-          Máximo 180 palabras. Tono ejecutivo. Sin negritas. Castellano de Argentina. Solo texto plano.
-        `;
+          ? notes.map((n: any) => `- ${n.text}`).join('\n')
+          : 'Sin notas.';
+        prompt = `Generá un resumen ejecutivo para ${monthName}. Métricas: ROAS: ${roas.toFixed(2)}, Inversión: ${metrics.spend}. Bitácora: ${notesContext}. Máximo 180 palabras. Tono profesional. Castellano Argentina.`;
       }
 
       const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-
+      const text = result.response.text();
       res.json({ text });
     } catch (error: any) {
-      console.error('[SERVER] Gemini Error:', error);
+      console.error('[API V3] Gemini Error:', error);
       res.status(500).json({ error: `Error de Gemini: ${error.message}` });
     }
+  });
+
+  // Alias para depuración
+  app.get('/api/generate-ai-v3', (req, res) => {
+    res.json({ message: 'Esta ruta solo acepta POST. Si ves esto en el navegador, la ruta está activa pero la llamada debe ser POST.' });
   });
 
   app.get('/api/health', (req, res) => {
