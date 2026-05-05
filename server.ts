@@ -26,17 +26,8 @@ async function startServer() {
   });
 
   // Rutas de la Aplicación
-  app.all('/api/generate-summary', async (req, res) => {
-    console.log(`[SERVER] Request to /api/generate-summary: ${req.method}`);
-    
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(200);
-    }
-
-    if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Solo se permite el método POST' });
-    }
-
+  app.post('/api/ai-summary-service/v1', async (req, res) => {
+    console.log(`[SERVER] Generating summary request received`);
     const { metrics, notes, monthName } = req.body;
     
     const apiKey = process.env.GEMINI_API_KEY;
