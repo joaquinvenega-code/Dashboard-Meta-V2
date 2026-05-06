@@ -25,74 +25,66 @@ async function startServer() {
     next();
   });
 
-  // Rutas de la Aplicación
-  app.all('/generate-ai-orchestrator', async (req, res) => {
-    console.log(`[ORCHESTRATOR] Request received: ${req.method}`);
-    
-    // El frontend mandará POST, pero aceptamos todo para evitar el 405
-    if (req.method === 'OPTIONS') return res.sendStatus(200);
+  // --- Rutas de la API ---
+  const apiRouter = express.Router();
 
-    const data = req.method === 'POST' ? req.body : req.query;
-    const { metrics, notes, monthName, type = 'full' } = data;
+  // Paso 1: Solo métricas
+  apiRouter.post('/v4/metrics-only', async (req, res) => {
+    console.log('[API V4] METRICS ONLY REQUEST arrived');
+    const { metrics, monthName } = req.body;
     
+    if (!metrics) return res.status(400).json({ error: 'Faltan métricas' });
+
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-      return res.status(500).json({ 
-        error: 'Llave de Gemini no válida. Verifica en Settings.' 
-      });
-    }
+    if (!apiKey) return res.status(500).json({ error: 'Falta GEMINI_API_KEY' });
 
-    if (!metrics) {
-      return res.status(400).json({ error: 'Faltan los datos de métricas' });
-    }
-    
     try {
-      const genAI = new GoogleGenAI({ apiKey }); 
+      const genAI = new GoogleGenAI({ apiKey });
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
       const roas = metrics.revenue / (metrics.spend || 1);
       
-      let prompt = '';
-      if (type === 'metrics') {
-        prompt = `Actuá como analista Senior de Meta Ads. Hacé una lectura crítica y breve del mes de ${monthName} basándote SOLO en estos números:
-        - Inversión: ${metrics.spend}
-        - Facturación: ${metrics.revenue}
-        - ROAS: ×${roas.toFixed(2)}
-        - CTR: ${metrics.ctr ? metrics.ctr.toFixed(2) : 'N/A'}%
-        - Clics: ${metrics.clicks}
-
-        Escribí UN SOLO párrafo (max 80 palabras) con tono profesional. Sé directo. Sin negritas ni markdown. Castellano de Argentina.`;
-      } else {
-        const notesContext = notes && notes.length > 0 
-          ? notes.map((n: any) => `- ${n.text}`).join('\n')
-          : 'No hay registros en la bitácora.';
-
-        prompt = `Actuá como Director de Estrategia Digital. Generá un resumen ejecutivo integral del mes de ${monthName}.
-        
-        MÉTRICAS:
-        - Inversión: ${metrics.spend}
-        - Facturación: ${metrics.revenue}
-        - ROAS: ×${roas.toFixed(2)}
-        
-        BITÁCORA DE ACCIONES:
-        ${notesContext}
-        
-        ESTRUCTURA DEL RESUMEN:
-        1. Resumen de resultados.
-        2. Impacto de las acciones de la bitácora.
-        3. 1 consejo estratégico a futuro.
-
-        REQUISITOS: Max 180 palabras. Tono ejecutivo. Sin negritas. Castellano de Argentina. Solo texto plano con saltos de línea.`;
-      }
+      const prompt = `Analizá brevemente (max 80 palabras) el rendimiento de Meta Ads de ${monthName}.
+      Métricas: Inversión ${metrics.spend}, Facturación ${metrics.revenue}, ROAS: ×${roas.toFixed(2)}.
+      Tono profesional, castellano de Argentina. Solo texto plano.`;
 
       const result = await model.generateContent(prompt);
-      const text = result.response.text();
-      res.json({ text });
-    } catch (error: any) {
-      console.error('[ORCHESTRATOR] Error:', error);
-      res.status(500).json({ error: `Error de IA: ${error.message}` });
+      res.json({ text: result.response.text() });
+    } catch (err: any) {
+      console.error('[API V4] Error:', err);
+      res.status(500).json({ error: err.message });
     }
   });
+
+  // Paso 2: Resumen Total
+  apiRouter.post('/v4/full-summary', async (req, res) => {
+    console.log('[API V4] FULL SUMMARY REQUEST arrived');
+    const { metrics, notes, monthName } = req.body;
+    
+    if (!metrics) return res.status(400).json({ error: 'Faltan métricas' });
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'Falta GEMINI_API_KEY' });
+
+    try {
+      const genAI = new GoogleGenAI({ apiKey });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const roas = metrics.revenue / (metrics.spend || 1);
+      const notesContext = notes && notes.length > 0 ? notes.map((n: any) => `- ${n.text}`).join('\n') : 'Sin notas.';
+
+      const prompt = `Resumen ejecutivo integral ${monthName}. ROAS: ${roas.toFixed(2)}, Inversión: ${metrics.spend}. 
+      Bitácora: ${notesContext}.
+      Máximo 180 palabras. Tono ejecutivo. Castellano Argentina. Solo texto plano.`;
+
+      const result = await model.generateContent(prompt);
+      res.json({ text: result.response.text() });
+    } catch (err: any) {
+      console.error('[API V4] Error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Montar el router
+  app.use('/api', apiRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ 
