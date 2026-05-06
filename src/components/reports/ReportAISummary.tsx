@@ -26,24 +26,37 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     setLoading(type);
     setSummary('');
     try {
-      const response = await fetch('/api/generate-ai-report', {
+      const payload = { metrics, notes, monthName, type };
+      
+      // Intento 1: POST (Lo estándar)
+      let response = await fetch('/v15-engine', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ metrics, notes, monthName, type })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
+
+      // Intento 2: Fallback a GET si hay error 405 (Solo si es seguro y los datos son pocos)
+      if (response.status === 405) {
+        console.warn('POST recibio 405, intentando GET fallback...');
+        const params = new URLSearchParams({
+          monthName,
+          type,
+          metrics: JSON.stringify(metrics),
+          notes: JSON.stringify(notes)
+        });
+        response = await fetch(`/v15-engine?${params.toString()}`);
+      }
 
       if (!response.ok) {
         const text = await response.text();
-        console.error('Error de API V12:', response.status, text);
+        console.error('Error de API V15:', response.status, text);
         
         let msg = `Error ${response.status}`;
         try { 
           const json = JSON.parse(text);
           msg = json.error || msg;
         } catch (e) {
-          if (text.includes('405')) msg = 'Error 405 (Método no permitido). Intenta refrescar la página.';
+          if (text.includes('405')) msg = 'Error 405: El servidor (o el proxy) bloqueó la petición POST. Intenta configurar el Secret de nuevo.';
           else msg = text.substring(0, 100);
         }
         throw new Error(msg);
