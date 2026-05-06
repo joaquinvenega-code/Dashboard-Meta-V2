@@ -26,12 +26,11 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     setLoading(type);
     setSummary('');
     try {
-      const endpoint = type === 'metrics' ? '/api/v4/metrics-only' : '/api/v4/full-summary';
+      const endpoint = type === 'metrics' ? '/orchestrator-metrics' : '/orchestrator-full';
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ metrics, notes, monthName })
       });

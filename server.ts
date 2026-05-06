@@ -25,66 +25,62 @@ async function startServer() {
     next();
   });
 
-  // --- Rutas de la API ---
-  const apiRouter = express.Router();
+  // --- Rutas de Generación (Paso 1 y Paso 2) ---
+  
+  app.all('/orchestrator-metrics', async (req, res) => {
+    console.log(`[SERVER] Request to /orchestrator-metrics: ${req.method}`);
+    if (req.method === 'OPTIONS') return res.sendStatus(200);
 
-  // Paso 1: Solo métricas
-  apiRouter.post('/v4/metrics-only', async (req, res) => {
-    console.log('[API V4] METRICS ONLY REQUEST arrived');
-    const { metrics, monthName } = req.body;
+    const data = req.method === 'POST' ? req.body : req.query;
+    const { metrics, monthName } = data;
     
-    if (!metrics) return res.status(400).json({ error: 'Faltan métricas' });
+    if (!metrics) return res.status(400).json({ error: 'Faltan métricas en el servidor' });
 
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'Falta GEMINI_API_KEY' });
+    if (!apiKey) return res.status(500).json({ error: 'Llave de IA no configurada' });
 
     try {
       const genAI = new GoogleGenAI({ apiKey });
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const roas = metrics.revenue / (metrics.spend || 1);
       
-      const prompt = `Analizá brevemente (max 80 palabras) el rendimiento de Meta Ads de ${monthName}.
-      Métricas: Inversión ${metrics.spend}, Facturación ${metrics.revenue}, ROAS: ×${roas.toFixed(2)}.
-      Tono profesional, castellano de Argentina. Solo texto plano.`;
+      const prompt = `SOS UN ANALISTA DE META ADS. Analizá este mes (${monthName}): Inversión ${metrics.spend}, Facturación ${metrics.revenue}, ROAS: ×${roas.toFixed(2)}. Escribí un párrafo de 80 palabras. Sin negritas. Castellano Argentina.`;
 
       const result = await model.generateContent(prompt);
       res.json({ text: result.response.text() });
     } catch (err: any) {
-      console.error('[API V4] Error:', err);
+      console.error('[METRICS ERROR]', err);
       res.status(500).json({ error: err.message });
     }
   });
 
-  // Paso 2: Resumen Total
-  apiRouter.post('/v4/full-summary', async (req, res) => {
-    console.log('[API V4] FULL SUMMARY REQUEST arrived');
-    const { metrics, notes, monthName } = req.body;
+  app.all('/orchestrator-full', async (req, res) => {
+    console.log(`[SERVER] Request to /orchestrator-full: ${req.method}`);
+    if (req.method === 'OPTIONS') return res.sendStatus(200);
+
+    const data = req.method === 'POST' ? req.body : req.query;
+    const { metrics, notes, monthName } = data;
     
-    if (!metrics) return res.status(400).json({ error: 'Faltan métricas' });
+    if (!metrics) return res.status(400).json({ error: 'Faltan datos' });
 
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'Falta GEMINI_API_KEY' });
+    if (!apiKey) return res.status(500).json({ error: 'Llave de IA no configurada' });
 
     try {
       const genAI = new GoogleGenAI({ apiKey });
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const roas = metrics.revenue / (metrics.spend || 1);
-      const notesContext = notes && notes.length > 0 ? notes.map((n: any) => `- ${n.text}`).join('\n') : 'Sin notas.';
+      const notesContext = notes && notes.length > 0 ? notes.map((n: any) => `- ${n.text}`).join('\n') : 'Sin datos extra.';
 
-      const prompt = `Resumen ejecutivo integral ${monthName}. ROAS: ${roas.toFixed(2)}, Inversión: ${metrics.spend}. 
-      Bitácora: ${notesContext}.
-      Máximo 180 palabras. Tono ejecutivo. Castellano Argentina. Solo texto plano.`;
+      const prompt = `SOS DIRECTOR ESTRATÉGICO. Resumen ejecutivo de ${monthName}. ROAS ${roas.toFixed(2)}, Inversión ${metrics.spend}. Bitácora: ${notesContext}. Máximo 150 palabras. Sin negritas. Texto plano. Castellano Argentina.`;
 
       const result = await model.generateContent(prompt);
       res.json({ text: result.response.text() });
     } catch (err: any) {
-      console.error('[API V4] Error:', err);
+      console.error('[FULL ERROR]', err);
       res.status(500).json({ error: err.message });
     }
   });
-
-  // Montar el router
-  app.use('/api', apiRouter);
 
   app.get('/api/health', (req, res) => {
     res.json({ 
