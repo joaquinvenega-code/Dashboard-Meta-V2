@@ -24,19 +24,28 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // --- API ENGINE V16 (ULTRA COMPATIBLE) ---
-  // Usamos app.use para que coincida incluso con variaciones de path
-  app.use('/api/v16-engine', async (req, res) => {
-    // Manejo manual de CORS por si el middleware falla
+  // --- API ENGINE V17 (ULTRA COMPATIBLE) ---
+  app.all('/api/ai-service', async (req, res) => {
+    // CORS manual reforzado
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Accept');
     
     if (req.method === 'OPTIONS') return res.sendStatus(204);
 
-    console.log(`[V16-HIT] Method: ${req.method}, Path: ${req.url}`);
+    console.log(`[V17-HIT] Method: ${req.method}, Path: ${req.url}`);
 
     try {
+      // Priorizamos Orion_Dashboard como pidió el usuario, fallback a GEMINI_API_KEY
+      const apiKey = process.env.Orion_Dashboard || process.env.GEMINI_API_KEY;
+
+      if (!apiKey || apiKey === 'undefined') {
+        return res.status(500).json({ 
+          error: 'Llave de IA no encontrada.', 
+          details: 'Asegúrate de haber configurado el Secret "Orion_Dashboard" en Settings.' 
+        });
+      }
+
       // Extraemos datos de donde sea (body o query)
       const data = { ...req.query, ...req.body };
       let { metrics, notes, monthName, type = 'metrics' } = data;
@@ -45,23 +54,13 @@ async function startServer() {
       if (typeof metrics === 'string') try { metrics = JSON.parse(metrics); } catch(e) {}
       if (typeof notes === 'string') try { notes = JSON.parse(notes); } catch(e) {}
 
-      const apiKey = process.env.GEMINI_API_KEY;
-      
-      // Respuesta de test rápido si no hay métricas
-      if (!metrics && req.method === 'GET') {
-        return res.json({ 
-          status: 'ready', 
-          message: 'V16 Engine Active',
-          hasKey: !!apiKey 
-        });
-      }
-
-      if (!apiKey) {
-        throw new Error('GEMINI_API_KEY no detectada en el servidor.');
-      }
-
+      // Respuesta de status si no hay métricas
       if (!metrics) {
-        return res.status(400).json({ error: 'Métricas no proporcionadas.' });
+        return res.json({ 
+          status: 'online', 
+          message: 'V17 AI Service Ready',
+          keySource: process.env.Orion_Dashboard ? 'Orion_Dashboard' : 'GEMINI_API_KEY'
+        });
       }
 
       const genAI = new GoogleGenAI({ apiKey });
@@ -79,19 +78,19 @@ async function startServer() {
       const result = await model.generateContent(prompt);
       const text = result.response.text();
       
-      console.log('[V16-AI] Success');
+      console.log('[V17-AI] Success');
       return res.json({ text });
 
     } catch (err: any) {
-      console.error('[V16-ERROR]', err);
+      console.error('[V17-ERROR]', err);
       return res.status(500).json({ 
         error: err.message || 'Error interno del servidor AI',
-        details: 'Verifica la API Key en Settings.'
+        details: 'Verifica los Secretos en Settings.'
       });
     }
   });
 
-  app.get('/api/health', (req, res) => res.json({ status: 'ok', v: 16 }));
+  app.get('/api/health', (req, res) => res.json({ status: 'ok', v: 17 }));
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
@@ -108,7 +107,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor V16 iniciado en puerto ${PORT}`);
+    console.log(`Servidor V17 iniciado en puerto ${PORT}`);
   });
 }
 

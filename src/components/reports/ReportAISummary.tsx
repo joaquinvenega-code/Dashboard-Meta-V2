@@ -28,8 +28,8 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     try {
       const payload = { metrics, notes, monthName, type };
       
-      // Intentamos llamar a la API V16
-      const response = await fetch('/api/v16-engine', {
+      // Intentamos llamar a la API V17
+      const response = await fetch('/api/ai-service', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -40,15 +40,15 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
 
       if (!response.ok) {
         const text = await response.text();
-        console.error('Error de API V16:', response.status, text);
+        console.error('Error de API V17:', response.status, text);
         
         let msg = `Error ${response.status}`;
         try { 
           const json = JSON.parse(text);
-          msg = json.error || msg;
+          msg = json.error || (json.details ? `${json.error}: ${json.details}` : msg);
         } catch (e) {
-          if (text.includes('405')) msg = 'Error 405: El servidor no permitió la conexión (POST).';
-          else if (text.includes('<!DOCTYPE html>')) msg = 'Error: El servidor devolvió una página HTML en lugar de datos. Posible error de ruta.';
+          if (text.includes('405')) msg = 'Error 405 (Método no permitido). El servidor rechazó la conexión.';
+          else if (text.includes('<!DOCTYPE html>')) msg = 'Error: El servidor devolvió HTML (Posible 404/Ruta incorrecta).';
           else msg = text.substring(0, 100);
         }
         throw new Error(msg);
@@ -57,8 +57,8 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
       const data = await response.json();
       setSummary(data.text || 'Sin respuesta de la IA.');
     } catch (error: any) {
-      console.error('Detailed Error V16:', error);
-      setSummary(`Error V16: ${error.message}. Verifica el Secret GEMINI_API_KEY en Settings.`);
+      console.error('Detailed Error V17:', error);
+      setSummary(`Error V17: ${error.message}. Verifica el Secret "Orion_Dashboard" en Settings.`);
     } finally {
       setLoading(null);
     }
