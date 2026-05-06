@@ -11,75 +11,72 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Middleware de logging global para ver qué está pasando
+  app.use((req, res, next) => {
+    console.log(`[REQUEST] ${req.method} ${req.url}`);
+    next();
+  });
+
   app.use(express.json());
 
-  // Full CORS and logging
+  // CORS robusto
   app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    console.log(`[SERVER] ${new Date().toISOString()} - ${req.method} ${req.url}`);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
     if (req.method === 'OPTIONS') {
-      return res.sendStatus(200);
+      return res.sendStatus(204);
     }
     next();
   });
 
-  // --- API ENDPOINTS BLINDADOS ---
-  // Usamos app.all para capturar cualquier método y evitar el 405
-  app.all('/v5-generate-metrics', async (req, res) => {
-    console.log(`[V5-METRICS] Request: ${req.method}`);
-    if (req.method === 'OPTIONS') return res.sendStatus(200);
+  // --- NUEVA API UNIFICADA V6 ---
+  app.post('/api/ai-summary-v6', async (req, res) => {
+    console.log('[API V6] Recibida petición POST');
+    const { metrics, notes, monthName, type = 'metrics' } = req.body;
+    
+    // Debug de lo que llega
+    console.log('[API V6] Body data:', { monthName, type, hasMetrics: !!metrics });
 
-    const data = req.method === 'POST' ? req.body : req.query;
-    const { metrics, monthName } = data;
-    
-    if (!metrics) return res.status(400).json({ error: 'Faltan métricas.' });
-    
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'Llave de IA no configurada en Settings.' });
+    if (!apiKey) {
+      console.error('[API V6] MISSING API KEY');
+      return res.status(500).json({ error: 'Falta la clave GEMINI_API_KEY en Settings.' });
+    }
+
+    if (!metrics) {
+      return res.status(400).json({ error: 'No se recibieron métricas.' });
+    }
 
     try {
       const genAI = new GoogleGenAI({ apiKey });
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const roas = metrics.revenue / (metrics.spend || 1);
       
-      const prompt = `SOS UN ANALISTA DE META ADS. Analizá este mes (${monthName}): Inversión ${metrics.spend}, Facturación ${metrics.revenue}, ROAS: ×${roas.toFixed(2)}. Escribí un párrafo corto (60-80 palabras). Sin negritas. Castellano Argentina.`;
+      let prompt = '';
+      if (type === 'metrics') {
+        prompt = `SOS UN ANALISTA DE META ADS. Analizá este mes (${monthName}): Inversión ${metrics.spend}, Facturación ${metrics.revenue}, ROAS: ×${roas.toFixed(2)}. Escribí un párrafo corto (60-80 palabras). Sin negritas. Castellano Argentina.`;
+      } else {
+        const notesContext = notes && notes.length > 0 ? notes.map((n: any) => `- ${n.text}`).join('\n') : 'Sin notas.';
+        prompt = `SOS DIRECTOR ESTRATÉGICO. Resumen ejecutivo de ${monthName}. ROAS ${roas.toFixed(2)}, Inversión ${metrics.spend}. Bitácora: ${notesContext}. Máximo 150 palabras. Sin negritas. Castellano Argentina.`;
+      }
 
+      console.log('[API V6] Generando contenido con Gemini...');
       const result = await model.generateContent(prompt);
-      res.json({ text: result.response.text() });
+      const outputText = result.response.text();
+      console.log('[API V6] Generación terminada');
+
+      res.json({ text: outputText });
     } catch (err: any) {
-      console.error('[V5 ERROR]', err);
+      console.error('[API V6 ERROR]', err);
       res.status(500).json({ error: `Error de Gemini: ${err.message}` });
     }
   });
 
-  app.all('/v5-generate-full', async (req, res) => {
-    console.log(`[V5-FULL] Request: ${req.method}`);
-    if (req.method === 'OPTIONS') return res.sendStatus(200);
-
-    const data = req.method === 'POST' ? req.body : req.query;
-    const { metrics, notes, monthName } = data;
-    
-    if (!metrics) return res.status(400).json({ error: 'Faltan datos.' });
-    
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'Llave de IA no configurada en Settings.' });
-
-    try {
-      const genAI = new GoogleGenAI({ apiKey });
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const roas = metrics.revenue / (metrics.spend || 1);
-      const notesContext = notes && notes.length > 0 ? notes.map((n: any) => `- ${n.text}`).join('\n') : 'Sin notas.';
-
-      const prompt = `SOS DIRECTOR ESTRATÉGICO. Resumen ejecutivo de ${monthName}. ROAS ${roas.toFixed(2)}, Inversión ${metrics.spend}. Bitácora: ${notesContext}. Máximo 150 palabras. Sin negritas. Castellano Argentina.`;
-
-      const result = await model.generateContent(prompt);
-      res.json({ text: result.response.text() });
-    } catch (err: any) {
-      console.error('[V5 ERROR]', err);
-      res.status(500).json({ error: `Error de Gemini: ${err.message}` });
-    }
+  // Ruta de test para ver si los GET funcionan en /api
+  app.get('/api/ai-summary-v6', (req, res) => {
+    res.json({ message: 'API V6 activa. Usá POST para generar resúmenes.' });
   });
 
   // Health check

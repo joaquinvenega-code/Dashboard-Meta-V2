@@ -26,13 +26,12 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     setLoading(type);
     setSummary('');
     try {
-      const endpoint = type === 'metrics' ? '/v5-generate-metrics' : '/v5-generate-full';
-      const response = await fetch(endpoint, {
+      const response = await fetch('/api/ai-summary-v6', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ metrics, notes, monthName })
+        body: JSON.stringify({ metrics, notes, monthName, type })
       });
 
       if (!response.ok) {
