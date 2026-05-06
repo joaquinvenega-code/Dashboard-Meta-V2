@@ -25,19 +25,16 @@ async function startServer() {
     next();
   });
 
-  // --- Rutas de Generación (Paso 1 y Paso 2) ---
-  
-  app.all('/orchestrator-metrics', async (req, res) => {
-    console.log(`[SERVER] Request to /orchestrator-metrics: ${req.method}`);
-    if (req.method === 'OPTIONS') return res.sendStatus(200);
-
-    const data = req.method === 'POST' ? req.body : req.query;
-    const { metrics, monthName } = data;
+  // --- API ENDPOINTS ---
+  // Paso 1: Solo métricas
+  app.post('/api/ai/metrics', async (req, res) => {
+    console.log('[API] Metrics-only request arriving');
+    const { metrics, monthName } = req.body;
     
-    if (!metrics) return res.status(400).json({ error: 'Faltan métricas en el servidor' });
-
+    if (!metrics) return res.status(400).json({ error: 'Faltan datos de métricas' });
+    
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'Llave de IA no configurada' });
+    if (!apiKey) return res.status(500).json({ error: 'Falta GEMINI_API_KEY en el entorno' });
 
     try {
       const genAI = new GoogleGenAI({ apiKey });
@@ -47,47 +44,44 @@ async function startServer() {
       const prompt = `SOS UN ANALISTA DE META ADS. Analizá este mes (${monthName}): Inversión ${metrics.spend}, Facturación ${metrics.revenue}, ROAS: ×${roas.toFixed(2)}. Escribí un párrafo de 80 palabras. Sin negritas. Castellano Argentina.`;
 
       const result = await model.generateContent(prompt);
-      res.json({ text: result.response.text() });
+      const text = result.response.text();
+      res.json({ text });
     } catch (err: any) {
-      console.error('[METRICS ERROR]', err);
+      console.error('[API ERROR]', err);
       res.status(500).json({ error: err.message });
     }
   });
 
-  app.all('/orchestrator-full', async (req, res) => {
-    console.log(`[SERVER] Request to /orchestrator-full: ${req.method}`);
-    if (req.method === 'OPTIONS') return res.sendStatus(200);
-
-    const data = req.method === 'POST' ? req.body : req.query;
-    const { metrics, notes, monthName } = data;
+  // Paso 2: Resumen Total
+  app.post('/api/ai/full', async (req, res) => {
+    console.log('[API] Full summary request arriving');
+    const { metrics, notes, monthName } = req.body;
     
-    if (!metrics) return res.status(400).json({ error: 'Faltan datos' });
-
+    if (!metrics) return res.status(400).json({ error: 'Faltan datos de métricas' });
+    
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'Llave de IA no configurada' });
+    if (!apiKey) return res.status(500).json({ error: 'Falta GEMINI_API_KEY en el entorno' });
 
     try {
       const genAI = new GoogleGenAI({ apiKey });
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const roas = metrics.revenue / (metrics.spend || 1);
-      const notesContext = notes && notes.length > 0 ? notes.map((n: any) => `- ${n.text}`).join('\n') : 'Sin datos extra.';
+      const notesContext = notes && notes.length > 0 ? notes.map((n: any) => `- ${n.text}`).join('\n') : 'Sin notas registradas.';
 
       const prompt = `SOS DIRECTOR ESTRATÉGICO. Resumen ejecutivo de ${monthName}. ROAS ${roas.toFixed(2)}, Inversión ${metrics.spend}. Bitácora: ${notesContext}. Máximo 150 palabras. Sin negritas. Texto plano. Castellano Argentina.`;
 
       const result = await model.generateContent(prompt);
-      res.json({ text: result.response.text() });
+      const text = result.response.text();
+      res.json({ text });
     } catch (err: any) {
-      console.error('[FULL ERROR]', err);
+      console.error('[API ERROR]', err);
       res.status(500).json({ error: err.message });
     }
   });
 
+  // Health check
   app.get('/api/health', (req, res) => {
-    res.json({ 
-      status: 'online', 
-      time: new Date().toISOString(), 
-      hasKey: !!process.env.GEMINI_API_KEY 
-    });
+    res.json({ status: 'ok', time: new Date().toISOString() });
   });
 
   // Vite middleware for development

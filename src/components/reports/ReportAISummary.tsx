@@ -26,7 +26,7 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     setLoading(type);
     setSummary('');
     try {
-      const endpoint = type === 'metrics' ? '/orchestrator-metrics' : '/orchestrator-full';
+      const endpoint = type === 'metrics' ? '/api/ai/metrics' : '/api/ai/full';
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 
@@ -36,24 +36,21 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
       });
 
       if (!response.ok) {
-        const text = await response.text().catch(() => 'Sin cuerpo');
-        console.error('Error del servidor:', response.status, text);
-        
-        let errorData = { error: '' };
+        let errorMsg = `Error del servidor: ${response.status}`;
         try {
-          if (text.startsWith('{')) errorData = JSON.parse(text);
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorMsg;
         } catch (e) {
-          throw new Error(`Servidor: ${response.status} - ${text.substring(0, 50).replace(/<[^>]*>/g, '')}`);
+          // No es JSON
         }
-        
-        throw new Error(errorData.error || `Error del servidor: ${response.status}`);
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();
-      setSummary(data.text || 'No se pudo generar el resumen.');
+      setSummary(data.text || 'No se pudo generar el texto.');
     } catch (error: any) {
       console.error('Error generating summary:', error);
-      setSummary(`Error: ${error?.message || 'Error de conexión'}. Si el error persiste, verifica la clave GEMINI_API_KEY en Settings.`);
+      setSummary(`Error: ${error?.message || 'Error de conexión'}. Revisa los secretos en Settings.`);
     } finally {
       setLoading(null);
     }
