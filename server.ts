@@ -18,43 +18,29 @@ async function startServer() {
   });
 
   app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
   // RUTA DE DEBUG V11
   app.get('/test-api-v11', (req, res) => {
     res.json({ status: 'ok', message: 'V11 Online', hasKey: !!process.env.GEMINI_API_KEY });
   });
 
-  // --- API ENDPOINT (V11) ---
-  // Usamos app.all para atrapar todo y manejamos el POST internamente
-  app.all('/orchestrator-v11', async (req, res) => {
-    console.log(`[V11-DEBUG] Petición ${req.method} recibida`);
+  // --- API ENDPOINT V12 ---
+  app.post('/api/generate-ai-report', async (req, res) => {
+    console.log(`[API-V12] ${req.method} ${req.url}`);
     
-    // CORS manual reforzado
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(204);
-    }
-
-    if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Solo se permite POST' });
-    }
-
     try {
       const { metrics, notes, monthName, type = 'metrics' } = req.body;
       const apiKey = process.env.GEMINI_API_KEY;
 
       if (!apiKey || apiKey === 'undefined') {
-        throw new Error('No se encontró la GEMINI_API_KEY en el servidor.');
+        return res.status(500).json({ error: 'Falta la API KEY en el servidor.' });
       }
 
       if (!metrics) {
         return res.status(400).json({ error: 'Faltan métricas.' });
       }
 
-      console.log('[V11-AI] Llamando a Gemini...');
       const genAI = new GoogleGenAI({ apiKey });
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const roas = metrics.revenue / (metrics.spend || 1);
@@ -68,12 +54,10 @@ async function startServer() {
       }
 
       const result = await model.generateContent(prompt);
-      const text = result.response.text();
-      console.log('[V11-AI] Generación exitosa');
-      res.json({ text });
+      res.json({ text: result.response.text() });
     } catch (err: any) {
-      console.error('[V11-ERROR]', err);
-      res.status(500).json({ error: err.message || 'Error interno en el servidor v11' });
+      console.error('[API-V12-ERROR]', err);
+      res.status(500).json({ error: err.message || 'Error interno en el servidor AI' });
     }
   });
 

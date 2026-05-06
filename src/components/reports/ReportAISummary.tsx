@@ -26,7 +26,7 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     setLoading(type);
     setSummary('');
     try {
-      const response = await fetch(`${window.location.origin}/orchestrator-v11`, {
+      const response = await fetch('/api/generate-ai-report', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
@@ -36,14 +36,14 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
 
       if (!response.ok) {
         const text = await response.text();
-        console.error('Error de API V11:', response.status, text);
+        console.error('Error de API V12:', response.status, text);
         
         let msg = `Error ${response.status}`;
         try { 
           const json = JSON.parse(text);
           msg = json.error || msg;
         } catch (e) {
-          if (text.includes('405')) msg = 'Error 405 (Metodo no permitido). El servidor rechazo la peticion POST.';
+          if (text.includes('405')) msg = 'Error 405 (Método no permitido). Intenta refrescar la página.';
           else msg = text.substring(0, 100);
         }
         throw new Error(msg);
