@@ -28,35 +28,27 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     try {
       const payload = { metrics, notes, monthName, type };
       
-      // Intento 1: POST (Lo estándar)
-      let response = await fetch('/v15-engine', {
+      // Intentamos llamar a la API V16
+      const response = await fetch('/api/v16-engine', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify(payload)
       });
 
-      // Intento 2: Fallback a GET si hay error 405 (Solo si es seguro y los datos son pocos)
-      if (response.status === 405) {
-        console.warn('POST recibio 405, intentando GET fallback...');
-        const params = new URLSearchParams({
-          monthName,
-          type,
-          metrics: JSON.stringify(metrics),
-          notes: JSON.stringify(notes)
-        });
-        response = await fetch(`/v15-engine?${params.toString()}`);
-      }
-
       if (!response.ok) {
         const text = await response.text();
-        console.error('Error de API V15:', response.status, text);
+        console.error('Error de API V16:', response.status, text);
         
         let msg = `Error ${response.status}`;
         try { 
           const json = JSON.parse(text);
           msg = json.error || msg;
         } catch (e) {
-          if (text.includes('405')) msg = 'Error 405: El servidor (o el proxy) bloqueó la petición POST. Intenta configurar el Secret de nuevo.';
+          if (text.includes('405')) msg = 'Error 405: El servidor no permitió la conexión (POST).';
+          else if (text.includes('<!DOCTYPE html>')) msg = 'Error: El servidor devolvió una página HTML en lugar de datos. Posible error de ruta.';
           else msg = text.substring(0, 100);
         }
         throw new Error(msg);
@@ -65,8 +57,8 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
       const data = await response.json();
       setSummary(data.text || 'Sin respuesta de la IA.');
     } catch (error: any) {
-      console.error('Error in AI Summary:', error);
-      setSummary(`Fallo: ${error.message}. Verifica que el Secret GEMINI_API_KEY esté correctamente configurado.`);
+      console.error('Detailed Error V16:', error);
+      setSummary(`Error V16: ${error.message}. Verifica el Secret GEMINI_API_KEY en Settings.`);
     } finally {
       setLoading(null);
     }
