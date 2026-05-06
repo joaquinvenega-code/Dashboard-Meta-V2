@@ -25,57 +25,60 @@ async function startServer() {
     next();
   });
 
-  // --- API ENDPOINTS ---
-  // Paso 1: Solo métricas
-  app.post('/api/ai/metrics', async (req, res) => {
-    console.log('[API] Metrics-only request arriving');
-    const { metrics, monthName } = req.body;
+  // --- API ENDPOINTS BLINDADOS ---
+  // Usamos app.all para capturar cualquier método y evitar el 405
+  app.all('/v5-generate-metrics', async (req, res) => {
+    console.log(`[V5-METRICS] Request: ${req.method}`);
+    if (req.method === 'OPTIONS') return res.sendStatus(200);
+
+    const data = req.method === 'POST' ? req.body : req.query;
+    const { metrics, monthName } = data;
     
-    if (!metrics) return res.status(400).json({ error: 'Faltan datos de métricas' });
+    if (!metrics) return res.status(400).json({ error: 'Faltan métricas.' });
     
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'Falta GEMINI_API_KEY en el entorno' });
+    if (!apiKey) return res.status(500).json({ error: 'Llave de IA no configurada en Settings.' });
 
     try {
       const genAI = new GoogleGenAI({ apiKey });
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const roas = metrics.revenue / (metrics.spend || 1);
       
-      const prompt = `SOS UN ANALISTA DE META ADS. Analizá este mes (${monthName}): Inversión ${metrics.spend}, Facturación ${metrics.revenue}, ROAS: ×${roas.toFixed(2)}. Escribí un párrafo de 80 palabras. Sin negritas. Castellano Argentina.`;
+      const prompt = `SOS UN ANALISTA DE META ADS. Analizá este mes (${monthName}): Inversión ${metrics.spend}, Facturación ${metrics.revenue}, ROAS: ×${roas.toFixed(2)}. Escribí un párrafo corto (60-80 palabras). Sin negritas. Castellano Argentina.`;
 
       const result = await model.generateContent(prompt);
-      const text = result.response.text();
-      res.json({ text });
+      res.json({ text: result.response.text() });
     } catch (err: any) {
-      console.error('[API ERROR]', err);
-      res.status(500).json({ error: err.message });
+      console.error('[V5 ERROR]', err);
+      res.status(500).json({ error: `Error de Gemini: ${err.message}` });
     }
   });
 
-  // Paso 2: Resumen Total
-  app.post('/api/ai/full', async (req, res) => {
-    console.log('[API] Full summary request arriving');
-    const { metrics, notes, monthName } = req.body;
+  app.all('/v5-generate-full', async (req, res) => {
+    console.log(`[V5-FULL] Request: ${req.method}`);
+    if (req.method === 'OPTIONS') return res.sendStatus(200);
+
+    const data = req.method === 'POST' ? req.body : req.query;
+    const { metrics, notes, monthName } = data;
     
-    if (!metrics) return res.status(400).json({ error: 'Faltan datos de métricas' });
+    if (!metrics) return res.status(400).json({ error: 'Faltan datos.' });
     
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'Falta GEMINI_API_KEY en el entorno' });
+    if (!apiKey) return res.status(500).json({ error: 'Llave de IA no configurada en Settings.' });
 
     try {
       const genAI = new GoogleGenAI({ apiKey });
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const roas = metrics.revenue / (metrics.spend || 1);
-      const notesContext = notes && notes.length > 0 ? notes.map((n: any) => `- ${n.text}`).join('\n') : 'Sin notas registradas.';
+      const notesContext = notes && notes.length > 0 ? notes.map((n: any) => `- ${n.text}`).join('\n') : 'Sin notas.';
 
-      const prompt = `SOS DIRECTOR ESTRATÉGICO. Resumen ejecutivo de ${monthName}. ROAS ${roas.toFixed(2)}, Inversión ${metrics.spend}. Bitácora: ${notesContext}. Máximo 150 palabras. Sin negritas. Texto plano. Castellano Argentina.`;
+      const prompt = `SOS DIRECTOR ESTRATÉGICO. Resumen ejecutivo de ${monthName}. ROAS ${roas.toFixed(2)}, Inversión ${metrics.spend}. Bitácora: ${notesContext}. Máximo 150 palabras. Sin negritas. Castellano Argentina.`;
 
       const result = await model.generateContent(prompt);
-      const text = result.response.text();
-      res.json({ text });
+      res.json({ text: result.response.text() });
     } catch (err: any) {
-      console.error('[API ERROR]', err);
-      res.status(500).json({ error: err.message });
+      console.error('[V5 ERROR]', err);
+      res.status(500).json({ error: `Error de Gemini: ${err.message}` });
     }
   });
 

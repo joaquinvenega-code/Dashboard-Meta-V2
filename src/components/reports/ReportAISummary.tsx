@@ -26,7 +26,7 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     setLoading(type);
     setSummary('');
     try {
-      const endpoint = type === 'metrics' ? '/api/ai/metrics' : '/api/ai/full';
+      const endpoint = type === 'metrics' ? '/v5-generate-metrics' : '/v5-generate-full';
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 
