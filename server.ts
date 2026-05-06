@@ -19,39 +19,24 @@ async function startServer() {
 
   app.use(express.json());
 
-  // CORS robusto
+  // CORS simplificado pero efectivo
   app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(204);
-    }
+    res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
   });
 
-  // --- API DEFINITION V7 ---
-  // Atraparlo TODO para evitar errores 405 (Método no permitido)
-  app.all('/generate-report-v7', async (req, res) => {
-    console.log(`[V7-LOG] ${req.method} a ${req.url}`);
+  // --- API ENDPOINT (V8 FINAL) ---
+  app.post('/api/ai/generate', async (req, res) => {
+    console.log(`[API-POST] ${req.url} - Iniciando generación`);
     
-    // Manejo manual de CORS
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(204);
-    }
-
-    const data = req.method === 'POST' ? req.body : req.query;
-    const { metrics, notes, monthName, type = 'metrics' } = data;
-
+    const { metrics, notes, monthName, type = 'metrics' } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
+
     if (!apiKey || apiKey === 'undefined') {
-      console.error('[V7-ERROR] GEMINI_API_KEY no encontrada');
-      return res.status(500).json({ error: 'Falta clave de IA en Settings.' });
+      return res.status(500).json({ error: 'Falta la API KEY en el servidor.' });
     }
 
     if (!metrics) {
@@ -65,23 +50,21 @@ async function startServer() {
       
       let prompt = '';
       if (type === 'metrics') {
-        prompt = `SOS ANALISTA DE META ADS. Analizá: Inversión ${metrics.spend}, Facturación ${metrics.revenue}, ROAS: ×${roas.toFixed(2)} del mes ${monthName}. Párrafo corto (80 palabras). castellano Argentina. Sin negritas.`;
+        prompt = `Analizá brevemente la performance de Meta Ads de ${monthName}: Inversión ${metrics.spend}, Facturación ${metrics.revenue}, ROAS: ×${roas.toFixed(2)}. Escribí un solo párrafo corto (máximo 80 palabras). Tono profesional. Castellano Argentina. Sin negritas.`;
       } else {
-        const notesContext = notes && notes.length > 0 ? notes.map((n: any) => `- ${n.text}`).join('\n') : 'Sin notas.';
-        prompt = `SOS DIRECTOR ESTRATÉGICO. Resumen ejecutivo de ${monthName}. ROAS ${roas.toFixed(2)}, Inversión ${metrics.spend}. Bitácora: ${notesContext}. Max 150 palabras. Castellano Argentina. Sin negritas. Texto plano.`;
+        const notesContext = notes && notes.length > 0 ? notes.map((n: any) => `- ${n.text}`).join('\n') : 'Sin notas registradas.';
+        prompt = `Resumen ejecutivo estratégico de ${monthName}. Métricas clave: ROAS ${roas.toFixed(2)}, Inversión ${metrics.spend}. Contexto de bitácora: ${notesContext}. Máximo 150 palabras. Tono ejecutivo. Castellano Argentina. Texto plano, sin negritas.`;
       }
 
       const result = await model.generateContent(prompt);
       res.json({ text: result.response.text() });
     } catch (err: any) {
-      console.error('[V7-ERROR]', err);
-      res.status(500).json({ error: `Error IA: ${err.message}` });
+      console.error('[GEMINI-FAIL]', err);
+      res.status(500).json({ error: `Error de Gemini: ${err.message}` });
     }
   });
 
-  app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok' });
-  });
+  app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {

@@ -26,7 +26,7 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     setLoading(type);
     setSummary('');
     try {
-      const response = await fetch('/generate-report-v7', {
+      const response = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
@@ -35,21 +35,16 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
       });
 
       if (!response.ok) {
-        let errorMsg = `Error del servidor: ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorMsg = errorData.error || errorMsg;
-        } catch (e) {
-          // No es JSON
-        }
-        throw new Error(errorMsg);
+        const errorText = await response.text();
+        console.error('Error de API:', response.status, errorText);
+        throw new Error(`Error ${response.status}: ${errorText || 'No se pudo generar'}`);
       }
 
       const data = await response.json();
-      setSummary(data.text || 'No se pudo generar el texto.');
+      setSummary(data.text || 'Sin respuesta de la IA.');
     } catch (error: any) {
-      console.error('Error generating summary:', error);
-      setSummary(`Error: ${error?.message || 'Error de conexión'}. Revisa los secretos en Settings.`);
+      console.error('Error in AI Summary:', error);
+      setSummary(`Fallo: ${error.message}. Verifica que el Secret GEMINI_API_KEY esté correctamente configurado.`);
     } finally {
       setLoading(null);
     }
