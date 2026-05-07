@@ -434,15 +434,15 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
             setOfflineManagerEntityId(acc.id);
             setShowOfflineManager(true);
           }}
-          className="p-3 rounded-xl border border-white/5 bg-[#111] hover:bg-[#141414] transition-all shadow-lg group overflow-hidden cursor-pointer"
+          className="p-3 rounded-xl border border-white/5 bg-[#111] hover:bg-[#141414] transition-all shadow-lg group overflow-hidden cursor-pointer print:bg-white print:border-neutral-100 print:shadow-none print:border-b-2"
         >
           <div className="flex items-center justify-between mb-1.5">
-            <div className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover:text-neutral-500 transition-colors">Ventas Offline ({periodKey})</div>
-            <History className="w-2.5 h-2.5 text-blue-500 opacity-30 group-hover:opacity-100 transition-opacity" />
+            <div className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover:text-neutral-500 transition-colors print:text-neutral-400">Ventas Offline ({periodKey})</div>
+            <History className="w-2.5 h-2.5 text-blue-500 opacity-30 group-hover:opacity-100 transition-opacity print:hidden" />
           </div>
-          <div className="flex items-center justify-between text-white">
+          <div className="flex items-center justify-between text-white print:text-black">
             <span className="text-sm md:text-base font-black tracking-tight">{formatCurrency(manualRevenue, acc.currency)}</span>
-            <span className="text-[7px] font-black uppercase text-blue-500 opacity-40 group-hover:opacity-100 transition-opacity">Ver Bitácora</span>
+            <span className="text-[7px] font-black uppercase text-blue-500 opacity-40 group-hover:opacity-100 transition-opacity print:hidden">Ver Bitácora</span>
           </div>
         </div>
       );
