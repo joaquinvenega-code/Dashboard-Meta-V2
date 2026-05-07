@@ -31,7 +31,8 @@ export function Overview({ accounts, settings, dateRange }: OverviewProps) {
     if (!totalsByCurrency[cur]) totalsByCurrency[cur] = { spend: 0, revenue: 0 };
     totalsByCurrency[cur].spend += (acc.spend || 0);
     // Include manual revenue in total revenue calculation
-    const manualRevenue = s?.manualRevenueByMonth?.[periodKey] || 0;
+    const log = s?.offlineSalesLogByMonth?.[periodKey] || [];
+    const manualRevenue = log.length > 0 ? log.reduce((sum, entry) => sum + entry.amount, 0) : (s?.manualRevenueByMonth?.[periodKey] || 0);
     totalsByCurrency[cur].revenue += (acc.revenue || 0) + manualRevenue;
   });
 
@@ -42,7 +43,8 @@ export function Overview({ accounts, settings, dateRange }: OverviewProps) {
   const totalSpendGlobal = filteredAccounts.reduce((a, c) => a + (c.spend || 0), 0);
   const totalRevenueGlobal = filteredAccounts.reduce((a, c) => {
     const s = settings[c.id];
-    const manualRevenue = s?.manualRevenueByMonth?.[periodKey] || 0;
+    const log = s?.offlineSalesLogByMonth?.[periodKey] || [];
+    const manualRevenue = log.length > 0 ? log.reduce((sum, entry) => sum + entry.amount, 0) : (s?.manualRevenueByMonth?.[periodKey] || 0);
     return a + (c.revenue || 0) + manualRevenue;
   }, 0);
   const avgRoas = totalSpendGlobal > 0 ? totalRevenueGlobal / totalSpendGlobal : 0;
@@ -50,7 +52,8 @@ export function Overview({ accounts, settings, dateRange }: OverviewProps) {
   const getStatus = (acc: AdAccount) => {
     const s = settings[acc.id] as AccountSettings | undefined;
     if (!s || !s.objective) return { label: 'Sin objetivo', color: 'bg-neutral-500', text: 'text-neutral-500', border: 'border-neutral-500/10' };
-    const manualRevenue = s.manualRevenueByMonth?.[periodKey] || 0;
+    const log = s.offlineSalesLogByMonth?.[periodKey] || [];
+    const manualRevenue = log.length > 0 ? log.reduce((sum, entry) => sum + entry.amount, 0) : (s.manualRevenueByMonth?.[periodKey] || 0);
     const totalRevenue = (acc.revenue || 0) + manualRevenue;
     const progress = totalRevenue / s.objective;
     if (progress >= 1) return { label: 'En objetivo', color: 'bg-success', text: 'text-success', border: 'border-success/10' };
@@ -140,7 +143,8 @@ export function Overview({ accounts, settings, dateRange }: OverviewProps) {
             const currency = s?.currency || acc.currency || 'ARS';
             const objective = s?.objective || 0;
             const status = getStatus(acc);
-            const manualRevenue = s?.manualRevenueByMonth?.[periodKey] || 0;
+            const log = s?.offlineSalesLogByMonth?.[periodKey] || [];
+            const manualRevenue = log.length > 0 ? log.reduce((sum, entry) => sum + entry.amount, 0) : (s?.manualRevenueByMonth?.[periodKey] || 0);
             const totalRevenue = (acc.revenue || 0) + manualRevenue;
             const progress = objective > 0 ? Math.min(totalRevenue / objective, 1) : 0;
             const progressPct = Math.round(progress * 100);

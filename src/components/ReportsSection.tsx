@@ -95,10 +95,19 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
       ? (settings[firstAcc.id]?.customName || firstAcc.name)
       : `${selectedAccounts.length} Cuentas Seleccionadas`;
 
+    const offlineRevenue = selectedAccounts.reduce((sum, acc) => {
+      const sAcc = settings[acc.id];
+      const log = sAcc?.offlineSalesLogByMonth?.[reportMonth] || [];
+      return sum + (log.length > 0 
+        ? log.reduce((s, e) => s + e.amount, 0) 
+        : (sAcc?.manualRevenueByMonth?.[reportMonth] || 0));
+    }, 0);
+
     return {
       name,
       spend: selectedAccounts.reduce((sum, a) => sum + (a.spend || 0), 0),
       revenue: selectedAccounts.reduce((sum, a) => sum + (a.revenue || 0), 0),
+      offlineRevenue,
       purchases: selectedAccounts.reduce((sum, a) => sum + (a.purchases || 0), 0),
       messages: selectedAccounts.reduce((sum, a) => sum + (a.messages || 0), 0),
       atc: selectedAccounts.reduce((sum, a) => sum + (a.addToCart || 0), 0),
@@ -108,7 +117,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
       impressions: selectedAccounts.reduce((sum, a) => sum + (a.impressions || 0), 0),
       clicks: selectedAccounts.reduce((sum, a) => sum + (a.clicks || 0), 0)
     };
-  }, [selectedAccounts, settings]);
+  }, [selectedAccounts, settings, reportMonth]);
 
   const accountNotes = notes.filter(n => selectedAccountIds.includes(n.accountId));
 
@@ -396,6 +405,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               <ReportSummaryCards 
                 spend={aggregatedData.spend}
                 revenue={aggregatedData.revenue}
+                offlineRevenue={aggregatedData.offlineRevenue}
                 purchases={aggregatedData.purchases}
                 messages={aggregatedData.messages}
                 currency={aggregatedData.currency}
@@ -405,6 +415,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
                 metrics={{
                   spend: aggregatedData.spend,
                   revenue: aggregatedData.revenue,
+                  offlineRevenue: aggregatedData.offlineRevenue,
                   purchases: aggregatedData.purchases,
                   messages: aggregatedData.messages,
                   currency: aggregatedData.currency,

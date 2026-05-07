@@ -12,55 +12,36 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Habilitamos CORS para evitar bloqueos del navegador
+  // Habilitamos CORS y Body Parsers inmediatamente
   app.use(cors());
-
-  // Logging para depuración en la consola de AI Studio
-  app.use((req, res, next) => {
-    console.log(`[V16] ${req.method} ${req.url}`);
-    next();
-  });
-
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // --- API ENGINE V17 (ULTRA COMPATIBLE) ---
-  app.all('/api/ai-service', async (req, res) => {
-    // CORS manual reforzado
+  // --- API ENGINE V18 (TOP PRIORITY) ---
+  app.all('/v18-engine', async (req, res) => {
+    // CORS manual adicional
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Accept');
-    
+
     if (req.method === 'OPTIONS') return res.sendStatus(204);
 
-    console.log(`[V17-HIT] Method: ${req.method}, Path: ${req.url}`);
+    console.log(`[V18-DEBUG] ${req.method} request hit!`);
 
     try {
-      // Priorizamos Orion_Dashboard como pidió el usuario, fallback a GEMINI_API_KEY
       const apiKey = process.env.Orion_Dashboard || process.env.GEMINI_API_KEY;
+      if (!apiKey) throw new Error('API Key no configurada en Settings.');
 
-      if (!apiKey || apiKey === 'undefined') {
-        return res.status(500).json({ 
-          error: 'Llave de IA no encontrada.', 
-          details: 'Asegúrate de haber configurado el Secret "Orion_Dashboard" en Settings.' 
-        });
-      }
-
-      // Extraemos datos de donde sea (body o query)
-      const data = { ...req.query, ...req.body };
+      // Unificamos datos de POST (body) y GET (query)
+      const data = { ...req.body, ...req.query };
       let { metrics, notes, monthName, type = 'metrics' } = data;
 
-      // Parseo defensivo
+      // Parseo defensivo por si vienen como strings (común en GET)
       if (typeof metrics === 'string') try { metrics = JSON.parse(metrics); } catch(e) {}
       if (typeof notes === 'string') try { notes = JSON.parse(notes); } catch(e) {}
 
-      // Respuesta de status si no hay métricas
       if (!metrics) {
-        return res.json({ 
-          status: 'online', 
-          message: 'V17 AI Service Ready',
-          keySource: process.env.Orion_Dashboard ? 'Orion_Dashboard' : 'GEMINI_API_KEY'
-        });
+        return res.json({ status: 'ok', message: 'V18 Engine Waiting for Data', hasKey: !!apiKey });
       }
 
       const genAI = new GoogleGenAI({ apiKey });
@@ -69,26 +50,27 @@ async function startServer() {
       
       let prompt = '';
       if (type === 'metrics') {
-        prompt = `Analizá brevemente la performance de Meta Ads de ${monthName}: Inversión ${metrics.spend}, Facturación ${metrics.revenue}, ROAS: ×${roas.toFixed(2)}. Escribí un solo párrafo corto (60-80 palabras). Castellano Argentina. Sin negritas.`;
+        prompt = `Análisis Meta Ads ${monthName}: Inversión ${metrics.spend}, Facturación ${metrics.revenue}, ROAS: ×${roas.toFixed(2)}. Un párrafo corto (80 palabras). Castellano Argentina. Sin negritas.`;
       } else {
         const notesContext = notes && notes.length > 0 ? notes.map((n: any) => `- ${n.text}`).join('\n') : 'Sin notas.';
-        prompt = `Resumen estratégico de ${monthName}. ROAS ${roas.toFixed(2)}, Inversión ${metrics.spend}. Notas de bitácora: ${notesContext}. Máximo 150 palabras. Castellano Argentina. Texto plano.`;
+        prompt = `Resumen estratégico ${monthName}. ROAS ${roas.toFixed(2)}, Inversión ${metrics.spend}. Notas: ${notesContext}. Máximo 150 palabras. Castellano Argentina.`;
       }
 
       const result = await model.generateContent(prompt);
-      const text = result.response.text();
-      
-      console.log('[V17-AI] Success');
-      return res.json({ text });
+      return res.json({ text: result.response.text() });
 
     } catch (err: any) {
-      console.error('[V17-ERROR]', err);
-      return res.status(500).json({ 
-        error: err.message || 'Error interno del servidor AI',
-        details: 'Verifica los Secretos en Settings.'
-      });
+      console.error('[V18-FAIL]', err);
+      return res.status(500).json({ error: err.message });
     }
   });
+
+  // Logging general (después del endpoint crítico)
+  app.use((req, res, next) => {
+    console.log(`[FLOW] ${req.method} ${req.url}`);
+    next();
+  });
+
 
   app.get('/api/health', (req, res) => res.json({ status: 'ok', v: 17 }));
 

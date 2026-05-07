@@ -11,7 +11,13 @@ interface IndividualReportProps {
 }
 
 export function IndividualReport({ account, settings, dateLabel, onClose }: IndividualReportProps) {
-  const roas = account.spend && account.spend > 0 ? (account.revenue || 0) / account.spend : 0;
+  const monthKey = dateLabel.split(' al ')[0].substring(0, 7) || '2026-05';
+  const offlineSales = settings.offlineSalesLogByMonth?.[monthKey]?.reduce((acc, entry) => acc + entry.amount, 0) 
+    || settings.manualRevenueByMonth?.[monthKey] 
+    || 0;
+  
+  const totalRevenue = (account.revenue || 0) + offlineSales;
+  const roas = account.spend && account.spend > 0 ? totalRevenue / account.spend : 0;
   const showMessaging = settings.tracking === 'messaging' || settings.tracking === 'both' || (account.messagesReal && account.messagesReal > 0);
 
   return (
@@ -58,8 +64,10 @@ export function IndividualReport({ account, settings, dateLabel, onClose }: Indi
           <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-4">Métricas Generales</h3>
           <div className="grid grid-cols-3 gap-6">
             <ReportMetric label="Inversión" value={formatCurrency(account.spend || 0, account.currency)} />
-            <ReportMetric label="Facturación" value={formatCurrency(account.revenue || 0, account.currency)} />
-            <ReportMetric label="ROAS" value={`×${formatDecimal(roas)}`} highlight />
+            <ReportMetric label="Facturación Ads" value={formatCurrency(account.revenue || 0, account.currency)} />
+            <ReportMetric label="Ventas Offline" value={formatCurrency(offlineSales, account.currency)} />
+            <ReportMetric label="Facturación Total" value={formatCurrency(totalRevenue, account.currency)} highlight />
+            <ReportMetric label="ROAS Real" value={`×${formatDecimal(roas)}`} highlight />
             <ReportMetric label="Compras" value={formatNumber(account.purchases || 0)} />
             {showMessaging && (
               <>
@@ -105,7 +113,7 @@ export function IndividualReport({ account, settings, dateLabel, onClose }: Indi
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-neutral-500">Progreso</span>
-                <span className="font-bold">{settings.objective ? Math.round(((account.revenue || 0) / settings.objective) * 100) + '%' : '—'}</span>
+                <span className="font-bold">{settings.objective ? Math.round((totalRevenue / settings.objective) * 100) + '%' : '—'}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-neutral-500">Presupuesto Ejecutado</span>

@@ -21,6 +21,13 @@ export interface AdAccount {
   impressions?: number;
 }
 
+export interface OfflineSaleEntry {
+  id: string;
+  amount: number;
+  note: string;
+  date: string;
+}
+
 export interface AccountSettings {
   objective: number;
   budget: number;
@@ -32,6 +39,7 @@ export interface AccountSettings {
   visibleMetrics?: string[];
   category?: string;
   manualRevenueByMonth?: Record<string, number>;
+  offlineSalesLogByMonth?: Record<string, OfflineSaleEntry[]>;
 }
 
 export interface Ad {

@@ -7,6 +7,7 @@ interface ReportAISummaryProps {
   metrics: {
     spend: number;
     revenue: number;
+    offlineRevenue?: number;
     purchases: number;
     messages: number;
     currency: string;
@@ -28,8 +29,8 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
     try {
       const payload = { metrics, notes, monthName, type };
       
-      // Intentamos llamar a la API V17
-      const response = await fetch('/api/ai-service', {
+      // Intentamos llamar a la API V18 (Prioridad POST)
+      let response = await fetch('/v18-engine', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -38,17 +39,29 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
         body: JSON.stringify(payload)
       });
 
+      // ESTRATEGIA DE FALLBACK V18: Si el servidor rechaza el POST (405) o no lo encuentra (404), probamos GET
+      if (response.status === 405 || response.status === 404) {
+        console.warn(`Intento POST falló con ${response.status}. Probando fallback GET...`);
+        const params = new URLSearchParams({
+          monthName: monthName || '',
+          type: type || 'metrics',
+          metrics: JSON.stringify(metrics),
+          notes: JSON.stringify(notes)
+        });
+        response = await fetch(`/v18-engine?${params.toString()}`);
+      }
+
       if (!response.ok) {
         const text = await response.text();
-        console.error('Error de API V17:', response.status, text);
+        console.error('Error de API V18:', response.status, text);
         
         let msg = `Error ${response.status}`;
         try { 
           const json = JSON.parse(text);
           msg = json.error || (json.details ? `${json.error}: ${json.details}` : msg);
         } catch (e) {
-          if (text.includes('405')) msg = 'Error 405 (Método no permitido). El servidor rechazó la conexión.';
-          else if (text.includes('<!DOCTYPE html>')) msg = 'Error: El servidor devolvió HTML (Posible 404/Ruta incorrecta).';
+          if (text.includes('405')) msg = 'Error 405: El servidor bloqueó la comunicación POST. El fallback GET tampoco funcionó.';
+          else if (text.includes('<!DOCTYPE html>')) msg = 'Error: Ruta no alcanzada (404). El servidor devolvió HTML.';
           else msg = text.substring(0, 100);
         }
         throw new Error(msg);
@@ -57,11 +70,12 @@ export function ReportAISummary({ metrics, notes, monthName }: ReportAISummaryPr
       const data = await response.json();
       setSummary(data.text || 'Sin respuesta de la IA.');
     } catch (error: any) {
-      console.error('Detailed Error V17:', error);
-      setSummary(`Error V17: ${error.message}. Verifica el Secret "Orion_Dashboard" en Settings.`);
+      console.error('Detailed Error V18:', error);
+      setSummary(`Error V18: ${error.message}. Asegúrate de tener el Secret "Orion_Dashboard" configurado.`);
     } finally {
       setLoading(null);
     }
+
   };
 
   return (

@@ -4,7 +4,8 @@ import {
   AccountSettings, 
   Ad, 
   DailyMetric,
-  AccountNote
+  AccountNote,
+  OfflineSaleEntry
 } from '../types';
 import { 
   fetchTopAds, 
@@ -38,10 +39,12 @@ import {
   Check,
   X,
   Mic,
-  MicOff
+  MicOff,
+  History
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { startOfMonth, endOfMonth, differenceInDays, subDays } from 'date-fns';
+import { OfflineSalesManager } from './OfflineSalesManager';
 import { 
   AreaChart, 
   Area, 
@@ -106,6 +109,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
+  const [showOfflineManager, setShowOfflineManager] = useState(false);
+  const [offlineManagerEntityId, setOfflineManagerEntityId] = useState<string | null>(null);
 
   const toggleListening = () => {
     if (isListening && recognition) {
@@ -415,35 +420,30 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
   const renderMetric = (id: string, acc: AdAccount) => {
     const sAcc = settings[acc.id];
-    const manualRevenue = sAcc?.manualRevenueByMonth?.[periodKey] || 0;
+    const log = sAcc?.offlineSalesLogByMonth?.[periodKey] || [];
+    const manualRevenue = log.length > 0 ? log.reduce((sum, entry) => sum + entry.amount, 0) : (sAcc?.manualRevenueByMonth?.[periodKey] || 0);
     const totalRevenue = (acc.revenue || 0) + manualRevenue;
     
     switch(id) {
       case 'spend': return <MetricBox key={id} label="Inversión" value={formatCurrency(acc.spend || 0, acc.currency)} />;
       case 'revenue': return <MetricBox key={id} label="Facturación Ads" value={formatCurrency(acc.revenue || 0, acc.currency)} />;
       case 'manual_revenue': return (
-        <div key={id} className="p-3 rounded-xl border border-white/5 bg-[#111] hover:bg-[#141414] transition-all shadow-lg group overflow-hidden">
+        <div 
+          key={id} 
+          onClick={() => {
+            setOfflineManagerEntityId(acc.id);
+            setShowOfflineManager(true);
+          }}
+          className="p-3 rounded-xl border border-white/5 bg-[#111] hover:bg-[#141414] transition-all shadow-lg group overflow-hidden cursor-pointer"
+        >
           <div className="flex items-center justify-between mb-1.5">
             <div className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover:text-neutral-500 transition-colors">Ventas Offline ({periodKey})</div>
-            <Save className="w-2.5 h-2.5 text-blue-500 opacity-30" />
+            <History className="w-2.5 h-2.5 text-blue-500 opacity-30 group-hover:opacity-100 transition-opacity" />
           </div>
-          <input 
-            type="number"
-            value={manualRevenue || ''}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value) || 0;
-              const currentMonthly = sAcc?.manualRevenueByMonth || {};
-              onSaveSettings(acc.id, { 
-                ...(sAcc || {}), 
-                manualRevenueByMonth: {
-                  ...currentMonthly,
-                  [periodKey]: val
-                }
-              } as any);
-            }}
-            placeholder="Ingresar..."
-            className="bg-transparent border-none outline-none text-white text-sm md:text-base font-black tracking-tight w-full placeholder:text-neutral-800"
-          />
+          <div className="flex items-center justify-between text-white">
+            <span className="text-sm md:text-base font-black tracking-tight">{formatCurrency(manualRevenue, acc.currency)}</span>
+            <span className="text-[7px] font-black uppercase text-blue-500 opacity-40 group-hover:opacity-100 transition-opacity">Ver Bitácora</span>
+          </div>
         </div>
       );
       case 'total_revenue': return <MetricBox key={id} label="Facturación Total" value={formatCurrency(totalRevenue, acc.currency)} variant="highlight" />;
@@ -1273,6 +1273,49 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
           </div>
         )}
       </div>
+      {/* Offline Sales Manager Modal */}
+      <AnimatePresence>
+        {showOfflineManager && offlineManagerEntityId && (
+          <OfflineSalesManager 
+            currency={settings[offlineManagerEntityId]?.currency || 'ARS'}
+            entries={settings[offlineManagerEntityId]?.offlineSalesLogByMonth?.[periodKey] || []}
+            onClose={() => {
+              setShowOfflineManager(false);
+              setOfflineManagerEntityId(null);
+            }}
+            onAdd={(amount, note, date) => {
+              const currentLog = settings[offlineManagerEntityId]?.offlineSalesLogByMonth?.[periodKey] || [];
+              const newEntry: OfflineSaleEntry = {
+                id: Math.random().toString(36).substr(2, 9),
+                amount,
+                note,
+                date
+              };
+              const nextLog = [...currentLog, newEntry];
+              
+              onSaveSettings(offlineManagerEntityId, {
+                ...settings[offlineManagerEntityId],
+                offlineSalesLogByMonth: {
+                  ...(settings[offlineManagerEntityId]?.offlineSalesLogByMonth || {}),
+                  [periodKey]: nextLog
+                }
+              } as any);
+            }}
+            onDelete={(id) => {
+              const currentLog = settings[offlineManagerEntityId]?.offlineSalesLogByMonth?.[periodKey] || [];
+              const nextLog = currentLog.filter(e => e.id !== id);
+              
+              onSaveSettings(offlineManagerEntityId, {
+                ...settings[offlineManagerEntityId],
+                offlineSalesLogByMonth: {
+                  ...(settings[offlineManagerEntityId]?.offlineSalesLogByMonth || {}),
+                  [periodKey]: nextLog
+                }
+              } as any);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
