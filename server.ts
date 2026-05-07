@@ -46,14 +46,16 @@ async function startServer() {
 
       const genAI = new GoogleGenAI({ apiKey });
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const roas = metrics.revenue / (metrics.spend || 1);
+      
+      const totalRevenue = (metrics.revenue || 0) + (metrics.offlineRevenue || 0);
+      const roasReal = totalRevenue / (metrics.spend || 1);
       
       let prompt = '';
       if (type === 'metrics') {
-        prompt = `Análisis Meta Ads ${monthName}: Inversión ${metrics.spend}, Facturación ${metrics.revenue}, ROAS: ×${roas.toFixed(2)}. Un párrafo corto (80 palabras). Castellano Argentina. Sin negritas.`;
+        prompt = `Análisis Meta Ads ${monthName}: Inversión ${metrics.spend}, Facturación Meta ${metrics.revenue}, Ventas Offline ${metrics.offlineRevenue || 0}, Facturación Total ${totalRevenue}, ROAS Real: ×${roasReal.toFixed(2)}. Un párrafo corto (80 palabras). Castellano Argentina. Sin negritas.`;
       } else {
         const notesContext = notes && notes.length > 0 ? notes.map((n: any) => `- ${n.text}`).join('\n') : 'Sin notas.';
-        prompt = `Resumen estratégico ${monthName}. ROAS ${roas.toFixed(2)}, Inversión ${metrics.spend}. Notas: ${notesContext}. Máximo 150 palabras. Castellano Argentina.`;
+        prompt = `Resumen estratégico ${monthName}. Facturación Total ${totalRevenue}, ROAS Real ${roasReal.toFixed(2)}, Inversión ${metrics.spend}. Notas bitácora: ${notesContext}. Máximo 150 palabras. Castellano Argentina.`;
       }
 
       const result = await model.generateContent(prompt);

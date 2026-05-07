@@ -12,9 +12,10 @@ interface IndividualReportProps {
 
 export function IndividualReport({ account, settings, dateLabel, onClose }: IndividualReportProps) {
   const monthKey = dateLabel.split(' al ')[0].substring(0, 7) || '2026-05';
-  const offlineSales = settings.offlineSalesLogByMonth?.[monthKey]?.reduce((acc, entry) => acc + entry.amount, 0) 
-    || settings.manualRevenueByMonth?.[monthKey] 
-    || 0;
+  const log = settings.offlineSalesLogByMonth?.[monthKey] || [];
+  const offlineSales = log.length > 0 
+    ? log.reduce((acc, entry) => acc + entry.amount, 0) 
+    : (settings.manualRevenueByMonth?.[monthKey] || 0);
   
   const totalRevenue = (account.revenue || 0) + offlineSales;
   const roas = account.spend && account.spend > 0 ? totalRevenue / account.spend : 0;
@@ -62,19 +63,24 @@ export function IndividualReport({ account, settings, dateLabel, onClose }: Indi
         {/* Global Metrics Grid */}
         <section className="mb-12">
           <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-4">Métricas Generales</h3>
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <ReportMetric label="Inversión" value={formatCurrency(account.spend || 0, account.currency)} />
-            <ReportMetric label="Facturación Ads" value={formatCurrency(account.revenue || 0, account.currency)} />
-            <ReportMetric label="Ventas Offline" value={formatCurrency(offlineSales, account.currency)} />
+            <ReportMetric 
+              label={`Ventas Offline (${monthKey})`} 
+              value={formatCurrency(offlineSales, account.currency)} 
+              secondary={log.length > 0 ? `${log.length} registros` : undefined}
+            />
             <ReportMetric label="Facturación Total" value={formatCurrency(totalRevenue, account.currency)} highlight />
             <ReportMetric label="ROAS Real" value={`×${formatDecimal(roas)}`} highlight />
-            <ReportMetric label="Compras" value={formatNumber(account.purchases || 0)} />
+            
             {showMessaging && (
               <>
                 <ReportMetric label="Mensajes" value={formatNumber(account.messagesReal || 0)} />
                 <ReportMetric label="Costo/Mensaje" value={account.costPerMessageReal ? formatCurrency(account.costPerMessageReal, account.currency) : '—'} />
               </>
             )}
+            <ReportMetric label="Compras" value={formatNumber(account.purchases || 0)} />
+            <ReportMetric label="CPA" value={account.costPerPurchase ? formatCurrency(account.costPerPurchase, account.currency) : '—'} />
           </div>
         </section>
 
@@ -136,11 +142,12 @@ export function IndividualReport({ account, settings, dateLabel, onClose }: Indi
   );
 }
 
-function ReportMetric({ label, value, highlight }: { label: string, value: string, highlight?: boolean }) {
+function ReportMetric({ label, value, highlight, secondary }: { label: string, value: string, highlight?: boolean, secondary?: string }) {
   return (
-    <div className="border border-neutral-100 p-6 rounded-2xl">
+    <div className="border border-neutral-100 p-6 rounded-2xl bg-neutral-50/30">
       <div className="text-[10px] uppercase font-bold text-neutral-400 tracking-widest mb-2">{label}</div>
-      <div className={cn("text-2xl font-black", highlight && "text-blue-600")}>{value}</div>
+      <div className={cn("text-2xl font-black text-neutral-900", highlight && "text-blue-600")}>{value}</div>
+      {secondary && <div className="text-[10px] font-bold text-neutral-500 mt-2 uppercase tracking-tight">{secondary}</div>}
     </div>
   );
 }
