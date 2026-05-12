@@ -589,6 +589,41 @@ export default function App() {
               </div>
 
               <div className="flex items-center gap-4">
+                {activePage === 'strategy' && (
+                  <div className="flex items-center gap-2 bg-[#111] p-1 rounded-lg border border-white/5 animate-in slide-in-from-right-4 duration-500">
+                     <div className="flex items-center gap-2 w-[320px] sm:w-[400px]">
+                        <div className="flex-1 min-w-0">
+                          <AccountSelectorDropdown
+                            label="Visible"
+                            accounts={accounts.filter(a => visibleAccountIds.includes(a.id))}
+                            activeId={(structure as any)?.activeAccId}
+                            onSelect={async (acc) => {
+                              setLoadingStructure(true);
+                              const data = await fetchAccountStructure(acc.id);
+                              setStructure({ ...data, activeAccId: acc.id } as any);
+                              setLoadingStructure(false);
+                            }}
+                            variant="blue"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <AccountSelectorDropdown
+                            label="Ocultas"
+                            accounts={accounts.filter(a => !visibleAccountIds.includes(a.id))}
+                            activeId={(structure as any)?.activeAccId}
+                            onSelect={async (acc) => {
+                              setLoadingStructure(true);
+                              const data = await fetchAccountStructure(acc.id);
+                              setStructure({ ...data, activeAccId: acc.id } as any);
+                              setLoadingStructure(false);
+                            }}
+                            variant="neutral"
+                          />
+                        </div>
+                     </div>
+                  </div>
+                )}
+
                 {/* Notification Bell */}
                 <div className="relative">
                   <button 
@@ -656,40 +691,7 @@ export default function App() {
                 </div>
               </div>
 
-              {activePage === 'strategy' ? (
-                <div className="flex items-center gap-2 bg-[#111] p-1 rounded-lg border border-white/5 animate-in slide-in-from-right-4 duration-500">
-                   <div className="flex items-center gap-2 w-[380px]">
-                      <div className="flex-1">
-                        <AccountSelectorDropdown
-                          label="Visible"
-                          accounts={accounts.filter(a => visibleAccountIds.includes(a.id))}
-                          activeId={(structure as any)?.activeAccId}
-                          onSelect={async (acc) => {
-                            setLoadingStructure(true);
-                            const data = await fetchAccountStructure(acc.id);
-                            setStructure({ ...data, activeAccId: acc.id } as any);
-                            setLoadingStructure(false);
-                          }}
-                          variant="blue"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <AccountSelectorDropdown
-                          label="Ocultas"
-                          accounts={accounts.filter(a => !visibleAccountIds.includes(a.id))}
-                          activeId={(structure as any)?.activeAccId}
-                          onSelect={async (acc) => {
-                            setLoadingStructure(true);
-                            const data = await fetchAccountStructure(acc.id);
-                            setStructure({ ...data, activeAccId: acc.id } as any);
-                            setLoadingStructure(false);
-                          }}
-                          variant="neutral"
-                        />
-                      </div>
-                   </div>
-                </div>
-              ) : activePage === 'overview' && (
+              {activePage === 'overview' && (
                 <div className="flex flex-wrap items-center gap-3 bg-[#111] p-2 rounded-lg border border-white/5">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-neutral-600 ml-2" />
