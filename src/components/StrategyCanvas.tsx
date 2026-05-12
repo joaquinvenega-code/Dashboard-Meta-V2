@@ -261,7 +261,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
   // New sizing for nodes (more compact)
   const NODE_CONFIG = {
-    campaign: { w: 230, h: 74, fontSize: 13 },
+    campaign: { w: 230, h: 64, fontSize: 13 },
     adset: { w: 190, h: 64, fontSize: 11 },
     ad: { w: 160, h: 42, fontSize: 10 },
     spacing: {
@@ -358,14 +358,6 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
           y={24}
           width={NODE_CONFIG.campaign.w - 24}
           wrap="char"
-        />
-        <Text
-          text={campaign.objective}
-          fontSize={8}
-          fill="#666"
-          x={12}
-          y={44}
-          fontStyle="bold"
         />
       </Group>
     );
