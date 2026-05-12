@@ -35,7 +35,8 @@ import {
   CheckCircle2,
   X,
   GripVertical,
-  Bell
+  Bell,
+  Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, parseISO, subDays, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
@@ -148,6 +149,7 @@ export default function App() {
   // Report State
   const [reportAccount, setReportAccount] = useState<AdAccount | null>(null);
   const [showColSelectors, setShowColSelectors] = useState(false);
+  const [accountSelectionSearch, setAccountSelectionSearch] = useState('');
   const [notifications, setNotifications] = useState<InAppNotification[]>(() => {
     const saved = localStorage.getItem('cr_notifications');
     return saved ? JSON.parse(saved) : [];
@@ -1107,9 +1109,25 @@ export default function App() {
                         </button>
                       </div>
                     </div>
+
+                    {/* Buscador de cuentas */}
+                    <div className="mb-6 relative group">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600 group-focus-within:text-blue-500 transition-colors" />
+                      <input 
+                        type="text" 
+                        placeholder="Buscar por nombre o ID de cuenta..."
+                        value={accountSelectionSearch}
+                        onChange={(e) => setAccountSelectionSearch(e.target.value)}
+                        className="w-full bg-black/40 border border-white/5 rounded-xl py-3.5 pl-11 pr-4 text-xs text-white placeholder-neutral-700 outline-none focus:border-blue-600/50 transition-all font-bold shadow-inner"
+                      />
+                    </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                      {accounts.map(acc => {
+                      {accounts.filter(acc => 
+                        acc.name.toLowerCase().includes(accountSelectionSearch.toLowerCase()) || 
+                        acc.account_id.toLowerCase().includes(accountSelectionSearch.toLowerCase()) ||
+                        acc.id.toLowerCase().includes(accountSelectionSearch.toLowerCase())
+                      ).map(acc => {
                         const isVisible = visibleAccountIds.some(v => matchId(v, acc.id));
                         return (
                           <div
