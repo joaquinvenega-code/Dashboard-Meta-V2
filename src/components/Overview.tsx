@@ -133,10 +133,11 @@ export function Overview({ accounts, settings, dateRange, clientCategories }: Ov
         </div>
 
         <div className="space-y-1.5 relative">
-          <div className="grid grid-cols-[140px_1fr_100px_60px] gap-3 px-2 text-[9px] font-bold text-neutral-700 uppercase tracking-widest border-b border-white/5 pb-1.5">
+          <div className="grid grid-cols-[140px_1fr_100px_80px_60px] gap-3 px-2 text-[9px] font-bold text-neutral-700 uppercase tracking-widest border-b border-white/5 pb-1.5">
             <div>Cliente</div>
             <div className="text-center">Progreso</div>
             <div className="text-right">Facturación</div>
+            <div className="text-right">Saldo</div>
             <div className="text-right">ROAS</div>
           </div>
           {filteredAccounts.map(acc => {
@@ -153,7 +154,7 @@ export function Overview({ accounts, settings, dateRange, clientCategories }: Ov
 
             return (
               <div key={acc.id} className="group relative">
-                <div className="grid grid-cols-[140px_1fr_100px_60px] gap-3 items-center py-1.5 border-b border-white/[0.03] group-hover:bg-white/[0.01] transition-all px-2 rounded-lg">
+                <div className="grid grid-cols-[140px_1fr_100px_80px_60px] gap-3 items-center py-1.5 border-b border-white/[0.03] group-hover:bg-white/[0.01] transition-all px-2 rounded-lg">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", status.color)}></div>
                     <div className="text-[11px] font-semibold truncate text-neutral-400 tracking-tight group-hover:text-white transition-colors">{acc.name}</div>
@@ -180,6 +181,10 @@ export function Overview({ accounts, settings, dateRange, clientCategories }: Ov
  
                   <div className="text-right text-[11px] font-medium text-neutral-300 font-mono tracking-tighter">
                     {formatCurrency(totalRevenue, currency)}
+                  </div>
+
+                  <div className="text-right text-[10px] font-black text-neutral-600 font-mono tracking-tighter">
+                    {acc.balance !== undefined ? formatCurrency(acc.balance / 100, currency) : '--'}
                   </div>
  
                   <div className="flex flex-col items-end gap-1">

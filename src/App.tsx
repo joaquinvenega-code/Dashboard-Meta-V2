@@ -142,6 +142,19 @@ export default function App() {
     }
   });
 
+  const [alertRules, setAlertRules] = useState<AlertRule[]>(() => {
+    try {
+      const saved = localStorage.getItem('cr_alert_rules');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('cr_alert_rules', JSON.stringify(alertRules));
+  }, [alertRules]);
+
   useEffect(() => {
     localStorage.setItem('cr_notes', JSON.stringify(notes));
   }, [notes]);
@@ -160,40 +173,63 @@ export default function App() {
     localStorage.setItem('cr_notifications', JSON.stringify(notifications));
   }, [notifications]);
 
-  // Simulated Alert Triggering (Pulse)
+  // Real Alert Triggering
   useEffect(() => {
-    if (!isLogged || accounts.length === 0) return;
+    if (!isLogged || accounts.length === 0 || alertRules.length === 0) return;
 
-    const rules: AlertRule[] = JSON.parse(localStorage.getItem('cr_alert_rules') || '[]');
-    if (rules.length === 0) return;
+    const newNotifications: InAppNotification[] = [];
+    const now = new Date();
 
-    const interval = setInterval(() => {
-      // Simulate checking a random rule every 30 seconds
-      const randomRule = rules[Math.floor(Math.random() * rules.length)];
-      if (!randomRule.isActive) return;
+    alertRules.forEach(rule => {
+      if (!rule.isActive) return;
 
-      const trigger = Math.random() > 0.8; // 20% chance to simulate a trigger
-      if (trigger) {
-        const accId = randomRule.accountId === 'all' ? accounts[0].id : randomRule.accountId;
-        const acc = accounts.find(a => a.id === accId);
-        
-        const newNotif: InAppNotification = {
-          id: Math.random().toString(36).substr(2, 9),
-          ruleId: randomRule.id,
-          accountId: accId,
-          title: `Alerta: ${randomRule.name}`,
-          message: `La cuenta ${acc?.name || 'anónima'} ha activado la regla "${randomRule.type}" con valor ${randomRule.value}.`,
-          timestamp: new Date().toISOString(),
-          isRead: false,
-          severity: randomRule.type === 'performance' ? 'medium' : 'high'
-        };
+      const accsToCheck = rule.accountId === 'all' 
+        ? accounts 
+        : accounts.filter(a => a.id === rule.accountId);
 
-        setNotifications(prev => [newNotif, ...prev].slice(0, 20));
-      }
-    }, 45000);
+      accsToCheck.forEach(acc => {
+        let trigger = false;
+        let currentValue = 0;
 
-    return () => clearInterval(interval);
-  }, [isLogged, accounts]);
+        if (rule.metric === 'balance' && acc.balance !== undefined) {
+          currentValue = acc.balance / 100;
+          if (rule.condition === 'less_than' && currentValue <= rule.value) trigger = true;
+          if (rule.condition === 'greater_than' && currentValue >= rule.value) trigger = true;
+        } else if (rule.metric === 'roas') {
+          currentValue = (acc.spend && acc.revenue && acc.spend > 0) ? acc.revenue / acc.spend : 0;
+          if (rule.condition === 'less_than' && currentValue <= rule.value) trigger = true;
+        } else if (rule.metric === 'spend') {
+          currentValue = acc.spend || 0;
+          if (rule.condition === 'greater_than' && currentValue >= rule.value) trigger = true;
+        }
+
+        if (trigger) {
+          const alreadyNotified = notifications.some(n => 
+            n.ruleId === rule.id && 
+            n.accountId === acc.id && 
+            (now.getTime() - new Date(n.timestamp).getTime()) < 24 * 60 * 60 * 1000
+          );
+
+          if (!alreadyNotified) {
+            newNotifications.push({
+              id: Math.random().toString(36).substr(2, 9),
+              ruleId: rule.id,
+              accountId: acc.id,
+              title: `Alerta: ${rule.name}`,
+              message: `La cuenta ${acc.name} ha activado la regla "${rule.name}". Valor actual: ${currentValue.toFixed(2)}.`,
+              timestamp: now.toISOString(),
+              isRead: false,
+              severity: rule.type === 'performance' ? 'medium' : 'high'
+            });
+          }
+        }
+      });
+    });
+
+    if (newNotifications.length > 0) {
+      setNotifications(prev => [...newNotifications, ...prev].slice(0, 50));
+    }
+  }, [isLogged, accounts, alertRules]);
   const [configEntity, setConfigEntity] = useState<AdAccount | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -1380,7 +1416,11 @@ export default function App() {
 
               {activePage === 'alerts' && (
                 <div className="animate-in fade-in duration-500">
-                  <AlertsSection accounts={accounts} />
+                  <AlertsSection 
+                    accounts={accounts} 
+                    rules={alertRules} 
+                    onRulesChange={setAlertRules} 
+                  />
                 </div>
               )}
 

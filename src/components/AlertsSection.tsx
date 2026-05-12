@@ -21,14 +21,11 @@ import { AlertRule, AlertType, AlertMetric, AlertCondition, AdAccount } from '..
 
 interface AlertsSectionProps {
   accounts: AdAccount[];
+  rules: AlertRule[];
+  onRulesChange: (rules: AlertRule[]) => void;
 }
 
-export const AlertsSection: React.FC<AlertsSectionProps> = ({ accounts }) => {
-  const [rules, setRules] = useState<AlertRule[]>(() => {
-    const saved = localStorage.getItem('cr_alert_rules');
-    return saved ? JSON.parse(saved) : [];
-  });
-
+export const AlertsSection: React.FC<AlertsSectionProps> = ({ accounts, rules, onRulesChange }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [newRule, setNewRule] = useState<Partial<AlertRule>>({
     type: 'performance',
@@ -41,17 +38,13 @@ export const AlertsSection: React.FC<AlertsSectionProps> = ({ accounts }) => {
     accountId: 'all'
   });
 
-  useEffect(() => {
-    localStorage.setItem('cr_alert_rules', JSON.stringify(rules));
-  }, [rules]);
-
   const addRule = () => {
     if (!newRule.name) return;
     const rule: AlertRule = {
       ...(newRule as AlertRule),
       id: Math.random().toString(36).substr(2, 9),
     };
-    setRules([...rules, rule]);
+    onRulesChange([...rules, rule]);
     setIsAdding(false);
     setNewRule({
       type: 'performance',
@@ -66,11 +59,11 @@ export const AlertsSection: React.FC<AlertsSectionProps> = ({ accounts }) => {
   };
 
   const deleteRule = (id: string) => {
-    setRules(rules.filter(r => r.id !== id));
+    onRulesChange(rules.filter(r => r.id !== id));
   };
 
   const toggleRule = (id: string) => {
-    setRules(rules.map(r => r.id === id ? { ...r, isActive: !r.isActive } : r));
+    onRulesChange(rules.map(r => r.id === id ? { ...r, isActive: !r.isActive } : r));
   };
 
   return (
@@ -156,7 +149,7 @@ export const AlertsSection: React.FC<AlertsSectionProps> = ({ accounts }) => {
                         <option value="health">Estado de Cuenta</option>
                       </select>
                     </div>
-                    {newRule.type === 'performance' && (
+                    {(newRule.type === 'performance' || newRule.type === 'budget') && (
                       <div>
                         <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1.5 block">Métrica</label>
                         <select 
@@ -164,11 +157,20 @@ export const AlertsSection: React.FC<AlertsSectionProps> = ({ accounts }) => {
                           onChange={e => setNewRule({...newRule, metric: e.target.value as AlertMetric})}
                           className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-blue-500 outline-none transition-all font-medium"
                         >
-                          <option value="roas">ROAS</option>
-                          <option value="cpa">CPA</option>
-                          <option value="spend">Gasto</option>
-                          <option value="ctr">CTR</option>
-                          <option value="cpc">CPC</option>
+                          {newRule.type === 'performance' ? (
+                            <>
+                              <option value="roas">ROAS</option>
+                              <option value="cpa">CPA</option>
+                              <option value="spend">Gasto</option>
+                              <option value="ctr">CTR</option>
+                              <option value="cpc">CPC</option>
+                            </>
+                          ) : (
+                            <>
+                              <option value="balance">Saldo Restante (Pre-pago)</option>
+                              <option value="spend">Gasto Total Acumulado</option>
+                            </>
+                          )}
                         </select>
                       </div>
                     )}
@@ -344,9 +346,9 @@ export const AlertsSection: React.FC<AlertsSectionProps> = ({ accounts }) => {
             </p>
           </div>
           <div className="space-y-2">
-            <h5 className="text-white font-bold text-[10px] uppercase tracking-widest">Agotamiento de Saldo</h5>
+            <h5 className="text-white font-bold text-[10px] uppercase tracking-widest">Agotamiento de Saldo Pre-pago</h5>
             <p className="text-neutral-500 text-[10px] font-medium leading-relaxed">
-              Recibe un aviso 24h antes de que el presupuesto estimado se agote según el ritmo de gasto actual.
+              Configura una alerta para cuando el saldo de la cuenta sea menor a $50 (o tu moneda) para avisar al cliente antes de que se detengan las campañas.
             </p>
           </div>
           <div className="space-y-2">

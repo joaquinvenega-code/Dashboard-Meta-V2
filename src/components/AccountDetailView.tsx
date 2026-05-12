@@ -837,11 +837,21 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                       style={{ width: isSidebarExpanded ? 'auto' : 0 }}
                     >
                       <span className="text-[11px] font-bold tracking-tight truncate max-w-[150px] uppercase">{customName}</span>
-                      {progress !== null && (
-                        <span className={`text-[8px] font-black ml-auto shrink-0 ${progress >= 80 ? 'text-success' : 'text-neutral-500'}`}>
-                          {progress}%
-                        </span>
-                      )}
+                      <div className="flex flex-col items-end ml-auto shrink-0">
+                        {progress !== null && (
+                          <span className={`text-[8px] font-black ${progress >= 80 ? 'text-success' : 'text-neutral-500'}`}>
+                            {progress}%
+                          </span>
+                        )}
+                        {acc.balance !== undefined && (
+                          <span className={cn(
+                            "text-[7px] font-black uppercase tracking-tighter opacity-80",
+                            (acc.balance / 100) < 50 ? "text-amber-500" : "text-neutral-500"
+                          )}>
+                            ${(acc.balance / 100).toFixed(0)}
+                          </span>
+                        )}
+                      </div>
                     </motion.div>
                   </div>
                   {isActive && <div className="absolute right-0 w-0.5 h-3 bg-blue-500 rounded-l-full" />}

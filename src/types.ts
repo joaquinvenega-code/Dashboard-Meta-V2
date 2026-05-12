@@ -4,6 +4,8 @@ export interface AdAccount {
   name: string;
   account_status: number;
   currency: string;
+  balance?: number;
+  account_type?: string;
   // Insights
   spend?: number;
   clicks?: number;
@@ -96,7 +98,7 @@ export interface ClientCategory {
 }
 
 export type AlertType = 'performance' | 'budget' | 'anomaly' | 'health';
-export type AlertMetric = 'roas' | 'cpa' | 'spend' | 'frequency' | 'ctr' | 'cpc';
+export type AlertMetric = 'roas' | 'cpa' | 'spend' | 'frequency' | 'ctr' | 'cpc' | 'balance';
 export type AlertCondition = 'greater_than' | 'less_than' | 'change_percent';
 
 export interface AlertRule {
