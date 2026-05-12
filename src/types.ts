@@ -37,7 +37,7 @@ export interface AccountSettings {
   customLogo?: string;
   observations?: string;
   visibleMetrics?: string[];
-  category?: string;
+  categoryId?: string;
   manualRevenueByMonth?: Record<string, number>;
   offlineSalesLogByMonth?: Record<string, OfflineSaleEntry[]>;
 }
@@ -83,10 +83,16 @@ export interface DailyMetric {
   roas: number;
 }
 
-export interface ClientGroup {
+export interface AccountGroup {
   id: string;
   name: string;
   accountIds: string[];
+}
+
+export interface ClientCategory {
+  id: string;
+  name: string;
+  color?: string;
 }
 
 export type AlertType = 'performance' | 'budget' | 'anomaly' | 'health';

@@ -8,7 +8,7 @@ import {
   fetchInsights,
   fetchAccountStructure 
 } from './services/facebook';
-import { AdAccount, AccountSettings, ClientGroup, Campaign, AdSet, Ad, AlertRule, InAppNotification, AccountNote } from './types';
+import { AdAccount, AccountSettings, AccountGroup, ClientCategory, Campaign, AdSet, Ad, AlertRule, InAppNotification, AccountNote } from './types';
 import { Sidebar } from './components/Sidebar';
 import { IndividualReport } from './components/IndividualReport';
 import { Overview } from './components/Overview';
@@ -206,16 +206,28 @@ export default function App() {
   } | null>(null);
   const [loadingStructure, setLoadingStructure] = useState(false);
 
-  // Group Modal State
-  const [groupModal, setGroupModal] = useState<{ 
+  // Account Group Modal State
+  const [accountGroupModal, setAccountGroupModal] = useState<{ 
     isOpen: boolean; 
     type: 'create' | 'edit' | 'delete'; 
-    group?: ClientGroup;
+    group?: AccountGroup;
     inputValue: string;
   }>({ 
     isOpen: false, 
     type: 'create', 
     inputValue: '' 
+  });
+
+  // Client Category Modal State
+  const [categoryModal, setCategoryModal] = useState<{
+    isOpen: boolean;
+    type: 'create' | 'edit' | 'delete';
+    category?: ClientCategory;
+    inputValue: string;
+  }>({
+    isOpen: false,
+    type: 'create',
+    inputValue: ''
   });
 
   // Visibility State
@@ -229,13 +241,12 @@ export default function App() {
     }
   });
 
-  // Groups State
-  const [groups, setGroups] = useState<ClientGroup[]>(() => {
+  // Account Groups State
+  const [accountGroups, setAccountGroups] = useState<AccountGroup[]>(() => {
     try {
       const saved = localStorage.getItem('cr_groups');
       const parsed = saved ? JSON.parse(saved) : [];
       if (!Array.isArray(parsed)) return [];
-      // Robust filtering: keep only objects with id and ensure accountIds is array
       return parsed.filter(g => g && typeof g === 'object' && g.id).map(g => ({
         ...g,
         accountIds: Array.isArray(g.accountIds) ? g.accountIds : []
@@ -244,6 +255,25 @@ export default function App() {
       return [];
     }
   });
+
+  // Client Categories State
+  const [clientCategories, setClientCategories] = useState<ClientCategory[]>(() => {
+    try {
+      const saved = localStorage.getItem('cr_client_categories');
+      if (saved) return JSON.parse(saved);
+      // Migration/Initial defaults
+      return [
+        { id: 'independiente', name: 'Independientes' },
+        { id: 'agencia', name: 'Agencia' }
+      ];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('cr_client_categories', JSON.stringify(clientCategories));
+  }, [clientCategories]);
 
   // Auto-select first account for Strategy if none selected
   useEffect(() => {
@@ -409,8 +439,8 @@ export default function App() {
     localStorage.setItem('cr_visible_accounts', JSON.stringify(next));
   };
 
-  const saveGroups = (newGroups: ClientGroup[]) => {
-    setGroups(newGroups);
+  const saveAccountGroups = (newGroups: AccountGroup[]) => {
+    setAccountGroups(newGroups);
     localStorage.setItem('cr_groups', JSON.stringify(newGroups));
   };
 
@@ -418,14 +448,14 @@ export default function App() {
     try {
       const activeAccounts = accounts || [];
       const currentVisibleIds = Array.isArray(visibleAccountIds) ? visibleAccountIds : [];
-      const currentGroups = Array.isArray(groups) ? groups : [];
+      const currentGroups = Array.isArray(accountGroups) ? accountGroups : [];
       
       const entities: AdAccount[] = [];
       const virtualSettings: Record<string, AccountSettings> = { ...(settings || {}) };
 
       const handledAccountIds = new Set<string>();
 
-      // 1. Process Groups
+      // 1. Process Account Groups
       currentGroups.forEach(g => {
         if (!g) return;
         // Member accounts currently loaded from Meta
@@ -477,7 +507,7 @@ export default function App() {
       console.error("Memo Error:", e);
       return { overviewEntities: [], overviewSettings: settings };
     }
-  }, [accounts, groups, visibleAccountIds, settings]);
+  }, [accounts, accountGroups, visibleAccountIds, settings]);
 
   const filteredAccounts = (accounts || []).filter(acc => 
     visibleAccountIds.some(vId => matchId(vId, acc.id) || matchId(vId, acc.account_id))
@@ -758,7 +788,7 @@ export default function App() {
             <>
               {activePage === 'overview' && (
                 <div className="space-y-10 animate-in fade-in duration-1000">
-                  <Overview accounts={overviewEntities} settings={overviewSettings} dateRange={dateRange} />
+                  <Overview accounts={overviewEntities} settings={overviewSettings} dateRange={dateRange} clientCategories={clientCategories} />
                   
                   {/* Column Toggles Toggle */}
                   <div className="flex justify-end">
@@ -921,8 +951,8 @@ export default function App() {
                                           onBlur={() => {
                                             if (editValue && editValue !== acc.name) {
                                               if (acc.account_id === 'GRUPO') {
-                                                const nextGroups = groups.map(g => g.id === acc.id ? { ...g, name: editValue } : g);
-                                                saveGroups(nextGroups);
+                                                const nextGroups = accountGroups.map(g => g.id === acc.id ? { ...g, name: editValue } : g);
+                                                saveAccountGroups(nextGroups);
                                               } else {
                                                 updateSetting(acc.id, 'customName', editValue);
                                               }
@@ -1085,6 +1115,7 @@ export default function App() {
                   notes={notes}
                   onAddNote={(note) => setNotes([...notes, note])}
                   onDeleteNote={(id) => setNotes(notes.filter(n => n.id !== id))}
+                  clientCategories={clientCategories}
                 />
               )}
               {activePage === 'reports' && (
@@ -1190,16 +1221,16 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* --- SECCIÓN 2: GRUPOS DE CLIENTE --- */}
+                  {/* --- SECCIÓN 2: GRUPOS DE CUENTAS POR CLIENTE --- */}
                   <div className="bg-[#111] rounded-lg border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col">
                     <div className="flex items-center justify-between mb-8">
                       <div>
-                        <h3 className="text-sm font-black text-white uppercase tracking-widest">Grupos de cliente</h3>
+                        <h3 className="text-sm font-black text-white uppercase tracking-widest">Grupos de cuentas por cliente</h3>
                         <p className="text-[10px] font-bold text-neutral-600 mt-1 uppercase tracking-widest">Agrupa múltiples cuentas en una sola entidad</p>
                       </div>
                       <button 
                         onClick={() => {
-                          setGroupModal({ isOpen: true, type: 'create', inputValue: '' });
+                          setAccountGroupModal({ isOpen: true, type: 'create', inputValue: '' });
                         }}
                         className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center gap-2"
                       >
@@ -1209,19 +1240,19 @@ export default function App() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {groups.length === 0 && (
+                      {accountGroups.length === 0 && (
                         <div className="col-span-full py-8 text-center bg-white/[0.02] rounded-2xl border border-dashed border-white/5">
                           <p className="text-xs text-neutral-600 font-bold uppercase tracking-widest">No hay grupos creados</p>
                         </div>
                       )}
-                      {groups.filter(g => g && g.id).map(group => (
+                      {accountGroups.filter(g => g && g.id).map(group => (
                         <div key={group.id} className="bg-[#1c1c1c] p-6 rounded-lg border border-white/5 space-y-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="font-black text-neutral-100">{group.name}</div>
                               <button 
                                 onClick={() => {
-                                  setGroupModal({ 
+                                  setAccountGroupModal({ 
                                     isOpen: true, 
                                     type: 'edit', 
                                     group: group, 
@@ -1235,7 +1266,7 @@ export default function App() {
                             </div>
                             <button 
                               onClick={() => {
-                                setGroupModal({ 
+                                setAccountGroupModal({ 
                                   isOpen: true, 
                                   type: 'delete', 
                                   group: group, 
@@ -1259,7 +1290,7 @@ export default function App() {
                                      <span className="truncate">{acc?.name || accId}</span>
                                      <button 
                                        onClick={() => {
-                                         saveGroups(groups.map(g => g?.id === group.id ? { ...g, accountIds: (g.accountIds || []).filter(id => id !== accId) } : g));
+                                         saveAccountGroups(accountGroups.map(g => g?.id === group.id ? { ...g, accountIds: (g.accountIds || []).filter(id => id !== accId) } : g));
                                        }}
                                        className="text-neutral-700 hover:text-red-500 transition-all opacity-0 group-hover/acc:opacity-100"
                                      >
@@ -1274,9 +1305,72 @@ export default function App() {
                           <GroupAccountSelector 
                             accounts={accounts.filter(a => !(group.accountIds || []).includes(a.id))}
                             onSelect={(accId) => {
-                              saveGroups(groups.map(g => g?.id === group.id ? { ...g, accountIds: [...new Set([...(g.accountIds || []), accId])] } : g));
+                              saveAccountGroups(accountGroups.map(g => g?.id === group.id ? { ...g, accountIds: [...new Set([...(g.accountIds || []), accId])] } : g));
                             }}
                           />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* --- SECCIÓN 3: GRUPOS DE CLIENTES (Categorías) --- */}
+                  <div className="bg-[#111] rounded-lg border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col lg:col-span-2">
+                    <div className="flex items-center justify-between mb-8">
+                      <div>
+                        <h3 className="text-sm font-black text-white uppercase tracking-widest">Grupos de clientes</h3>
+                        <p className="text-[10px] font-bold text-neutral-600 mt-1 uppercase tracking-widest">Crea categorías para organizar tus clientes en el dashboard</p>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setCategoryModal({ isOpen: true, type: 'create', inputValue: '' });
+                        }}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center gap-2"
+                      >
+                        <Settings2 className="w-3 h-3" />
+                        Nuevo Grupo de Clientes
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {clientCategories.length === 0 && (
+                        <div className="col-span-full py-8 text-center bg-white/[0.02] rounded-2xl border border-dashed border-white/5">
+                          <p className="text-xs text-neutral-600 font-bold uppercase tracking-widest">No hay grupos de clientes creados</p>
+                        </div>
+                      )}
+                      {clientCategories.map(cat => (
+                        <div key={cat.id} className="bg-[#1c1c1c] p-5 rounded-xl border border-white/5 flex items-center justify-between group">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-black text-white uppercase tracking-widest">{cat.name}</span>
+                            <span className="text-[8px] font-bold text-neutral-600 uppercase tracking-widest mt-0.5">ID: {cat.id}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                             <button 
+                              onClick={() => {
+                                setCategoryModal({ 
+                                  isOpen: true, 
+                                  type: 'edit', 
+                                  category: cat, 
+                                  inputValue: cat.name 
+                                });
+                              }}
+                              className="p-2 hover:bg-white/5 rounded-lg text-neutral-600 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              <Settings2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setCategoryModal({ 
+                                  isOpen: true, 
+                                  type: 'delete', 
+                                  category: cat, 
+                                  inputValue: '' 
+                                });
+                              }}
+                              className="p-2 hover:bg-red-500/10 rounded-lg text-neutral-600 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1410,16 +1504,16 @@ export default function App() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[9px] font-black text-neutral-600 uppercase tracking-widest mb-2 ml-1">Categoría / Agencia</label>
+                      <label className="block text-[9px] font-black text-neutral-600 uppercase tracking-widest mb-2 ml-1">Grupo de Clientes</label>
                       <select 
                         id="set_category"
-                        defaultValue={overviewSettings[configEntity.id]?.category || ''}
+                        defaultValue={overviewSettings[configEntity.id]?.categoryId || ''}
                         className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
                       >
-                        <option value="">Sin Categoría</option>
-                        <option value="independiente">Cliente Independiente</option>
-                        <option value="agencia">Agencia Colaboradora</option>
-                        <option value="otro">Otro Grupo</option>
+                        <option value="">Sin Grupo</option>
+                        {clientCategories.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -1445,7 +1539,7 @@ export default function App() {
                       const bud = Number((document.getElementById('set_budget') as HTMLInputElement).value);
                       const cur = (document.getElementById('set_currency') as HTMLSelectElement).value;
                       const trk = (document.getElementById('set_tracking') as HTMLSelectElement).value as any;
-                      const cat = (document.getElementById('set_category') as HTMLSelectElement).value;
+                      const catId = (document.getElementById('set_category') as HTMLSelectElement).value;
 
                       const newSettings = {
                         ...settings,
@@ -1455,7 +1549,7 @@ export default function App() {
                           budget: bud,
                           currency: cur,
                           tracking: trk,
-                          category: cat
+                          categoryId: catId
                         }
                       };
                       setSettings(newSettings);
@@ -1473,15 +1567,15 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Group Management Modal */}
+      {/* Account Group Management Modal */}
       <AnimatePresence>
-        {groupModal.isOpen && (
+        {accountGroupModal.isOpen && (
           <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setGroupModal({ ...groupModal, isOpen: false })}
+              onClick={() => setAccountGroupModal({ ...accountGroupModal, isOpen: false })}
               className="absolute inset-0 bg-black/90 backdrop-blur-md"
             />
             
@@ -1497,21 +1591,21 @@ export default function App() {
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h3 className="text-lg font-black text-white tracking-widest uppercase">
-                      {groupModal.type === 'create' ? 'Nuevo Grupo' : groupModal.type === 'edit' ? 'Editar Grupo' : 'Eliminar Grupo'}
+                      {accountGroupModal.type === 'create' ? 'Nuevo Grupo' : accountGroupModal.type === 'edit' ? 'Editar Grupo' : 'Eliminar Grupo'}
                     </h3>
                     <p className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest mt-1">
-                      {groupModal.type === 'delete' ? 'Esta acción no se puede deshacer' : 'Configura las propiedades del grupo'}
+                      {accountGroupModal.type === 'delete' ? 'Esta acción no se puede deshacer' : 'Configura las propiedades del grupo'}
                     </p>
                   </div>
                   <button 
-                    onClick={() => setGroupModal({ ...groupModal, isOpen: false })}
+                    onClick={() => setAccountGroupModal({ ...accountGroupModal, isOpen: false })}
                     className="p-2 hover:bg-white/5 rounded-full text-neutral-600 hover:text-white transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                {groupModal.type !== 'delete' ? (
+                {accountGroupModal.type !== 'delete' ? (
                   <div className="space-y-4">
                     <div>
                       <label className="block text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-2 ml-1">Nombre del Grupo</label>
@@ -1519,17 +1613,17 @@ export default function App() {
                         autoFocus
                         type="text" 
                         placeholder="Ej: Marca Premium VIP"
-                        value={groupModal.inputValue}
-                        onChange={(e) => setGroupModal({ ...groupModal, inputValue: e.target.value })}
+                        value={accountGroupModal.inputValue}
+                        onChange={(e) => setAccountGroupModal({ ...accountGroupModal, inputValue: e.target.value })}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter' && groupModal.inputValue) {
-                            const name = groupModal.inputValue;
-                            if (groupModal.type === 'create') {
-                              saveGroups([...groups, { id: Math.random().toString(36).substr(2, 9), name, accountIds: [] }]);
-                            } else if (groupModal.group) {
-                              saveGroups(groups.map(g => g.id === groupModal.group?.id ? { ...g, name } : g));
+                          if (e.key === 'Enter' && accountGroupModal.inputValue) {
+                            const name = accountGroupModal.inputValue;
+                            if (accountGroupModal.type === 'create') {
+                              saveAccountGroups([...accountGroups, { id: Math.random().toString(36).substr(2, 9), name, accountIds: [] }]);
+                            } else if (accountGroupModal.group) {
+                              saveAccountGroups(accountGroups.map(g => g.id === accountGroupModal.group?.id ? { ...g, name } : g));
                             }
-                            setGroupModal({ ...groupModal, isOpen: false });
+                            setAccountGroupModal({ ...accountGroupModal, isOpen: false });
                           }
                         }}
                         className="w-full bg-black/50 border border-white/5 rounded-lg px-4 py-3.5 text-xs text-white font-bold outline-none focus:ring-2 focus:ring-blue-600 transition-all placeholder:text-neutral-800"
@@ -1537,39 +1631,150 @@ export default function App() {
                     </div>
                     
                     <button 
-                      disabled={!groupModal.inputValue}
+                      disabled={!accountGroupModal.inputValue}
                       onClick={() => {
-                        const name = groupModal.inputValue;
-                        if (groupModal.type === 'create') {
-                          saveGroups([...groups, { id: Math.random().toString(36).substr(2, 9), name, accountIds: [] }]);
-                        } else if (groupModal.group) {
-                          saveGroups(groups.map(g => g.id === groupModal.group?.id ? { ...g, name } : g));
+                        const name = accountGroupModal.inputValue;
+                        if (accountGroupModal.type === 'create') {
+                          saveAccountGroups([...accountGroups, { id: Math.random().toString(36).substr(2, 9), name, accountIds: [] }]);
+                        } else if (accountGroupModal.group) {
+                          saveAccountGroups(accountGroups.map(g => g.id === accountGroupModal.group?.id ? { ...g, name } : g));
                         }
-                        setGroupModal({ ...groupModal, isOpen: false });
+                        setAccountGroupModal({ ...accountGroupModal, isOpen: false });
                       }}
                       className="w-full bg-blue-600 disabled:opacity-20 text-white h-12 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20"
                     >
-                      {groupModal.type === 'create' ? 'Crear Grupo' : 'Guardar Cambios'}
+                      {accountGroupModal.type === 'create' ? 'Crear Grupo' : 'Guardar Cambios'}
                     </button>
                   </div>
                 ) : (
                   <div className="space-y-6">
                     <p className="text-xs text-neutral-400 font-bold text-center leading-relaxed px-4">
-                      ¿Seguro que quieres eliminar el grupo <span className="text-white">"{groupModal.group?.name}"</span>? Las cuentas vinculadas volverán a mostrarse individualmente.
+                      ¿Seguro que quieres eliminar el grupo <span className="text-white">"{accountGroupModal.group?.name}"</span>? Las cuentas vinculadas volverán a mostrarse individualmente.
                     </p>
                     <div className="grid grid-cols-2 gap-3 mt-8">
                        <button 
-                         onClick={() => setGroupModal({ ...groupModal, isOpen: false })}
+                         onClick={() => setAccountGroupModal({ ...accountGroupModal, isOpen: false })}
                          className="h-12 rounded-lg text-[10px] font-black uppercase tracking-widest text-neutral-600 hover:text-white hover:bg-white/5 transition-all"
                        >
                          Cancelar
                        </button>
                        <button 
                          onClick={() => {
-                           if (groupModal.group) {
-                             saveGroups(groups.filter(g => g.id !== groupModal.group?.id));
+                           if (accountGroupModal.group) {
+                             saveAccountGroups(accountGroups.filter(g => g.id !== accountGroupModal.group?.id));
                            }
-                           setGroupModal({ ...groupModal, isOpen: false });
+                           setAccountGroupModal({ ...accountGroupModal, isOpen: false });
+                         }}
+                         className="h-12 rounded-lg bg-red-600/10 border border-red-600/20 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all"
+                       >
+                         Eliminar
+                       </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Client Category Management Modal */}
+      <AnimatePresence>
+        {categoryModal.isOpen && (
+          <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setCategoryModal({ ...categoryModal, isOpen: false })}
+              className="absolute inset-0 bg-black/90 backdrop-blur-md"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm bg-[#111] border border-white/10 rounded-lg shadow-2xl p-8 overflow-hidden"
+            >
+              <div className="absolute -top-12 -right-12 w-32 h-32 bg-blue-600/10 blur-3xl rounded-full" />
+              
+              <div className="relative">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-black text-white tracking-widest uppercase">
+                      {categoryModal.type === 'create' ? 'Nuevo Grupo de Clientes' : categoryModal.type === 'edit' ? 'Editar Grupo de Clientes' : 'Eliminar Grupo de Clientes'}
+                    </h3>
+                    <p className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest mt-1">
+                      Organiza tus clientes de forma personalizada
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setCategoryModal({ ...categoryModal, isOpen: false })}
+                    className="p-2 hover:bg-white/5 rounded-full text-neutral-600 hover:text-white transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {categoryModal.type !== 'delete' ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-2 ml-1">Nombre del Grupo</label>
+                      <input 
+                        autoFocus
+                        type="text" 
+                        placeholder="Ej: Agencia Independiente"
+                        value={categoryModal.inputValue}
+                        onChange={(e) => setCategoryModal({ ...categoryModal, inputValue: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && categoryModal.inputValue) {
+                            const name = categoryModal.inputValue;
+                            if (categoryModal.type === 'create') {
+                              setClientCategories([...clientCategories, { id: Math.random().toString(36).substr(2, 9), name }]);
+                            } else if (categoryModal.category) {
+                              setClientCategories(clientCategories.map(c => c.id === categoryModal.category?.id ? { ...c, name } : c));
+                            }
+                            setCategoryModal({ ...categoryModal, isOpen: false });
+                          }
+                        }}
+                        className="w-full bg-black/50 border border-white/5 rounded-lg px-4 py-3.5 text-xs text-white font-bold outline-none focus:ring-2 focus:ring-blue-600 transition-all placeholder:text-neutral-800"
+                      />
+                    </div>
+                    
+                    <button 
+                      disabled={!categoryModal.inputValue}
+                      onClick={() => {
+                        const name = categoryModal.inputValue;
+                        if (categoryModal.type === 'create') {
+                          setClientCategories([...clientCategories, { id: Math.random().toString(36).substr(2, 9), name }]);
+                        } else if (categoryModal.category) {
+                          setClientCategories(clientCategories.map(c => c.id === categoryModal.category?.id ? { ...c, name } : c));
+                        }
+                        setCategoryModal({ ...categoryModal, isOpen: false });
+                      }}
+                      className="w-full bg-blue-600 disabled:opacity-20 text-white h-12 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20"
+                    >
+                      {categoryModal.type === 'create' ? 'Crear Grupo' : 'Guardar Cambios'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <p className="text-xs text-neutral-400 font-bold text-center leading-relaxed px-4">
+                      ¿Seguro que quieres eliminar el grupo <span className="text-white">"{categoryModal.category?.name}"</span>? Los clientes en este grupo quedarán sin categoría.
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 mt-8">
+                       <button 
+                         onClick={() => setCategoryModal({ ...categoryModal, isOpen: false })}
+                         className="h-12 rounded-lg text-[10px] font-black uppercase tracking-widest text-neutral-600 hover:text-white hover:bg-white/5 transition-all"
+                       >
+                         Cancelar
+                       </button>
+                       <button 
+                         onClick={() => {
+                           if (categoryModal.category) {
+                             setClientCategories(clientCategories.filter(c => c.id !== categoryModal.category?.id));
+                           }
+                           setCategoryModal({ ...categoryModal, isOpen: false });
                          }}
                          className="h-12 rounded-lg bg-red-600/10 border border-red-600/20 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all"
                        >

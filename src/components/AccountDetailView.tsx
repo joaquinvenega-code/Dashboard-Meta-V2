@@ -5,7 +5,8 @@ import {
   Ad, 
   DailyMetric,
   AccountNote,
-  OfflineSaleEntry
+  OfflineSaleEntry,
+  ClientCategory
 } from '../types';
 import { 
   fetchTopAds, 
@@ -71,6 +72,7 @@ interface AccountDetailViewProps {
   notes: AccountNote[];
   onAddNote: (note: AccountNote) => void;
   onDeleteNote: (id: string) => void;
+  clientCategories: ClientCategory[];
 }
 
 export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
@@ -85,7 +87,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   onRefresh,
   notes,
   onAddNote,
-  onDeleteNote
+  onDeleteNote,
+  clientCategories
 }) => {
   const periodKey = format(parseISO(dateRange.since), 'yyyy-MM');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -103,7 +106,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [localVisibleMetrics, setLocalVisibleMetrics] = useState<string[]>([]);
   const [chartFilters, setChartFilters] = useState<Record<string, string[]>>({});
   const [copied, setCopied] = useState(false);
-  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
   const [noteDate, setNoteDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
@@ -178,8 +181,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const sidebarAccounts = accounts.filter(acc => 
     visibleAccountIds.some(vId => vId === acc.id || vId === acc.account_id)
   ).filter(acc => {
-    if (filterCategory === 'all') return true;
-    return settings[acc.id]?.category === filterCategory;
+    if (filterCategoryId === 'all') return true;
+    return settings[acc.id]?.categoryId === filterCategoryId;
   }).filter(acc => 
     acc.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -695,18 +698,17 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
           />
         </div>
 
-        <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/5 opacity-70 hover:opacity-100 transition-opacity">
+        <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/5 opacity-70 hover:opacity-100 transition-opacity overflow-x-auto max-w-[400px] custom-scrollbar">
           {[
             { id: 'all', label: 'Todos' },
-            { id: 'independiente', label: 'Propios' },
-            { id: 'agencia', label: 'Agencia' }
+            ...clientCategories.map(cat => ({ id: cat.id, label: cat.name }))
           ].map(btn => (
             <button
               key={btn.id}
-              onClick={() => setFilterCategory(btn.id)}
+              onClick={() => setFilterCategoryId(btn.id)}
               className={cn(
-                "px-2.5 py-1 rounded-md text-[8px] font-black uppercase tracking-wider transition-all",
-                filterCategory === btn.id 
+                "px-2.5 py-1 rounded-md text-[8px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
+                filterCategoryId === btn.id 
                   ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" 
                   : "text-neutral-600 hover:text-neutral-400"
               )}

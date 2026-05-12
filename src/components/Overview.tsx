@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AdAccount, AccountSettings } from '../types';
+import { AdAccount, AccountSettings, ClientCategory } from '../types';
 import { formatCurrency, formatNumber, formatDecimal, cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { TrendingUp, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
@@ -9,17 +9,18 @@ interface OverviewProps {
   accounts: AdAccount[];
   settings: Record<string, AccountSettings>;
   dateRange: { since: string; until: string };
+  clientCategories: ClientCategory[];
 }
 
-export function Overview({ accounts, settings, dateRange }: OverviewProps) {
+export function Overview({ accounts, settings, dateRange, clientCategories }: OverviewProps) {
   const periodKey = format(parseISO(dateRange.since), 'yyyy-MM');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
 
   // Filter accounts based on category
   const filteredAccounts = accounts.filter(acc => {
-    if (filterCategory === 'all') return true;
-    const cat = settings[acc.id]?.category || '';
-    return cat === filterCategory;
+    if (filterCategoryId === 'all') return true;
+    const catId = settings[acc.id]?.categoryId || '';
+    return catId === filterCategoryId;
   });
 
   // Aggregation logic...
@@ -63,22 +64,23 @@ export function Overview({ accounts, settings, dateRange }: OverviewProps) {
 
   const onTrackCount = filteredAccounts.filter(acc => getStatus(acc).label === 'En objetivo').length;
 
+  const filterOptions = [
+    { id: 'all', label: 'Todos' },
+    ...clientCategories.map(cat => ({ id: cat.id, label: cat.name }))
+  ];
+
   return (
     <div className="space-y-6">
       {/* Category Filter Selector */}
       <div className="flex items-center gap-1 self-start opacity-70 hover:opacity-100 transition-opacity">
-        <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/5">
-          {[
-            { id: 'all', label: 'Todos' },
-            { id: 'independiente', label: 'Independientes' },
-            { id: 'agencia', label: 'Agencia' }
-          ].map(btn => (
+        <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/5 overflow-x-auto max-w-[90vw] custom-scrollbar">
+          {filterOptions.map(btn => (
             <button
               key={btn.id}
-              onClick={() => setFilterCategory(btn.id)}
+              onClick={() => setFilterCategoryId(btn.id)}
               className={cn(
-                "px-2.5 py-1 rounded-md text-[8px] font-black uppercase tracking-wider transition-all",
-                filterCategory === btn.id 
+                "px-2.5 py-1 rounded-md text-[8px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
+                filterCategoryId === btn.id 
                   ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" 
                   : "text-neutral-600 hover:text-neutral-400"
               )}
