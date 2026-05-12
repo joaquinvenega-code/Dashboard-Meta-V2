@@ -556,7 +556,13 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
       </div>
 
       {/* Canvas Area */}
-      <div className="flex-1 relative cursor-crosshair overflow-hidden" ref={containerRef}>
+      <div 
+        className={cn(
+          "flex-1 relative overflow-hidden",
+          tool === 'select' || mode === 'view' ? "cursor-default" : "cursor-crosshair"
+        )} 
+        ref={containerRef}
+      >
         <Stage
           width={stageSize.width}
           height={stageSize.height}
