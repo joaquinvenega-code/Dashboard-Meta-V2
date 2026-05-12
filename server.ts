@@ -1,6 +1,6 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
@@ -44,7 +44,7 @@ async function startServer() {
         return res.json({ status: 'ok', message: 'V18 Engine Waiting for Data', hasKey: !!apiKey });
       }
 
-      const genAI = new GoogleGenAI({ apiKey });
+      const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       
       const totalRevenue = (metrics.revenue || 0) + (metrics.offlineRevenue || 0);

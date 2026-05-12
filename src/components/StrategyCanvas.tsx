@@ -56,19 +56,24 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
     const saved = localStorage.getItem(`cr_canvas_${accountId}`);
     return saved ? JSON.parse(saved) : [];
   });
-  const [history, setHistory] = useState<CanvasElement[][]>([]);
+  const [history, setHistory] = useState<{ elements: CanvasElement[], nodePositions: Record<string, { x: number, y: number }> }[]>([]);
 
-  const addToHistory = (elementsData: CanvasElement[]) => {
+  const addToHistory = () => {
     setHistory(prev => {
-      const next = [elementsData, ...prev].slice(0, 50); // Keep last 50 actions
-      return next;
+      // Save current state as it is now, before the next change
+      const entry = { 
+        elements: [...elements], 
+        nodePositions: { ...nodePositions } 
+      };
+      return [entry, ...prev].slice(0, 50);
     });
   };
 
   const undo = () => {
     if (history.length === 0) return;
     const [lastAction, ...rest] = history;
-    setElements(lastAction);
+    setElements(lastAction.elements);
+    setNodePositions(lastAction.nodePositions);
     setHistory(rest);
     setSelectedId(null);
   };
@@ -107,7 +112,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
         // Prevent deletion if typing in a modal
         if (showNamingModal) return;
-        addToHistory(elements);
+        addToHistory();
         setElements(prev => prev.filter(el => el.id !== selectedId));
         setSelectedId(null);
       }
@@ -218,7 +223,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
   const handleMouseUp = () => {
     if (newElement) {
-      addToHistory(elements);
+      addToHistory();
       setElements([...elements, newElement]);
       setNewElement(null);
     }
@@ -318,6 +323,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
         y={pos.y} 
         draggable={mode === 'draw' && tool === 'select'}
         onDragEnd={(e) => {
+          addToHistory();
           setNodePositions({
             ...nodePositions,
             [campaign.id]: { x: e.target.x(), y: e.target.y() }
@@ -375,6 +381,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
         y={pos.y}
         draggable={mode === 'draw' && tool === 'select'}
         onDragEnd={(e) => {
+          addToHistory();
           setNodePositions({
             ...nodePositions,
             [adset.id]: { x: e.target.x(), y: e.target.y() }
@@ -422,6 +429,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
         y={pos.y}
         draggable={mode === 'draw' && tool === 'select'}
         onDragEnd={(e) => {
+          addToHistory();
           setNodePositions({
             ...nodePositions,
             [ad.id]: { x: e.target.x(), y: e.target.y() }
@@ -489,7 +497,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                {selectedId ? (
                  <button 
                   onClick={() => {
-                    addToHistory(elements);
+                    addToHistory();
                     setElements(prev => prev.filter(el => el.id !== selectedId));
                     setSelectedId(null);
                   }} 
@@ -501,7 +509,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                ) : (
                  <ToolbarButton active={tool === 'eraser'} onClick={() => {
                    if (confirm('¿Limpiar canvas de propuesta?')) {
-                     addToHistory(elements);
+                     addToHistory();
                      setElements([]);
                      setNodePositions({});
                      setFunnelConfig({ ...funnelConfig, tofuY: 0, mofuY: 250, bofuY: 550, bofuEndY: 850 });
@@ -515,7 +523,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                  onClick={undo}
                  disabled={history.length === 0}
                  className={cn(
-                   "p-1.5 rounded transition-colors",
+                   "p-1.5 rounded transition-all",
                    history.length > 0 ? "text-neutral-400 hover:text-white hover:bg-white/10" : "text-neutral-800 cursor-not-allowed"
                  )}
                  title="Deshacer (Ctrl+Z)"
@@ -843,12 +851,12 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
               const isDraggable = mode === 'draw' && tool === 'select';
               const shadowProps = isSelected ? { shadowColor: '#fff', shadowBlur: 10, shadowOpacity: 0.5 } : {};
 
-              const onDragEnd = (e: any) => {
-                addToHistory(elements);
-                setElements(elements.map(item => 
-                   item.id === el.id ? { ...item, x: e.target.x(), y: e.target.y() } : item
-                ));
-              };
+                const onDragEnd = (e: any) => {
+                  addToHistory();
+                  setElements(elements.map(item => 
+                     item.id === el.id ? { ...item, x: e.target.x(), y: e.target.y() } : item
+                  ));
+                };
 
               const onClick = (e: any) => {
                 if (mode === 'draw' && tool === 'select') {
@@ -929,7 +937,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                     color: '#ffffff',
                     fontSize: 16
                   };
-                  addToHistory(elements);
+                  addToHistory();
                   setElements([...elements, payload]);
                   setShowNamingModal(null);
                   setPendingText('');
