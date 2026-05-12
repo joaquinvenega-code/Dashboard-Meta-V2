@@ -452,27 +452,27 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
   return (
     <div className="flex flex-col h-full bg-[#050505] rounded-lg border border-white/5 overflow-hidden">
       {/* Canvas Toolbar */}
-      <div className="flex items-center justify-between p-4 border-b border-white/5 bg-[#0a0a0a]">
+      <div className="flex items-center justify-between p-2 px-3 border-b border-white/5 bg-[#0a0a0a]">
         <div className="flex items-center gap-4">
           <div className="flex bg-black p-1 rounded-lg border border-white/5">
             <button
               onClick={() => setMode('view')}
               className={cn(
-                "px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                "px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
                 mode === 'view' ? "bg-blue-600 text-white" : "text-neutral-600 hover:text-neutral-400"
               )}
             >
-              <MousePointer2 className="w-3.5 h-3.5" />
+              <MousePointer2 className="w-3 h-3" />
               Estructura Real
             </button>
             <button
               onClick={() => setMode('draw')}
               className={cn(
-                "px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                "px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
                 mode === 'draw' ? "bg-purple-600 text-white" : "text-neutral-600 hover:text-neutral-400"
               )}
             >
-              <PenTool className="w-3.5 h-3.5" />
+              <PenTool className="w-3 h-3" />
               Propuesta / Dibujo
             </button>
           </div>
@@ -528,13 +528,13 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
         <div className="flex items-center gap-3">
           <div className="flex bg-black p-1 rounded-lg border border-white/5">
-            <button onClick={() => setZoom(z => z * 1.2)} className="p-2 text-neutral-600 hover:text-white transition-colors">
+            <button onClick={() => setZoom(z => z * 1.2)} className="p-1.5 text-neutral-600 hover:text-white transition-colors">
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
-            <div className="px-2 flex items-center text-[9px] font-black text-neutral-700 w-12 justify-center">
+            <div className="px-1.5 flex items-center text-[9px] font-black text-neutral-700 w-10 justify-center">
               {Math.round(zoom * 100)}%
             </div>
-            <button onClick={() => setZoom(z => z / 1.2)} className="p-2 text-neutral-600 hover:text-white transition-colors">
+            <button onClick={() => setZoom(z => z / 1.2)} className="p-1.5 text-neutral-600 hover:text-white transition-colors">
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -548,9 +548,9 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                 link.click();
               }
             }}
-            className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-lg shadow-blue-600/20"
+            className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-lg shadow-blue-600/20"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -886,7 +886,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
         </Stage>
       </div>
 
-      <div className="p-4 bg-[#0a0a0a] border-t border-white/5 flex items-center justify-between">
+      <div className="p-2 px-3 bg-[#0a0a0a] border-t border-white/5 flex items-center justify-between">
         <p className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest">
             {mode === 'view' ? 'Visualizando estructura real de Meta Ads' : 'Modo dibujo activo: El boceto se guarda automáticamente por cliente'}
         </p>
@@ -961,7 +961,7 @@ const ToolbarButton: React.FC<{ active: boolean; onClick: () => void; icon: any 
   <button
     onClick={onClick}
     className={cn(
-      "p-2 rounded-lg transition-all",
+      "p-1.5 rounded-lg transition-all",
       active ? "bg-white/10 text-white shadow-inner" : "text-neutral-600 hover:text-neutral-400"
     )}
   >
