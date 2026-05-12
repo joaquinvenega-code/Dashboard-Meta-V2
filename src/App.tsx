@@ -245,6 +245,24 @@ export default function App() {
     }
   });
 
+  // Auto-select first account for Strategy if none selected
+  useEffect(() => {
+    if (activePage === 'strategy' && !structure && !loadingStructure && accounts.length > 0) {
+      // Pick first visible account if any, otherwise first account
+      const firstAcc = accounts.find(a => visibleAccountIds.includes(a.id)) || accounts[0];
+      if (firstAcc) {
+        setLoadingStructure(true);
+        fetchAccountStructure(firstAcc.id).then(data => {
+          setStructure({ ...data, activeAccId: firstAcc.id } as any);
+          setLoadingStructure(false);
+        }).catch(err => {
+          console.error("Error auto-loading structure:", err);
+          setLoadingStructure(false);
+        });
+      }
+    }
+  }, [activePage, accounts, visibleAccountIds, structure, loadingStructure]);
+
   useEffect(() => {
     if (appId) {
       initFacebookSdk(appId).then(() => {

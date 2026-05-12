@@ -12,7 +12,7 @@ import {
   MousePointer2, 
   Square, 
   Circle as CircleIcon,
-  Eraser,
+  Undo2,
   Save,
   MessageSquare,
   Type,
@@ -56,6 +56,22 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
     const saved = localStorage.getItem(`cr_canvas_${accountId}`);
     return saved ? JSON.parse(saved) : [];
   });
+  const [history, setHistory] = useState<CanvasElement[][]>([]);
+
+  const addToHistory = (elementsData: CanvasElement[]) => {
+    setHistory(prev => {
+      const next = [elementsData, ...prev].slice(0, 50); // Keep last 50 actions
+      return next;
+    });
+  };
+
+  const undo = () => {
+    if (history.length === 0) return;
+    const [lastAction, ...rest] = history;
+    setElements(lastAction);
+    setHistory(rest);
+    setSelectedId(null);
+  };
   const [nodePositions, setNodePositions] = useState<Record<string, { x: number, y: number }>>(() => {
     const saved = localStorage.getItem(`cr_nodes_${accountId}`);
     return saved ? JSON.parse(saved) : {};
@@ -80,9 +96,18 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Undo shortcut
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        if (showNamingModal) return;
+        e.preventDefault();
+        undo();
+        return;
+      }
+
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
         // Prevent deletion if typing in a modal
         if (showNamingModal) return;
+        addToHistory(elements);
         setElements(prev => prev.filter(el => el.id !== selectedId));
         setSelectedId(null);
       }
@@ -193,6 +218,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
   const handleMouseUp = () => {
     if (newElement) {
+      addToHistory(elements);
       setElements([...elements, newElement]);
       setNewElement(null);
     }
@@ -463,6 +489,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                {selectedId ? (
                  <button 
                   onClick={() => {
+                    addToHistory(elements);
                     setElements(prev => prev.filter(el => el.id !== selectedId));
                     setSelectedId(null);
                   }} 
@@ -474,12 +501,27 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                ) : (
                  <ToolbarButton active={tool === 'eraser'} onClick={() => {
                    if (confirm('¿Limpiar canvas de propuesta?')) {
+                     addToHistory(elements);
                      setElements([]);
                      setNodePositions({});
                      setFunnelConfig({ ...funnelConfig, tofuY: 0, mofuY: 250, bofuY: 550, bofuEndY: 850 });
                    }
                  }} icon={Trash2} />
                )}
+               
+               <div className="w-px h-4 bg-white/10 mx-1 self-center" />
+               
+               <button
+                 onClick={undo}
+                 disabled={history.length === 0}
+                 className={cn(
+                   "p-1.5 rounded transition-colors",
+                   history.length > 0 ? "text-neutral-400 hover:text-white hover:bg-white/10" : "text-neutral-800 cursor-not-allowed"
+                 )}
+                 title="Deshacer (Ctrl+Z)"
+               >
+                 <Undo2 className="w-3.5 h-3.5" />
+               </button>
             </div>
           )}
         </div>
@@ -802,6 +844,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
               const shadowProps = isSelected ? { shadowColor: '#fff', shadowBlur: 10, shadowOpacity: 0.5 } : {};
 
               const onDragEnd = (e: any) => {
+                addToHistory(elements);
                 setElements(elements.map(item => 
                    item.id === el.id ? { ...item, x: e.target.x(), y: e.target.y() } : item
                 ));
@@ -886,6 +929,7 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
                     color: '#ffffff',
                     fontSize: 16
                   };
+                  addToHistory(elements);
                   setElements([...elements, payload]);
                   setShowNamingModal(null);
                   setPendingText('');
