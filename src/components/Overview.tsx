@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AdAccount, AccountSettings, ClientCategory } from '../types';
-import { formatCurrency, formatNumber, formatDecimal, cn } from '../lib/utils';
+import { formatCurrency, formatNumber, formatDecimal, cn, calculateEffectiveBalance } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { TrendingUp, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import { differenceInDays, startOfMonth, endOfMonth, format, parseISO } from 'date-fns';
@@ -184,7 +184,10 @@ export function Overview({ accounts, settings, dateRange, clientCategories }: Ov
                   </div>
 
                   <div className="text-right text-[10px] font-black text-neutral-600 font-mono tracking-tighter">
-                    {acc.balance !== undefined ? formatCurrency(acc.balance / 100, currency) : '--'}
+                    {(() => {
+                      const effBal = calculateEffectiveBalance(acc);
+                      return effBal !== null ? formatCurrency(effBal, currency) : '--';
+                    })()}
                   </div>
  
                   <div className="flex flex-col items-end gap-1">

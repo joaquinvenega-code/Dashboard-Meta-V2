@@ -5,6 +5,14 @@ export interface AdAccount {
   account_status: number;
   currency: string;
   balance?: number;
+  spend_cap?: string;
+  amount_spent?: string;
+  funding_source_details?: {
+    id: string;
+    type: string;
+    display_string: string;
+    amount?: string;
+  };
   account_type?: string;
   // Insights
   spend?: number;

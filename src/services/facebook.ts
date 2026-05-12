@@ -108,7 +108,7 @@ async function fetchAllPages(url: string, params: any): Promise<any[]> {
 
 export async function getAdAccounts(): Promise<AdAccount[]> {
   const accounts = await fetchAllPages('/me/adaccounts', {
-    fields: 'id,name,account_id,account_status,currency,balance,account_type',
+    fields: 'id,name,account_id,account_status,currency,balance,account_type,spend_cap,amount_spent,funding_source_details',
     limit: 100,
   });
   return accounts;

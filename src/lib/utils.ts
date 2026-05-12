@@ -31,3 +31,26 @@ export function formatDecimal(value: number, decimals: number = 2) {
     maximumFractionDigits: decimals,
   }).format(val);
 }
+
+export function calculateEffectiveBalance(acc: any) {
+  // Meta API values for spend_cap, amount_spent and balance are in cents (base currency unit * 100)
+  
+  // Logic 1: Spending Limit (Importe restante)
+  if (acc.spend_cap && acc.spend_cap !== "0" && acc.spend_cap !== "null") {
+    const cap = parseInt(acc.spend_cap, 10);
+    const spent = parseInt(acc.amount_spent || "0", 10);
+    if (cap > 0) return (cap - spent) / 100;
+  }
+  
+  // Logic 2: Prepaid Funds (Fondos)
+  // funding_source_details.amount usually represents the wallet balance
+  if (acc.funding_source_details?.amount) {
+    const funds = parseInt(acc.funding_source_details.amount, 10);
+    const owed = acc.balance || 0;
+    return (funds - owed) / 100;
+  }
+
+  // Fallback: If no cap and no specific funds, we might just have the balance.
+  // But standard post-paid accounts don't really have a "remaining" amount unless there's a cap.
+  return null;
+}

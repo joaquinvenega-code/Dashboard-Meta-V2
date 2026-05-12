@@ -43,7 +43,7 @@ import {
   MicOff,
   History
 } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, calculateEffectiveBalance } from '../lib/utils';
 import { startOfMonth, endOfMonth, differenceInDays, subDays } from 'date-fns';
 import { OfflineSalesManager } from './OfflineSalesManager';
 import { 
@@ -843,14 +843,18 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                             {progress}%
                           </span>
                         )}
-                        {acc.balance !== undefined && (
-                          <span className={cn(
-                            "text-[7px] font-black uppercase tracking-tighter opacity-80",
-                            (acc.balance / 100) < 50 ? "text-amber-500" : "text-neutral-500"
-                          )}>
-                            ${(acc.balance / 100).toFixed(0)}
-                          </span>
-                        )}
+                        {(() => {
+                          const effBal = calculateEffectiveBalance(acc);
+                          if (effBal === null) return null;
+                          return (
+                            <span className={cn(
+                              "text-[7px] font-black uppercase tracking-tighter opacity-80",
+                              effBal < 50 ? "text-amber-500" : "text-neutral-500"
+                            )}>
+                              ${effBal.toFixed(0)}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </motion.div>
                   </div>

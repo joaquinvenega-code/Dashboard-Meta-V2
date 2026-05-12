@@ -8,7 +8,19 @@ import {
   fetchInsights,
   fetchAccountStructure 
 } from './services/facebook';
-import { AdAccount, AccountSettings, AccountGroup, ClientCategory, Campaign, AdSet, Ad, AlertRule, InAppNotification, AccountNote } from './types';
+import { calculateEffectiveBalance } from './lib/utils';
+import { 
+  AdAccount, 
+  AccountSettings, 
+  AccountGroup, 
+  ClientCategory, 
+  Campaign, 
+  AdSet, 
+  Ad, 
+  AlertRule, 
+  InAppNotification, 
+  AccountNote 
+} from './types';
 import { Sidebar } from './components/Sidebar';
 import { IndividualReport } from './components/IndividualReport';
 import { Overview } from './components/Overview';
@@ -191,10 +203,13 @@ export default function App() {
         let trigger = false;
         let currentValue = 0;
 
-        if (rule.metric === 'balance' && acc.balance !== undefined) {
-          currentValue = acc.balance / 100;
-          if (rule.condition === 'less_than' && currentValue <= rule.value) trigger = true;
-          if (rule.condition === 'greater_than' && currentValue >= rule.value) trigger = true;
+        if (rule.metric === 'balance') {
+          const effBal = calculateEffectiveBalance(acc);
+          if (effBal !== null) {
+            currentValue = effBal;
+            if (rule.condition === 'less_than' && currentValue <= rule.value) trigger = true;
+            if (rule.condition === 'greater_than' && currentValue >= rule.value) trigger = true;
+          }
         } else if (rule.metric === 'roas') {
           currentValue = (acc.spend && acc.revenue && acc.spend > 0) ? acc.revenue / acc.spend : 0;
           if (rule.condition === 'less_than' && currentValue <= rule.value) trigger = true;
