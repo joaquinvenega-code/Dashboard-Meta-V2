@@ -557,10 +557,14 @@ export const StrategyCanvas: React.FC<StrategyCanvasProps> = ({
 
       {/* Canvas Area */}
       <div 
-        className={cn(
-          "flex-1 relative overflow-hidden",
-          tool === 'select' || mode === 'view' ? "cursor-default" : "cursor-crosshair"
-        )} 
+        className="flex-1 relative overflow-hidden"
+        style={{
+          cursor: (mode === 'view' || tool === 'select') 
+            ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='white' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-5-14.14A3 3 0 0 0 13.92 2H11a3 3 0 0 0-2.81 2.03L3.17 18.1a3 3 0 0 0 2 3.82L9 22.42a3 3 0 0 0 2.82-.42l3.41-2.5a.77.77 0 0 1 .95 0l3.52 2.5a3 3 0 0 0 4.1-4Z'/%3E%3C/svg%3E") 0 0, auto`
+            : tool === 'text' 
+              ? 'text'
+              : 'crosshair'
+        }}
         ref={containerRef}
       >
         <Stage
