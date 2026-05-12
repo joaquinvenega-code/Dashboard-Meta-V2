@@ -695,7 +695,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
           />
         </div>
 
-        <div className="flex items-center gap-1 bg-[#111] border border-white/5 p-1 rounded-xl">
+        <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/5 opacity-70 hover:opacity-100 transition-opacity">
           {[
             { id: 'all', label: 'Todos' },
             { id: 'independiente', label: 'Propios' },
@@ -705,10 +705,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
               key={btn.id}
               onClick={() => setFilterCategory(btn.id)}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                "px-2.5 py-1 rounded-md text-[8px] font-black uppercase tracking-wider transition-all",
                 filterCategory === btn.id 
-                  ? "bg-blue-600 text-white shadow-lg" 
-                  : "text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
+                  ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" 
+                  : "text-neutral-600 hover:text-neutral-400"
               )}
             >
               {btn.label}

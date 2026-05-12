@@ -66,9 +66,8 @@ export function Overview({ accounts, settings, dateRange }: OverviewProps) {
   return (
     <div className="space-y-6">
       {/* Category Filter Selector */}
-      <div className="flex items-center gap-3 bg-[#111] border border-white/5 p-2 rounded-xl self-start w-fit">
-        <label className="text-[9px] font-black text-neutral-600 uppercase tracking-widest ml-2">Grupo:</label>
-        <div className="flex gap-1">
+      <div className="flex items-center gap-1 self-start opacity-70 hover:opacity-100 transition-opacity">
+        <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/5">
           {[
             { id: 'all', label: 'Todos' },
             { id: 'independiente', label: 'Independientes' },
@@ -78,10 +77,10 @@ export function Overview({ accounts, settings, dateRange }: OverviewProps) {
               key={btn.id}
               onClick={() => setFilterCategory(btn.id)}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                "px-2.5 py-1 rounded-md text-[8px] font-black uppercase tracking-wider transition-all",
                 filterCategory === btn.id 
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
-                  : "bg-white/5 text-neutral-500 hover:text-neutral-300 hover:bg-white/10"
+                  ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" 
+                  : "text-neutral-600 hover:text-neutral-400"
               )}
             >
               {btn.label}
