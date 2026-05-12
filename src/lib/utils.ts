@@ -33,24 +33,37 @@ export function formatDecimal(value: number, decimals: number = 2) {
 }
 
 export function calculateEffectiveBalance(acc: any) {
-  // Meta API values for spend_cap, amount_spent and balance are in cents (base currency unit * 100)
-  
-  // Logic 1: Spending Limit (Importe restante)
+  // Logic 1: Spending Limit (Importe restante) - Luqui Baby style
+  // Prioritize this if a cap is set and being consumed.
   if (acc.spend_cap && acc.spend_cap !== "0" && acc.spend_cap !== "null") {
     const cap = parseInt(acc.spend_cap, 10);
     const spent = parseInt(acc.amount_spent || "0", 10);
-    if (cap > 0) return (cap - spent) / 100;
+    // If cap is valid and has some usage, or is clearly a "limit" style
+    if (cap > 0 && spent > 0) {
+      return (cap - spent) / 100;
+    }
   }
   
-  // Logic 2: Prepaid Funds (Fondos)
-  // funding_source_details.amount usually represents the wallet balance
-  if (acc.funding_source_details?.amount) {
-    const funds = parseInt(acc.funding_source_details.amount, 10);
-    const owed = acc.balance || 0;
-    return (funds - owed) / 100;
+  // Logic 2: Prepaid Funds (Fondos) - Productos de Fierro style
+  const funds = parseInt(acc.funding_source_details?.amount || "0", 10);
+  const rawBalance = acc.balance || 0; // In Ads API, positive balance is money owed to FB
+  
+  // If we have funding details with an amount
+  if (funds > 0) {
+    return (funds - rawBalance) / 100;
   }
 
-  // Fallback: If no cap and no specific funds, we might just have the balance.
-  // But standard post-paid accounts don't really have a "remaining" amount unless there's a cap.
+  // If it's explicitly a prepaid account, balance often represents the credit (if negative)
+  // or the remaining funds if they are tracked in the balance field for some account types.
+  if (acc.funding_source_details?.type === 'PREPAID' || acc.account_type === 'PREPAID') {
+    if (rawBalance < 0) return Math.abs(rawBalance) / 100;
+    return 0;
+  }
+
+  // Fallback check for accounts where credit might show as negative balance without funding info
+  if (rawBalance < 0) {
+    return Math.abs(rawBalance) / 100;
+  }
+
   return null;
 }
