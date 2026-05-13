@@ -12,8 +12,6 @@ export interface AdAccount {
     type: string;
     display_string: string;
   };
-  min_daily_budget?: string;
-  adtrust_dsl?: string;
   prepaid_balance?: {
     amount: string;
     currency: string;
