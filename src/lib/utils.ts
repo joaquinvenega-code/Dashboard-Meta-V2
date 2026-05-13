@@ -34,35 +34,28 @@ export function formatDecimal(value: number, decimals: number = 2) {
 
 export function calculateEffectiveBalance(acc: any) {
   // Logic 1: Spending Limit (Importe restante) - Luqui Baby style
-  // Prioritize this if a cap is set and being consumed.
   if (acc.spend_cap && acc.spend_cap !== "0" && acc.spend_cap !== "null") {
     const cap = parseInt(acc.spend_cap, 10);
     const spent = parseInt(acc.amount_spent || "0", 10);
-    // If cap is valid and has some usage, or is clearly a "limit" style
     if (cap > 0) {
       return (cap - spent) / 100;
     }
   }
   
-  // Logic 2: Prepaid Funds (Fondos) - Productos de Fierro style
-  // funding_source_details.amount typically represents the wallet/prepaid balance
-  const funds = parseInt(acc.funding_source_details?.amount || "0", 10);
-  
-  if (funds > 0) {
-    // Return the gross funds as requested specifically by the user
-    return funds / 100;
+  // Logic 2: Prepaid Funds (Fondos) - New standard Meta API field
+  if (acc.prepaid_balance?.amount) {
+    return parseInt(acc.prepaid_balance.amount, 10) / 100;
   }
 
-  // Logic 3: Explicit Prepaid accounts with negative balance representing credit
-  // Only use this if we are SURE it's a prepaid account to avoid showing credit on postpaid ones.
+  // Logic 3: Legacy or Alternative Prepaid Sources
   const isPrepaid = acc.funding_source_details?.type === 'PREPAID' || 
-                    acc.account_type === 2 || // Meta often uses 2 for Prepaid
+                    acc.account_type === 2 || 
                     acc.account_type === 'PREPAID';
 
   if (isPrepaid) {
     const rawBalance = acc.balance || 0;
+    // In prepaid accounts, if balance is negative, it often means the customer has credit (funds)
     if (rawBalance < 0) return Math.abs(rawBalance) / 100;
-    return 0;
   }
 
   return null;
