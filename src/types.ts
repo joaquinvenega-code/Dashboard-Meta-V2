@@ -12,6 +12,8 @@ export interface AdAccount {
     type: string;
     display_string: string;
   };
+  is_prepaid_account?: boolean;
+  extended_credit_invoice_group?: any;
   prepaid_balance?: {
     amount: string;
     currency: string;
