@@ -42,44 +42,44 @@ export function calculateEffectiveBalance(acc: any) {
     if (cap > 0) return (cap - spent) / 100;
   }
   
-  // Logic 2: Prepaid Funds (Fondos) - New standard Meta API field
-  // User's screenshot shows: Total Funds - Owed = Available.
+  // Logic 2: Prepaid Balance (Fondos) - Official Meta API field
+  // User's screenshot shows: Total Funds - Owed (Saldo a pagar) = Available.
   if (acc.prepaid_balance?.amount) {
     const totalFunds = parseInt(acc.prepaid_balance.amount, 10);
-    // Return available funds: Total - Owed
-    return (totalFunds - rawBalance) / 100;
+    // If the account has a debt (positive balance), we subtract it from the total funds
+    // to show what's actually "Available" to be spent.
+    const debt = Math.max(0, rawBalance);
+    return (totalFunds - debt) / 100;
   }
 
-  // Logic 3: Legacy/Manual Prepago - Argentina style
+  // Logic 3: Extended Credit Invoice Group
+  if (acc.extended_credit_invoice_group?.balance?.amount) {
+    return parseInt(acc.extended_credit_invoice_group.balance.amount, 10) / 100;
+  }
+
+  // Logic 4: Manual Prepaid/Negative Balance Fallback
   const isPrepaid = acc.is_prepaid_account === true ||
                     acc.funding_source_details?.type === 'PREPAID' || 
                     acc.account_type === '2' || 
                     acc.account_type === 2;
 
   if (isPrepaid) {
-    // Check if fondos are in extended credit (sometimes used for high-volume manual accounts)
-    if (acc.extended_credit_invoice_group?.balance?.amount) {
-      return parseInt(acc.extended_credit_invoice_group.balance.amount, 10) / 100;
-    }
-
-    // In some prepaid accounts, the funds simply show as a negative balance.
+    // In some prepaid accounts, the funds show as a negative balance.
     if (rawBalance < 0) return Math.abs(rawBalance) / 100;
 
     // Last resort: try to parse numeric values from the display string
-    // Highly specific to cases where Meta puts the balance in the description
+    // Only if it looks like a currency string (contains $ or common currency markers)
     const display = acc.funding_source_details?.display_string;
-    if (display) {
+    if (display && (display.includes('$') || display.includes('ARS') || display.includes('Balance') || display.includes('Saldo'))) {
       const match = display.match(/[0-9.,]+/);
       if (match && match[0]) {
-        // Clean up formatting (Meta often uses 64.111,59 format in ARS)
+        // Clean up format: 64.111,59 -> 64111.59
         const clean = match[0].replace(/\./g, "").replace(/,/g, ".");
         const val = parseFloat(clean);
-        if (!isNaN(val) && val > 5) return val; // Heuristic: valid funds usually > $5
+        // Heuristic: valid balance strings usually have decimals and are not just years or card digits
+        if (!isNaN(val) && val > 10 && clean.includes('.')) return val;
       }
     }
-    
-    // If it's prepaid but balance is positive, it might still have funds. 
-    // If we can't find them, we return null to avoid showing false 0.
   }
 
   return null;
