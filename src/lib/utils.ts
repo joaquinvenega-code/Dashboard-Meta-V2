@@ -39,30 +39,30 @@ export function calculateEffectiveBalance(acc: any) {
     const cap = parseInt(acc.spend_cap, 10);
     const spent = parseInt(acc.amount_spent || "0", 10);
     // If cap is valid and has some usage, or is clearly a "limit" style
-    if (cap > 0 && spent > 0) {
+    if (cap > 0) {
       return (cap - spent) / 100;
     }
   }
   
   // Logic 2: Prepaid Funds (Fondos) - Productos de Fierro style
+  // funding_source_details.amount typically represents the wallet/prepaid balance
   const funds = parseInt(acc.funding_source_details?.amount || "0", 10);
-  const rawBalance = acc.balance || 0; // In Ads API, positive balance is money owed to FB
   
-  // If we have funding details with an amount
   if (funds > 0) {
-    return (funds - rawBalance) / 100;
+    // Return the gross funds as requested specifically by the user
+    return funds / 100;
   }
 
-  // If it's explicitly a prepaid account, balance often represents the credit (if negative)
-  // or the remaining funds if they are tracked in the balance field for some account types.
-  if (acc.funding_source_details?.type === 'PREPAID' || acc.account_type === 'PREPAID') {
+  // Logic 3: Explicit Prepaid accounts with negative balance representing credit
+  // Only use this if we are SURE it's a prepaid account to avoid showing credit on postpaid ones.
+  const isPrepaid = acc.funding_source_details?.type === 'PREPAID' || 
+                    acc.account_type === 2 || // Meta often uses 2 for Prepaid
+                    acc.account_type === 'PREPAID';
+
+  if (isPrepaid) {
+    const rawBalance = acc.balance || 0;
     if (rawBalance < 0) return Math.abs(rawBalance) / 100;
     return 0;
-  }
-
-  // Fallback check for accounts where credit might show as negative balance without funding info
-  if (rawBalance < 0) {
-    return Math.abs(rawBalance) / 100;
   }
 
   return null;
