@@ -108,8 +108,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [noteDate, setNoteDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [isSearchHovered, setIsSearchHovered] = useState(false);
   const [isFilterHovered, setIsFilterHovered] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
@@ -620,28 +618,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       {/* Top Toolbar */}
       <div className="flex flex-wrap items-center gap-4 print:hidden">
         <motion.div 
-          animate={{ width: (isSearchFocused || isSearchHovered) ? 280 : 48 }}
-          onMouseEnter={() => setIsSearchHovered(true)}
-          onMouseLeave={() => setIsSearchHovered(false)}
-          className="relative group h-10 overflow-hidden"
-        >
-          <Search className={cn(
-            "absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 transition-colors z-10 pointer-events-none",
-            (isSearchFocused || isSearchHovered) ? "text-blue-500" : "text-neutral-600"
-          )} />
-          <input 
-            type="text" 
-            placeholder={(isSearchFocused || isSearchHovered) ? "Buscar..." : ""}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onFocus={() => setIsSearchFocused(true)}
-            onBlur={() => setIsSearchFocused(false)}
-            className="w-full h-full bg-[#111] border border-white/5 rounded-xl py-2 pl-11 pr-3 text-[11px] text-white placeholder-neutral-700 outline-none focus:border-blue-500/50 transition-all shadow-inner font-bold"
-          />
-        </motion.div>
-
-        <motion.div 
-          animate={{ width: isFilterHovered ? 'auto' : 48 }}
+          animate={{ width: isFilterHovered ? 320 : 48 }}
           onMouseEnter={() => setIsFilterHovered(true)}
           onMouseLeave={() => setIsFilterHovered(false)}
           className="flex items-center bg-[#111] h-10 px-0 rounded-xl border border-white/5 opacity-70 hover:opacity-100 transition-all overflow-hidden shadow-inner group/filter"
@@ -653,34 +630,36 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
             )} />
           </div>
           
-          <AnimatePresence>
-            {isFilterHovered && (
-              <motion.div 
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                className="flex items-center gap-0.5 pr-2 overflow-x-auto custom-scrollbar whitespace-nowrap"
-              >
-                {[
-                  { id: 'all', label: 'Todos' },
-                  ...clientCategories.map(cat => ({ id: cat.id, label: cat.name }))
-                ].map(btn => (
-                  <button
-                    key={btn.id}
-                    onClick={() => setFilterCategoryId(btn.id)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
-                      filterCategoryId === btn.id 
-                        ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" 
-                        : "text-neutral-500 hover:text-neutral-300"
-                    )}
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <div className="flex-1 overflow-hidden">
+            <AnimatePresence initial={false}>
+              {isFilterHovered && (
+                <motion.div 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  className="flex items-center gap-0.5 pr-2 overflow-x-auto custom-scrollbar whitespace-nowrap"
+                >
+                  {[
+                    { id: 'all', label: 'Todos' },
+                    ...clientCategories.map(cat => ({ id: cat.id, label: cat.name }))
+                  ].map(btn => (
+                    <button
+                      key={btn.id}
+                      onClick={() => setFilterCategoryId(btn.id)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
+                        filterCategoryId === btn.id 
+                          ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" 
+                          : "text-neutral-500 hover:text-neutral-300"
+                      )}
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </motion.div>
 
         <div className="flex items-center gap-2 ml-auto">
@@ -752,18 +731,36 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
           onMouseLeave={() => setIsSidebarExpanded(false)}
           className="bg-[#111]/80 rounded-xl border border-white/5 overflow-hidden flex flex-col shadow-2xl backdrop-blur-md print:hidden z-30 group/sidebar"
         >
-          <div className="px-3 py-4 border-b border-white/5 bg-white/[0.01] flex items-center justify-between overflow-hidden whitespace-nowrap">
-             <div className="flex items-center gap-3">
-               <div className="w-5 h-5 rounded bg-blue-600/10 flex items-center justify-center shrink-0">
-                  <LayoutGrid className="w-3 h-3 text-blue-500" />
+          <div className="p-3 border-b border-white/5 space-y-3">
+            <div className="flex items-center justify-between overflow-hidden whitespace-nowrap">
+               <div className="flex items-center gap-3">
+                 <div className="w-5 h-5 rounded bg-blue-600/10 flex items-center justify-center shrink-0">
+                    <LayoutGrid className="w-3 h-3 text-blue-500" />
+                 </div>
+                 <motion.h3 
+                   animate={{ opacity: isSidebarExpanded ? 1 : 0 }}
+                   className="text-[9px] font-black text-neutral-400 uppercase tracking-[0.2em]"
+                  >
+                    Cuentas
+                  </motion.h3>
                </div>
-               <motion.h3 
-                 animate={{ opacity: isSidebarExpanded ? 1 : 0 }}
-                 className="text-[9px] font-black text-neutral-400 uppercase tracking-[0.2em]"
-                >
-                  Cuentas
-                </motion.h3>
-             </div>
+            </div>
+
+            {/* Embedded Search */}
+            <div className="relative group h-8 overflow-hidden">
+              <Search className={cn(
+                "absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 transition-colors z-10 pointer-events-none",
+                (searchTerm || isSidebarExpanded) ? "text-blue-500" : "text-neutral-600"
+              )} />
+              <motion.input 
+                animate={{ opacity: isSidebarExpanded ? 1 : 0 }}
+                type="text" 
+                placeholder="Buscar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-full bg-black/40 border border-white/5 rounded-lg py-1.5 pl-11 pr-3 text-[10px] text-white placeholder-neutral-800 outline-none focus:border-blue-500/30 transition-all font-bold"
+              />
+            </div>
           </div>
           
           <div className="flex-1 overflow-y-auto p-1.5 space-y-1 custom-scrollbar overflow-x-hidden">
