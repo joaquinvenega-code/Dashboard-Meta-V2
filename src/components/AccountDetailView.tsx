@@ -732,7 +732,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
           <div className="flex-1 overflow-y-auto p-1.5 space-y-1 custom-scrollbar overflow-x-hidden">
             {sidebarAccounts.map(acc => {
               const isActive = selectedId === acc.id;
-              const progress = getProgress(acc);
               const customName = settings[acc.id]?.customName || acc.name;
               
               return (
@@ -755,25 +754,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                       style={{ width: isSidebarExpanded ? 'auto' : 0 }}
                     >
                       <span className="text-[11px] font-bold tracking-tight truncate max-w-[150px] uppercase">{customName}</span>
-                      <div className="flex flex-col items-end ml-auto shrink-0">
-                        {progress !== null && (
-                          <span className={`text-[8px] font-black ${progress >= 80 ? 'text-success' : 'text-neutral-500'}`}>
-                            {progress}%
-                          </span>
-                        )}
-                        {(() => {
-                          const effBal = calculateEffectiveBalance(acc);
-                          if (effBal === null) return null;
-                          return (
-                            <span className={cn(
-                              "text-[7px] font-black uppercase tracking-tighter opacity-80",
-                              effBal < 50 ? "text-amber-500" : "text-neutral-500"
-                            )}>
-                              ${effBal.toFixed(0)}
-                            </span>
-                          );
-                        })()}
-                      </div>
                     </motion.div>
                   </div>
                   {isActive && <div className="absolute right-0 w-0.5 h-3 bg-blue-500 rounded-l-full" />}
