@@ -747,10 +747,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
             </div>
 
             {/* Embedded Search */}
-            <div className="relative group h-8 overflow-hidden flex items-center">
+            <div className="relative h-8 flex items-center">
               <motion.div
                 animate={{ 
-                  left: isSidebarExpanded ? 16 : 24,
+                  left: isSidebarExpanded ? 12 : "50%",
                   x: isSidebarExpanded ? 0 : "-50%"
                 }}
                 className="absolute top-1/2 -translate-y-1/2 z-10 pointer-events-none"
@@ -761,12 +761,15 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                 )} />
               </motion.div>
               <motion.input 
-                animate={{ opacity: isSidebarExpanded ? 1 : 0 }}
+                animate={{ 
+                  opacity: isSidebarExpanded ? 1 : 0,
+                  pointerEvents: isSidebarExpanded ? 'auto' : 'none'
+                }}
                 type="text" 
                 placeholder="Buscar..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full h-full bg-black/40 border border-white/5 rounded-lg py-1.5 pl-11 pr-3 text-[10px] text-white placeholder-neutral-800 outline-none focus:border-blue-500/30 transition-all font-bold"
+                className="w-full h-full bg-black/40 border border-white/5 rounded-lg py-1.5 pl-10 pr-3 text-[10px] text-white placeholder-neutral-800 outline-none focus:border-blue-500/30 transition-all font-bold"
               />
             </div>
           </div>
