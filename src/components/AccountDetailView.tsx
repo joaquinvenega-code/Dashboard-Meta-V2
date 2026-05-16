@@ -45,90 +45,90 @@ import {
 } from 'lucide-react';
 
 export const RocketLoader = () => (
-  <div className="flex flex-col items-center justify-center py-24 w-full animate-in fade-in duration-700">
-    <div className="relative mb-10 scale-125">
-      {/* Dynamic Energy Particles */}
+  <div className="flex flex-col items-center justify-center py-20 w-full animate-in fade-in duration-700">
+    <div className="relative mb-12">
+      {/* Dynamic Energy Particles - More subtle and contained */}
       {[...Array(6)].map((_, i) => (
         <motion.div
           key={i}
           animate={{
-            y: [0, 40 + Math.random() * 20],
-            x: [0, (Math.random() - 0.5) * 30],
-            opacity: [0, 0.8, 0],
-            scale: [0, 1.5, 0],
+            y: [0, 20 + Math.random() * 10],
+            x: [0, (Math.random() - 0.5) * 15],
+            opacity: [0, 0.6, 0],
+            scale: [0, 1.2, 0],
           }}
           transition={{
-            duration: 1 + Math.random(),
+            duration: 0.8 + Math.random() * 0.4,
             repeat: Infinity,
-            delay: i * 0.2,
+            delay: i * 0.15,
             ease: "easeOut"
           }}
-          className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cyan-400 blur-[1px] z-0"
+          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cyan-400 blur-[1px] z-0"
         />
       ))}
 
       {/* Vibration & Engine Shake */}
       <motion.div
         animate={{ 
-          y: [-4, 4, -4],
-          rotate: [-3, 3, -3],
-          x: [-0.5, 0.5, -0.5]
+          y: [-2, 2, -2],
+          rotate: [-2, 2, -2],
+          x: [-0.3, 0.3, -0.3]
         }}
         transition={{ 
-          duration: 1.5, 
+          duration: 1.2, 
           repeat: Infinity, 
           ease: "easeInOut" 
         }}
         className="relative z-10"
       >
-        <Rocket className="w-12 h-12 text-blue-400 fill-blue-500/20 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]" />
+        <Rocket className="w-12 h-12 text-blue-400 fill-blue-500/20 drop-shadow-[0_0_12px_rgba(59,130,246,0.5)]" />
       </motion.div>
 
-      {/* Main Energy Trail (Multi-layered) */}
-      <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 pointer-events-none">
-        {/* Layer 1: Outer Glow (Purple/Blue) */}
-        <motion.div
-          animate={{ 
-            scale: [1, 1.4, 1],
-            opacity: [0.2, 0.4, 0.2],
-            height: [30, 50, 30]
-          }}
-          transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-4 left-1/2 -translate-x-1/2 w-10 bg-indigo-600/20 blur-xl rounded-full"
-        />
-        
-        {/* Layer 2: Inner Core (Cyan/White) */}
+      {/* Main Energy Trail (Shortened to avoid text overlap) */}
+      <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 pointer-events-none">
+        {/* Layer 1: Outer Glow */}
         <motion.div
           animate={{ 
             scale: [1, 1.2, 1],
-            opacity: [0.4, 0.8, 0.4],
-            height: [40, 60, 40]
+            opacity: [0.2, 0.3, 0.2],
+            height: [15, 25, 15]
           }}
-          transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.1 }}
-          className="absolute -top-2 left-1/2 -translate-x-1/2 w-6 bg-gradient-to-t from-transparent via-cyan-400/50 to-blue-300 blur-md rounded-full shadow-[0_0_20px_rgba(34,211,238,0.5)]"
+          transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-2 left-1/2 -translate-x-1/2 w-8 bg-indigo-600/20 blur-xl rounded-full"
         />
-
-        {/* Layer 3: Intense Flicker Core */}
+        
+        {/* Layer 2: Inner Core */}
         <motion.div
           animate={{ 
-            scaleX: [0.8, 1.2, 0.8],
-            opacity: [0.6, 1, 0.6]
+            scale: [1, 1.1, 1],
+            opacity: [0.4, 0.7, 0.4],
+            height: [20, 35, 20]
+          }}
+          transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.1 }}
+          className="absolute -top-1 left-1/2 -translate-x-1/2 w-4 bg-gradient-to-t from-transparent via-cyan-400/40 to-blue-300/60 blur-md rounded-full shadow-[0_0_15px_rgba(34,211,238,0.4)]"
+        />
+
+        {/* Layer 3: Intense Flicker Core (Very short) */}
+        <motion.div
+          animate={{ 
+            scaleX: [0.8, 1.1, 0.8],
+            opacity: [0.4, 0.8, 0.4]
           }}
           transition={{ duration: 0.1, repeat: Infinity, ease: "steps(2)" }}
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-16 bg-white blur-[2px] rounded-full opacity-60"
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-8 bg-white blur-[1px] rounded-full opacity-50"
         />
       </div>
     </div>
     
-    <div className="flex flex-col items-center gap-2 mt-4">
+    <div className="flex flex-col items-center gap-2 mt-2">
       <motion.div 
-        animate={{ opacity: [0.4, 1, 0.4] }}
+        animate={{ opacity: [0.5, 1, 0.5] }}
         transition={{ duration: 2, repeat: Infinity }}
         className="flex items-center gap-3"
       >
-        <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-blue-500/50" />
-        <h4 className="text-[11px] font-black text-blue-400 uppercase tracking-[0.4em]">Sincronizando Orion</h4>
-        <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-blue-500/50" />
+        <div className="h-[1px] w-6 bg-gradient-to-r from-transparent to-blue-500/40" />
+        <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.4em]">Sincronizando Orion</h4>
+        <div className="h-[1px] w-6 bg-gradient-to-l from-transparent to-blue-500/40" />
       </motion.div>
       <p className="text-[8px] text-neutral-600 font-bold uppercase tracking-[0.2em] italic">Estabilizando flujo de datos estelar...</p>
     </div>
