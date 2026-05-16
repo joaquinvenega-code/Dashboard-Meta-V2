@@ -29,6 +29,7 @@ import {
   Table as TableIcon,
   ChevronDown,
   ChevronUp,
+  Filter,
   Eye,
   EyeOff,
   Settings,
@@ -107,6 +108,9 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [noteDate, setNoteDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isSearchHovered, setIsSearchHovered] = useState(false);
+  const [isFilterHovered, setIsFilterHovered] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
   const [showOfflineManager, setShowOfflineManager] = useState(false);
@@ -615,36 +619,69 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     <div className="space-y-4">
       {/* Top Toolbar */}
       <div className="flex flex-wrap items-center gap-4 print:hidden">
-        <div className="w-64 relative group">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-600 group-focus-within:text-blue-500 transition-colors" />
+        <motion.div 
+          animate={{ width: (isSearchFocused || isSearchHovered) ? 280 : 48 }}
+          onMouseEnter={() => setIsSearchHovered(true)}
+          onMouseLeave={() => setIsSearchHovered(false)}
+          className="relative group h-10 overflow-hidden"
+        >
+          <Search className={cn(
+            "absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 transition-colors z-10 pointer-events-none",
+            (isSearchFocused || isSearchHovered) ? "text-blue-500" : "text-neutral-600"
+          )} />
           <input 
             type="text" 
-            placeholder="Buscar..."
+            placeholder={(isSearchFocused || isSearchHovered) ? "Buscar..." : ""}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-[#111] border border-white/5 rounded-xl py-2 pl-9 pr-3 text-[11px] text-white placeholder-neutral-700 outline-none focus:border-blue-500/50 transition-all shadow-inner font-bold"
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
+            className="w-full h-full bg-[#111] border border-white/5 rounded-xl py-2 pl-11 pr-3 text-[11px] text-white placeholder-neutral-700 outline-none focus:border-blue-500/50 transition-all shadow-inner font-bold"
           />
-        </div>
+        </motion.div>
 
-        <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/5 opacity-70 hover:opacity-100 transition-opacity overflow-x-auto max-w-[400px] custom-scrollbar">
-          {[
-            { id: 'all', label: 'Todos' },
-            ...clientCategories.map(cat => ({ id: cat.id, label: cat.name }))
-          ].map(btn => (
-            <button
-              key={btn.id}
-              onClick={() => setFilterCategoryId(btn.id)}
-              className={cn(
-                "px-2.5 py-1 rounded-md text-[8px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
-                filterCategoryId === btn.id 
-                  ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" 
-                  : "text-neutral-600 hover:text-neutral-400"
-              )}
-            >
-              {btn.label}
-            </button>
-          ))}
-        </div>
+        <motion.div 
+          animate={{ width: isFilterHovered ? 'auto' : 48 }}
+          onMouseEnter={() => setIsFilterHovered(true)}
+          onMouseLeave={() => setIsFilterHovered(false)}
+          className="flex items-center bg-[#111] h-10 px-0 rounded-xl border border-white/5 opacity-70 hover:opacity-100 transition-all overflow-hidden shadow-inner group/filter"
+        >
+          <div className="flex items-center justify-center w-[48px] h-full shrink-0">
+            <Filter className={cn(
+              "w-3.5 h-3.5 transition-colors",
+              isFilterHovered ? "text-blue-500" : "text-neutral-600"
+            )} />
+          </div>
+          
+          <AnimatePresence>
+            {isFilterHovered && (
+              <motion.div 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="flex items-center gap-0.5 pr-2 overflow-x-auto custom-scrollbar whitespace-nowrap"
+              >
+                {[
+                  { id: 'all', label: 'Todos' },
+                  ...clientCategories.map(cat => ({ id: cat.id, label: cat.name }))
+                ].map(btn => (
+                  <button
+                    key={btn.id}
+                    onClick={() => setFilterCategoryId(btn.id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
+                      filterCategoryId === btn.id 
+                        ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" 
+                        : "text-neutral-500 hover:text-neutral-300"
+                    )}
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
         <div className="flex items-center gap-2 ml-auto">
             {/* New Date Picker in Detail View */}
