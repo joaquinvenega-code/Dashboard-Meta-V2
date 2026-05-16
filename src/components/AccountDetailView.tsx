@@ -44,8 +44,8 @@ import {
   Rocket
 } from 'lucide-react';
 
-const RocketLoader = () => (
-  <div className="flex flex-col items-center justify-center py-12 w-full">
+export const RocketLoader = () => (
+  <div className="flex flex-col items-center justify-center py-20 w-full animate-in fade-in duration-700">
     <div className="relative mb-6">
       <motion.div
         animate={{ 

@@ -24,7 +24,7 @@ import {
 import { Sidebar } from './components/Sidebar';
 import { IndividualReport } from './components/IndividualReport';
 import { Overview } from './components/Overview';
-import { AccountDetailView } from './components/AccountDetailView';
+import { AccountDetailView, RocketLoader } from './components/AccountDetailView';
 import { StrategyCanvas } from './components/StrategyCanvas';
 import { AlertsSection } from './components/AlertsSection';
 import { ReportsSection } from './components/ReportsSection';
@@ -831,15 +831,12 @@ export default function App() {
           </div>
 
           {loading && !accounts.length ? (
-            <div className="flex flex-col items-center justify-center py-32 gap-6 text-neutral-700">
-              <RefreshCw className="w-12 h-12 animate-spin text-blue-600/30" />
-              <p className="text-xs font-black uppercase tracking-[0.3em]">Sincronizando con Meta...</p>
-            </div>
+            <RocketLoader />
           ) : (
             <>
               {activePage === 'overview' && (
                 <div className="space-y-10 animate-in fade-in duration-1000">
-                  <Overview accounts={overviewEntities} settings={overviewSettings} dateRange={dateRange} clientCategories={clientCategories} />
+                  <Overview accounts={overviewEntities} settings={overviewSettings} dateRange={dateRange} clientCategories={clientCategories} loading={loading} />
                   
                   {/* Column Toggles Toggle */}
                   <div className="flex justify-end">
@@ -917,55 +914,59 @@ export default function App() {
                           {overviewEntities.length === 0 ? (
                             <tr>
                               <td colSpan={10} className="px-8 py-20 text-center">
-                                <div className="flex flex-col items-center gap-4 text-neutral-600">
-                                  <Facebook className="w-12 h-12 opacity-10" />
-                                  <div className="space-y-1">
-                                    <p className="text-xs font-black uppercase tracking-[0.2em]">No hay datos para mostrar</p>
-                                    <p className="text-[10px] font-medium max-w-[250px] mx-auto leading-relaxed">
-                                      {accounts.length === 0 
-                                        ? "No se encontró ninguna cuenta vinculada. Asegúrate de tener permisos de Administrador o Anunciante en Meta Ads."
-                                        : visibleAccountIds.length === 0
-                                          ? "No has seleccionado cuentas en el panel de configuración."
-                                          : `Se detectaron ${accounts.length} cuentas en total, pero ninguna coincide con los filtros actuales.`}
-                                    </p>
-                                    <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/5 text-left">
-                                      <p className="text-[8px] font-black uppercase text-neutral-600 tracking-widest mb-1">Diagnóstico:</p>
-                                      <p className="text-[9px] text-neutral-400 font-bold">• Cuentas cargadas de Meta: {accounts.length}</p>
-                                      <p className="text-[9px] text-neutral-400 font-bold">• Cuentas seleccionadas: {visibleAccountIds.length}</p>
-                                      <p className="text-[9px] text-neutral-400 font-bold">• Entidades Dashboard: {overviewEntities.length}</p>
-                                      {accounts.length > 0 && (
-                                        <div className="mt-2 space-y-1">
-                                          <p className="text-[9px] text-neutral-500 font-medium break-all opacity-50">
-                                            Ref (Meta): {accounts[0].id}<br/>
-                                            Ref (Selección): {visibleAccountIds[0] || 'N/A'}
-                                          </p>
-                                          <p className="text-[9px] text-blue-500 font-bold uppercase tracking-widest mt-1">
-                                            ¿Hay coincidencias en total?: {accounts.some(a => visibleAccountIds.some(v => matchId(v, a.id) || matchId(v, a.account_id))) ? 'SÍ' : 'NO'}
-                                          </p>
-                                          {calcError && (
-                                            <p className="text-[9px] text-red-500 font-bold uppercase tracking-widest mt-1 bg-red-500/10 p-1 rounded">
-                                              ERROR MEMO: {calcError}
+                                {loading ? (
+                                  <RocketLoader />
+                                ) : (
+                                  <div className="flex flex-col items-center gap-4 text-neutral-600">
+                                    <Facebook className="w-12 h-12 opacity-10" />
+                                    <div className="space-y-1">
+                                      <p className="text-xs font-black uppercase tracking-[0.2em]">No hay datos para mostrar</p>
+                                      <p className="text-[10px] font-medium max-w-[250px] mx-auto leading-relaxed">
+                                        {accounts.length === 0 
+                                          ? "No se encontró ninguna cuenta vinculada. Asegúrate de tener permisos de Administrador o Anunciante en Meta Ads."
+                                          : visibleAccountIds.length === 0
+                                            ? "No has seleccionado cuentas en el panel de configuración."
+                                            : `Se detectaron ${accounts.length} cuentas en total, pero ninguna coincide con los filtros actuales.`}
+                                      </p>
+                                      <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/5 text-left">
+                                        <p className="text-[8px] font-black uppercase text-neutral-600 tracking-widest mb-1">Diagnóstico:</p>
+                                        <p className="text-[9px] text-neutral-400 font-bold">• Cuentas cargadas de Meta: {accounts.length}</p>
+                                        <p className="text-[9px] text-neutral-400 font-bold">• Cuentas seleccionadas: {visibleAccountIds.length}</p>
+                                        <p className="text-[9px] text-neutral-400 font-bold">• Entidades Dashboard: {overviewEntities.length}</p>
+                                        {accounts.length > 0 && (
+                                          <div className="mt-2 space-y-1">
+                                            <p className="text-[9px] text-neutral-500 font-medium break-all opacity-50">
+                                              Ref (Meta): {accounts[0].id}<br/>
+                                              Ref (Selección): {visibleAccountIds[0] || 'N/A'}
                                             </p>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="flex flex-col gap-2 mt-6">
-                                      {accounts.length > 0 && (
-                                        <button 
-                                          onClick={() => {
-                                            const allIds = accounts.map(a => a.id);
-                                            setVisibleAccountIds(allIds);
-                                            localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
-                                          }}
-                                          className="bg-blue-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20"
-                                        >
-                                          Forzar aparición de todas las cuentas
-                                        </button>
-                                      )}
+                                            <p className="text-[9px] text-blue-500 font-bold uppercase tracking-widest mt-1">
+                                              ¿Hay coincidencias en total?: {accounts.some(a => visibleAccountIds.some(v => matchId(v, a.id) || matchId(v, a.account_id))) ? 'SÍ' : 'NO'}
+                                            </p>
+                                            {calcError && (
+                                              <p className="text-[9px] text-red-500 font-bold uppercase tracking-widest mt-1 bg-red-500/10 p-1 rounded">
+                                                ERROR MEMO: {calcError}
+                                              </p>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="flex flex-col gap-2 mt-6">
+                                        {accounts.length > 0 && (
+                                          <button 
+                                            onClick={() => {
+                                              const allIds = accounts.map(a => a.id);
+                                              setVisibleAccountIds(allIds);
+                                              localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
+                                            }}
+                                            className="bg-blue-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20"
+                                          >
+                                            Forzar aparición de todas las cuentas
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
+                                )}
                               </td>
                             </tr>
                           ) : (

@@ -4,15 +4,17 @@ import { formatCurrency, formatNumber, formatDecimal, cn, calculateEffectiveBala
 import { motion, AnimatePresence } from 'motion/react';
 import { TrendingUp, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import { differenceInDays, startOfMonth, endOfMonth, format, parseISO } from 'date-fns';
+import { RocketLoader } from './AccountDetailView';
 
 interface OverviewProps {
   accounts: AdAccount[];
   settings: Record<string, AccountSettings>;
   dateRange: { since: string; until: string };
   clientCategories: ClientCategory[];
+  loading?: boolean;
 }
 
-export function Overview({ accounts, settings, dateRange, clientCategories }: OverviewProps) {
+export function Overview({ accounts, settings, dateRange, clientCategories, loading = false }: OverviewProps) {
   const periodKey = format(parseISO(dateRange.since), 'yyyy-MM');
   const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
 
@@ -140,7 +142,13 @@ export function Overview({ accounts, settings, dateRange, clientCategories }: Ov
             <div className="text-right">Saldo</div>
             <div className="text-right">ROAS</div>
           </div>
-          {filteredAccounts.map(acc => {
+          {loading && filteredAccounts.length === 0 ? (
+            <RocketLoader />
+          ) : filteredAccounts.length === 0 ? (
+            <div className="py-12 text-center text-neutral-800 font-bold uppercase tracking-widest text-[10px]">
+              No hay datos para el segmento seleccionado
+            </div>
+          ) : filteredAccounts.map(acc => {
             const s = settings[acc.id];
             const currency = s?.currency || acc.currency || 'ARS';
             const objective = s?.objective || 0;
