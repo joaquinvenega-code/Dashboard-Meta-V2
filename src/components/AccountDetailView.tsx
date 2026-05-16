@@ -36,8 +36,6 @@ import {
   FileText,
   Instagram,
   Facebook,
-  Copy,
-  Check,
   X,
   Mic,
   MicOff,
@@ -105,7 +103,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [selectedNoteForView, setSelectedNoteForView] = useState<AccountNote | null>(null);
   const [localVisibleMetrics, setLocalVisibleMetrics] = useState<string[]>([]);
   const [chartFilters, setChartFilters] = useState<Record<string, string[]>>({});
-  const [copied, setCopied] = useState(false);
   const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
   const [noteDate, setNoteDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
@@ -288,75 +285,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     setTimeout(() => {
       setIsSavingObs(false);
     }, 800);
-  };
-
-  const handleCopyText = () => {
-    const selectedAccounts = accounts.filter(acc => 
-      visibleAccountIds.some(vId => vId === acc.id || vId === acc.account_id)
-    );
-
-    const exportFormatCurrency = (val: number, curr: string) => {
-      return new Intl.NumberFormat('es-AR', {
-        style: 'currency',
-        currency: curr,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(val);
-    };
-
-    let text = "";
-    selectedAccounts.forEach((acc) => {
-      const sAcc = (settings[acc.id] || {}) as AccountSettings;
-      const customName = sAcc.customName || acc.name;
-      const currency = sAcc.currency || acc.currency || 'ARS';
-      const manualRevenue = sAcc.manualRevenueByMonth?.[periodKey] || 0;
-      const totalRevenue = (acc.revenue || 0) + manualRevenue;
-      const roas = acc.spend > 0 ? (totalRevenue / acc.spend).toFixed(2) : "0";
-      
-      const msgs = acc.messagesReal || acc.messages || 0;
-      const cpm = acc.costPerMessageReal || acc.costPerMessage || 0;
-      
-      text += `- ${customName}\n`;
-      text += `Inversión: ${exportFormatCurrency(acc.spend || 0, currency)}\n`;
-      
-      if (sAcc.tracking === 'ecommerce') {
-        text += `Facturación Ads: ${exportFormatCurrency(acc.revenue || 0, currency)}\n`;
-        if (manualRevenue > 0) {
-          text += `Ventas Manuales: ${exportFormatCurrency(manualRevenue, currency)}\n`;
-          text += `Facturación Total: ${exportFormatCurrency(totalRevenue, currency)}\n`;
-        }
-        text += `ROAS Real: ${roas}\n`;
-      } else if (sAcc.tracking === 'messaging') {
-        text += `Mensajes: ${msgs}\n`;
-        text += `Costo x Mensaje: ${exportFormatCurrency(cpm, currency)}\n`;
-        if (manualRevenue > 0) {
-          text += `Ventas Manuales: ${exportFormatCurrency(manualRevenue, currency)}\n`;
-          text += `ROAS Real: ${roas}\n`;
-        }
-      } else if (sAcc.tracking === 'both') {
-        text += `Facturación Ads: ${exportFormatCurrency(acc.revenue || 0, currency)}\n`;
-        if (manualRevenue > 0) {
-          text += `Ventas Manuales: ${exportFormatCurrency(manualRevenue, currency)}\n`;
-          text += `Facturación Total: ${exportFormatCurrency(totalRevenue, currency)}\n`;
-        }
-        text += `ROAS Real: ${roas}\n`;
-        text += `Mensajes: ${msgs}\n`;
-        text += `Costo x Mensaje: ${exportFormatCurrency(cpm, currency)}\n`;
-      } else {
-        text += `Facturación Total: ${exportFormatCurrency(totalRevenue, currency)}\n`;
-        text += `ROAS Real: ${roas}\n`;
-      }
-
-      if (sAcc.observations) {
-        text += `Observación: ${sAcc.observations}\n`;
-      }
-      
-      text += "\n";
-    });
-
-    navigator.clipboard.writeText(text.trim());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   const formatCurrency = (val: number, curr: string = 'ARS') => {
@@ -766,17 +694,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
               )}
             </div>
 
-           <button 
-             onClick={handleCopyText}
-             className={cn(
-               "bg-neutral-900 border border-white/5 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-               copied ? "text-success border-success/20" : "text-neutral-400 hover:text-white"
-             )}
-           >
-             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-             {copied ? 'Copiado!' : 'Copiar Texto'}
-           </button>
-           <button 
+            <button 
              onClick={handlePrint}
              className="bg-neutral-900 border border-white/10 px-4 py-2.5 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2 shadow-lg"
            >
