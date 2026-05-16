@@ -830,7 +830,7 @@ export default function App() {
             )}
           </div>
 
-          {loading && !accounts.length ? (
+          {loading && (overviewEntities.length === 0 || overviewEntities.every(e => (e.spend || 0) === 0 && (e.revenue || 0) === 0)) ? (
             <RocketLoader />
           ) : (
             <>
