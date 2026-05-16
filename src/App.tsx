@@ -1167,6 +1167,7 @@ export default function App() {
                   onAddNote={(note) => setNotes([...notes, note])}
                   onDeleteNote={(id) => setNotes(notes.filter(n => n.id !== id))}
                   clientCategories={clientCategories}
+                  isSyncing={loading}
                 />
               )}
               {activePage === 'reports' && (

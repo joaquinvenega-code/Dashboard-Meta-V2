@@ -40,8 +40,45 @@ import {
   X,
   Mic,
   MicOff,
-  History
+  History,
+  Rocket
 } from 'lucide-react';
+
+const RocketLoader = () => (
+  <div className="flex flex-col items-center justify-center py-12 w-full">
+    <div className="relative mb-6">
+      <motion.div
+        animate={{ 
+          y: [-4, 4, -4],
+          rotate: [-2, 2, -2]
+        }}
+        transition={{ 
+          duration: 3, 
+          repeat: Infinity, 
+          ease: "easeInOut" 
+        }}
+      >
+        <Rocket className="w-12 h-12 text-blue-500 fill-blue-500/10" />
+      </motion.div>
+      <motion.div
+        animate={{ 
+          scale: [1, 1.5, 1],
+          opacity: [0.3, 0.6, 0.3]
+        }}
+        transition={{ 
+          duration: 1.5, 
+          repeat: Infinity, 
+          ease: "easeInOut" 
+        }}
+        className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-6 h-12 bg-gradient-to-t from-transparent via-blue-600/30 to-blue-400/50 blur-md rounded-full pointer-events-none"
+      />
+    </div>
+    <div className="flex flex-col items-center gap-1">
+      <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] animate-pulse">Sincronizando Orion</h4>
+      <p className="text-[8px] text-neutral-600 font-bold uppercase tracking-widest">Ajustando trayectoria de datos...</p>
+    </div>
+  </div>
+);
 import { cn, calculateEffectiveBalance } from '../lib/utils';
 import { startOfMonth, endOfMonth, differenceInDays, subDays } from 'date-fns';
 import { OfflineSalesManager } from './OfflineSalesManager';
@@ -72,6 +109,7 @@ interface AccountDetailViewProps {
   onAddNote: (note: AccountNote) => void;
   onDeleteNote: (id: string) => void;
   clientCategories: ClientCategory[];
+  isSyncing?: boolean;
 }
 
 export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
@@ -87,7 +125,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   notes,
   onAddNote,
   onDeleteNote,
-  clientCategories
+  clientCategories,
+  isSyncing = false
 }) => {
   const periodKey = format(parseISO(dateRange.since), 'yyyy-MM');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -965,8 +1004,17 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                   exit={{ height: 0, opacity: 0 }}
                   className="space-y-3 overflow-hidden print:mb-2"
                 >
-                  <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 print:grid-cols-4 gap-2 print:gap-3 print-metrics-grid">
-                    {visibleMetrics.map(id => renderMetric(id, selectedAccount!))}
+                  <div className={cn(
+                    "grid gap-2 print:gap-3 print-metrics-grid",
+                    isSyncing 
+                      ? "grid-cols-1" 
+                      : "grid-cols-2 md:grid-cols-4 xl:grid-cols-6 print:grid-cols-4"
+                  )}>
+                    {isSyncing ? (
+                      <RocketLoader />
+                    ) : (
+                      visibleMetrics.map(id => renderMetric(id, selectedAccount!))
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -1201,8 +1249,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                <div className="grid grid-cols-1 gap-4">
                  {adsLoading ? (
                    <div className="py-16 bg-[#111]/30 rounded-xl flex flex-col items-center justify-center text-neutral-700 gap-4 border border-white/5 border-dashed">
-                      <Loader2 className="w-8 h-8 animate-spin opacity-20" />
-                      <span className="text-[9px] font-black uppercase tracking-widest">Calculando rendimiento creativo...</span>
+                      <RocketLoader />
                    </div>
                  ) : ads.length === 0 ? (
                     <div className="py-16 bg-[#111]/30 rounded-xl flex flex-col items-center justify-center text-neutral-700 gap-4 border border-white/5 border-dashed">
