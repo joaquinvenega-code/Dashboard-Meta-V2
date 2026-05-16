@@ -67,17 +67,16 @@ export const RocketLoader = () => (
         />
       ))}
 
-      {/* Vibration & Engine Shake - Rotated -45deg to point straight up */}
+      {/* High-Frequency Engine Jitter - Rotated -45deg to point straight up */}
       <motion.div
         animate={{ 
-          y: [-2, 2, -2],
-          rotate: [-47, -43, -47], // Centered at -45 to point vertically
-          x: [-0.1, 0.1, -0.1]
+          y: [-0.8, 0.8, -0.4, 0.4, 0],
+          rotate: [-45.8, -44.2, -45.8],
         }}
         transition={{ 
-          duration: 1, 
+          duration: 0.12, // High frequency for "engine" feel
           repeat: Infinity, 
-          ease: "easeInOut" 
+          ease: "linear" 
         }}
         className="relative z-10"
       >
