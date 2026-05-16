@@ -67,15 +67,15 @@ export const RocketLoader = () => (
         />
       ))}
 
-      {/* Vibration & Engine Shake */}
+      {/* Vibration & Engine Shake - Rotated -45deg to point straight up */}
       <motion.div
         animate={{ 
           y: [-2, 2, -2],
-          rotate: [-2, 2, -2],
-          x: [-0.3, 0.3, -0.3]
+          rotate: [-47, -43, -47], // Centered at -45 to point vertically
+          x: [-0.1, 0.1, -0.1]
         }}
         transition={{ 
-          duration: 1.2, 
+          duration: 1, 
           repeat: Infinity, 
           ease: "easeInOut" 
         }}
