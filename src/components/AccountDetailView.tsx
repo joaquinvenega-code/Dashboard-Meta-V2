@@ -637,7 +637,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
-                  className="flex items-center gap-0.5 pr-2 overflow-x-auto custom-scrollbar whitespace-nowrap"
+                  className="flex items-center gap-0.5 pr-2 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                 >
                   {[
                     { id: 'all', label: 'Todos' },
@@ -747,11 +747,19 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
             </div>
 
             {/* Embedded Search */}
-            <div className="relative group h-8 overflow-hidden">
-              <Search className={cn(
-                "absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 transition-colors z-10 pointer-events-none",
-                (searchTerm || isSidebarExpanded) ? "text-blue-500" : "text-neutral-600"
-              )} />
+            <div className="relative group h-8 overflow-hidden flex items-center">
+              <motion.div
+                animate={{ 
+                  left: isSidebarExpanded ? 16 : 24,
+                  x: isSidebarExpanded ? 0 : "-50%"
+                }}
+                className="absolute top-1/2 -translate-y-1/2 z-10 pointer-events-none"
+              >
+                <Search className={cn(
+                  "w-3.5 h-3.5 transition-colors",
+                  (searchTerm || isSidebarExpanded) ? "text-blue-500" : "text-neutral-600"
+                )} />
+              </motion.div>
               <motion.input 
                 animate={{ opacity: isSidebarExpanded ? 1 : 0 }}
                 type="text" 
