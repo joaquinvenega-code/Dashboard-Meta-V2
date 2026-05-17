@@ -49,7 +49,9 @@ import {
   X,
   GripVertical,
   Bell,
-  Search
+  Search,
+  FileText,
+  BrainCircuit
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, parseISO, subDays, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
@@ -83,7 +85,6 @@ const COLUMN_DEFS: Record<string, { label: string; width: string }> = {
   estado: { label: 'Estado', width: 'w-32' }
 };
 
-// Global ID Match Utility
 const matchId = (id1: any, id2: any) => {
   if (id1 === null || id1 === undefined || id2 === null || id2 === undefined) return false;
   const clean = (val: any) => val.toString().toLowerCase().replace(/^act_/g, '').trim();
@@ -104,7 +105,9 @@ export default function App() {
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [calcError, setCalcError] = useState<string | null>(null);
   
-  // Column Selection State
+  // Estado para controlar la pestaña activa dentro de la sección de reportes
+  const [activeReportTab, setActiveReportTab] = useState<'historial' | 'generador'>('historial');
+  
   const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
   const [colOrder, setColOrder] = useState<string[]>(['objetivo', 'facturado', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
 
@@ -126,9 +129,6 @@ export default function App() {
     }
   };
 
-  // Global ID Match Utility (moved outside)
-
-  // Date Range State
   const [dateRange, setDateRange] = useState({
     since: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
     until: format(new Date(), 'yyyy-MM-dd')
@@ -136,7 +136,6 @@ export default function App() {
   const [isCustomDate, setIsCustomDate] = useState(false);
   const periodKey = format(parseISO(dateRange.since), 'yyyy-MM');
 
-  // Settings State
   const [settings, setSettings] = useState<Record<string, AccountSettings>>(() => {
     try {
       const saved = localStorage.getItem('cr_settings');
@@ -172,7 +171,6 @@ export default function App() {
     localStorage.setItem('cr_notes', JSON.stringify(notes));
   }, [notes]);
   
-  // Report State
   const [reportAccount, setReportAccount] = useState<AdAccount | null>(null);
   const [showColSelectors, setShowColSelectors] = useState(false);
   const [accountSelectionSearch, setAccountSelectionSearch] = useState('');
@@ -186,7 +184,6 @@ export default function App() {
     localStorage.setItem('cr_notifications', JSON.stringify(notifications));
   }, [notifications]);
 
-  // Real Alert Triggering
   useEffect(() => {
     if (!isLogged || accounts.length === 0 || alertRules.length === 0) return;
 
@@ -246,11 +243,11 @@ export default function App() {
       setNotifications(prev => [...newNotifications, ...prev].slice(0, 50));
     }
   }, [isLogged, accounts, alertRules]);
+
   const [configEntity, setConfigEntity] = useState<AdAccount | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
 
-  // Strategy Structure State
   const [structure, setStructure] = useState<{
     campaigns: Campaign[];
     adsets: AdSet[];
@@ -258,7 +255,6 @@ export default function App() {
   } | null>(null);
   const [loadingStructure, setLoadingStructure] = useState(false);
 
-  // Account Group Modal State
   const [accountGroupModal, setAccountGroupModal] = useState<{ 
     isOpen: boolean; 
     type: 'create' | 'edit' | 'delete'; 
@@ -270,7 +266,6 @@ export default function App() {
     inputValue: '' 
   });
 
-  // Client Category Modal State
   const [categoryModal, setCategoryModal] = useState<{
     isOpen: boolean;
     type: 'create' | 'edit' | 'delete';
@@ -282,7 +277,6 @@ export default function App() {
     inputValue: ''
   });
 
-  // Visibility State
   const [visibleAccountIds, setVisibleAccountIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('cr_visible_accounts');
@@ -293,7 +287,6 @@ export default function App() {
     }
   });
 
-  // Account Groups State
   const [accountGroups, setAccountGroups] = useState<AccountGroup[]>(() => {
     try {
       const saved = localStorage.getItem('cr_groups');
@@ -308,12 +301,10 @@ export default function App() {
     }
   });
 
-  // Client Categories State
   const [clientCategories, setClientCategories] = useState<ClientCategory[]>(() => {
     try {
       const saved = localStorage.getItem('cr_client_categories');
       if (saved) return JSON.parse(saved);
-      // Migration/Initial defaults
       return [
         { id: 'independiente', name: 'Independientes' },
         { id: 'agencia', name: 'Agencia' }
@@ -327,10 +318,8 @@ export default function App() {
     localStorage.setItem('cr_client_categories', JSON.stringify(clientCategories));
   }, [clientCategories]);
 
-  // Auto-select first account for Strategy if none selected
   useEffect(() => {
     if (activePage === 'strategy' && !structure && !loadingStructure && accounts.length > 0) {
-      // Pick first visible account if any, otherwise first account
       const firstAcc = accounts.find(a => visibleAccountIds.includes(a.id)) || accounts[0];
       if (firstAcc) {
         setLoadingStructure(true);
@@ -398,7 +387,6 @@ export default function App() {
       setAccounts(detailedAccs);
       setError(null);
       
-      // Auto-initialize visibility ONLY if it has never been set
       setVisibleAccountIds(currentVisible => {
         const stored = localStorage.getItem('cr_visible_accounts');
         if (stored === null && detailedAccs.length > 0) {
@@ -407,13 +395,11 @@ export default function App() {
           return allIds;
         }
         
-        // If we have accounts but none matches our visible list, and we aren't intentionally showing nothing
         const hasVisibleMatches = detailedAccs.some(a => 
           currentVisible.some(vId => matchId(vId, a.id) || matchId(vId, a.account_id))
         );
         
         if (detailedAccs.length > 0 && currentVisible.length > 0 && !hasVisibleMatches) {
-          // This happens if the user changed the App ID or similar and the visible list is stale
           const allIds = detailedAccs.map(a => a.id);
           localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
           return allIds;
@@ -428,13 +414,13 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [dateRange, isLogged]); // Removed visibleAccountIds from dependency
+  }, [dateRange, isLogged]);
 
   useEffect(() => {
     if (isLogged) {
       loadData();
     }
-  }, [dateRange, isLogged]); // Manual triggers or date changes
+  }, [dateRange, isLogged]);
 
   const onLogin = async () => {
     if (!appId) {
@@ -504,19 +490,15 @@ export default function App() {
       
       const entities: AdAccount[] = [];
       const virtualSettings: Record<string, AccountSettings> = { ...(settings || {}) };
-
       const handledAccountIds = new Set<string>();
 
-      // 1. Process Account Groups
       currentGroups.forEach(g => {
         if (!g) return;
-        // Member accounts currently loaded from Meta
         const gAccs = activeAccounts.filter(a => 
           (g.accountIds || []).some(id => matchId(id, a.id) || matchId(id, a.account_id))
         );
 
         if (gAccs.length > 0) {
-          // Group is visible if: its ID is selected OR any of its member accounts are selected
           const isGroupVisible = currentVisibleIds.some(vId => 
             matchId(vId, g.id) || gAccs.some(a => matchId(vId, a.id) || matchId(vId, a.account_id))
           );
@@ -534,16 +516,13 @@ export default function App() {
                purchases: gAccs.reduce((sum, a) => sum + (a?.purchases || 0), 0),
                messages: gAccs.reduce((sum, a) => sum + (a?.messages || 0), 0),
              });
-             // Mark accounts as handled so they don't appear twice
              gAccs.forEach(a => handledAccountIds.add(a.id?.toString()));
           }
         }
       });
 
-      // 2. Process Individual Accounts
       activeAccounts.forEach(acc => {
         if (handledAccountIds.has(acc.id?.toString())) return;
-
         const isSelected = currentVisibleIds.some(vId => matchId(vId, acc.id) || matchId(vId, acc.account_id));
         if (isSelected) {
           const s = settings[acc.id];
@@ -561,10 +540,6 @@ export default function App() {
     }
   }, [accounts, accountGroups, visibleAccountIds, settings]);
 
-  const filteredAccounts = (accounts || []).filter(acc => 
-    visibleAccountIds.some(vId => matchId(vId, acc.id) || matchId(vId, acc.account_id))
-  );
-
   if (!isLogged) {
     return (
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-4">
@@ -573,7 +548,6 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-md bg-[#111] rounded-[2.5rem] border border-white/5 p-10 shadow-2xl overflow-hidden relative"
         >
-          {/* Abstract glow */}
           <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/20 blur-[80px] rounded-full"></div>
           
           <div className="flex flex-col items-center mb-10 relative">
@@ -654,133 +628,133 @@ export default function App() {
             </div>
           )}
 
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 print:hidden mb-4">
-              <div className="flex-1 min-w-0">
-                <h2 className="text-xl font-black tracking-widest text-white uppercase opacity-80 flex items-center gap-3">
-                  {activePage === 'overview' ? 'Vista general' : 
-                   activePage === 'detail' ? 'Análisis individual de cuenta' : 
-                   activePage === 'accounts' ? 'Cuentas visibles' : 
-                   activePage === 'alerts' ? 'Centro de Alertas' :
-                   activePage === 'reports' ? 'Informes Mensuales' :
-                   activePage === 'strategy' ? 'Lienzo Estratégico' : activePage}
-                  {activePage === 'strategy' && (
-                    <div className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-600/20 rounded-full text-[8px] text-blue-500 uppercase tracking-widest">Planificación</div>
-                  )}
-                </h2>
-              </div>
-
-              <div className="flex items-center gap-4">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 print:hidden mb-4">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl font-black tracking-widest text-white uppercase opacity-80 flex items-center gap-3">
+                {activePage === 'overview' ? 'Vista general' : 
+                 activePage === 'detail' ? 'Análisis individual de cuenta' : 
+                 activePage === 'accounts' ? 'Cuentas visibles' : 
+                 activePage === 'alerts' ? 'Centro de Alertas' :
+                 activePage === 'reports' ? 'Informes Mensuales' :
+                 activePage === 'strategy' ? 'Lienzo Estratégico' : activePage}
                 {activePage === 'strategy' && (
-                  <div className="flex items-center gap-2 bg-[#111] p-1 rounded-lg border border-white/5 animate-in slide-in-from-right-4 duration-500">
-                     <div className="flex items-center gap-2 w-[320px] sm:w-[400px]">
-                        <div className="flex-1 min-w-0">
-                          <AccountSelectorDropdown
-                            label="Visible"
-                            accounts={accounts.filter(a => visibleAccountIds.includes(a.id))}
-                            activeId={(structure as any)?.activeAccId}
-                            onSelect={async (acc) => {
-                              setLoadingStructure(true);
-                              const data = await fetchAccountStructure(acc.id);
-                              setStructure({ ...data, activeAccId: acc.id } as any);
-                              setLoadingStructure(false);
-                            }}
-                            variant="blue"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <AccountSelectorDropdown
-                            label="Ocultas"
-                            accounts={accounts.filter(a => !visibleAccountIds.includes(a.id))}
-                            activeId={(structure as any)?.activeAccId}
-                            onSelect={async (acc) => {
-                              setLoadingStructure(true);
-                              const data = await fetchAccountStructure(acc.id);
-                              setStructure({ ...data, activeAccId: acc.id } as any);
-                              setLoadingStructure(false);
-                            }}
-                            variant="neutral"
-                          />
-                        </div>
-                     </div>
-                  </div>
+                  <div className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-600/20 rounded-full text-[8px] text-blue-500 uppercase tracking-widest">Planificación</div>
                 )}
+              </h2>
+            </div>
 
-                {/* Notification Bell */}
-                <div className="relative">
-                  <button 
-                    onClick={() => setShowNotifications(!showNotifications)}
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border ${notifications.some(n => !n.isRead) ? 'bg-blue-600/10 border-blue-600/20 text-blue-500' : 'bg-[#111] border-white/5 text-neutral-500 hover:text-white'}`}
-                  >
-                    <Bell className={`w-5 h-5 ${notifications.some(n => !n.isRead) ? 'animate-pulse' : ''}`} />
-                    {notifications.filter(n => !n.isRead).length > 0 && (
-                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full flex items-center justify-center text-[8px] font-black text-white border-2 border-[#0a0a0a]">
-                        {notifications.filter(n => !n.isRead).length}
+            <div className="flex items-center gap-4">
+              {activePage === 'strategy' && (
+                <div className="flex items-center gap-2 bg-[#111] p-1 rounded-lg border border-white/5 animate-in slide-in-from-right-4 duration-500">
+                   <div className="flex items-center gap-2 w-[320px] sm:w-[400px]">
+                      <div className="flex-1 min-w-0">
+                        <AccountSelectorDropdown
+                          label="Visible"
+                          accounts={accounts.filter(a => visibleAccountIds.includes(a.id))}
+                          activeId={(structure as any)?.activeAccId}
+                          onSelect={async (acc) => {
+                            setLoadingStructure(true);
+                            const data = await fetchAccountStructure(acc.id);
+                            setStructure({ ...data, activeAccId: acc.id } as any);
+                            setLoadingStructure(false);
+                          }}
+                          variant="blue"
+                        />
                       </div>
-                    )}
-                  </button>
+                      <div className="flex-1 min-w-0">
+                        <AccountSelectorDropdown
+                          label="Ocultas"
+                          accounts={accounts.filter(a => !visibleAccountIds.includes(a.id))}
+                          activeId={(structure as any)?.activeAccId}
+                          onSelect={async (acc) => {
+                            setLoadingStructure(true);
+                            const data = await fetchAccountStructure(acc.id);
+                            setStructure({ ...data, activeAccId: acc.id } as any);
+                            setLoadingStructure(false);
+                          }}
+                          variant="neutral"
+                        />
+                      </div>
+                   </div>
+                </div>
+              )}
 
-                  <AnimatePresence>
-                    {showNotifications && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute right-0 top-full mt-3 w-80 bg-[#161616] border border-white/10 rounded-2xl shadow-2xl z-[500] overflow-hidden"
-                      >
-                        <div className="p-4 border-b border-white/5 flex items-center justify-between">
-                          <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Notificaciones</h3>
-                          <button 
-                            onClick={() => setNotifications(notifications.map(n => ({...n, isRead: true})))}
-                            className="text-[9px] font-bold text-blue-500 hover:text-blue-400 uppercase tracking-widest"
-                          >
-                            Marcar leídas
-                          </button>
-                        </div>
-                        <div className="max-h-96 overflow-y-auto custom-scrollbar">
-                          {notifications.length === 0 ? (
-                            <div className="p-8 text-center text-neutral-600">
-                              <Bell className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                              <p className="text-[9px] font-black uppercase tracking-widest">Sin notificaciones</p>
-                            </div>
-                          ) : (
-                            notifications.map(n => (
-                              <div key={n.id} className={`p-4 border-b border-white/5 hover:bg-white/[0.02] transition-colors relative ${!n.isRead ? 'bg-blue-600/[0.02]' : ''}`}>
-                                {!n.isRead && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600" />}
-                                <div className="flex items-start gap-3">
-                                  <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${n.severity === 'high' ? 'bg-red-500' : n.severity === 'medium' ? 'bg-amber-500' : 'bg-blue-500'}`} />
-                                  <div className="space-y-1">
-                                    <p className="text-[11px] font-black text-white leading-tight uppercase tracking-tight">{n.title}</p>
-                                    <p className="text-[10px] text-neutral-500 font-medium leading-relaxed">{n.message}</p>
-                                    <p className="text-[8px] text-neutral-700 font-black uppercase tracking-widest pt-1">{format(new Date(n.timestamp), 'HH:mm dd/MM')}</p>
-                                  </div>
+              {/* Notification Bell */}
+              <div className="relative">
+                <button 
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border ${notifications.some(n => !n.isRead) ? 'bg-blue-600/10 border-blue-600/20 text-blue-500' : 'bg-[#111] border-white/5 text-neutral-500 hover:text-white'}`}
+                >
+                  <Bell className={`w-5 h-5 ${notifications.some(n => !n.isRead) ? 'animate-pulse' : ''}`} />
+                  {notifications.filter(n => !n.isRead).length > 0 && (
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full flex items-center justify-center text-[8px] font-black text-white border-2 border-[#0a0a0a]">
+                      {notifications.filter(n => !n.isRead).length}
+                    </div>
+                  )}
+                </button>
+
+                <AnimatePresence>
+                  {showNotifications && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 top-full mt-3 w-80 bg-[#161616] border border-white/10 rounded-2xl shadow-2xl z-[500] overflow-hidden"
+                    >
+                      <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                        <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Notificaciones</h3>
+                        <button 
+                          onClick={() => setNotifications(notifications.map(n => ({...n, isRead: true})))}
+                          className="text-[9px] font-bold text-blue-500 hover:text-blue-400 uppercase tracking-widest"
+                        >
+                          Marcar leídas
+                        </button>
+                      </div>
+                      <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                        {notifications.length === 0 ? (
+                          <div className="p-8 text-center text-neutral-600">
+                            <Bell className="w-8 h-8 mx-auto mb-3 opacity-20" />
+                            <p className="text-[9px] font-black uppercase tracking-widest">Sin notificaciones</p>
+                          </div>
+                        ) : (
+                          notifications.map(n => (
+                            <div key={n.id} className={`p-4 border-b border-white/5 hover:bg-white/[0.02] transition-colors relative ${!n.isRead ? 'bg-blue-600/[0.02]' : ''}`}>
+                              {!n.isRead && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600" />}
+                              <div className="flex items-start gap-3">
+                                <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${n.severity === 'high' ? 'bg-red-500' : n.severity === 'medium' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                                <div className="space-y-1">
+                                  <p className="text-[11px] font-black text-white leading-tight uppercase tracking-tight">{n.title}</p>
+                                  <p className="text-[10px] text-neutral-500 font-medium leading-relaxed">{n.message}</p>
+                                  <p className="text-[8px] text-neutral-700 font-black uppercase tracking-widest pt-1">{format(new Date(n.timestamp), 'HH:mm dd/MM')}</p>
                                 </div>
                               </div>
-                            ))
-                          )}
-                        </div>
-                        {notifications.length > 0 && (
-                          <button 
-                            onClick={() => setNotifications([])}
-                            className="w-full p-3 text-[9px] font-black text-neutral-600 hover:text-red-500 uppercase tracking-widest border-t border-white/5 bg-black/20"
-                          >
-                            Limpiar todo
-                          </button>
+                            </div>
+                          ))
                         )}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                      </div>
+                      {notifications.length > 0 && (
+                        <button 
+                          onClick={() => setNotifications([])}
+                          className="w-full p-3 text-[9px] font-black text-neutral-600 hover:text-red-500 uppercase tracking-widest border-t border-white/5 bg-black/20"
+                        >
+                          Limpiar todo
+                        </button>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
+            </div>
 
-              {activePage === 'overview' && (
-                <div className="flex flex-wrap items-center gap-3 bg-[#111] p-2 rounded-lg border border-white/5">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-neutral-600 ml-2" />
-                    <div className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mr-4">
-                      {dateRange.since} — {dateRange.until}
-                    </div>
+            {activePage === 'overview' && (
+              <div className="flex flex-wrap items-center gap-3 bg-[#111] p-2 rounded-lg border border-white/5">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-neutral-600 ml-2" />
+                  <div className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mr-4">
+                    {dateRange.since} — {dateRange.until}
                   </div>
+                </div>
 
                 <div className="flex items-center gap-2">
                   <select 
@@ -839,7 +813,6 @@ export default function App() {
                 <div className="space-y-10 animate-in fade-in duration-1000">
                   <Overview accounts={overviewEntities} settings={overviewSettings} dateRange={dateRange} clientCategories={clientCategories} loading={loading} />
                   
-                  {/* Column Toggles Toggle */}
                   <div className="flex justify-end">
                     <button 
                       onClick={() => setShowColSelectors(!showColSelectors)}
@@ -853,7 +826,6 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* Column Toggles */}
                   <AnimatePresence>
                     {showColSelectors && (
                       <motion.div 
@@ -886,7 +858,6 @@ export default function App() {
                     )}
                   </AnimatePresence>
 
-                  {/* Accounts Table Styled for Overview */}
                   <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden shadow-2xl">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse table-fixed">
@@ -975,174 +946,174 @@ export default function App() {
                               const roas = acc.spend && acc.spend > 0 ? totalRevenue / acc.spend : 0;
                               const progress = s.objective > 0 ? Math.min(totalRevenue / s.objective, 1.2) : 0;
                               const budgetProgress = s.budget > 0 ? Math.min((acc.spend || 0) / s.budget, 1.2) : 0;
-                             
-                              // Semaphore Logic
-                            const getStatusInfo = () => {
-                              const p = totalRevenue / (s.objective || 1);
-                              if (p >= 1) return { label: 'Objetivo', color: 'text-success', bg: 'bg-success' };
-                              if (p >= 0.7) return { label: 'Riesgo', color: 'text-warning', bg: 'bg-warning' };
-                              return { label: 'Alerta', color: 'text-danger', bg: 'bg-danger' };
-                            };
-                            const status = getStatusInfo();
+                              
+                              const getStatusInfo = () => {
+                                const p = totalRevenue / (s.objective || 1);
+                                if (p >= 1) return { label: 'Objetivo', color: 'text-success', bg: 'bg-success' };
+                                if (p >= 0.7) return { label: 'Riesgo', color: 'text-warning', bg: 'bg-warning' };
+                                return { label: 'Alerta', color: 'text-danger', bg: 'bg-danger' };
+                              };
+                              const status = getStatusInfo();
 
-                            return (
-                              <React.Fragment key={acc.id}>
-                                <tr className="hover:bg-white/[0.01] transition-colors group">
-                                   <td className="px-5 py-1.5">
-                                  <div className="flex items-center gap-2">
-                                    <div className="relative group/name inline-block min-w-[100px]">
-                                      {editingId === acc.id ? (
-                                        <input
-                                          autoFocus
-                                          type="text"
-                                          value={editValue}
-                                          onChange={(e) => setEditValue(e.target.value)}
-                                          onBlur={() => {
-                                            if (editValue && editValue !== acc.name) {
-                                              if (acc.account_id === 'GRUPO') {
-                                                const nextGroups = accountGroups.map(g => g.id === acc.id ? { ...g, name: editValue } : g);
-                                                saveAccountGroups(nextGroups);
-                                              } else {
-                                                updateSetting(acc.id, 'customName', editValue);
-                                              }
-                                            }
-                                            setEditingId(null);
-                                          }}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter') e.currentTarget.blur();
-                                            if (e.key === 'Escape') setEditingId(null);
-                                          }}
-                                          className="bg-neutral-800 border-none outline-none rounded px-2 py-1 text-[10px] font-bold text-white w-full"
-                                        />
-                                      ) : (
-                                        <div 
-                                          onDoubleClick={() => {
-                                            setEditingId(acc.id);
-                                            setEditValue(acc.name);
-                                          }}
-                                          className="font-bold text-[11px] truncate max-w-[160px] text-neutral-300 group-hover:text-white transition-colors cursor-text select-none py-1"
-                                          title="Doble clic para editar"
+                              return (
+                                <React.Fragment key={acc.id}>
+                                  <tr className="hover:bg-white/[0.01] transition-colors group">
+                                    <td className="px-5 py-1.5">
+                                      <div className="flex items-center gap-2">
+                                        <div className="relative group/name inline-block min-w-[100px]">
+                                          {editingId === acc.id ? (
+                                            <input
+                                              autoFocus
+                                              type="text"
+                                              value={editValue}
+                                              onChange={(e) => setEditValue(e.target.value)}
+                                              onBlur={() => {
+                                                if (editValue && editValue !== acc.name) {
+                                                  if (acc.account_id === 'GRUPO') {
+                                                    const nextGroups = accountGroups.map(g => g.id === acc.id ? { ...g, name: editValue } : g);
+                                                    saveAccountGroups(nextGroups);
+                                                  } else {
+                                                    updateSetting(acc.id, 'customName', editValue);
+                                                  }
+                                                }
+                                                setEditingId(null);
+                                              }}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') e.currentTarget.blur();
+                                                if (e.key === 'Escape') setEditingId(null);
+                                              }}
+                                              className="bg-neutral-800 border-none outline-none rounded px-2 py-1 text-[10px] font-bold text-white w-full"
+                                            />
+                                          ) : (
+                                            <div 
+                                              onDoubleClick={() => {
+                                                setEditingId(acc.id);
+                                                setEditValue(acc.name);
+                                              }}
+                                              className="font-bold text-[11px] truncate max-w-[160px] text-neutral-300 group-hover:text-white transition-colors cursor-text select-none py-1"
+                                              title="Doble clic para editar"
+                                            >
+                                              {acc.name}
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="px-1 py-0.5 bg-blue-600/5 border border-blue-600/10 rounded text-[7px] font-black text-blue-500/50 uppercase leading-none tracking-tighter">
+                                          {s.currency}
+                                        </div>
+                                      </div>
+                                    </td>
+                                    
+                                    {colOrder.map(colId => {
+                                      if (!visibleCols.includes(colId)) return null;
+
+                                      if (colId === 'objetivo') return (
+                                        <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-500">
+                                          {s.objective ? formatCurrency(s.objective, s.currency) : '—'}
+                                        </td>
+                                      );
+
+                                      if (colId === 'facturado') return (
+                                        <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-200">
+                                          {formatCurrency(totalRevenue, s.currency)}
+                                        </td>
+                                      );
+
+                                      if (colId === 'roas') return (
+                                        <td key={colId} className="px-2 py-1.5 text-center">
+                                          <span className={cn("text-[10px] font-bold", status.color)}>
+                                            ×{formatDecimal(roas)}
+                                          </span>
+                                        </td>
+                                      );
+
+                                      if (colId === 'mensajes') return (
+                                        <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-400">
+                                          {formatNumber(acc.messagesReal || acc.messages || 0)}
+                                        </td>
+                                      );
+
+                                      if (colId === 'progreso') return (
+                                        <td key={colId} className="px-2 py-1.5">
+                                          <div className="flex flex-col gap-1.5 justify-center">
+                                            <div className="flex justify-between items-center px-0.5">
+                                              <span className={cn("text-[9px] font-black tracking-tight", status.color)}>{Math.round(progress * 100)}%</span>
+                                            </div>
+                                            <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden border border-white/5 relative">
+                                              <div 
+                                                className={cn("h-full transition-all duration-1000 shadow-[0_0_8px_rgba(0,0,0,0.3)]", status.bg)} 
+                                                style={{ width: `${Math.min(progress * 100, 100)}%` }}
+                                              ></div>
+                                            </div>
+                                          </div>
+                                        </td>
+                                      );
+
+                                      if (colId === 'invertido') return (
+                                        <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-400 tabular-nums">
+                                          {formatCurrency(acc.spend || 0, s.currency)}
+                                        </td>
+                                      );
+
+                                      if (colId === 'presupuesto') return (
+                                        <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-medium text-neutral-500">
+                                          {s.budget ? formatCurrency(s.budget, s.currency) : '—'}
+                                        </td>
+                                      );
+
+                                      if (colId === 'prespct') return (
+                                        <td key={colId} className="px-2 py-1.5">
+                                          <div className="flex flex-col gap-1.5 justify-center">
+                                            <div className="flex justify-between items-center px-0.5">
+                                              <span className={cn("text-[9px] font-black tracking-tight", 
+                                                budgetProgress > 1 ? "text-danger" : 
+                                                budgetProgress > 0.9 ? "text-warning" : 
+                                                "text-success/70"
+                                              )}>{Math.round(budgetProgress * 100)}%</span>
+                                            </div>
+                                            <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden border border-white/5 relative">
+                                              <div 
+                                                className={cn("h-full transition-all duration-1000 shadow-[0_0_8px_rgba(0,0,0,0.3)]", 
+                                                  budgetProgress > 1 ? "bg-danger" : 
+                                                  budgetProgress > 0.9 ? "bg-warning" : 
+                                                  "bg-success/50"
+                                                )} 
+                                                style={{ width: `${Math.min(budgetProgress * 100, 100)}%` }}
+                                              ></div>
+                                            </div>
+                                          </div>
+                                        </td>
+                                      );
+
+                                      if (colId === 'estado') return (
+                                        <td key={colId} className="px-2 py-1.5 text-center">
+                                          <div className="inline-flex items-center gap-1.5">
+                                            <div className={cn("w-1 h-1 rounded-full", status.bg)}></div>
+                                            <span className={cn("text-[9px] font-bold uppercase tracking-widest leading-none", status.color)}>
+                                              {status.label}
+                                            </span>
+                                          </div>
+                                        </td>
+                                      );
+
+                                      return null;
+                                    })}
+
+                                    <td className="px-2 py-1.5 text-right pr-5">
+                                      <div className="flex items-center justify-end gap-1">
+                                        <button 
+                                          onClick={() => setConfigEntity(acc)}
+                                          className="p-1.5 hover:bg-white/5 rounded-lg text-neutral-700 hover:text-blue-500 transition-all opacity-0 group-hover:opacity-100"
+                                          title="Configurar cliente"
                                         >
-                                          {acc.name}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="px-1 py-0.5 bg-blue-600/5 border border-blue-600/10 rounded text-[7px] font-black text-blue-500/50 uppercase leading-none tracking-tighter">
-                                      {s.currency}
-                                    </div>
-                                  </div>
-                                </td>
-                                
-                                {colOrder.map(colId => {
-                                  if (!visibleCols.includes(colId)) return null;
-
-                                  if (colId === 'objetivo') return (
-                                    <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-500">
-                                      {s.objective ? formatCurrency(s.objective, s.currency) : '—'}
-                                    </td>
-                                  );
-
-                                  if (colId === 'facturado') return (
-                                    <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-200">
-                                      {formatCurrency(totalRevenue, s.currency)}
-                                    </td>
-                                  );
-
-                                  if (colId === 'roas') return (
-                                    <td key={colId} className="px-2 py-1.5 text-center">
-                                      <span className={cn("text-[10px] font-bold", status.color)}>
-                                        ×{formatDecimal(roas)}
-                                      </span>
-                                    </td>
-                                  );
-
-                                  if (colId === 'mensajes') return (
-                                    <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-400">
-                                      {formatNumber(acc.messagesReal || acc.messages || 0)}
-                                    </td>
-                                  );
-
-                                  if (colId === 'progreso') return (
-                                    <td key={colId} className="px-2 py-1.5">
-                                      <div className="flex flex-col gap-1.5 justify-center">
-                                        <div className="flex justify-between items-center px-0.5">
-                                          <span className={cn("text-[9px] font-black tracking-tight", status.color)}>{Math.round(progress * 100)}%</span>
-                                        </div>
-                                        <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden border border-white/5 relative">
-                                          <div 
-                                            className={cn("h-full transition-all duration-1000 shadow-[0_0_8px_rgba(0,0,0,0.3)]", status.bg)} 
-                                            style={{ width: `${Math.min(progress * 100, 100)}%` }}
-                                          ></div>
-                                        </div>
+                                          <Settings className="w-3.5 h-3.5" />
+                                        </button>
                                       </div>
                                     </td>
-                                  );
-
-                                  if (colId === 'invertido') return (
-                                    <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-400 tabular-nums">
-                                      {formatCurrency(acc.spend || 0, s.currency)}
-                                    </td>
-                                  );
-
-                                  if (colId === 'presupuesto') return (
-                                    <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-medium text-neutral-500">
-                                      {s.budget ? formatCurrency(s.budget, s.currency) : '—'}
-                                    </td>
-                                  );
-
-                                  if (colId === 'prespct') return (
-                                    <td key={colId} className="px-2 py-1.5">
-                                      <div className="flex flex-col gap-1.5 justify-center">
-                                        <div className="flex justify-between items-center px-0.5">
-                                          <span className={cn("text-[9px] font-black tracking-tight", 
-                                            budgetProgress > 1 ? "text-danger" : 
-                                            budgetProgress > 0.9 ? "text-warning" : 
-                                            "text-success/70"
-                                          )}>{Math.round(budgetProgress * 100)}%</span>
-                                        </div>
-                                        <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden border border-white/5 relative">
-                                          <div 
-                                            className={cn("h-full transition-all duration-1000 shadow-[0_0_8px_rgba(0,0,0,0.3)]", 
-                                              budgetProgress > 1 ? "bg-danger" : 
-                                              budgetProgress > 0.9 ? "bg-warning" : 
-                                              "bg-success/50"
-                                            )} 
-                                            style={{ width: `${Math.min(budgetProgress * 100, 100)}%` }}
-                                          ></div>
-                                        </div>
-                                      </div>
-                                    </td>
-                                  );
-
-                                  if (colId === 'estado') return (
-                                    <td key={colId} className="px-2 py-1.5 text-center">
-                                      <div className="inline-flex items-center gap-1.5">
-                                        <div className={cn("w-1 h-1 rounded-full", status.bg)}></div>
-                                        <span className={cn("text-[9px] font-bold uppercase tracking-widest leading-none", status.color)}>
-                                          {status.label}
-                                        </span>
-                                      </div>
-                                    </td>
-                                  );
-
-                                  return null;
-                                })}
-
-                                <td className="px-2 py-1.5 text-right pr-5">
-                                  <div className="flex items-center justify-end gap-1">
-                                    <button 
-                                      onClick={() => setConfigEntity(acc)}
-                                      className="p-1.5 hover:bg-white/5 rounded-lg text-neutral-700 hover:text-blue-500 transition-all opacity-0 group-hover:opacity-100"
-                                      title="Configurar cliente"
-                                    >
-                                      <Settings className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            </React.Fragment>
-                            );
-                          }))}
+                                  </tr>
+                                </React.Fragment>
+                              );
+                            })
+                          )}
                         </tbody>
                       </table>
                     </div>
@@ -1168,26 +1139,58 @@ export default function App() {
                   isSyncing={loading}
                 />
               )}
+
+              {/* Sub-sistema de solapas unificado dentro de la sección nativa de Reportes */}
               {activePage === 'reports' && (
-                <div className="animate-in fade-in duration-500">
-                   <ReportsSection 
-                    accounts={accounts} 
-                    visibleAccountIds={visibleAccountIds}
-                    settings={settings} 
-                    notes={notes} 
-                    setDateRange={setDateRange}
-                  />
+                <div className="space-y-6 animate-in fade-in duration-500">
+                  {/* Tabs de control visual */}
+                  <div className="flex border-b border-white/5 mb-6">
+                    <button
+                      onClick={() => setActiveReportTab('historial')}
+                      className={cn(
+                        "py-3 px-6 text-xs font-black uppercase tracking-widest border-b-2 transition-all flex items-center gap-2",
+                        activeReportTab === 'historial'
+                          ? 'border-blue-500 text-blue-400 font-semibold'
+                          : 'border-transparent text-neutral-500 hover:text-neutral-300'
+                      )}
+                    >
+                      <History className="w-4 h-4" />
+                      Historial e Informes Core
+                    </button>
+                    <button
+                      onClick={() => setActiveReportTab('generador')}
+                      className={cn(
+                        "py-3 px-6 text-xs font-black uppercase tracking-widest border-b-2 transition-all flex items-center gap-2",
+                        activeReportTab === 'generador'
+                          ? 'border-blue-500 text-blue-400 font-semibold'
+                          : 'border-transparent text-neutral-500 hover:text-neutral-300'
+                      )}
+                    >
+                      <BrainCircuit className="w-4 h-4" />
+                      Generador Estratégico IA
+                    </button>
+                  </div>
+
+                  {/* Renderizado condicional de componentes */}
+                  {activeReportTab === 'historial' ? (
+                    <ReportsSection 
+                      accounts={accounts} 
+                      visibleAccountIds={visibleAccountIds}
+                      settings={settings} 
+                      notes={notes} 
+                      setDateRange={setDateRange}
+                    />
+                  ) : (
+                    <ReportGenerationView 
+                      clientId={reportAccount?.id || accounts[0]?.id || ''} 
+                      metaMetrics={accounts.find(a => a.id === (reportAccount?.id || accounts[0]?.id)) || {}}
+                    />
+                  )}
                 </div>
               )}
-              {activePage === 'ai-report' && (
-                <ReportGenerationView 
-                  clientId={reportAccount?.id || accounts[0]?.id || ''} 
-                  metaMetrics={accounts.find(a => a.id === (reportAccount?.id || accounts[0]?.id)) || {}}
-                />
-              )}
+
               {activePage === 'accounts' && (
                 <div className="animate-in fade-in duration-500 max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 pb-20">
-                  {/* --- SECCIÓN 1: CUENTAS INDIVIDUALES --- */}
                   <div className="bg-[#111] rounded-lg border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col">
                     <div className="flex items-center justify-between mb-8">
                       <div>
@@ -1217,7 +1220,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Buscador de cuentas */}
                     <div className="mb-6 relative group">
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600 group-focus-within:text-blue-500 transition-colors" />
                       <input 
@@ -1277,7 +1279,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* --- SECCIÓN 2: GRUPOS DE CUENTAS POR CLIENTE --- */}
                   <div className="bg-[#111] rounded-lg border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col">
                     <div className="flex items-center justify-between mb-8">
                       <div>
@@ -1369,7 +1370,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* --- SECCIÓN 3: GRUPOS DE CLIENTES (Categorías) --- */}
                   <div className="bg-[#111] rounded-lg border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col lg:col-span-2">
                     <div className="flex items-center justify-between mb-8">
                       <div>
@@ -1483,7 +1483,6 @@ export default function App() {
         </div>
       </main>
 
-      {/* Individual Report View (Overlay) */}
       {reportAccount && (
         <IndividualReport 
           account={reportAccount}
@@ -1493,7 +1492,7 @@ export default function App() {
         />
       )}
 
-      {/* Config Modal (Local Component) */}
+      {/* Config Modal */}
       <AnimatePresence>
         {configEntity && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
@@ -1626,7 +1625,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Account Group Management Modal */}
+      {/* Account Group Modal */}
       <AnimatePresence>
         {accountGroupModal.isOpen && (
           <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
@@ -1737,7 +1736,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Client Category Management Modal */}
+      {/* Client Category Modal */}
       <AnimatePresence>
         {categoryModal.isOpen && (
           <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
