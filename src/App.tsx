@@ -28,6 +28,7 @@ import { AccountDetailView, RocketLoader } from './components/AccountDetailView'
 import { StrategyCanvas } from './components/StrategyCanvas';
 import { AlertsSection } from './components/AlertsSection';
 import { ReportsSection } from './components/ReportsSection';
+import { ReportGenerationView } from './components/ReportGenerationView';
 import { formatCurrency, formatNumber, formatDecimal, cn } from './lib/utils';
 import { 
   ChevronDown, 
@@ -1177,6 +1178,12 @@ export default function App() {
                     setDateRange={setDateRange}
                   />
                 </div>
+              )}
+              {activePage === 'ai-report' && (
+                <ReportGenerationView 
+                  clientId={reportAccount?.id || accounts[0]?.id || ''} 
+                  metaMetrics={accounts.find(a => a.id === (reportAccount?.id || accounts[0]?.id)) || {}}
+                />
               )}
               {activePage === 'accounts' && (
                 <div className="animate-in fade-in duration-500 max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 pb-20">

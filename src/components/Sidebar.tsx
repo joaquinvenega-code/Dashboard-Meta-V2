@@ -10,7 +10,8 @@ import {
   RefreshCcw,
   Settings2,
   Bell,
-  FileText
+  FileText,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -58,6 +59,7 @@ export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, l
         <NavItem id="detail" icon={BarChart3} label="Detalle de cuentas" />
         <NavItem id="strategy" icon={Share2} label="Estrategia" />
         <NavItem id="reports" icon={FileText} label="Informes" />
+        <NavItem id="ai-report" icon={Sparkles} label="Generador Mensual" />
 
         <div className="text-[10px] font-black text-neutral-700 uppercase tracking-[0.2em] px-3 mb-3 mt-8">Configuración</div>
         <NavItem id="accounts" icon={Settings} label="Cuentas visibles" />
