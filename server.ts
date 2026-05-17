@@ -4,6 +4,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
+import { orionModulesRouter } from './src/backend/routes/orionModules.js';
+import { aiReportRouter } from './src/backend/routes/aiReport.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,7 +19,11 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // --- API ENGINE V18 (TOP PRIORITY) ---
+  // --- API ROUTES ---
+  app.use('/api', orionModulesRouter);
+  app.use('/api/ai', aiReportRouter);
+
+  // --- API ENGINE V18 (LEGACY COMPATIBILITY) ---
   app.all('/v18-engine', async (req, res) => {
     // CORS manual adicional
     res.header('Access-Control-Allow-Origin', '*');
