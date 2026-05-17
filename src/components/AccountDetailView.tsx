@@ -45,7 +45,7 @@ import {
 } from 'lucide-react';
 
 export const RocketLoader = () => (
-  <div className="flex flex-col items-center justify-center py-20 w-full animate-in fade-in duration-700">
+  <div className="flex flex-col items-center justify-center pt-32 pb-20 w-full animate-in fade-in duration-700">
     <div className="relative mb-12">
       {/* Dynamic Energy Particles - More subtle and contained */}
       {[...Array(6)].map((_, i) => (
@@ -113,7 +113,7 @@ export const RocketLoader = () => (
             scaleX: [0.8, 1.1, 0.8],
             opacity: [0.4, 0.8, 0.4]
           }}
-          transition={{ duration: 0.1, repeat: Infinity, ease: "steps(2)" }}
+          transition={{ duration: 0.1, repeat: Infinity, ease: "linear" }}
           className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-8 bg-white blur-[1px] rounded-full opacity-50"
         />
       </div>

@@ -1441,9 +1441,8 @@ export default function App() {
                 <div className="space-y-0 relative">
                   <div className="bg-[#111] p-0 rounded-lg border border-white/0 lg:border-white/5 space-y-0 animate-in fade-in duration-700">
                     {loadingStructure && (
-                      <div className="h-[500px] flex flex-col items-center justify-center gap-4 bg-black/20 rounded-lg border border-white/5">
-                        <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
-                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] animate-pulse">Sincronizando jerarquía de Meta Ads...</span>
+                      <div className="h-[730px] flex items-center justify-center bg-black/20 rounded-lg border border-white/5">
+                        <RocketLoader />
                       </div>
                     )}
 
