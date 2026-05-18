@@ -25,6 +25,7 @@ import { ReportHeader } from './reports/ReportHeader';
 import { ExecutiveSummaryV2 } from './reports/v2/ExecutiveSummaryV2';
 import { ReportFunnelBoard } from './reports/ReportFunnelBoard';
 import { PerformanceChartV2 } from './reports/v2/PerformanceChartV2';
+import { PlacementsChartV2 } from './reports/v2/PlacementsChartV2';
 import { AssetPerformanceV2 } from './reports/v2/AssetPerformanceV2';
 import { ManagementTimelineV2 } from './reports/v2/ManagementTimelineV2';
 import { RoadmapSectionV2 } from './reports/v2/RoadmapSectionV2';
@@ -260,7 +261,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
             />
           </div>
 
-          {/* Módulo 2 & 3: Funnel & Performance (GRID) */}
+          {/* Módulo 2 & 3: Funnel & Placements (GRID) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-stretch animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
             {/* Funnel Module */}
             <div className="space-y-6">
@@ -282,16 +283,34 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               </div>
             </div>
 
-            {/* Performance Chart Module */}
-            <PerformanceChartV2 data={dailyPerformanceData} currency={metrics.currency} />
+            {/* Placements Chart Module */}
+            <PlacementsChartV2 
+              data={[
+                { name: 'Instagram Stories', value: 45, color: '#3b82f6' },
+                { name: 'Instagram Reels', value: 30, color: '#10b981' },
+                { name: 'Facebook Reels', value: 15, color: '#6366f1' },
+                { name: 'Instagram Feed', value: 10, color: '#f59e0b' },
+              ]}
+            />
           </div>
 
-          {/* Módulo 4: Asset Performance */}
+          {/* Módulo 4: Performance Chart (Full Width / Stacked) */}
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">03</div>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Proyección de Rendimiento</h3>
+            </div>
+            <div className="h-[400px]">
+              <PerformanceChartV2 data={dailyPerformanceData} currency={metrics.currency} />
+            </div>
+          </div>
+
+          {/* Módulo 5: Asset Performance */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
             <AssetPerformanceV2 assets={mockAssets} />
           </div>
 
-          {/* Módulo 5: Timeline de Gestión */}
+          {/* Módulo 6: Timeline de Gestión */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
             <ManagementTimelineV2 logs={bitacora} />
           </div>
