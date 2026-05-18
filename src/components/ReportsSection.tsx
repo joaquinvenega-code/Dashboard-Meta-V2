@@ -333,11 +333,11 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
                 { age: '55+', male: 4, female: 6 },
               ]}
               regions={[
-                { name: 'Argentina', value: 0.45, intensity: 1, coords: [30, 80] },
-                { name: 'México', value: 0.20, intensity: 0.8, coords: [18, 52] },
-                { name: 'España', value: 0.15, intensity: 0.7, coords: [48, 42] },
-                { name: 'Chile', value: 0.10, intensity: 0.5, coords: [28, 80] },
-                { name: 'EE.UU.', value: 0.10, intensity: 0.4, coords: [20, 38] },
+                { name: 'Argentina', value: 0.45, intensity: 1, coords: [-34.60, -58.38] },
+                { name: 'México', value: 0.20, intensity: 0.8, coords: [19.43, -99.13] },
+                { name: 'España', value: 0.15, intensity: 0.7, coords: [40.41, -3.70] },
+                { name: 'Chile', value: 0.10, intensity: 0.5, coords: [-33.44, -70.66] },
+                { name: 'EE.UU.', value: 0.10, intensity: 0.4, coords: [40.71, -74.00] },
               ]}
             />
           </div>

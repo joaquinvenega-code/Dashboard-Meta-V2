@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Users, Map, Plus, Minus, Maximize2, Globe2 } from 'lucide-react';
+import React from 'react';
+import { Users, Globe2, AlertCircle, Key } from 'lucide-react';
 import { 
   BarChart, 
   Bar, 
@@ -9,6 +9,7 @@ import {
   Tooltip as RechartsTooltip, 
   ResponsiveContainer 
 } from 'recharts';
+import { APIProvider, Map, AdvancedMarker } from '@vis.gl/react-google-maps';
 
 interface DemographicsGeographyV2Props {
   demoData: {
@@ -20,39 +21,51 @@ interface DemographicsGeographyV2Props {
     name: string;
     value: number;
     intensity: number;
-    coords: [number, number]; // [x_pct, y_pct]
+    coords: [number, number]; // [lat, lng]
   }[];
 }
 
+const API_KEY = process.env.GOOGLE_MAPS_PLATFORM_KEY || '';
+const hasValidKey = Boolean(API_KEY) && API_KEY !== 'YOUR_API_KEY';
+
 export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = ({ demoData, regions }) => {
-  const [zoom, setZoom] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  
-  const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.5, 5));
-  const handleZoomOut = () => {
-    setZoom(prev => {
-      const newZoom = Math.max(prev / 1.5, 1);
-      if (newZoom === 1) setOffset({ x: 0, y: 0 });
-      return newZoom;
-    });
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (zoom <= 1) return;
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    const newX = e.clientX - dragStart.x;
-    const newY = e.clientY - dragStart.y;
-    setOffset({ x: newX, y: newY });
-  };
-
-  const handleMouseUp = () => setIsDragging(false);
+  if (!hasValidKey) {
+    return (
+      <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2.5rem] p-12 text-center animate-in fade-in duration-500">
+        <div className="max-w-md mx-auto space-y-6">
+          <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto shadow-xl shadow-blue-100/50">
+            <Key className="w-8 h-8 text-blue-600" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Acceso a Mapas Profesionales Requerido</h3>
+            <p className="text-sm text-slate-500 font-medium leading-relaxed">
+              Para visualizar el mapa dinámico de ventas, es necesario configurar una API Key de Google Maps Platform.
+            </p>
+          </div>
+          
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 text-left space-y-4 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-black shrink-0">1</div>
+              <p className="text-xs text-slate-600 font-bold uppercase tracking-tight">Obtén tu clave en <a href="https://console.cloud.google.com/google/maps-apis/start" target="_blank" rel="noopener" className="text-blue-600 underline">Google Cloud Console</a></p>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-black shrink-0">2</div>
+              <p className="text-xs text-slate-600 font-bold uppercase tracking-tight">Ve a <strong>Settings (⚙️)</strong> → <strong>Secrets</strong></p>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-black shrink-0">3</div>
+              <p className="text-xs text-slate-600 font-bold uppercase tracking-tight">Agrega <code>GOOGLE_MAPS_PLATFORM_KEY</code> con tu clave</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2 justify-center py-2 px-4 bg-amber-50 text-amber-700 rounded-full border border-amber-100 mx-auto w-fit">
+            <AlertCircle className="w-3 h-3" />
+            <span className="text-[9px] font-black uppercase tracking-widest">La aplicación se reiniciará automáticamente al guardar</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
@@ -69,8 +82,8 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-[8px]">Hombres</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-pink-400" />
+              <div className="flex items-start gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-pink-400 mt-1" />
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-[8px]">Mujeres</span>
               </div>
             </div>
@@ -138,103 +151,93 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
         </div>
       </div>
 
-      {/* High-Resolution Interactive Map Section */}
+      {/* Professional Google Maps Integration */}
       <div className="space-y-6">
-        <div 
-          className="bg-[#0f172a] border border-slate-800 rounded-[2.5rem] shadow-[0_45px_100px_-20px_rgba(0,0,0,0.4)] relative overflow-hidden h-[600px] select-none group/map"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          {/* Zoom Overlay UI */}
-          <div className="absolute top-8 right-8 z-20 flex flex-col gap-2">
-            <button onClick={handleZoomIn} className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 backdrop-blur-xl text-white flex items-center justify-center transition-all border border-white/10 shadow-2xl">
-              <Plus className="w-5 h-5" />
-            </button>
-            <button onClick={handleZoomOut} className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 backdrop-blur-xl text-white flex items-center justify-center transition-all border border-white/10 shadow-2xl">
-              <Minus className="w-5 h-5" />
-            </button>
-            <button onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }} className="w-12 h-12 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition-all shadow-[0_0_30px_rgba(37,99,235,0.4)] border border-blue-400/30">
-              <Maximize2 className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Interactive Layer */}
-          <div 
-            className="w-full h-full transition-transform duration-300 ease-out flex items-center justify-center relative"
-            style={{ 
-              transform: `scale(${zoom}) translate(${offset.x / zoom}px, ${offset.y / zoom}px)`,
-              cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
-            }}
-          >
-            {/* World Map Background Grid */}
-            <svg viewBox="0 0 1000 500" className="absolute inset-0 w-full h-full opacity-5 pointer-events-none">
-              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5" />
-              </pattern>
-              <rect width="1000" height="500" fill="url(#grid)" />
-            </svg>
-
-            {/* High-Fidelity Professional World Map Paths */}
-            <svg viewBox="0 0 1000 500" className="w-[115%] h-[115%] drop-shadow-[0_0_60px_rgba(2,6,23,0.8)]">
-              <g fill="#1e293b" stroke="#334155" strokeWidth="0.5">
-                {/* Americas */}
-                <path d="M120,60 L240,40 L340,90 L320,160 L240,240 L300,320 L350,380 L320,480 L250,420 L210,320 L160,260 L100,200 L90,140 Z" />
-                {/* Europe/Africa */}
-                <path d="M450,110 L550,100 L580,140 L540,160 L480,180 L440,140 Z M460,185 L540,175 L620,200 L640,300 L580,420 L500,450 L460,320 L440,240 Z" />
-                {/* Asia/Oceania */}
-                <path d="M580,100 L750,80 L880,120 L920,240 L850,320 L720,310 L640,250 L590,180 Z M780,340 L880,330 L920,380 L880,440 L800,420 Z" />
-                {/* Greenland/North */}
-                <path d="M280,30 L400,20 L440,50 L380,80 L300,70 Z" />
-              </g>
-
-              {/* Hotspots with Performance Glow */}
-              {regions.map((region) => {
-                const x = (region.coords[0] / 100) * 1000;
-                const y = (region.coords[1] / 100) * 500;
-                const color = "#3b82f6";
-                return (
-                  <g key={region.name} className="group/hotspot cursor-pointer">
-                    <circle cx={x} cy={y} r={12 + region.value * 60} fill={color} className="opacity-[0.03] group-hover/hotspot:opacity-10 transition-opacity duration-700" />
-                    <circle cx={x} cy={y} r={6 + region.value * 30} fill={color} className="opacity-10 animate-pulse" />
-                    <circle cx={x} cy={y} r={3 + region.value * 12} fill={color} className="opacity-30" />
-                    <circle cx={x} cy={y} r={1.5} fill="#fff" />
-                    <g className="opacity-0 group-hover/hotspot:opacity-100 transition-all duration-300 pointer-events-none">
-                      <rect x={x - 45} y={y - 40} width="90" height="26" rx="8" fill="#1e293b" stroke="#334155" />
-                      <text x={x} y={y - 24} textAnchor="middle" fill="#f8fafc" className="text-[10px] font-black uppercase tracking-widest">{region.name}</text>
-                    </g>
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-
-          {/* Floating UI Indicator */}
-          <div className="absolute left-8 top-8 z-20">
-             <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 shadow-2xl">
-               <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
-               <span className="text-[9px] font-black text-white/50 uppercase tracking-[0.2em]">Transacciones en Tiempo Real</span>
-             </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden h-[600px]">
+          <APIProvider apiKey={API_KEY} version="weekly">
+            <Map
+              defaultCenter={{ lat: 10, lng: -20 }}
+              defaultZoom={2}
+              mapId="DASHBOARD_GEOGRAPHY_MAP"
+              internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
+              style={{ width: '100%', height: '100%' }}
+              gestureHandling={'greedy'}
+              disableDefaultUI={true}
+              styles={[
+                {
+                  "elementType": "geometry",
+                  "stylers": [{ "color": "#0f172a" }]
+                },
+                {
+                  "elementType": "labels.text.fill",
+                  "stylers": [{ "color": "#475569" }]
+                },
+                {
+                  "elementType": "labels.text.stroke",
+                  "stylers": [{ "color": "#0f172a" }]
+                },
+                {
+                  "featureType": "administrative.country",
+                  "elementType": "geometry.stroke",
+                  "stylers": [{ "color": "#334155" }]
+                },
+                {
+                  "featureType": "water",
+                  "elementType": "geometry",
+                  "stylers": [{ "color": "#020617" }]
+                }
+              ]}
+            >
+              {regions.map((region) => (
+                <AdvancedMarker 
+                  key={region.name} 
+                  position={{ lat: region.coords[0], lng: region.coords[1] }}
+                >
+                  <div className="relative group/marker flex items-center justify-center">
+                    {/* Heat Glow Pulse */}
+                    <div 
+                      className="absolute rounded-full bg-blue-500/20 animate-pulse"
+                      style={{ 
+                        width: `${30 + region.value * 120}px`, 
+                        height: `${30 + region.value * 120}px` 
+                      }}
+                    />
+                    {/* Inner Core */}
+                    <div className="relative w-4 h-4 bg-blue-500 rounded-full border-4 border-slate-950 shadow-[0_0_15px_rgba(59,130,246,0.8)] z-10" />
+                    
+                    {/* Label Overlay */}
+                    <div className="absolute top-full mt-3 opacity-0 group-hover/marker:opacity-100 transition-all bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl whitespace-nowrap shadow-2xl z-20 pointer-events-none">
+                      <p className="text-[10px] font-black text-white uppercase tracking-widest">{region.name}</p>
+                      <p className="text-[9px] font-bold text-blue-400 mt-0.5">{(region.value * 100).toFixed(1)}% de las ventas</p>
+                    </div>
+                  </div>
+                </AdvancedMarker>
+              ))}
+            </Map>
+          </APIProvider>
+          
+          {/* Floating Indicators */}
+          <div className="absolute left-8 bottom-8 z-10 flex flex-col gap-3">
+            <div className="bg-slate-950/80 backdrop-blur-xl border border-slate-800 p-4 rounded-3xl space-y-3 shadow-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,1)]" />
+                <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Nivel de Conversión: Alto</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full border border-slate-600" />
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Región en Crecimiento</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Professional Legend & Metadata */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 px-4">
-           <div className="flex items-center gap-8">
-              <div className="flex items-center gap-3">
-                 <div className="w-3 h-3 rounded-full bg-blue-600 shadow-[0_0_12px_rgba(37,99,235,0.6)]" />
-                 <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Región con Ventas</span>
-              </div>
-              <div className="flex items-center gap-3">
-                 <div className="w-3 h-3 rounded-full border-2 border-slate-300" />
-                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sin Actividad Reportada</span>
-              </div>
-           </div>
-           
+        <div className="flex items-center justify-between px-6">
+           <p className="text-[9px] font-bold text-slate-400 italic">
+             * Datos geo-localizados basados en la IP de transacción y dirección de facturación verificada.
+           </p>
            <div className="flex items-center gap-3 text-slate-400">
-             <Maximize2 className="w-3 h-3" />
-             <span className="text-[9px] font-black uppercase tracking-[0.2em] italic">Click + Arrastrar para Navegar • Zoom con Botones • Exportable a PDF</span>
+             <Globe2 className="w-3 h-3" />
+             <span className="text-[9px] font-black uppercase tracking-[0.2em] italic">Mapa Interactivo de Google Maps Platform • Alta Precisión</span>
            </div>
         </div>
       </div>
