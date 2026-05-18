@@ -226,7 +226,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           month={reportMonth} 
         />
 
-        <div className="space-y-40 mt-32">
+        <div className="space-y-16 mt-12">
           {/* Módulo 1: Resumen Ejecutivo */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
             <ExecutiveSummaryV2 
@@ -238,28 +238,29 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
             />
           </div>
 
-          {/* Módulo 2: Funnel Analysis */}
-          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">02</div>
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Análisis del Funnel</h3>
+          {/* Módulo 2 & 3: Funnel & Assets (GRID) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+            {/* Funnel Module */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">02</div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Análisis del Funnel</h3>
+              </div>
+              <div className="h-[420px]">
+                <ReportFunnelBoard 
+                  spend={metrics.spend}
+                  ctr={metrics.clicks / (metrics.impressions || 1) * 100}
+                  purchases={metrics.purchases}
+                  messages={0}
+                  atc={Math.floor(metrics.clicks * 0.1)} 
+                  impressions={metrics.impressions}
+                  clicks={metrics.clicks}
+                  tracking="ecommerce"
+                />
+              </div>
             </div>
-            <div className="h-[340px]">
-              <ReportFunnelBoard 
-                spend={metrics.spend}
-                ctr={metrics.clicks / (metrics.impressions || 1) * 100}
-                purchases={metrics.purchases}
-                messages={0}
-                atc={Math.floor(metrics.clicks * 0.1)} 
-                impressions={metrics.impressions}
-                clicks={metrics.clicks}
-                tracking="ecommerce"
-              />
-            </div>
-          </div>
 
-          {/* Módulo 3: Asset Performance */}
-          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
+            {/* Assets Module */}
             <AssetPerformanceV2 assets={mockAssets} />
           </div>
 
@@ -284,7 +285,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
         </div>
 
         {/* Footer */}
-        <div className="mt-40 pt-12 border-t border-slate-100 flex items-center justify-between opacity-30">
+        <div className="mt-20 pt-12 border-t border-slate-100 flex items-center justify-between opacity-30">
           <div className="text-[9px] font-black uppercase tracking-[0.6em] text-slate-500">Orion Strategy V2 — Verified Report</div>
           <div className="text-[9px] font-bold text-slate-500">DOCUMENTO PRIVADO — NO DIVULGAR</div>
         </div>
