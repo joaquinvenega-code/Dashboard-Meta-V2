@@ -263,9 +263,9 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           </div>
 
           {/* Módulo 2 & 3: Funnel & Placements (GRID) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-stretch animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
             {/* Funnel Module */}
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">02</div>
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Análisis del Funnel</h3>
@@ -285,14 +285,17 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
             </div>
 
             {/* Placements Chart Module */}
-            <PlacementsChartV2 
-              data={[
-                { name: 'Instagram Stories', value: 45, color: '#3b82f6' },
-                { name: 'Instagram Reels', value: 30, color: '#10b981' },
-                { name: 'Facebook Reels', value: 15, color: '#6366f1' },
-                { name: 'Instagram Feed', value: 10, color: '#f59e0b' },
-              ]}
-            />
+            <div className="space-y-4">
+              <div className="w-full h-8" /> {/* Spacer to align with funnel title */}
+              <PlacementsChartV2 
+                data={[
+                  { name: 'Instagram Stories', value: 45, color: '#3b82f6' },
+                  { name: 'Instagram Reels', value: 30, color: '#10b981' },
+                  { name: 'Facebook Reels', value: 15, color: '#6366f1' },
+                  { name: 'Instagram Feed', value: 10, color: '#f59e0b' },
+                ]}
+              />
+            </div>
           </div>
 
           {/* Módulo 4: Performance Chart (Full Width / Stacked) */}
@@ -308,10 +311,6 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
 
           {/* Módulo 4: Asset Performance */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">04</div>
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Anuncios Ganadores</h3>
-            </div>
             <AssetPerformanceV2 assets={mockAssets} />
           </div>
 

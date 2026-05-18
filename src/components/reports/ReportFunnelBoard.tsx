@@ -1,4 +1,5 @@
 import React from 'react';
+import { BarChart3 } from 'lucide-react';
 import { formatDecimal } from '../../lib/utils';
 
 interface ReportFunnelBoardProps {
@@ -23,9 +24,9 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
   const cpm = (impressions > 0) ? (12.45) : 0; // Default CPM just in case
 
   return (
-    <div className="w-full flex items-center gap-2 h-full py-4">
+    <div className="w-full flex items-center gap-4 h-full py-2">
       {/* Funnel Vessel (Left) */}
-      <div className="w-[210px] flex flex-col gap-1 items-center justify-center shrink-0">
+      <div className="w-[180px] md:w-[200px] flex flex-col gap-1 items-center justify-center shrink-0">
         <div 
           className="w-full h-[68px] bg-blue-300 shadow-xl flex items-center justify-center relative overflow-hidden"
           style={{ clipPath: 'polygon(0% 0%, 100% 0%, 92% 100%, 8% 100%)' }}
@@ -128,8 +129,16 @@ export function ReportFunnelBoard({ spend, ctr, purchases, messages, atc, viewCo
   const finalPurchases = purchases || messages || 0;
 
   return (
-    <div className="bg-neutral-50 rounded-xl p-8 border border-neutral-100 flex flex-col h-full overflow-hidden">
-      <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-6 self-center">Embudo de Rendimiento</h3>
+    <div className="bg-white rounded-2xl p-6 border border-slate-200 flex flex-col h-full overflow-hidden shadow-sm">
+      <div className="flex items-center gap-2 mb-6">
+        <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+          <BarChart3 className="w-4 h-4 text-blue-600" />
+        </div>
+        <div>
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Visualización</h3>
+          <p className="text-xs font-bold text-slate-900">Embudo de Conversión</p>
+        </div>
+      </div>
       <div className="flex-1 min-h-0">
         <TrafficFunnel 
           impressions={impressions}

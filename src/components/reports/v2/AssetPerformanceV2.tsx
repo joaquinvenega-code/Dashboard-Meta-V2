@@ -37,8 +37,8 @@ export const AssetPerformanceV2: React.FC<AssetPerformanceV2Props> = ({ assets }
     <section className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">03</div>
-          <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Asset Performance</h3>
+          <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">04</div>
+          <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Anuncios Ganadores</h3>
         </div>
 
         <div className="flex items-center gap-2 print:hidden">

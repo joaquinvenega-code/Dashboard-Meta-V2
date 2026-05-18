@@ -119,19 +119,69 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
               ))}
             </div>
 
-            <div className="relative aspect-[3/4] bg-slate-50 rounded-xl flex items-center justify-center overflow-hidden">
-               {/* Minimalist abstract Argentina map or just circular indicators */}
-               <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-                  {/* Styled pulse circles representing order concentration */}
-                  <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-4 h-4 bg-blue-500/20 rounded-full animate-ping" />
-                  <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-3 h-3 bg-blue-500 rounded-full" />
-                  
-                  <div className="absolute top-1/2 left-1/3 w-6 h-6 bg-blue-500/10 rounded-full animate-ping delay-300" />
-                  <div className="absolute top-1/2 left-1/3 w-4 h-4 bg-blue-500/30 rounded-full" />
-
-                  <div className="absolute bottom-1/4 right-1/4 w-3 h-3 bg-blue-500/20 rounded-full animate-ping delay-700" />
-                  <div className="absolute bottom-1/4 right-1/4 w-2 h-2 bg-blue-500/40 rounded-full" />
-                  <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest text-center mt-auto">Puntos de Concentración</span>
+            <div className="relative aspect-[3/4] bg-slate-50 rounded-xl flex items-center justify-center overflow-hidden p-6">
+               {/* Realistic Argentina SVG Map (Simplified but accurate) */}
+               <svg viewBox="0 0 200 300" className="w-full h-full drop-shadow-sm">
+                 {/* Simplified Argentina Provinces Path (General shape) */}
+                 <path 
+                   d="M93.3,10.6 C88.2,12.5 83.1,16.4 80.5,21.5 L78.2,26.1 L73.6,26.4 C67.9,26.8 65.4,28.2 62.6,32.3 L60.4,35.7 L56.1,35.1 C49.3,34.1 47.7,35.4 46.8,42.7 L46.2,47.8 L41.2,49.8 C34.3,52.6 34.0,52.9 34.0,60.8 L34.0,68.9 L30.9,71.0 C24.6,75.1 23.3,83.9 27.2,95.0 C28.9,99.9 29.3,107.8 28.5,123.8 L27.7,139.7 L34.3,158.4 C41.6,179.3 43.1,185.3 43.1,196.7 C43.1,208.5 45.4,213.9 57.0,229.4 C63.5,238.1 76.5,263.1 78.6,270.6 L80.0,275.4 L85.1,273.8 C98.5,269.4 100.8,266.3 103.5,248.8 C105.7,235.1 107.0,231.8 113.8,223.3 C120.3,215.1 123.2,207.7 124.9,195.4 L126.7,181.7 L132.3,174.4 C136.6,168.9 141.6,160.7 141.9,158.8 L142.4,155.3 L135.5,148.9 L128.5,142.5 L129.5,135.2 C130.5,127.3 129.5,121.2 126.0,111.4 L123.3,103.7 L116.4,103.7 C109.9,103.7 109.5,103.4 109.5,98.6 C109.5,93.4 113.8,87.6 122.9,81.1 L131.0,75.3 L129.6,68.2 C127.3,56.7 125.7,54.4 117.8,51.8 L111.1,49.6 L111.3,44.7 C111.5,41.2 110.6,38.6 108.5,36.5 L106.0,34.0 L107.1,28.8 C108.3,23.3 107.6,19.2 104.9,15.7 C102.3,12.3 98.6,10.1 93.3,10.6 Z" 
+                   fill="#f1f5f9"
+                   stroke="#cbd5e1"
+                   strokeWidth="1.5"
+                 />
+                 {/* Heat hotspots */}
+                 {regions.map((region, idx) => {
+                    const positions: Record<string, { x: number, y: number }> = {
+                      'Buenos Aires': { x: 105, y: 140 },
+                      'Córdoba': { x: 85, y: 105 },
+                      'Santa Fe': { x: 100, y: 95 },
+                      'Mendoza': { x: 60, y: 130 },
+                      'Otros': { x: 70, y: 40 }
+                    };
+                    const pos = positions[region.name] || { x: 100, y: 150 };
+                    // Heat colors based on intensity
+                    const color = region.intensity > 0.8 ? '#ef4444' : region.intensity > 0.5 ? '#f97316' : '#3b82f6';
+                    return (
+                      <g key={region.name}>
+                        <circle 
+                          cx={pos.x} 
+                          cy={pos.y} 
+                          r={region.value * 25} 
+                          fill={color} 
+                          className="opacity-20 animate-pulse" 
+                        />
+                        <circle 
+                          cx={pos.x} 
+                          cy={pos.y} 
+                          r={region.value * 12} 
+                          fill={color} 
+                          className="opacity-40" 
+                        />
+                        <circle 
+                          cx={pos.x} 
+                          cy={pos.y} 
+                          r="2" 
+                          fill={color} 
+                        />
+                      </g>
+                    );
+                 })}
+               </svg>
+               <div className="absolute inset-x-0 bottom-6 flex justify-center">
+                  <div className="flex items-center gap-4 bg-white/80 backdrop-blur px-3 py-1.5 rounded-full border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                      <span className="text-[7px] font-black uppercase text-slate-500 tracking-tighter">Fuerte</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                      <span className="text-[7px] font-black uppercase text-slate-500 tracking-tighter">Medio</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      <span className="text-[7px] font-black uppercase text-slate-500 tracking-tighter">Estable</span>
+                    </div>
+                  </div>
                </div>
             </div>
           </div>
