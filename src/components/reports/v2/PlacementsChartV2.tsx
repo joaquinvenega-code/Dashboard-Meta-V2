@@ -20,10 +20,15 @@ interface PlacementsChartV2Props {
 export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({ data }) => {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm h-full flex flex-col">
-      <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
+      <div className="px-6 py-5 border-b border-slate-50 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Share2 className="w-4 h-4 text-white" />
-          <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Distribución por Ubicación</h3>
+          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+            <Share2 className="w-4 h-4 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Distribución</h3>
+            <p className="text-xs font-bold text-slate-900">Ubicaciones de Compra</p>
+          </div>
         </div>
       </div>
 
@@ -33,11 +38,30 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({ data }) =>
             <Pie
               data={data}
               cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={80}
-              paddingAngle={5}
+              cy="45%"
+              innerRadius={55}
+              outerRadius={85}
+              paddingAngle={4}
               dataKey="value"
+              label={({ cx, cy, midAngle, innerRadius, outerRadius, value, name }) => {
+                const RADIAN = Math.PI / 180;
+                const radius = 25 + outerRadius;
+                const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                return (
+                  <text 
+                    x={x} 
+                    y={y} 
+                    fill="#64748b" 
+                    textAnchor={x > cx ? 'start' : 'end'} 
+                    dominantBaseline="central"
+                    className="text-[10px] font-black"
+                  >
+                    {`${value}%`}
+                  </text>
+                );
+              }}
+              labelLine={{ stroke: '#cbd5e1', strokeWidth: 1 }}
             >
               {data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
@@ -57,10 +81,10 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({ data }) =>
               verticalAlign="bottom" 
               height={36}
               content={({ payload }) => (
-                <div className="grid grid-cols-2 gap-2 mt-4">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2 px-4">
                   {payload?.map((entry: any, index: number) => (
                     <div key={`legend-${index}`} className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: entry.color }} />
                       <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight truncate">
                         {entry.value}
                       </span>

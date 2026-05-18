@@ -26,6 +26,7 @@ import { ExecutiveSummaryV2 } from './reports/v2/ExecutiveSummaryV2';
 import { ReportFunnelBoard } from './reports/ReportFunnelBoard';
 import { PerformanceChartV2 } from './reports/v2/PerformanceChartV2';
 import { PlacementsChartV2 } from './reports/v2/PlacementsChartV2';
+import { DemographicsGeographyV2 } from './reports/v2/DemographicsGeographyV2';
 import { AssetPerformanceV2 } from './reports/v2/AssetPerformanceV2';
 import { ManagementTimelineV2 } from './reports/v2/ManagementTimelineV2';
 import { RoadmapSectionV2 } from './reports/v2/RoadmapSectionV2';
@@ -305,18 +306,48 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
             </div>
           </div>
 
-          {/* Módulo 5: Asset Performance */}
+          {/* Módulo 4: Asset Performance */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">04</div>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Anuncios Ganadores</h3>
+            </div>
             <AssetPerformanceV2 assets={mockAssets} />
           </div>
 
+          {/* Módulo 5: Demographics & Geography */}
+          <DemographicsGeographyV2 
+            demoData={[
+              { age: '18-24', male: 12, female: 15 },
+              { age: '25-34', male: 25, female: 35 },
+              { age: '35-44', male: 18, female: 22 },
+              { age: '45-54', male: 8, female: 12 },
+              { age: '55+', male: 4, female: 6 },
+            ]}
+            regions={[
+              { name: 'Buenos Aires', value: 0.45, intensity: 1 },
+              { name: 'Córdoba', value: 0.20, intensity: 0.8 },
+              { name: 'Santa Fe', value: 0.15, intensity: 0.6 },
+              { name: 'Mendoza', value: 0.10, intensity: 0.4 },
+              { name: 'Otros', value: 0.10, intensity: 0.2 },
+            ]}
+          />
+
           {/* Módulo 6: Timeline de Gestión */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">06</div>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Bitácora de Gestión</h3>
+            </div>
             <ManagementTimelineV2 logs={bitacora} />
           </div>
 
-          {/* Módulo 6: Roadmap & Next Steps */}
+          {/* Módulo 7: Roadmap & Next Steps */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-400">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">07</div>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Roadmap & Próximos Pasos</h3>
+            </div>
             <RoadmapSectionV2 
               learnings={reportTexts.learnings}
               actionPlan={reportTexts.actionPlan}

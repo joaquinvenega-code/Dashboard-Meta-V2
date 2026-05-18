@@ -27,45 +27,51 @@ interface PerformanceChartV2Props {
 export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, currency }) => {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm h-full flex flex-col">
-      <div className="bg-slate-900 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <TrendingUp className="w-4 h-4 text-white" />
-          <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Rendimiento & Proyección</h3>
+      <div className="px-8 py-6 border-b border-slate-50 flex items-center justify-between">
+        <div>
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Análisis de Tendencia</h3>
+          <p className="text-sm font-bold text-slate-900">Facturación & Compras</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-blue-500" />
-            <span className="text-[8px] font-black text-white/70 uppercase tracking-widest">Facturación</span>
+        <div className="flex items-center gap-6">
+          <div className="flex flex-col items-end">
+            <div className="flex items-center gap-1.5 mb-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Facturación</span>
+            </div>
+            <p className="text-xs font-black text-slate-900 leading-none">ARS Total</p>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="text-[8px] font-black text-white/70 uppercase tracking-widest">Compras</span>
+          <div className="flex flex-col items-end">
+            <div className="flex items-center gap-1.5 mb-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Compras</span>
+            </div>
+            <p className="text-xs font-black text-slate-900 leading-none">Unidades</p>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 p-6 min-h-[300px]">
+      <div className="flex-1 p-8 min-h-[320px]">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <ComposedChart data={data} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
             <defs>
               <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.08}/>
                 <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+            <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#f1f5f9" />
             <XAxis 
               dataKey="date" 
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
-              dy={10}
+              dy={15}
             />
             <YAxis 
               yAxisId="left"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 9, fontWeight: 700, fill: '#3b82f6' }}
+              tick={{ fontSize: 9, fontWeight: 700, fill: '#64748b' }}
               tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}
             />
             <YAxis 
@@ -78,19 +84,21 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
             />
             <Tooltip 
               contentStyle={{ 
-                backgroundColor: '#fff', 
+                backgroundColor: 'rgba(255, 255, 255, 0.98)', 
                 border: '1px solid #f1f5f9', 
-                borderRadius: '12px',
-                boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-                fontSize: '10px',
-                fontWeight: 700,
-                padding: '12px'
+                borderRadius: '16px',
+                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.05)',
+                fontSize: '11px',
+                fontWeight: 800,
+                padding: '16px',
+                backdropFilter: 'blur(8px)'
               }}
+              cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }}
               formatter={(value: any, name: string) => [
                 name === 'revenue' ? formatCurrency(value, currency) : value, 
                 name === 'revenue' ? 'Facturación' : 'Compras'
               ]}
-              labelStyle={{ color: '#64748b', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+              labelStyle={{ color: '#94a3b8', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '9px' }}
             />
             <Area 
               yAxisId="left"
@@ -98,7 +106,7 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
               dataKey="revenue" 
               name="revenue"
               stroke="#3b82f6" 
-              strokeWidth={3}
+              strokeWidth={2.5}
               fillOpacity={1} 
               fill="url(#colorRevenue)" 
             />
@@ -108,22 +116,18 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
               dataKey="purchases" 
               name="purchases"
               stroke="#10b981" 
-              strokeWidth={3}
-              dot={{ r: 3, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }}
-              activeDot={{ r: 5, strokeWidth: 0 }}
+              strokeWidth={2.5}
+              dot={false}
+              activeDot={{ r: 4, strokeWidth: 0, fill: '#10b981' }}
             />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 flex items-center justify-between">
+      <div className="bg-slate-50/50 px-8 py-4 border-t border-slate-50 flex items-center justify-between">
         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
-          Eje Izq: Facturación (ARS) • Eje Der: Unidades Vendidas
+          Cálculo proyectado basado en media móvil de 7 días
         </p>
-        <div className="flex items-center gap-1">
-          <BarChart3 className="w-3 h-3 text-slate-300" />
-          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Tendencia Mensual</span>
-        </div>
       </div>
     </div>
   );
