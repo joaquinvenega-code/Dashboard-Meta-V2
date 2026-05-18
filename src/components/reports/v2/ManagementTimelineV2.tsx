@@ -26,14 +26,8 @@ const CategoryIcon = ({ category }: { category?: string }) => {
 
 export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs }) => {
   return (
-    <section className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">04</div>
-        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Timeline de Gestión</h3>
-      </div>
-
-      <div className="relative">
-        {/* Línea vertical de fondo */}
+    <div className="relative">
+      {/* Línea vertical de fondo */}
         <div className="absolute left-[39px] top-0 bottom-0 w-px bg-slate-200 print:bg-slate-300" />
 
         <div className="space-y-8">
@@ -72,6 +66,5 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
           )}
         </div>
       </div>
-    </section>
   );
 };

@@ -57,13 +57,7 @@ export const RoadmapSectionV2: React.FC<RoadmapSectionV2Props> = ({
   isEditing
 }) => {
   return (
-    <section className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">05</div>
-        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Roadmap & Next Steps</h3>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <RoadmapCard
           icon={Lightbulb}
           title="Aprendizajes del Mes"
@@ -92,6 +86,5 @@ export const RoadmapSectionV2: React.FC<RoadmapSectionV2Props> = ({
           colorClass="bg-emerald-50 text-emerald-700"
         />
       </div>
-    </section>
   );
 };
