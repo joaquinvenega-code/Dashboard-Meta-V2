@@ -7,7 +7,7 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip as RechartsTooltip, 
-  ResponsiveContainer
+  ResponsiveContainer 
 } from 'recharts';
 
 interface DemographicsGeographyV2Props {
@@ -20,7 +20,7 @@ interface DemographicsGeographyV2Props {
     name: string;
     value: number;
     intensity: number;
-    coords: [number, number]; // [x_pct, y_pct] normalized for my custom SVG
+    coords: [number, number]; // [x_pct, y_pct]
   }[];
 }
 
@@ -30,8 +30,6 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   
-  const containerRef = useRef<HTMLDivElement>(null);
-
   const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.5, 5));
   const handleZoomOut = () => {
     setZoom(prev => {
@@ -51,218 +49,220 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
     if (!isDragging) return;
     const newX = e.clientX - dragStart.x;
     const newY = e.clientY - dragStart.y;
-    
-    // Simple boundary check
     setOffset({ x: newX, y: newY });
   };
 
   const handleMouseUp = () => setIsDragging(false);
 
   return (
-    <div className="flex flex-col gap-12 mt-16 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-250">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+    <div className="flex flex-col gap-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Demographics Column */}
         <div className="space-y-6">
           <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm h-full flex flex-col">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-blue-500" />
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Distribución por Edad y Género</span>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Edad y Género</span>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-blue-500" />
-                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Hombres</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-[8px]">Hombres</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-pink-400" />
-                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Mujeres</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-pink-400" />
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-[8px]">Mujeres</span>
                 </div>
               </div>
             </div>
             
-            <div className="h-[300px] flex-1">
+            <div className="h-[280px] flex-1">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={demoData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#f1f5f9" />
                   <XAxis 
                     dataKey="age" 
                     axisLine={false} 
                     tickLine={false}
-                    tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }}
+                    tick={{ fontSize: 9, fontWeight: 700, fill: '#64748b' }}
+                    dy={10}
                   />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false}
-                    tick={{ fontSize: 10, fontWeight: 700, fill: '#cbd5e1' }}
+                    tick={{ fontSize: 9, fontWeight: 700, fill: '#cbd5e1' }}
                     tickFormatter={(val) => `${val}%`}
                   />
                   <RechartsTooltip 
                     cursor={{ fill: '#f8fafc' }}
                     contentStyle={{ 
-                      borderRadius: '12px', 
-                      border: 'none', 
-                      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-                      fontSize: '10px',
-                      fontWeight: 700
+                      borderRadius: '16px', 
+                      border: '1px solid #f1f5f9', 
+                      boxShadow: '0 20px 25px -5px rgba(0,0,0,0.05)',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      padding: '16px'
                     }}
                     formatter={(val: number) => [`${val}%`, '']}
                   />
-                  <Bar dataKey="male" fill="#3b82f6" stackId="a" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="female" fill="#f472b6" stackId="a" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="male" fill="#3b82f6" stackId="a" radius={[0, 0, 0, 0]} barSize={32} />
+                  <Bar dataKey="female" fill="#f472b6" stackId="a" radius={[6, 6, 0, 0]} barSize={32} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
         </div>
 
-        {/* Global Distribution Overview (Small info box) */}
+        {/* Global Distribution Summary */}
         <div className="space-y-6">
+          <div className="flex items-center gap-3">
+             <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
+               <Map className="w-4 h-4" />
+             </div>
+             <div>
+               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none mb-1">Visualización Global</h4>
+               <p className="text-sm font-black text-slate-900">Impacto Geográfico</p>
+             </div>
+          </div>
+
           <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm flex flex-col h-full">
-            <div className="flex items-center gap-2 mb-6">
-              <Map className="w-4 h-4 text-emerald-500" />
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Resumen Regional</span>
+            <div className="flex items-center gap-2 mb-8">
+              <div className="w-4 h-4 rounded-full bg-emerald-50 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              </div>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Resumen de Ventas</span>
             </div>
             
-            <div className="flex-1 space-y-4">
+            <div className="flex-1 space-y-6">
               {regions.map((region) => (
-                <div key={region.name} className="space-y-1.5">
-                  <div className="flex justify-between items-center text-[10px] uppercase font-black tracking-tighter text-slate-500">
+                <div key={region.name} className="space-y-2">
+                  <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-tighter text-slate-600">
                     <span>{region.name}</span>
                     <span className="text-blue-600 font-black">{(region.value * 100).toFixed(0)}%</span>
                   </div>
-                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
                     <div 
-                      className="h-full bg-blue-500 rounded-full transition-all duration-1000"
-                      style={{ 
-                        width: `${region.value * 100}%`,
-                        opacity: region.intensity
-                      }}
+                      className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(59,130,246,0.3)]"
+                      style={{ width: `${region.value * 100}%` }}
                     />
                   </div>
                 </div>
               ))}
             </div>
-            
-            <div className="mt-8 pt-6 border-t border-slate-50">
-              <p className="text-[10px] font-bold text-slate-400 italic leading-relaxed">
-                "La presencia de marca se expande globalmente con un núcleo sólido en el Cono Sur."
-              </p>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Full-Width Interactive Map */}
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
-            <Map className="w-4 h-4" />
-          </div>
-          <div>
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none mb-1">Visualización Global</h4>
-            <p className="text-sm font-black text-slate-900 capitalize">Distribución de Impacto Geográfico</p>
-          </div>
-        </div>
-
+      {/* High-Resolution Interactive Map Section */}
+      <div className="space-y-3">
         <div 
-          ref={containerRef}
-          className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl relative overflow-hidden h-[600px] select-none"
+          className="bg-slate-950 border border-slate-800 rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] relative overflow-hidden h-[600px] select-none group"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
-          {/* Zoom Controls */}
-          <div className="absolute top-8 right-8 z-20 flex flex-col gap-2">
-            <button 
-              onClick={handleZoomIn}
-              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur text-white flex items-center justify-center transition-all border border-white/10"
-              title="Aumentar Zoom"
-            >
-              <Plus className="w-5 h-5" />
+          {/* Zoom Overlay UI */}
+          <div className="absolute top-8 right-8 z-20 flex flex-col gap-3">
+            <button onClick={handleZoomIn} className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 backdrop-blur-xl text-white flex items-center justify-center transition-all border border-white/10 shadow-xl group/btn">
+              <Plus className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
             </button>
-            <button 
-              onClick={handleZoomOut}
-              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur text-white flex items-center justify-center transition-all border border-white/10"
-              title="Disminuir Zoom"
-            >
-              <Minus className="w-5 h-5" />
+            <button onClick={handleZoomOut} className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 backdrop-blur-xl text-white flex items-center justify-center transition-all border border-white/10 shadow-xl group/btn">
+              <Minus className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
             </button>
-            <button 
-              onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }}
-              className="w-10 h-10 rounded-xl bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center transition-all shadow-lg"
-              title="Restablecer Vista"
-            >
-              <Maximize2 className="w-4 h-4" />
+            <button onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }} className="w-12 h-12 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition-all shadow-[0_0_30px_rgba(37,99,235,0.4)] border border-blue-400/30 group/btn">
+              <Maximize2 className="w-5 h-5 group-hover/btn:rotate-12 transition-transform" />
             </button>
           </div>
 
+          {/* Interactive Layer */}
           <div 
-            className="w-full h-full transition-transform duration-200 ease-out flex items-center justify-center"
+            className="w-full h-full transition-transform duration-300 ease-out flex items-center justify-center relative touch-none"
             style={{ 
               transform: `scale(${zoom}) translate(${offset.x / zoom}px, ${offset.y / zoom}px)`,
               cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
             }}
           >
-            {/* High-quality World Map SVG */}
-            <svg viewBox="0 0 1000 500" className="w-[120%] h-[120%] opacity-80">
-              <path 
-                fill="#1e293b" 
-                stroke="#334155" 
-                strokeWidth="0.5"
-                d="M178.5,84.1c1,2.8,4.1,2.5,5.1,5.2c1.8,4.6,6.3,6.8,11.2,7.3c4.1,0.4,7.3,3.7,11.4,4.2c3.5,0.4,7.3-1.6,10.6-0.3 c5.2,2.1,8.9,10,12.5,13.9c1,1.1,5.3,1.6,6.3,2.6c1.2,1.2,2.5,2.9,3.8,4.2c2,2,4,4,6,6c1,1,2,2.1,2.9,3.2c0.9,1,1.7,1.1,2.7,1.8 c1.2,0.8,4,0.4,4.9,1.7c0.6,0.9,0.3,5.3,1,6.2c0.7,0.9,4.2,0.4,5,1.2c0.8,0.8,1.7,2.5,2.7,3.5c1.4,1.4,1.4,1.4,2.8,2.8 c1.2,1.2,2.5,2.5,3.7,3.7c1.3,1.3,4,1.3,5.4,2.6c1.6,1.4,4,1.5,5.7,2.9c0.9,0.7,0.8,3,1.7,3.7c1.4,1.1,3,2,4.4,3.1 c1.4,1.1,2.7,2.2,4.1,3.4c1.1,0.9,2.2,1.9,3.3,2.8c0.8,0.7,3.2,0.3,4.1,0.9c1,0.6,2,1.1,3,1.7c1.3,0.7,1.3,0.7,2.6,1.4 c1.2,0.6,2.3,1.3,3.5,1.9c1.4,0.7,4.3,0.4,5.8,1.2c1.7,0.8,3,5.7,1.5,7.3c-1.3,1.3-4.1,0.3-5.8,1.1c-1.2,0.5-2,1.5-3.3,2 c-1.2,0.5-3.7,0-4.9,0.5c-1.2,0.5-3.8,0.3-5,0.8c-1.2,0.5-2,1.5-3.3,2c-1.2,0.5-3.8,0.3-5,0.8c-1.2,0.5-2,1.5-3.3,2 c-1.1,0.4-1.1,0.4-2.2,0.8c-1.2,0.5-2,1.5-3.3,2c-1.2,0.5-3.8,0.3-5,0.8c-1.2,0.5-2,1.5-3.3,2c-1.1,0.4-1.1,0.4-2.2,0.8 c-1.2,0.5-2,1.5-3.3,2c-1.2,0.5-3.8,0.3-5,0.8c-1.2,0.5-2,1.5-3.3,2c-1.1,0.4-1.1,0.4-2.2,0.8c-1.2,0.5-2,1.5-3.3,2 c-1.2,0.5-3.8,0.3-5,0.8c-1.2,0.5-2,1.5-3.3,2s-3.7,0-4.9,0.5s-2.1,1.5-3.3,2s-3.8,0.3-5,0.8s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8 s-2.1,1.5-3.3,2s-3.7,0-4.9,0.5s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8s-2.1,1.5-3.3,2s-3.7,0-4.9,0.5s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8 s-2.1,1.5-3.3,2s-3.8,0.3-5,0.8s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8s-2.1,1.5-3.3,2s-3.8,0.3-5,0.8s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8 s-2.1,1.5-3.3,2s-3.8,0.3-5,0.8s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8s-2.1,1.5-3.3,2s-3.8,0.3-5,0.8s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8 s-2.1,1.5-3.3,2s-3.8,0.3-5,0.8s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8s-2.1,1.5-3.3,2s-3.8,0.3-5,0.8s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8 s-2.1,1.5-3.3,2s-3.8,0.3-5,0.8s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8s-2.1,1.5-3.3,2s-3.8,0.3-5,0.8s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8 s-2.1,1.5-3.3,2s-3.8,0.3-5,0.8s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8s-2.1,1.5-3.3,2s-3.8,0.3-5,0.8s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8 s-2.1,1.5-3.3,2s-3.8,0.3-5,0.8s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8s-2.1,1.5-3.3,2s-3.8,0.3-5,0.8s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8 s-2.1,1.5-3.3,2s-3.8,0.3-5,0.8s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8s-2.1,1.5-3.3,2s-3.8,0.3-5,0.8s-2.1,1.5-3.3,2s-1.1,0.4-2.2,0.8 s-2.1,1.5-3.3,2" 
-              />
-              {/* Simplified world map path from a standard source or generated */}
-              <path fill="#1e293b" stroke="#334155" strokeWidth="0.5" d="M10,10 L990,10 L990,490 L10,490 Z" opacity="0.1" /> 
-              {/* Real World Map Path (Truncated for space, using a representative set of paths) */}
-              <path fill="#1e293b" stroke="#334155" strokeWidth="0.5" d="M200,100 L250,120 L240,150 L200,160 Z M400,200 L450,220 L440,250 L400,260 Z" />
+            {/* Professional Grid Background */}
+            <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 0)', backgroundSize: '40px 40px' }} />
+
+            {/* High-Fidelity World Map SVG */}
+            <svg viewBox="0 0 1000 500" className="w-[110%] h-[110%] drop-shadow-[0_0_40px_rgba(30,41,59,0.5)]">
+              {/* Detailed Stylized World Outlines */}
+              <g fill="#161a22" stroke="#2a3341" strokeWidth="0.5">
+                {/* North America */}
+                <path d="M150,120 L180,100 L240,110 L280,140 L260,180 L220,200 L180,190 L160,150 Z" />
+                {/* South America */}
+                <path d="M280,250 L320,230 L350,250 L360,290 L340,350 L320,380 L300,350 L280,300 Z" />
+                {/* Europe */}
+                <path d="M480,120 L520,110 L550,120 L560,150 L530,170 L500,160 L480,140 Z" />
+                {/* Africa */}
+                <path d="M480,180 L530,170 L580,190 L600,240 L580,300 L540,330 L500,310 L480,250 Z" />
+                {/* Asia */}
+                <path d="M580,120 L680,100 L800,110 L850,150 L830,220 L780,250 L700,240 L620,200 Z" />
+                {/* Oceania */}
+                <path d="M780,280 L850,270 L880,300 L870,340 L820,350 L790,320 Z" />
+              </g>
               
-              {/* Hotspots */}
-              {regions.map((region) => {
-                const color = region.intensity > 0.8 ? '#3b82f6' : region.intensity > 0.5 ? '#60a5fa' : '#93c5fd';
-                // coords are [x_pct, y_pct]
+              {/* Visual Grid Accents */}
+              <g opacity="0.1" stroke="#334155" strokeWidth="0.2">
+                <line x1="0" y1="250" x2="1000" y2="250" />
+                <line x1="500" y1="0" x2="500" y2="500" />
+              </g>
+
+              {/* Hotspot Markers with Heat Glow */}
+              {regions.map((region, idx) => {
                 const x = (region.coords[0] / 100) * 1000;
                 const y = (region.coords[1] / 100) * 500;
                 return (
-                  <g key={region.name} className="cursor-pointer">
-                    <circle cx={x} cy={y} r={10 + region.value * 40} fill={color} className="opacity-20 animate-pulse" />
-                    <circle cx={x} cy={y} r={5 + region.value * 20} fill={color} className="opacity-40" />
-                    <circle cx={x} cy={y} r={2} fill="#fff" />
-                    <text x={x} y={y - 20} textAnchor="middle" fill="#fff" className="text-[12px] font-black opacity-0 hover:opacity-100 transition-opacity">
-                      {region.name}
-                    </text>
+                  <g key={region.name} className="group/hotspot">
+                    {/* Outer Glow */}
+                    <circle cx={x} cy={y} r={15 + region.value * 60} fill="#3b82f6" className="opacity-0 group-hover/hotspot:opacity-10 transition-opacity duration-500" />
+                    {/* Primary Pulse */}
+                    <circle cx={x} cy={y} r={8 + region.value * 35} fill="#3b82f6" className="opacity-10 animate-pulse" />
+                    {/* Secondary Pulse */}
+                    <circle cx={x} cy={y} r={4 + region.value * 15} fill="#3b82f6" className="opacity-25" />
+                    {/* Core Point */}
+                    <circle cx={x} cy={y} r={2} fill="#60a5fa" className="shadow-lg shadow-blue-500/50" />
+                    
+                    {/* Floating Tooltip Label */}
+                    <g className="opacity-0 group-hover/hotspot:opacity-100 transition-opacity duration-300 pointer-events-none">
+                       <rect x={x - 45} y={y - 45} width="90" height="28" rx="8" fill="#1e293b" stroke="#334155" strokeWidth="1" />
+                       <text x={x} y={y - 27} textAnchor="middle" fill="#f8fafc" className="text-[10px] font-black uppercase tracking-widest">{region.name}</text>
+                    </g>
                   </g>
                 );
               })}
             </svg>
           </div>
+
+          {/* Elegant Sidebar Labels over Map */}
+          <div className="absolute left-8 bottom-8 z-20 space-y-4">
+             <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/5">
+                <div className="flex items-center gap-3">
+                   <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.8)]" />
+                   <span className="text-[9px] font-black text-white/70 uppercase tracking-[0.2em]">Alta Conversión</span>
+                </div>
+                <div className="flex items-center gap-3">
+                   <div className="w-2 h-2 rounded-full bg-blue-500/30" />
+                   <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em]">Mercado Emergente</span>
+                </div>
+             </div>
+          </div>
         </div>
 
-        {/* Legend below the container as requested */}
-        <div className="flex flex-wrap items-center justify-between gap-6 px-8 py-6 bg-slate-50 border border-slate-200 rounded-2xl">
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500" />
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Concentración Alta</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-300" />
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Concentración Media</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-slate-300" />
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Presencia Orgánica</span>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 italic">
-            <Maximize2 className="w-3 h-3" />
-            Mapa interactivo: usa clic y arrastra para explorar, botones para zoom.
-          </div>
+        {/* Footer Info */}
+        <div className="flex items-center justify-between px-6">
+           <p className="text-[9px] font-bold text-slate-400 italic">
+             * Coordenadas ajustadas según el volumen de transacciones locales reportadas.
+           </p>
+           <div className="flex items-center gap-2 text-slate-400">
+             <Maximize2 className="w-3 h-3" />
+             <span className="text-[9px] font-black uppercase tracking-widest">Soporte Gesto Multitouch y Zoom Dinámico</span>
+           </div>
         </div>
       </div>
     </div>
   );
 };
-
