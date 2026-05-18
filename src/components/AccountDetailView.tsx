@@ -349,7 +349,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     }, 500);
   };
 
-  const handleSaveObs = () => {
+  const handleSaveObs = async () => {
     if (!selectedId || !s || !observations.trim()) return;
     setIsSavingObs(true);
     
@@ -370,6 +370,22 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     };
     
     onAddNote(newNote);
+
+    // PERSISTENCIA EN BACKEND PARA REPORTE IA
+    try {
+      await fetch('/api/bitacora', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: selectedId,
+          category: 'optimizacion',
+          description: textToSave,
+          date: format(parseISO(timestamp), 'dd/MM')
+        })
+      });
+    } catch (err) {
+      console.error("Error sincronizando con bitácora IA:", err);
+    }
     
     // Clear local state immediately for better UX
     setObservations('');
