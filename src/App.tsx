@@ -28,7 +28,6 @@ import { AccountDetailView, RocketLoader } from './components/AccountDetailView'
 import { StrategyCanvas } from './components/StrategyCanvas';
 import { AlertsSection } from './components/AlertsSection';
 import { ReportsSection } from './components/ReportsSection';
-import { ReportGenerationView } from './components/ReportGenerationView';
 import { formatCurrency, formatNumber, formatDecimal, cn } from './lib/utils';
 import { 
   ChevronDown, 
@@ -50,8 +49,7 @@ import {
   GripVertical,
   Bell,
   Search,
-  FileText,
-  BrainCircuit
+  FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, parseISO, subDays, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
@@ -104,9 +102,6 @@ export default function App() {
   const [activePage, setActivePage] = useState('overview');
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [calcError, setCalcError] = useState<string | null>(null);
-  
-  // Estado para controlar la pestaña activa dentro de la sección de reportes
-  const [activeReportTab, setActiveReportTab] = useState<'historial' | 'generador'>('historial');
   
   const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
   const [colOrder, setColOrder] = useState<string[]>(['objetivo', 'facturado', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
@@ -1140,52 +1135,15 @@ export default function App() {
                 />
               )}
 
-              {/* Sub-sistema de solapas unificado dentro de la sección nativa de Reportes */}
               {activePage === 'reports' && (
-                <div className="space-y-6 animate-in fade-in duration-500">
-                  {/* Tabs de control visual */}
-                  <div className="flex border-b border-white/5 mb-6">
-                    <button
-                      onClick={() => setActiveReportTab('historial')}
-                      className={cn(
-                        "py-3 px-6 text-xs font-black uppercase tracking-widest border-b-2 transition-all flex items-center gap-2",
-                        activeReportTab === 'historial'
-                          ? 'border-blue-500 text-blue-400 font-semibold'
-                          : 'border-transparent text-neutral-500 hover:text-neutral-300'
-                      )}
-                    >
-                      <History className="w-4 h-4" />
-                      Historial e Informes Core
-                    </button>
-                    <button
-                      onClick={() => setActiveReportTab('generador')}
-                      className={cn(
-                        "py-3 px-6 text-xs font-black uppercase tracking-widest border-b-2 transition-all flex items-center gap-2",
-                        activeReportTab === 'generador'
-                          ? 'border-blue-500 text-blue-400 font-semibold'
-                          : 'border-transparent text-neutral-500 hover:text-neutral-300'
-                      )}
-                    >
-                      <BrainCircuit className="w-4 h-4" />
-                      Generador Estratégico IA
-                    </button>
-                  </div>
-
-                  {/* Renderizado condicional de componentes */}
-                  {activeReportTab === 'historial' ? (
-                    <ReportsSection 
-                      accounts={accounts} 
-                      visibleAccountIds={visibleAccountIds}
-                      settings={settings} 
-                      notes={notes} 
-                      setDateRange={setDateRange}
-                    />
-                  ) : (
-                    <ReportGenerationView 
-                      clientId={reportAccount?.id || accounts[0]?.id || ''} 
-                      metaMetrics={accounts.find(a => a.id === (reportAccount?.id || accounts[0]?.id)) || {}}
-                    />
-                  )}
+                <div className="animate-in fade-in duration-500">
+                  <ReportsSection 
+                    accounts={accounts} 
+                    visibleAccountIds={visibleAccountIds}
+                    settings={settings} 
+                    notes={notes} 
+                    setDateRange={setDateRange}
+                  />
                 </div>
               )}
 

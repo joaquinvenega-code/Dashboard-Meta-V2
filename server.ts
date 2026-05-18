@@ -5,7 +5,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
 import { orionModulesRouter } from './src/backend/routes/orionModules.js';
-import { aiReportRouter } from './src/backend/routes/aiReport.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,7 +20,6 @@ async function startServer() {
 
   // --- API ROUTES ---
   app.use('/api', orionModulesRouter);
-  app.use('/api/ai', aiReportRouter);
 
   // --- API ENGINE V18 (LEGACY COMPATIBILITY) ---
   app.all('/v18-engine', async (req, res) => {
