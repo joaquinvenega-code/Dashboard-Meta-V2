@@ -34,11 +34,16 @@ export const AssetPerformanceV2: React.FC<AssetPerformanceV2Props> = ({ assets }
   };
 
   return (
-    <section className="space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">04</div>
-          <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Anuncios Ganadores</h3>
+          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+            <Trophy className="w-4 h-4 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Creativos</h3>
+            <p className="text-xs font-bold text-slate-900">Rendimiento por Asset</p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 print:hidden">
@@ -113,6 +118,6 @@ export const AssetPerformanceV2: React.FC<AssetPerformanceV2Props> = ({ assets }
           </div>
         ))}
       </div>
-    </section>
+    </div>
   );
 };

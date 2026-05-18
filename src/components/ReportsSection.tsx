@@ -311,31 +311,41 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
 
           {/* Módulo 4: Asset Performance */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">04</div>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Anuncios Ganadores</h3>
+            </div>
             <AssetPerformanceV2 assets={mockAssets} />
           </div>
 
           {/* Módulo 5: Demographics & Geography */}
-          <DemographicsGeographyV2 
-            demoData={[
-              { age: '18-24', male: 12, female: 15 },
-              { age: '25-34', male: 25, female: 35 },
-              { age: '35-44', male: 18, female: 22 },
-              { age: '45-54', male: 8, female: 12 },
-              { age: '55+', male: 4, female: 6 },
-            ]}
-            regions={[
-              { name: 'Argentina', value: 0.45, intensity: 1, coords: [-58.38, -34.60] },
-              { name: 'México', value: 0.20, intensity: 0.8, coords: [-99.13, 19.43] },
-              { name: 'España', value: 0.15, intensity: 0.7, coords: [-3.70, 40.41] },
-              { name: 'Chile', value: 0.10, intensity: 0.5, coords: [-70.66, -33.44] },
-              { name: 'Brasil', value: 0.10, intensity: 0.4, coords: [-46.63, -23.55] },
-            ]}
-          />
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-250">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">05</div>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Concentración Geográfica</h3>
+            </div>
+            <DemographicsGeographyV2 
+              demoData={[
+                { age: '18-24', male: 12, female: 15 },
+                { age: '25-34', male: 25, female: 35 },
+                { age: '35-44', male: 18, female: 22 },
+                { age: '45-54', male: 8, female: 12 },
+                { age: '55+', male: 4, female: 6 },
+              ]}
+              regions={[
+                { name: 'Argentina', value: 0.45, intensity: 1, coords: [35, 80] },
+                { name: 'México', value: 0.20, intensity: 0.8, coords: [15, 45] },
+                { name: 'España', value: 0.15, intensity: 0.7, coords: [48, 38] },
+                { name: 'Chile', value: 0.10, intensity: 0.5, coords: [32, 78] },
+                { name: 'Brasil', value: 0.10, intensity: 0.4, coords: [40, 70] },
+              ]}
+            />
+          </div>
 
           {/* Módulo 6: Timeline de Gestión */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">07</div>
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">06</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Bitácora de Gestión</h3>
             </div>
             <ManagementTimelineV2 logs={bitacora} />
@@ -344,7 +354,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           {/* Módulo 7: Roadmap & Next Steps */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-400">
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">08</div>
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">07</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Roadmap & Próximos Pasos</h3>
             </div>
             <RoadmapSectionV2 
