@@ -24,7 +24,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ReportHeader } from './reports/ReportHeader';
 import { ExecutiveSummaryV2 } from './reports/v2/ExecutiveSummaryV2';
 import { ReportFunnelBoard } from './reports/ReportFunnelBoard';
-import { MonthlyPerformanceV2 } from './reports/v2/MonthlyPerformanceV2';
+import { PerformanceChartV2 } from './reports/v2/PerformanceChartV2';
 import { AssetPerformanceV2 } from './reports/v2/AssetPerformanceV2';
 import { ManagementTimelineV2 } from './reports/v2/ManagementTimelineV2';
 import { RoadmapSectionV2 } from './reports/v2/RoadmapSectionV2';
@@ -128,6 +128,27 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
       revenue: metrics.revenue * factor
     };
   }, [metrics]);
+
+  const dailyPerformanceData = useMemo(() => {
+    const start = startOfMonth(parseISO(reportMonth + '-01'));
+    const end = endOfMonth(start);
+    const dayCount = end.getDate();
+    
+    return Array.from({ length: dayCount }).map((_, i) => {
+      const day = i + 1;
+      const progress = day / dayCount;
+      // Simular curva de crecimiento y fluctuación diaria
+      const baseRev = metrics.revenue / dayCount;
+      const basePurchases = metrics.purchases / dayCount;
+      const randomness = 0.5 + Math.random();
+      
+      return {
+        date: format(new Date(start.getFullYear(), start.getMonth(), day), 'dd/MM'),
+        revenue: Math.round(baseRev * randomness),
+        purchases: Math.round(basePurchases * randomness)
+      };
+    });
+  }, [metrics.revenue, metrics.purchases, reportMonth]);
 
   const mockAssets = useMemo(() => [
     { id: '1', name: 'Creativo Ganador - Emocional', thumbnail: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=400&q=80', roas: 5.2, purchases: 124, revenue: 450000, spend: 86500 },
@@ -261,8 +282,8 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               </div>
             </div>
 
-            {/* Monthly Performance Module */}
-            <MonthlyPerformanceV2 metrics={metrics} />
+            {/* Performance Chart Module */}
+            <PerformanceChartV2 data={dailyPerformanceData} currency={metrics.currency} />
           </div>
 
           {/* Módulo 4: Asset Performance */}

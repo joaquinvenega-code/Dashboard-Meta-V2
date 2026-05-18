@@ -11,7 +11,7 @@ interface ReportHeaderProps {
 
 export function ReportHeader({ name, logo, month }: ReportHeaderProps) {
   return (
-    <div className="flex items-center justify-between border-b-2 border-neutral-100 pb-8">
+    <div className="flex items-center justify-between pb-8">
       <div className="flex items-center gap-5">
         <div className="w-16 h-16 bg-neutral-50 rounded-xl border border-neutral-100 flex items-center justify-center p-3 shadow-inner">
           {logo ? (
