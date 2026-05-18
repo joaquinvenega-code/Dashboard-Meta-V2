@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ReportHeader } from './reports/ReportHeader';
 import { ExecutiveSummaryV2 } from './reports/v2/ExecutiveSummaryV2';
 import { ReportFunnelBoard } from './reports/ReportFunnelBoard';
+import { MonthlyPerformanceV2 } from './reports/v2/MonthlyPerformanceV2';
 import { AssetPerformanceV2 } from './reports/v2/AssetPerformanceV2';
 import { ManagementTimelineV2 } from './reports/v2/ManagementTimelineV2';
 import { RoadmapSectionV2 } from './reports/v2/RoadmapSectionV2';
@@ -238,15 +239,15 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
             />
           </div>
 
-          {/* Módulo 2 & 3: Funnel & Assets (GRID) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+          {/* Módulo 2 & 3: Funnel & Performance (GRID) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-stretch animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
             {/* Funnel Module */}
             <div className="space-y-6">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">02</div>
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Análisis del Funnel</h3>
               </div>
-              <div className="h-[420px]">
+              <div className="h-[430px]">
                 <ReportFunnelBoard 
                   spend={metrics.spend}
                   ctr={metrics.clicks / (metrics.impressions || 1) * 100}
@@ -260,16 +261,21 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               </div>
             </div>
 
-            {/* Assets Module */}
+            {/* Monthly Performance Module */}
+            <MonthlyPerformanceV2 metrics={metrics} />
+          </div>
+
+          {/* Módulo 4: Asset Performance */}
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
             <AssetPerformanceV2 assets={mockAssets} />
           </div>
 
-          {/* Módulo 4: Timeline de Gestión */}
+          {/* Módulo 5: Timeline de Gestión */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
             <ManagementTimelineV2 logs={bitacora} />
           </div>
 
-          {/* Módulo 5: Roadmap & Next Steps */}
+          {/* Módulo 6: Roadmap & Next Steps */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-400">
             <RoadmapSectionV2 
               learnings={reportTexts.learnings}
