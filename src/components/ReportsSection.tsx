@@ -23,7 +23,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 import { ReportHeader } from './reports/ReportHeader';
 import { ExecutiveSummaryV2 } from './reports/v2/ExecutiveSummaryV2';
-import { FunnelAnalysisV2 } from './reports/v2/FunnelAnalysisV2';
+import { ReportFunnelBoard } from './reports/ReportFunnelBoard';
 import { AssetPerformanceV2 } from './reports/v2/AssetPerformanceV2';
 import { ManagementTimelineV2 } from './reports/v2/ManagementTimelineV2';
 import { RoadmapSectionV2 } from './reports/v2/RoadmapSectionV2';
@@ -240,12 +240,22 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
 
           {/* Módulo 2: Funnel Analysis */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
-            <FunnelAnalysisV2 
-               spend={metrics.spend}
-               impressions={metrics.impressions}
-               clicks={metrics.clicks}
-               purchases={metrics.purchases}
-            />
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">02</div>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Análisis del Funnel</h3>
+            </div>
+            <div className="h-[340px]">
+              <ReportFunnelBoard 
+                spend={metrics.spend}
+                ctr={metrics.clicks / (metrics.impressions || 1) * 100}
+                purchases={metrics.purchases}
+                messages={0}
+                atc={Math.floor(metrics.clicks * 0.1)} 
+                impressions={metrics.impressions}
+                clicks={metrics.clicks}
+                tracking="ecommerce"
+              />
+            </div>
           </div>
 
           {/* Módulo 3: Asset Performance */}
