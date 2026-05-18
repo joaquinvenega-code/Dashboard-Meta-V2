@@ -3,15 +3,12 @@ import {
   LayoutDashboard, 
   BarChart3, 
   Settings, 
-  History, 
-  Share2, 
-  ChevronRight, 
   LogOut, 
   RefreshCcw,
   Settings2,
   Bell,
   FileText,
-  Sparkles
+  Network
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -57,15 +54,12 @@ export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, l
         <div className="text-[10px] font-black text-neutral-700 uppercase tracking-[0.2em] px-3 mb-3 mt-4">Vistas</div>
         <NavItem id="overview" icon={LayoutDashboard} label="Vista general" />
         <NavItem id="detail" icon={BarChart3} label="Detalle de cuentas" />
-        <NavItem id="strategy" icon={Share2} label="Estrategia" />
+        <NavItem id="strategy" icon={Network} label="Estrategia" />
         <NavItem id="reports" icon={FileText} label="Informes" />
-        <NavItem id="ai-report" icon={Sparkles} label="Generador Mensual" />
 
         <div className="text-[10px] font-black text-neutral-700 uppercase tracking-[0.2em] px-3 mb-3 mt-8">Configuración</div>
         <NavItem id="accounts" icon={Settings} label="Cuentas visibles" />
-        <NavItem id="history" icon={History} label="Historial" />
         <NavItem id="alerts" icon={Bell} label="Alertas" />
-        <NavItem id="share" icon={Share2} label="Snapshot" />
       </nav>
 
       <div className="p-4 border-t border-white/5 space-y-4">

@@ -39,8 +39,6 @@ import {
   LayoutDashboard,
   BarChart3,
   Settings,
-  History,
-  Share2,
   ChevronRight,
   LogOut,
   RefreshCcw,
@@ -49,7 +47,8 @@ import {
   GripVertical,
   Bell,
   Search,
-  FileText
+  FileText,
+  Network
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, parseISO, subDays, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
@@ -1425,7 +1424,7 @@ export default function App() {
                     {!structure && !loadingStructure && (
                       <div className="h-[500px] flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-lg gap-6 group">
                         <div className="p-6 bg-white/5 rounded-full group-hover:scale-110 transition-transform duration-500">
-                          <Share2 className="w-10 h-10 text-neutral-700" />
+                          <Network className="w-10 h-10 text-neutral-700" />
                         </div>
                         <div className="text-center space-y-2">
                           <p className="text-[11px] font-black text-neutral-500 uppercase tracking-[0.2em]">Lienzo de Planificación Vacío</p>
