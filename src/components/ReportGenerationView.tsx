@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, FileText, Loader2 } from 'lucide-react';
 import { CreativosGanadores } from './CreativosGanadores';
 import { TimelineGestion } from './TimelineGestion';
-import { FormBitacora } from './FormBitacora';
 
 interface ReportGenerationViewProps {
   clientId: string;
@@ -74,7 +73,6 @@ export const ReportGenerationView: React.FC<ReportGenerationViewProps> = ({ clie
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-6">
-          <FormBitacora clientId={clientId} onLogAdded={fetchLogs} />
           {loadingLogs ? (
             <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-blue-500"/></div>
           ) : (
