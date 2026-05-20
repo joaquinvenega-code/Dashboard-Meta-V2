@@ -200,6 +200,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
   const [noteDate, setNoteDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   
+  const currentNow = new Date();
+  const todayStr = format(currentNow, 'yyyy-MM-dd');
+  const yesterdayStr = format(subDays(currentNow, 1), 'yyyy-MM-dd');
+  
   const [tempSince, setTempSince] = useState(dateRange.since);
   const [tempUntil, setTempUntil] = useState(dateRange.until);
 
@@ -780,29 +784,47 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
         </motion.div>
 
         <div className="flex items-center gap-2 ml-auto">
-            {/* New Date Picker in Detail View */}
-            <div className="flex items-center gap-2 bg-[#111] p-1.5 rounded-xl border border-white/5 mr-2">
-              <Calendar className="w-3.5 h-3.5 text-neutral-600 ml-1.5" />
+            {/* New Date Picker in Detail View (Minimalist) */}
+            <div className="flex items-center gap-1.5 bg-[#0a0a0a]/80 backdrop-blur-md px-2 py-1 rounded-lg border border-white/5 mr-2">
+              <Calendar className="w-3 h-3 text-neutral-500" />
               <select 
-                value={isCustomDate ? 'custom' : (dateRange.since === format(startOfMonth(new Date()), 'yyyy-MM-dd') ? 'this_month' : 'last_7')}
+                value={isCustomDate ? 'custom' : (
+                  dateRange.since === todayStr && dateRange.until === todayStr ? 'today' : (
+                    dateRange.since === yesterdayStr && dateRange.until === yesterdayStr ? 'yesterday' : (
+                      dateRange.since === format(startOfMonth(new Date()), 'yyyy-MM-dd') && dateRange.until === format(new Date(), 'yyyy-MM-dd') ? 'this_month' : (
+                        dateRange.since === format(subDays(new Date(), 7), 'yyyy-MM-dd') ? 'last_7' : (
+                          dateRange.since === format(subDays(new Date(), 30), 'yyyy-MM-dd') ? 'last_30' : 'custom'
+                        )
+                      )
+                    )
+                  )
+                )}
                 onChange={(e) => {
                   const val = e.target.value;
-                  const now = new Date();
+                  const currentNow = new Date();
                   if (val === 'custom') {
                     setIsCustomDate(true);
+                    setTempSince(dateRange.since);
+                    setTempUntil(dateRange.until);
                   } else {
                     setIsCustomDate(false);
-                    if (val === 'this_month') {
-                      setDateRange({ since: format(startOfMonth(now), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
+                    if (val === 'today') {
+                      setDateRange({ since: todayStr, until: todayStr });
+                    } else if (val === 'yesterday') {
+                      setDateRange({ since: yesterdayStr, until: yesterdayStr });
+                    } else if (val === 'this_month') {
+                      setDateRange({ since: format(startOfMonth(currentNow), 'yyyy-MM-dd'), until: format(currentNow, 'yyyy-MM-dd') });
                     } else if (val === 'last_7') {
-                      setDateRange({ since: format(subDays(now, 7), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
+                      setDateRange({ since: format(subDays(currentNow, 7), 'yyyy-MM-dd'), until: format(currentNow, 'yyyy-MM-dd') });
                     } else if (val === 'last_30') {
-                      setDateRange({ since: format(subDays(now, 30), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
+                      setDateRange({ since: format(subDays(currentNow, 30), 'yyyy-MM-dd'), until: format(currentNow, 'yyyy-MM-dd') });
                     }
                   }
                 }}
-                className="bg-transparent text-[9px] font-black text-neutral-400 uppercase tracking-widest outline-none cursor-pointer border-none py-1 pr-2"
+                className="bg-transparent text-[8px] font-black text-neutral-400 uppercase tracking-widest outline-none cursor-pointer border-none py-0.5 pr-1 focus:text-neutral-200"
               >
+                <option value="today">Hoy</option>
+                <option value="yesterday">Ayer</option>
                 <option value="this_month">Este mes</option>
                 <option value="last_7">Últimos 7 días</option>
                 <option value="last_30">Últimos 30 días</option>
@@ -810,19 +832,28 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
               </select>
 
               {isCustomDate && (
-                <div className="flex items-center gap-2 pr-2 animate-in slide-in-from-right-2 duration-300">
+                <div className="flex items-center gap-1.5 pl-1.5 border-l border-white/5 animate-in slide-in-from-right-1 duration-300">
                   <input 
                     type="date" 
-                    value={dateRange.since}
-                    onChange={(e) => setDateRange({ ...dateRange, since: e.target.value })}
-                    className="bg-black/20 border border-white/5 rounded-lg px-2 py-1 text-[8px] font-bold text-white outline-none"
+                    value={tempSince}
+                    onChange={(e) => setTempSince(e.target.value)}
+                    className="bg-transparent text-[8px] font-bold text-neutral-300 outline-none w-[90px] py-0.5"
                   />
+                  <span className="text-[8px] text-neutral-600 font-bold uppercase">a</span>
                   <input 
                     type="date" 
-                    value={dateRange.until}
-                    onChange={(e) => setDateRange({ ...dateRange, until: e.target.value })}
-                    className="bg-black/20 border border-white/5 rounded-lg px-2 py-1 text-[8px] font-bold text-white outline-none"
+                    value={tempUntil}
+                    onChange={(e) => setTempUntil(e.target.value)}
+                    className="bg-transparent text-[8px] font-bold text-neutral-300 outline-none w-[90px] py-0.5"
                   />
+                  <button
+                    onClick={() => {
+                      setDateRange({ since: tempSince, until: tempUntil });
+                    }}
+                    className="bg-blue-600/25 hover:bg-blue-600/40 text-blue-400 border border-blue-500/10 text-[8px] font-black px-1.5 py-0.5 rounded transition-all uppercase tracking-wider"
+                  >
+                    Aplicar
+                  </button>
                 </div>
               )}
             </div>
