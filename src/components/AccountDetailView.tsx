@@ -199,6 +199,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [chartFilters, setChartFilters] = useState<Record<string, string[]>>({});
   const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
   const [noteDate, setNoteDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  
+  const [tempSince, setTempSince] = useState(dateRange.since);
+  const [tempUntil, setTempUntil] = useState(dateRange.until);
+
+  useEffect(() => {
+    setTempSince(dateRange.since);
+    setTempUntil(dateRange.until);
+  }, [dateRange]);
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [isFilterHovered, setIsFilterHovered] = useState(false);

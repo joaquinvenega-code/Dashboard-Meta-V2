@@ -128,6 +128,13 @@ export default function App() {
     until: format(new Date(), 'yyyy-MM-dd')
   });
   const [isCustomDate, setIsCustomDate] = useState(false);
+  const [tempSince, setTempSince] = useState(dateRange.since);
+  const [tempUntil, setTempUntil] = useState(dateRange.until);
+
+  const now = new Date();
+  const todayStr = format(now, 'yyyy-MM-dd');
+  const yesterdayStr = format(subDays(now, 1), 'yyyy-MM-dd');
+
   const periodKey = format(parseISO(dateRange.since), 'yyyy-MM');
 
   const [settings, setSettings] = useState<Record<string, AccountSettings>>(() => {
@@ -752,25 +759,43 @@ export default function App() {
 
                 <div className="flex items-center gap-2">
                   <select 
-                    value={isCustomDate ? 'custom' : (dateRange.since === format(startOfMonth(new Date()), 'yyyy-MM-dd') ? 'this_month' : 'last_7')}
+                    value={isCustomDate ? 'custom' : (
+                      dateRange.since === todayStr && dateRange.until === todayStr ? 'today' : (
+                        dateRange.since === yesterdayStr && dateRange.until === yesterdayStr ? 'yesterday' : (
+                          dateRange.since === format(startOfMonth(new Date()), 'yyyy-MM-dd') && dateRange.until === format(new Date(), 'yyyy-MM-dd') ? 'this_month' : (
+                            dateRange.since === format(subDays(new Date(), 7), 'yyyy-MM-dd') ? 'last_7' : (
+                              dateRange.since === format(subDays(new Date(), 30), 'yyyy-MM-dd') ? 'last_30' : 'custom'
+                            )
+                          )
+                        )
+                      )
+                    )}
                     onChange={(e) => {
                       const val = e.target.value;
-                      const now = new Date();
+                      const currentNow = new Date();
                       if (val === 'custom') {
                         setIsCustomDate(true);
+                        setTempSince(dateRange.since);
+                        setTempUntil(dateRange.until);
                       } else {
                         setIsCustomDate(false);
-                        if (val === 'this_month') {
-                          setDateRange({ since: format(startOfMonth(now), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
+                        if (val === 'today') {
+                          setDateRange({ since: todayStr, until: todayStr });
+                        } else if (val === 'yesterday') {
+                          setDateRange({ since: yesterdayStr, until: yesterdayStr });
+                        } else if (val === 'this_month') {
+                          setDateRange({ since: format(startOfMonth(currentNow), 'yyyy-MM-dd'), until: format(currentNow, 'yyyy-MM-dd') });
                         } else if (val === 'last_7') {
-                          setDateRange({ since: format(subDays(now, 7), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
+                          setDateRange({ since: format(subDays(currentNow, 7), 'yyyy-MM-dd'), until: format(currentNow, 'yyyy-MM-dd') });
                         } else if (val === 'last_30') {
-                          setDateRange({ since: format(subDays(now, 30), 'yyyy-MM-dd'), until: format(now, 'yyyy-MM-dd') });
+                          setDateRange({ since: format(subDays(currentNow, 30), 'yyyy-MM-dd'), until: format(currentNow, 'yyyy-MM-dd') });
                         }
                       }
                     }}
                     className="bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-2 text-[10px] font-black text-neutral-100 uppercase tracking-widest outline-none focus:border-blue-600 transition-all cursor-pointer hover:bg-[#222]"
                   >
+                    <option value="today">Hoy</option>
+                    <option value="yesterday">Ayer</option>
                     <option value="this_month">Este mes</option>
                     <option value="last_7">Últimos 7 días</option>
                     <option value="last_30">Últimos 30 días</option>
@@ -781,17 +806,25 @@ export default function App() {
                     <div className="flex items-center gap-2 animate-in slide-in-from-right-2 duration-300">
                       <input 
                         type="date" 
-                        value={dateRange.since}
-                        onChange={(e) => setDateRange(prev => ({ ...prev, since: e.target.value }))}
+                        value={tempSince}
+                        onChange={(e) => setTempSince(e.target.value)}
                         className="bg-[#1c1c1c] border border-white/10 rounded-xl px-2 py-1.5 text-[10px] font-bold text-white outline-none focus:border-blue-600 appearance-none"
                       />
                       <span className="text-[10px] text-neutral-600 font-black">A</span>
                       <input 
                         type="date" 
-                        value={dateRange.until}
-                        onChange={(e) => setDateRange(prev => ({ ...prev, until: e.target.value }))}
+                        value={tempUntil}
+                        onChange={(e) => setTempUntil(e.target.value)}
                         className="bg-[#1c1c1c] border border-white/10 rounded-xl px-2 py-1.5 text-[10px] font-bold text-white outline-none focus:border-blue-600 appearance-none"
                       />
+                      <button
+                        onClick={() => {
+                          setDateRange({ since: tempSince, until: tempUntil });
+                        }}
+                        className="bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(37,99,235,0.4)] border border-blue-400/30"
+                      >
+                        Aplicar
+                      </button>
                     </div>
                   )}
                 </div>
