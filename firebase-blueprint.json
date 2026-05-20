@@ -1,0 +1,37 @@
+{
+  "entities": {
+    "ClientLog": {
+      "title": "Client Log",
+      "description": "A structural note/log/observation for a client account.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["text", "date"]
+    },
+    "OfflineSale": {
+      "title": "Offline Sale",
+      "description": "An offline or manual sales record for a client.",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date" },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["amount", "date"]
+    }
+  },
+  "firestore": {
+    "/clients/{clientId}/logs": {
+      "schema": "ClientLog",
+      "description": "Logs and observations regarding a client audit."
+    },
+    "/clients/{clientId}/offline_sales": {
+      "schema": "OfflineSale",
+      "description": "Offline manual sales transactions."
+    }
+  }
+}

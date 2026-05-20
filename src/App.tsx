@@ -19,7 +19,8 @@ import {
   Ad, 
   AlertRule, 
   InAppNotification, 
-  AccountNote 
+  AccountNote,
+  OfflineSaleEntry
 } from './types';
 import { Sidebar } from './components/Sidebar';
 import { IndividualReport } from './components/IndividualReport';
@@ -28,6 +29,7 @@ import { AccountDetailView, RocketLoader } from './components/AccountDetailView'
 import { StrategyCanvas } from './components/StrategyCanvas';
 import { AlertsSection } from './components/AlertsSection';
 import { ReportsSection } from './components/ReportsSection';
+import FloatingAssistant from './components/FloatingAssistant';
 import { formatCurrency, formatNumber, formatDecimal, cn } from './lib/utils';
 import { 
   ChevronDown, 
@@ -458,6 +460,29 @@ export default function App() {
     const newSettings = { ...settings, [id]: s };
     setSettings(newSettings);
     localStorage.setItem('cr_settings', JSON.stringify(newSettings));
+  };
+
+  const handleAddOfflineSaleLog = (accountId: string, amount: number, date: string) => {
+    const accSettings = settings[accountId] || { objective: 0, budget: 0, currency: 'ARS', tracking: 'ecommerce' as const };
+    const periodKey = date.substring(0, 7); // YYYY-MM
+    const currentLogs = accSettings.offlineSalesLogByMonth?.[periodKey] || [];
+    
+    const newEntry: OfflineSaleEntry = {
+      id: Math.random().toString(36).substring(2, 11),
+      amount,
+      note: 'Registrado vía asistente de voz',
+      date
+    };
+
+    const updatedSettings: AccountSettings = {
+      ...accSettings,
+      offlineSalesLogByMonth: {
+        ...(accSettings.offlineSalesLogByMonth || {}),
+        [periodKey]: [...currentLogs, newEntry]
+      }
+    };
+
+    handleSaveSettings(accountId, updatedSettings);
   };
 
   const toggleCol = (col: string) => {
@@ -1475,6 +1500,13 @@ export default function App() {
       )}
 
       {/* Config Modal */}
+      <FloatingAssistant
+        accounts={accounts}
+        notes={notes}
+        onAddNote={(note) => setNotes([...notes, note])}
+        onAddOfflineSale={handleAddOfflineSaleLog}
+        settings={settings}
+      />
       <AnimatePresence>
         {configEntity && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">

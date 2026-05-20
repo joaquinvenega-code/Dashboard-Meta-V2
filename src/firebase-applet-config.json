@@ -1,0 +1,9 @@
+{
+  "apiKey": "AIzaSyFakeKeyForViteCompilesOrionVoiceAssistant",
+  "authDomain": "orion-fake-project.firebaseapp.com",
+  "projectId": "orion-fake-project",
+  "storageBucket": "orion-fake-project.appspot.com",
+  "messagingSenderId": "0000000000",
+  "appId": "1:0000000000:web:000000000000",
+  "firestoreDatabaseId": "(default)"
+}
