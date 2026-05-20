@@ -786,7 +786,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
         <div className="flex items-center gap-2 ml-auto">
             {/* New Date Picker in Detail View (Minimalist) */}
             <div className="flex items-center gap-1.5 bg-[#0a0a0a]/80 backdrop-blur-md px-2 py-1 rounded-lg border border-white/5 mr-2">
-              <Calendar className="w-3 h-3 text-neutral-500" />
+              <Calendar className="w-3 h-3 text-neutral-300" />
               <select 
                 value={isCustomDate ? 'custom' : (
                   dateRange.since === todayStr && dateRange.until === todayStr ? 'today' : (
@@ -821,14 +821,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     }
                   }
                 }}
-                className="bg-transparent text-[8px] font-black text-neutral-400 uppercase tracking-widest outline-none cursor-pointer border-none py-0.5 pr-1 focus:text-neutral-200"
+                className="bg-transparent text-[8px] font-black text-neutral-200 uppercase tracking-widest outline-none cursor-pointer border-none py-0.5 pr-1 focus:text-neutral-100"
               >
-                <option value="today">Hoy</option>
-                <option value="yesterday">Ayer</option>
-                <option value="this_month">Este mes</option>
-                <option value="last_7">Últimos 7 días</option>
-                <option value="last_30">Últimos 30 días</option>
-                <option value="custom">Personalizado</option>
+                <option value="today" className="bg-[#121212] text-neutral-200 font-bold uppercase">Hoy</option>
+                <option value="yesterday" className="bg-[#121212] text-neutral-200 font-bold uppercase">Ayer</option>
+                <option value="this_month" className="bg-[#121212] text-neutral-200 font-bold uppercase">Este mes</option>
+                <option value="last_7" className="bg-[#121212] text-neutral-200 font-bold uppercase">Últimos 7 días</option>
+                <option value="last_30" className="bg-[#121212] text-neutral-200 font-bold uppercase">Últimos 30 días</option>
+                <option value="custom" className="bg-[#121212] text-neutral-200 font-bold uppercase">Personalizado</option>
               </select>
 
               {isCustomDate && (
