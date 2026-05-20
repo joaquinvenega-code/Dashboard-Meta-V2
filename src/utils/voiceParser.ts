@@ -9,6 +9,12 @@ export interface ParsedVoiceCommand {
   raw: string;
 }
 
+export interface AvailableClient {
+  id: string;
+  name: string;
+  customName?: string;
+}
+
 export function normalizeText(text: string): string {
   if (!text) return '';
   return text
@@ -18,14 +24,27 @@ export function normalizeText(text: string): string {
     .trim();
 }
 
+/**
+ * Removes advertising account names noise words like "cuenta", "publicitaria", "ads"
+ * to extract the pure business/client name.
+ */
+export function cleanAccountName(name: string): string {
+  const norm = normalizeText(name);
+  const cleaned = norm
+    .replace(/\b(cuenta|publicitaria|ads|advertising|digital|campana|campanas|business|bm|feed|facebook|marketing|oficial|official|arg|cl|co|mx|ars|usd|grupo|agencia)\b/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ') // Replace punctuation/symbols with space
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned;
+}
+
 export function parseAdvancedVoiceCommand(
   rawText: string,
-  availableClients: { id: string; name: string }[]
+  availableClients: AvailableClient[]
 ): ParsedVoiceCommand {
   const normalized = normalizeText(rawText);
   let intent: ParsedVoiceCommand['intent'] = 'UNKNOWN';
   let matchedClientName: string | undefined = undefined;
-  let clientNameInCommand: string | undefined = undefined;
 
   // 1. Calculate relative dates ("hoy", "ayer", "antes de ayer" or "anteayer")
   let dateStr = format(new Date(), 'yyyy-MM-dd');
@@ -37,16 +56,59 @@ export function parseAdvancedVoiceCommand(
     dateStr = format(new Date(), 'yyyy-MM-dd');
   }
 
-  // 2. Identify client match
-  // Sort availableClients by name length descending to prevent partial match issues (e.g. "Nike Premium" before "Nike")
-  const sortedClients = [...availableClients].sort((a, b) => b.name.length - a.name.length);
-  for (const client of sortedClients) {
-    const normClient = normalizeText(client.name);
-    if (normalized.includes(normClient)) {
-      matchedClientName = client.name;
-      clientNameInCommand = normClient;
-      break;
+  // 2. Identify client match with scoring
+  let bestScore = 0;
+  let bestClient: AvailableClient | undefined = undefined;
+
+  for (const client of availableClients) {
+    let score = 0;
+    const rawNorm = normalizeText(client.name);
+    const customNorm = client.customName ? normalizeText(client.customName) : '';
+    
+    const rawClean = cleanAccountName(client.name);
+    const customClean = client.customName ? cleanAccountName(client.customName) : '';
+
+    // Check full customName match (Score: 100)
+    if (customNorm && normalized.includes(customNorm)) {
+      score = Math.max(score, 100);
     }
+    // Check clean customName match (Score: 90)
+    if (customClean && customClean.length >= 3 && normalized.includes(customClean)) {
+      score = Math.max(score, 90);
+    }
+    // Check clean rawName match (Score: 80)
+    if (rawClean && rawClean.length >= 3 && normalized.includes(rawClean)) {
+      score = Math.max(score, 80);
+    }
+    // Check full rawName match (Score: 70)
+    if (rawNorm && normalized.includes(rawNorm)) {
+      score = Math.max(score, 70);
+    }
+
+    // Word-by-word fallback matching
+    const rawWords = rawClean.split(' ').filter(w => w.length >= 3);
+    const customWords = customClean.split(' ').filter(w => w.length >= 3);
+
+    rawWords.forEach(word => {
+      if (normalized.includes(word)) {
+        score = Math.max(score, 30);
+      }
+    });
+
+    customWords.forEach(word => {
+      if (normalized.includes(word)) {
+        score = Math.max(score, 40);
+      }
+    });
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestClient = client;
+    }
+  }
+
+  if (bestClient) {
+    matchedClientName = bestClient.name;
   }
 
   // 3. Match Intents
@@ -91,15 +153,11 @@ export function parseAdvancedVoiceCommand(
     // Try to match numbers representing currency or amounts.
     const numberMatches = normalized.match(/\b\d+([.,]\d+)?\b/g);
     if (numberMatches) {
-      // Find the first match that is likely the price/sum
-      // Remove dots that might be thousand separators or commas for decimals
       const cleanedMatch = numberMatches[0].replace(/\./g, '').replace(/,/g, '.');
       amount = parseFloat(cleanedMatch);
     }
   } else if (intent === 'ADD_LOG_EXTENDED') {
     // Extract text of the note. For example after "que diga" or "nota para [cliente]"
-    // E.g. "agregar nota para Nike que diga se optimizaron las audiencias"
-    // We clean the text by removing introductory trigger fragments.
     let cleanText = rawText;
     const phrasesToStrip = [
       /agregar bitacora para/gi,
@@ -123,6 +181,11 @@ export function parseAdvancedVoiceCommand(
     if (matchedClientName) {
       const clientEscaped = matchedClientName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
       phrasesToStrip.push(new RegExp(clientEscaped, 'gi'));
+    }
+
+    if (bestClient && bestClient.customName) {
+      const customEscaped = bestClient.customName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      phrasesToStrip.push(new RegExp(customEscaped, 'gi'));
     }
 
     phrasesToStrip.forEach(regex => {

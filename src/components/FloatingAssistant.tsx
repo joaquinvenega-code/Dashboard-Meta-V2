@@ -210,10 +210,11 @@ export default function FloatingAssistant({
     addMessage('user', rawString);
     setIsProcessing(true);
 
-    // Map clients name array for exact parsing
+    // Map clients name array for exact parsing, including custom names
     const mappedClients = accounts.map(acc => ({
       id: acc.id,
-      name: acc.name
+      name: acc.name,
+      customName: settings[acc.id]?.customName || undefined
     }));
 
     // 2. Parse command using custom Regex parser
