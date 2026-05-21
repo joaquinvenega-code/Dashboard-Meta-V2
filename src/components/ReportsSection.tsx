@@ -318,11 +318,11 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
             <AssetPerformanceV2 assets={mockAssets} />
           </div>
 
-          {/* Módulo 5: Demographics & Geography */}
+          {/* Módulo 5: Demographics */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-250">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">05</div>
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Concentración Geográfica</h3>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Demografía de Audiencia</h3>
             </div>
             <DemographicsGeographyV2 
               demoData={[
@@ -332,16 +332,6 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
                 { age: '45-54', male: 8, female: 12 },
                 { age: '55+', male: 4, female: 6 },
               ]}
-              regions={[
-                { name: 'Buenos Aires', value: 0.52, intensity: 1, coords: [-34.60, -58.38] },
-                { name: 'Córdoba', value: 0.18, intensity: 0.8, coords: [-31.42, -64.19] },
-                { name: 'Santa Fe', value: 0.14, intensity: 0.7, coords: [-32.95, -60.64] },
-                { name: 'Mendoza', value: 0.08, intensity: 0.5, coords: [-32.89, -68.85] },
-                { name: 'Tucumán', value: 0.05, intensity: 0.4, coords: [-26.81, -65.22] },
-                { name: 'Patagonia', value: 0.03, intensity: 0.3, coords: [-38.95, -68.06] },
-              ]}
-              accounts={accounts}
-              selectedAccountId={selectedAccountId}
             />
           </div>
 
