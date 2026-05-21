@@ -1,7 +1,11 @@
 import React, { useMemo, useState, useRef } from 'react';
 import { Globe, DollarSign, TrendingUp, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import unifiedWorldRegions from '../../assets/data/unified_world_regions.json';
+import worldCountries from '../../assets/data/world_countries.json';
+import regionsUSA from '../../assets/data/regions_USA.json';
+import regionsARG from '../../assets/data/regions_ARG.json';
+import regionsBRA from '../../assets/data/regions_BRA.json';
+import regionsESP from '../../assets/data/regions_ESP.json';
 
 interface CountrySales {
   countryId: string; // ISO Alpha-3 (e.g. "USA", "ARG", "ESP")
@@ -39,7 +43,7 @@ const DEFAULT_SALES_DATA: CountrySales[] = [
   { countryId: 'IND', salesVolume: 180, totalRevenue: 11200 },
 ];
 
-// Highly detailed default regional data mapping to unified_world_regions.json
+// Detailed regional data matching each country's subregions JSON files
 const DEFAULT_REGION_SALES_DATA: RegionSales[] = [
   // USA (Total: 1540)
   { regionId: 'US-CA', salesVolume: 620, totalRevenue: 54500 },
@@ -55,7 +59,6 @@ const DEFAULT_REGION_SALES_DATA: RegionSales[] = [
   { regionId: 'AR-S', salesVolume: 190, totalRevenue: 13250 },
   { regionId: 'AR-M', salesVolume: 90, totalRevenue: 6200 },
   { regionId: 'AR-T', salesVolume: 20, totalRevenue: 1400 },
-  // Map standard Patagonia provinces
   { regionId: 'AR-U', salesVolume: 5, totalRevenue: 525 }, // Chubut
   { regionId: 'AR-Z', salesVolume: 5, totalRevenue: 525 }, // Santa Cruz
 
@@ -88,11 +91,14 @@ const COUNTRY_NAME_MAP: Record<string, string> = {
   'IND': 'India'
 };
 
+const DRILLDOWN_SUPPORTED_COUNTRIES = ['USA', 'ARG', 'BRA', 'ESP'];
+
 export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({ 
   salesData = DEFAULT_SALES_DATA,
   regionSalesData = DEFAULT_REGION_SALES_DATA,
   currency = 'USD'
 }) => {
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [hoveredElement, setHoveredElement] = useState<any | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -115,44 +121,35 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
     return map;
   }, [regionSalesData]);
 
-  // Find max sales volume at regional level for normalization
-  const maxRegionSalesVolume = useMemo(() => {
-    if (regionSalesData.length === 0) return 1;
-    return Math.max(...regionSalesData.map(item => item.salesVolume), 1);
-  }, [regionSalesData]);
-
-  // Find max country sales volume for rest of the world
+  // Find max country sales volume for global color scales
   const maxSalesVolume = useMemo(() => {
     if (salesData.length === 0) return 1;
     return Math.max(...salesData.map(item => item.salesVolume), 1);
   }, [salesData]);
 
-  // Miller Cylindrical Projection Converter (synchronized for all geometries)
-  const project = useMemo(() => {
+  // Find max regional sales volume for country color scales
+  const maxRegionSalesVolume = useMemo(() => {
+    if (regionSalesData.length === 0) return 1;
+    return Math.max(...regionSalesData.map(item => item.salesVolume), 1);
+  }, [regionSalesData]);
+
+  // Global map geometry: Miller Cylindrical representation
+  const projectGlobal = useMemo(() => {
     const width = 1010;
     const height = 660;
     
     return (lng: number, lat: number) => {
-      // 1. Longitude mapping
       const x = ((lng + 180) * width) / 360;
-      
-      // 2. Latitude clamping (-60 to 82 is ideal to crop barren poles)
       const latClamped = Math.max(-60, Math.min(82, lat));
       const latRad = (latClamped * Math.PI) / 180;
-      
-      // 3. Miller cylindrical mathematical conversion
       const y = (height / 2) - 1.25 * (width / (2 * Math.PI)) * Math.log(Math.tan(Math.PI / 4 + 0.4 * latRad));
-      
-      // Shift down slightly to focus on habitated land mass
-      const finalY = y + 35;
-      
-      return `${x.toFixed(1)},${finalY.toFixed(1)}`;
+      return `${x.toFixed(1)},${(y + 35).toFixed(1)}`;
     };
   }, []);
 
-  // Parse geometries into SVG paths for all features of unifiedWorldRegions
-  const unifiedPaths = useMemo(() => {
-    return unifiedWorldRegions.features.map((feature: any) => {
+  // Compute global SVG paths from worldCountries
+  const globalPaths = useMemo(() => {
+    return worldCountries.features.map((feature: any) => {
       const geometry = feature.geometry;
       if (!geometry) return { ...feature, pathData: '' };
 
@@ -162,7 +159,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
       if (type === 'Polygon') {
         pathData = coordinates
           .map((ring: any[]) => {
-            const points = ring.map((coord) => project(coord[0], coord[1]));
+            const points = ring.map((coord) => projectGlobal(coord[0], coord[1]));
             return `M${points.join('L')}Z`;
           })
           .join(' ');
@@ -171,7 +168,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
           .map((polygon: any[][]) => {
             return polygon
               .map((ring: any[]) => {
-                const points = ring.map((coord) => project(coord[0], coord[1]));
+                const points = ring.map((coord) => projectGlobal(coord[0], coord[1]));
                 return `M${points.join('L')}Z`;
               })
               .join(' ');
@@ -184,50 +181,163 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
         pathData
       };
     });
-  }, [project]);
+  }, [projectGlobal]);
 
-  // Heatmap rendering logic
-  const getFeatureColor = (feature: any) => {
-    const isRegion = feature.properties.type === 'region';
-    const id = feature.id.toUpperCase();
+  // Dynamic automatic projection builder for active countries
+  const countryPaths = useMemo(() => {
+    if (!selectedCountry) return [];
 
-    if (isRegion) {
-      const sale = regionSalesMap.get(id);
-      if (!sale || sale.salesVolume === 0) {
-        // Shopify style deep elegant dark slate-navy for non-active zones
-        return '#141a29'; 
+    let geoJSON: any = null;
+    if (selectedCountry === 'USA') geoJSON = regionsUSA;
+    else if (selectedCountry === 'ARG') geoJSON = regionsARG;
+    else if (selectedCountry === 'BRA') geoJSON = regionsBRA;
+    else if (selectedCountry === 'ESP') geoJSON = regionsESP;
+
+    if (!geoJSON || !geoJSON.features) return [];
+
+    // Extract all lat/lng points to compute bounds
+    const rawPoints: [number, number][] = [];
+    geoJSON.features.forEach((feat: any) => {
+      const geom = feat.geometry;
+      if (!geom) return;
+      const { type, coordinates } = geom;
+      if (type === 'Polygon') {
+        coordinates.forEach((ring: any[]) => {
+          ring.forEach((coord: number[]) => {
+            rawPoints.push([coord[0], coord[1]]);
+          });
+        });
+      } else if (type === 'MultiPolygon') {
+        coordinates.forEach((poly: any[][]) => {
+          poly.forEach((ring: any[]) => {
+            ring.forEach((coord: number[]) => {
+              rawPoints.push([coord[0], coord[1]]);
+            });
+          });
+        });
       }
-      const intensity = Math.max(0.18, sale.salesVolume / maxRegionSalesVolume);
-      
-      // Warm Amber to Coral/Red transition
-      const startColor = { r: 245, g: 158, b: 11 }; // Amber-500
-      const endColor = { r: 239, g: 68, b: 68 };    // Red-500
+    });
 
-      const r = Math.round(startColor.r + (endColor.r - startColor.r) * intensity);
-      const g = Math.round(startColor.g + (endColor.g - startColor.g) * intensity);
-      const b = Math.round(startColor.b + (endColor.b - startColor.b) * intensity);
+    if (rawPoints.length === 0) return [];
 
-      return `rgb(${r}, ${g}, ${b})`;
-    } else {
-      const sale = salesMap.get(id);
-      if (!sale || sale.salesVolume === 0) {
-        // Neutral background country
-        return '#1b233a'; 
+    // Transform points to Mercator Projection coordinates
+    const mercator = (lng: number, lat: number) => {
+      const x = (lng + 180) * (1000 / 360);
+      const latRad = (lat * Math.PI) / 180;
+      const y = 600 - (1000 / (2 * Math.PI)) * Math.log(Math.tan(Math.PI / 4 + latRad / 2));
+      return [x, y];
+    };
+
+    let minProjX = Infinity, maxProjX = -Infinity;
+    let minProjY = Infinity, maxProjY = -Infinity;
+
+    rawPoints.forEach(([lng, lat]) => {
+      const [px, py] = mercator(lng, lat);
+      if (px < minProjX) minProjX = px;
+      if (px > maxProjX) maxProjX = px;
+      if (py < minProjY) minProjY = py;
+      if (py > maxProjY) maxProjY = py;
+    });
+
+    // Output dimension sizing with elegant boundary padding (comfortably centered)
+    const width = 1000;
+    const height = 550;
+    const pad = 40;
+
+    const mapWidth = width - 2 * pad;
+    const mapHeight = height - 2 * pad;
+
+    const projWidth = maxProjX - minProjX || 1;
+    const projHeight = maxProjY - minProjY || 1;
+
+    // Maintain geographical aspect ratio safely
+    const scale = Math.min(mapWidth / projWidth, mapHeight / projHeight);
+
+    // Compute absolute translation shifts
+    const xOffset = pad + (mapWidth - projWidth * scale) / 2 - minProjX * scale;
+    const yOffset = pad + (mapHeight - projHeight * scale) / 2 - minProjY * scale;
+
+    const localProject = (lng: number, lat: number) => {
+      const [px, py] = mercator(lng, lat);
+      const fx = px * scale + xOffset;
+      const fy = py * scale + yOffset;
+      return `${fx.toFixed(1)},${fy.toFixed(1)}`;
+    };
+
+    // Compile dynamic SVG path data
+    return geoJSON.features.map((feature: any) => {
+      const geometry = feature.geometry;
+      if (!geometry) return { ...feature, pathData: '' };
+
+      const { type, coordinates } = geometry;
+      let pathData = '';
+
+      if (type === 'Polygon') {
+        pathData = coordinates
+          .map((ring: any[]) => {
+            const points = ring.map((coord) => localProject(coord[0], coord[1]));
+            return `M${points.join('L')}Z`;
+          })
+          .join(' ');
+      } else if (type === 'MultiPolygon') {
+        pathData = coordinates
+          .map((polygon: any[][]) => {
+            return polygon
+              .map((ring: any[]) => {
+                const points = ring.map((coord) => localProject(coord[0], coord[1]));
+                return `M${points.join('L')}Z`;
+              })
+              .join(' ');
+          })
+          .join(' ');
       }
-      const intensity = Math.max(0.15, sale.salesVolume / maxSalesVolume);
-      
-      const startColor = { r: 245, g: 158, b: 11 }; // Amber-500
-      const endColor = { r: 239, g: 68, b: 68 };    // Red-500
 
-      const r = Math.round(startColor.r + (endColor.r - startColor.r) * intensity);
-      const g = Math.round(startColor.g + (endColor.g - startColor.g) * intensity);
-      const b = Math.round(startColor.b + (endColor.b - startColor.b) * intensity);
+      return {
+        ...feature,
+        pathData
+      };
+    });
+  }, [selectedCountry]);
 
-      return `rgb(${r}, ${g}, ${b})`;
+  // Color generator for global countries matching thermographic scale
+  const getGlobalFeatureColor = (feature: any) => {
+    const id = feature.id ? feature.id.toUpperCase() : '';
+    const sale = salesMap.get(id);
+    if (!sale || sale.salesVolume === 0) {
+      return '#1b233a'; // Classic high contrast dark background
     }
+    const intensity = Math.max(0.15, sale.salesVolume / maxSalesVolume);
+    
+    // Warm Amber to Coral/Red transition
+    const startColor = { r: 245, g: 158, b: 11 }; // Amber-500
+    const endColor = { r: 239, g: 68, b: 68 };    // Red-500
+
+    const r = Math.round(startColor.r + (endColor.r - startColor.r) * intensity);
+    const g = Math.round(startColor.g + (endColor.g - startColor.g) * intensity);
+    const b = Math.round(startColor.b + (endColor.b - startColor.b) * intensity);
+
+    return `rgb(${r}, ${g}, ${b})`;
   };
 
-  // Format currency values based on active account context
+  // Color generator for internal states or communities
+  const getRegionFeatureColor = (feature: any) => {
+    const id = feature.id ? feature.id.toUpperCase() : '';
+    const sale = regionSalesMap.get(id);
+    if (!sale || sale.salesVolume === 0) {
+      return '#141a29'; // Subtly deeper elegant contrast for internal inactive zones
+    }
+    const intensity = Math.max(0.18, sale.salesVolume / maxRegionSalesVolume);
+    
+    const startColor = { r: 245, g: 158, b: 11 }; // Amber-500
+    const endColor = { r: 239, g: 68, b: 68 };    // Red-500
+
+    const r = Math.round(startColor.r + (endColor.r - startColor.r) * intensity);
+    const g = Math.round(startColor.g + (endColor.g - startColor.g) * intensity);
+    const b = Math.round(startColor.b + (endColor.b - startColor.b) * intensity);
+
+    return `rgb(${r}, ${g}, ${b})`;
+  };
+
   const formatValue = (val: number) => {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
@@ -239,14 +349,13 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    // Position tooltip 15px to the right and 15px down from cursor relative to current map container
     setTooltipPos({
       x: e.clientX - rect.left + 15,
       y: e.clientY - rect.top + 15
     });
   };
 
-  // Summary Metrics consolidator
+  // Conssolidated dynamic metrics
   const summary = useMemo(() => {
     const totalSales = salesData.reduce((acc, curr) => acc + curr.salesVolume, 0);
     const totalRev = salesData.reduce((acc, curr) => acc + curr.totalRevenue, 0);
@@ -255,7 +364,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
     const activeRegionsCount = regionSalesData.filter(r => r.salesVolume > 0).length;
     // Count active countries with conversions which do not use subregions
     const activeOtherCountriesCount = salesData.filter(
-      s => s.salesVolume > 0 && !['USA', 'ARG', 'BRA', 'ESP'].includes(s.countryId.toUpperCase())
+      s => s.salesVolume > 0 && !DRILLDOWN_SUPPORTED_COUNTRIES.includes(s.countryId.toUpperCase())
     ).length;
 
     return {
@@ -266,27 +375,30 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
   }, [salesData, regionSalesData]);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm flex flex-col gap-6 select-none relative animate-in fade-in duration-500">
+    <div id="global-sales-map-root" className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm flex flex-col gap-6 select-none relative animate-in fade-in duration-500">
       
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Globe className="w-4 h-4 text-slate-900" />
+            <Globe id="icon-map-title" className="w-4 h-4 text-slate-900 animate-pulse" />
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-mono">
               Distribución Geográfica
             </span>
           </div>
-          <h4 className="text-lg font-black uppercase text-slate-900 leading-tight">
-            Mapa de Ventas Global
+          <h4 id="map-header-title" className="text-lg font-black uppercase text-slate-900 leading-tight">
+            {selectedCountry ? `Mapa de Ventas - ${COUNTRY_NAME_MAP[selectedCountry.toUpperCase()] || selectedCountry}` : 'Mapa de Ventas Global'}
           </h4>
           <p className="text-xs text-slate-500 font-medium">
-            Desglose de conversiones BOFU y facturación total integrada a las subdivisiones regionales.
+            {selectedCountry 
+              ? `Viendo desglose detallado de provincias / estados para ${COUNTRY_NAME_MAP[selectedCountry.toUpperCase()] || selectedCountry}.`
+              : 'Desglose de conversiones BOFU y facturación total integrada con soporte interactivo de Drill-down.'
+            }
           </p>
         </div>
 
-        {/* TOP MINI METRICS BANNER */}
-        <div className="flex flex-wrap items-center gap-6 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 shadow-xs">
+        {/* METRICS PANEL */}
+        <div id="map-summary-panel" className="flex flex-wrap items-center gap-6 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 shadow-xs">
           <div className="flex flex-col gap-0.5">
             <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Zonas Activas</span>
             <span className="text-xs font-black text-slate-900 font-mono">{summary.zonesCount} Provincias / Países</span>
@@ -304,96 +416,142 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
         </div>
       </div>
 
-      {/* INTERACTIVE SVG MAP AREA */}
+      {/* INTERACTIVE SVG MAP CONTAINER */}
       <div 
         ref={containerRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setHoveredElement(null)}
         className="relative bg-[#070b13] rounded-2xl border border-slate-950 p-2 overflow-hidden flex items-center justify-center w-full shadow-inner"
-        style={{ minHeight: '380px' }}
+        style={{ minHeight: '420px' }}
       >
-        <svg 
-          viewBox="0 0 1010 660" 
-          className="w-full h-auto max-h-[500px]"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* Background / Ocean */}
-          <rect width="1010" height="660" fill="transparent" />
+        
+        {/* RETORNO FLOATING BUTTON */}
+        <AnimatePresence>
+          {selectedCountry && (
+            <motion.button
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              onClick={() => {
+                setSelectedCountry(null);
+                setHoveredElement(null);
+              }}
+              className="absolute top-4 left-4 z-40 flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-700/60 hover:bg-slate-800 text-white text-[10px] sm:text-xs font-black uppercase rounded-xl shadow-lg transition-all active:scale-95 text-center"
+            >
+              ← Volver al mapa global
+            </motion.button>
+          )}
+        </AnimatePresence>
 
-          {/* Render Elements list */}
-          <g id="world-map-paths" className="transition-all">
-            {unifiedPaths.map((feature: any) => {
-              if (!feature.pathData) return null;
+        {/* CONDITIONALLY RENDER GLOBES / DETAILS */}
+        {!selectedCountry ? (
+          /* GLOBE BASE LAYER */
+          <svg 
+            viewBox="0 0 1010 660" 
+            className="w-full h-auto max-h-[500px]"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect width="1010" height="660" fill="transparent" />
+            <g id="world-map-countries">
+              {globalPaths.map((feature: any) => {
+                if (!feature.pathData) return null;
 
-              const isRegion = feature.properties.type === 'region';
-              const id = feature.id.toUpperCase();
-              
-              const isHovered = hoveredElement?.id === feature.id;
-              
-              // Resolve active status and stats
-              let isActive = false;
-              let salesVolume = 0;
-              let totalRevenue = 0;
-
-              if (isRegion) {
-                const sale = regionSalesMap.get(id);
-                if (sale && sale.salesVolume > 0) {
-                  isActive = true;
-                  salesVolume = sale.salesVolume;
-                  totalRevenue = sale.totalRevenue;
-                }
-              } else {
+                const id = feature.id ? feature.id.toUpperCase() : '';
+                const isHovered = hoveredElement?.id === feature.id;
+                
                 const sale = salesMap.get(id);
-                if (sale && sale.salesVolume > 0) {
-                  isActive = true;
-                  salesVolume = sale.salesVolume;
-                  totalRevenue = sale.totalRevenue;
-                }
-              }
+                const hasSales = sale && sale.salesVolume > 0;
+                const canDrillDown = DRILLDOWN_SUPPORTED_COUNTRIES.includes(id);
 
-              return (
-                <path
-                  key={feature.id}
-                  d={feature.pathData}
-                  fill={getFeatureColor(feature)}
-                  stroke={isHovered ? '#ffffff' : '#070b13'}
-                  strokeWidth={isHovered ? '1.5' : '0.4'}
-                  style={{
-                    cursor: isActive ? 'pointer' : 'default',
-                    transition: 'fill 300ms ease, stroke 200ms ease, stroke-width 200ms ease'
-                  }}
-                  className={`transition-all ${isActive ? 'hover:brightness-110 hover:opacity-100 active:scale-[0.99]' : 'opacity-85 hover:opacity-95'}`}
-                  onMouseEnter={() => {
-                    let displayName = feature.properties.name;
-                    if (isRegion) {
-                      displayName = `${feature.properties.name}, ${feature.properties.parentCountryName}`;
-                    } else {
-                      displayName = COUNTRY_NAME_MAP[feature.properties.name.toUpperCase()] || feature.properties.name;
-                    }
+                return (
+                  <path
+                    key={feature.id}
+                    d={feature.pathData}
+                    fill={getGlobalFeatureColor(feature)}
+                    stroke={isHovered ? '#ffffff' : '#070b13'}
+                    strokeWidth={isHovered ? '1.5' : '0.4'}
+                    style={{
+                      cursor: (hasSales || canDrillDown) ? 'pointer' : 'default',
+                      transition: 'fill 250ms ease, stroke 150ms ease, stroke-width 150ms ease'
+                    }}
+                    className={`transition-all ${hasSales ? 'hover:brightness-110 hover:opacity-100' : 'opacity-[0.82] hover:opacity-95'}`}
+                    onClick={() => {
+                      if (canDrillDown) {
+                        setSelectedCountry(id);
+                        setHoveredElement(null);
+                      }
+                    }}
+                    onMouseEnter={() => {
+                      const cName = COUNTRY_NAME_MAP[id] || feature.properties.name;
+                      setHoveredElement({
+                        id: feature.id,
+                        name: cName,
+                        type: 'country',
+                        salesVolume: sale ? sale.salesVolume : 0,
+                        totalRevenue: sale ? sale.totalRevenue : 0,
+                        active: hasSales,
+                        canDrillDown
+                      });
+                    }}
+                  />
+                );
+              })}
+            </g>
+          </svg>
+        ) : (
+          /* DETAILED COUNTRY SUBDIVISIONS LAYER */
+          <svg 
+            viewBox="0 0 1000 550" 
+            className="w-full h-auto max-h-[500px] animate-in fade-in duration-300 zoom-in-95"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect width="1000" height="550" fill="transparent" />
+            <g id="country-subregions-paths">
+              {countryPaths.map((feature: any) => {
+                if (!feature.pathData) return null;
 
-                    setHoveredElement({
-                      id: feature.id,
-                      name: displayName,
-                      type: feature.properties.type,
-                      salesVolume,
-                      totalRevenue,
-                      active: isActive
-                    });
-                  }}
-                />
-              );
-            })}
-          </g>
-        </svg>
+                const id = feature.id ? feature.id.toUpperCase() : '';
+                const isHovered = hoveredElement?.id === feature.id;
+                
+                const sale = regionSalesMap.get(id);
+                const hasSales = sale && sale.salesVolume > 0;
 
-        {/* FLOATING ABSOLUTE TOOLTIP */}
+                return (
+                  <path
+                    key={feature.id}
+                    d={feature.pathData}
+                    fill={getRegionFeatureColor(feature)}
+                    stroke={isHovered ? '#ffffff' : '#070b13'}
+                    strokeWidth={isHovered ? '1.5' : '0.5'}
+                    style={{
+                      transition: 'fill 250ms ease, stroke 150ms ease, stroke-width 150ms ease'
+                    }}
+                    className={`transition-all ${hasSales ? 'hover:brightness-110 hover:opacity-100' : 'opacity-80 hover:opacity-95'}`}
+                    onMouseEnter={() => {
+                      setHoveredElement({
+                        id: feature.id,
+                        name: feature.properties.name,
+                        type: 'region',
+                        salesVolume: sale ? sale.salesVolume : 0,
+                        totalRevenue: sale ? sale.totalRevenue : 0,
+                        active: hasSales
+                      });
+                    }}
+                  />
+                );
+              })}
+            </g>
+          </svg>
+        )}
+
+        {/* FLOATING RICH TOOLTIP */}
         <AnimatePresence>
           {hoveredElement && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.12 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.1 }}
               style={{
                 position: 'absolute',
                 left: tooltipPos.x,
@@ -401,13 +559,13 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                 pointerEvents: 'none',
                 zIndex: 150
               }}
-              className="bg-white/95 backdrop-blur-md text-slate-900 rounded-2xl border border-slate-150 p-4 shadow-xl min-w-[210px] flex flex-col gap-2.5 outline-none font-sans animate-in fade-in duration-100"
+              className="bg-white/95 backdrop-blur-md text-slate-900 rounded-2xl border border-slate-200/80 p-4 shadow-xl min-w-[210px] flex flex-col gap-2.5 font-sans"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 font-mono">
-                  {hoveredElement.type === 'region' ? `Región (ID: ${hoveredElement.id})` : `País (ISO: ${hoveredElement.id})`}
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 font-mono">
+                  {hoveredElement.type === 'region' ? `Provincia/Región (${hoveredElement.id})` : `País (${hoveredElement.id})`}
                 </span>
-                <div className={`w-2 h-2 rounded-full ${hoveredElement.active ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                <div className={`w-2 h-2 rounded-full ${hoveredElement.active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
               </div>
               
               <h5 className="font-black text-sm uppercase text-slate-900 tracking-wide m-0">
@@ -416,18 +574,18 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
 
               {hoveredElement.active ? (
                 <div className="space-y-1.5 pt-0.5">
-                  <div className="flex justify-between items-center text-[10px] font-medium text-slate-650">
+                  <div className="flex justify-between items-center text-[10px] font-medium text-slate-600">
                     <span className="flex items-center gap-1">
-                      <TrendingUp className="w-3.5 h-3.5 text-slate-500" />
+                      <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
                       Conversiones BOFU:
                     </span>
-                    <strong className="font-extrabold text-slate-900 font-mono text-xs">
+                    <strong className="font-bold text-slate-900 font-mono text-xs">
                       {hoveredElement.salesVolume.toLocaleString('es-AR')}
                     </strong>
                   </div>
-                  <div className="flex justify-between items-center text-[10px] font-medium text-slate-650">
+                  <div className="flex justify-between items-center text-[10px] font-medium text-slate-600">
                     <span className="flex items-center gap-1">
-                      <DollarSign className="w-3.5 h-3.5 text-slate-500" />
+                      <DollarSign className="w-3.5 h-3.5 text-slate-400" />
                       Facturación Total:
                     </span>
                     <strong className="font-black text-rose-600 font-mono text-xs">
@@ -436,20 +594,28 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                   </div>
                 </div>
               ) : (
-                <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest font-mono">
+                <span className="text-[9px] font-bold uppercase text-slate-400 tracking-wider font-mono">
                   Sin Conversiones
                 </span>
+              )}
+
+              {hoveredElement.canDrillDown && (
+                <div className="border-t border-slate-100 pt-1.5 mt-1">
+                  <span className="text-[8px] font-black text-blue-600 uppercase tracking-wider font-mono flex items-center gap-1 animate-pulse">
+                     Haz click para ver regiones
+                  </span>
+                </div>
               )}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* FOOTER METADATA BAR */}
+      {/* METADATA BAR FOOTER */}
       <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-400 text-[10px] font-mono">
         <div className="flex items-center gap-1.5 font-sans font-medium">
           <Info className="w-3.5 h-3.5 text-blue-500" />
-          <span>Fronteras internas mapeadas en un único lienzo unificado. Gradiente termográfico activo.</span>
+          <span>Fronteras y divisiones geográficas autoadaptables con renderizado vectorial optimizado.</span>
         </div>
         <span className="uppercase text-slate-350 tracking-widest font-bold">ORION GLOBAL GEOGRAPHY INSIGHTS</span>
       </div>
