@@ -118,17 +118,16 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
   const getCountryColor = (isoCode: string) => {
     const sale = salesMap.get(isoCode.toUpperCase());
     if (!sale || sale.salesVolume === 0) {
-      // Return beautiful neutral slate gray
-      return '#f1f5f9'; // slate-100
+      // Return beautiful slate-navy for a high-contrast dark map
+      return '#1e2640'; 
     }
 
-    // Dynamic temperature scale between 0.1 and 1.0
-    const intensity = Math.max(0.12, sale.salesVolume / maxSalesVolume);
+    // Dynamic temperature scale between 0.12 and 1.0 for better visibility
+    const intensity = Math.max(0.15, sale.salesVolume / maxSalesVolume);
     
-    // Smooth transition from Slate Amber to Burning High-Performance Coral
-    // 0.2: soft gold/orange, 1.0: intense deep red
-    const startColor = { r: 254, g: 225, b: 160 }; // Amber/Gold warm transition
-    const endColor = { r: 220, g: 38, b: 38 };    // Deep burning active red
+    // Smooth transition from radiant warm gold to glowing active red
+    const startColor = { r: 245, g: 158, b: 11 }; // Amber-500
+    const endColor = { r: 239, g: 68, b: 68 };    // Red-500
 
     const r = Math.round(startColor.r + (endColor.r - startColor.r) * intensity);
     const g = Math.round(startColor.g + (endColor.g - startColor.g) * intensity);
@@ -211,7 +210,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
         ref={containerRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setHoveredCountry(null)}
-        className="relative bg-slate-50/50 rounded-2xl border border-slate-100/80 p-2 overflow-hidden flex items-center justify-center w-full"
+        className="relative bg-[#0b0f19] rounded-2xl border border-slate-950 p-2 overflow-hidden flex items-center justify-center w-full shadow-inner"
         style={{ minHeight: '380px' }}
       >
         <svg 
@@ -219,7 +218,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
           className="w-full h-auto max-h-[500px]"
           xmlns="http://www.w3.org/2000/svg"
         >
-          {/* Background / Ocean Glow */}
+          {/* Background / Ocean Glow / subtle map mesh */}
           <rect width="1010" height="660" fill="transparent" />
 
           {/* Render Countries list */}
@@ -236,13 +235,13 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                   key={country.id}
                   d={country.pathData}
                   fill={getCountryColor(country.id)}
-                  stroke={isHovered ? '#1e293b' : '#ffffff'}
-                  strokeWidth={isHovered ? '2' : '0.6'}
+                  stroke={isHovered ? '#ffffff' : '#0b0f19'}
+                  strokeWidth={isHovered ? '1.5' : '0.5'}
                   style={{
                     cursor: isHasSales ? 'pointer' : 'default',
                     transition: 'fill 300ms ease, stroke 200ms ease, stroke-width 200ms ease, filter 200ms ease'
                   }}
-                  className={`transition-all ${isHasSales ? 'hover:brightness-105 active:scale-[0.99]' : 'opacity-85'}`}
+                  className={`transition-all ${isHasSales ? 'hover:brightness-110 hover:opacity-100 active:scale-[0.99]' : 'opacity-85 hover:opacity-95'}`}
                   onMouseEnter={() => {
                     setHoveredCountry({
                       id: country.id,
