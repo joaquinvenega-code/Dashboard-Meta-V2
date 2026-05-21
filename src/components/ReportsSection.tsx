@@ -27,6 +27,7 @@ import { ReportFunnelBoard } from './reports/ReportFunnelBoard';
 import { PerformanceChartV2 } from './reports/v2/PerformanceChartV2';
 import { PlacementsChartV2 } from './reports/v2/PlacementsChartV2';
 import { DemographicsGeographyV2 } from './reports/v2/DemographicsGeographyV2';
+import { GlobalSalesMap } from './reports/GlobalSalesMap';
 import { AssetPerformanceV2 } from './reports/v2/AssetPerformanceV2';
 import { ManagementTimelineV2 } from './reports/v2/ManagementTimelineV2';
 import { RoadmapSectionV2 } from './reports/v2/RoadmapSectionV2';
@@ -335,19 +336,28 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
             />
           </div>
 
-          {/* Módulo 6: Timeline de Gestión */}
-          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
+          {/* Módulo 6: Mapa de Ventas Global */}
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-275">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">06</div>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Mapa de Ventas Global</h3>
+            </div>
+            <GlobalSalesMap currency={metrics.currency} />
+          </div>
+
+          {/* Módulo 7: Timeline de Gestión */}
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">07</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Bitácora de Gestión</h3>
             </div>
             <ManagementTimelineV2 logs={bitacora} />
           </div>
 
-          {/* Módulo 7: Roadmap & Next Steps */}
+          {/* Módulo 8: Roadmap & Next Steps */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-400">
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">07</div>
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">08</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Roadmap & Próximos Pasos</h3>
             </div>
             <RoadmapSectionV2 
