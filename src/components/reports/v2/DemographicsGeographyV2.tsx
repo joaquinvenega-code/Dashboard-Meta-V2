@@ -57,6 +57,58 @@ const ARG_PROVINCES_MOCK: Record<string, LocalProvinceData[]> = {
   ]
 };
 
+const ARG_PROVINCES_GEOMETRY = [
+  {
+    id: '1',
+    name: 'Buenos Aires (CABA + GBA)',
+    path: 'M 175 315 C 190 310, 205 295, 220 290 C 230 295, 235 310, 245 325 C 255 335, 265 355, 255 375 C 245 390, 235 405, 220 415 C 205 395, 185 380, 165 365 C 160 355, 165 330, 175 315 Z',
+    labelX: 205,
+    labelY: 345
+  },
+  {
+    id: '2',
+    name: 'Córdoba',
+    path: 'M 125 250 C 135 245, 155 240, 165 240 C 170 260, 175 285, 170 310 C 150 315, 135 315, 125 315 C 120 295, 120 270, 125 250 Z',
+    labelX: 145,
+    labelY: 275
+  },
+  {
+    id: '3',
+    name: 'Santa Fe',
+    path: 'M 165 190 C 175 185, 185 180, 195 180 C 200 210, 205 240, 205 270 C 195 280, 185 290, 175 290 C 172 260, 168 220, 165 190 Z',
+    labelX: 185,
+    labelY: 235
+  },
+  {
+    id: '4',
+    name: 'Mendoza',
+    path: 'M 90 320 C 105 320, 115 315, 125 315 C 125 335, 130 355, 125 380 C 110 385, 100 385, 90 385 C 85 365, 87 340, 90 320 Z',
+    labelX: 105,
+    labelY: 350
+  },
+  {
+    id: '5',
+    name: 'Tucumán',
+    path: 'M 120 150 C 125 145, 130 145, 135 145 C 137 155, 135 165, 133 175 C 128 178, 123 178, 120 175 C 118 165, 119 155, 120 150 Z',
+    labelX: 127,
+    labelY: 162
+  },
+  {
+    id: '6',
+    name: 'Patagonia (Neuquén + Río Negro)',
+    path: 'M 90 385 C 105 385, 125 380, 140 380 C 155 365, 165 375, 180 395 C 200 420, 210 450, 195 490 C 185 520, 180 550, 165 580 C 150 600, 140 620, 130 635 C 115 635, 110 625, 115 615 C 125 600, 135 585, 130 550 C 120 510, 105 480, 95 445 C 90 425, 88 405, 90 385 Z M 125 642 C 135 642, 145 645, 135 655 Z',
+    labelX: 135,
+    labelY: 480
+  },
+  {
+    id: 'other_north',
+    name: 'Resto de Argentina',
+    path: 'M 110 70 C 130 60, 150 55, 170 55 C 190 75, 220 75, 230 100 C 245 90, 265 110, 280 135 C 270 155, 245 160, 220 180 C 195 180, 185 175, 165 190 C 168 215, 172 245, 175 290 C 165 295, 145 305, 125 315 C 115 315, 105 320, 90 320 C 85 300, 80 270, 85 240 C 95 210, 90 180, 110 150 C 108 140, 102 120, 110 70 Z',
+    labelX: 180,
+    labelY: 120
+  }
+];
+
 export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = ({ 
   demoData = [
     { age: '18-24', male: 12, female: 15 },
@@ -93,7 +145,7 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
     const totalConvs = activeAccountObj?.purchases || activeAccountObj?.messages || 2342;
     const baseProvinces = ARG_PROVINCES_MOCK.default;
 
-    return baseProvinces.map(prov => {
+    const calculated = baseProvinces.map(prov => {
       // Calculate realistic share of selected client's actual metrics
       const calculatedRevenue = Math.round(totalRev * prov.percentage);
       const calculatedConvs = Math.round(totalConvs * prov.percentage);
@@ -103,6 +155,22 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
         conversions: calculatedConvs,
       };
     });
+
+    // Append Rest of Argentina
+    calculated.push({
+      id: 'other_north',
+      name: 'Resto de Argentina',
+      code: 'AR-REST',
+      percentage: 0.10, // approximate percentage for rest of north/outside provinces
+      salesVolume: Math.round(totalRev * 0.10),
+      conversions: Math.round(totalConvs * 0.10),
+      cpc: 10.5,
+      ctr: 1.5,
+      cpa: 1200,
+      coords: [-25.0, -61.0]
+    });
+
+    return calculated;
   }, [activeAccountObj]);
 
   const selectedProvince = useMemo(() => {
@@ -357,96 +425,98 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
                   transition={{ duration: 0.3 }}
                   className="absolute inset-0 flex flex-col md:flex-row gap-6 p-6"
                 >
-                  {/* Schematic Interactive Argentina grid/plot visualization */}
-                  <div className="flex-1 relative border border-slate-800/40 rounded-2xl bg-slate-950 p-4 overflow-hidden flex items-center justify-center">
+                  {/* Real Interactive SVG Vector Map of Argentina */}
+                  <div className="flex-1 relative border border-slate-800/40 rounded-2xl bg-slate-950 p-4 overflow-hidden flex items-center justify-center select-none min-h-[360px]">
                     
-                    {/* Futuristic radar line grid background */}
-                    <div className="absolute inset-0 grid grid-cols-12 grid-rows-12 opacity-[0.03] pointer-events-none">
+                    {/* Futuristic tech radar outline grid background */}
+                    <div className="absolute inset-0 grid grid-cols-12 grid-rows-12 opacity-[0.02] pointer-events-none">
                       {Array.from({ length: 144 }).map((_, i) => (
-                        <div key={i} className="border-t border-l border-slate-100" />
+                        <div key={i} className="border-t border-l border-white" />
                       ))}
                     </div>
 
-                    {/* Ambient vertical line mapping Argentina long axis */}
-                    <div className="absolute top-[10%] bottom-[10%] left-[45%] w-0.5 bg-gradient-to-b from-slate-800/10 via-slate-800/80 to-slate-800/10 pointer-events-none" />
+                    <svg 
+                      viewBox="0 0 320 680" 
+                      className="h-full w-auto max-h-[460px] drop-shadow-[0_0_25px_rgba(59,130,246,0.1)] transition-all duration-300 select-none z-10"
+                    >
+                      <g className="transition-all duration-300">
+                        {ARG_PROVINCES_GEOMETRY.map((provGeo) => {
+                          const isSelected = selectedProvinceId === provGeo.id;
+                          const isHovered = hoveredProvinceId === provGeo.id;
+                          const matchingStat = (provGeo.id === 'other_north') 
+                            ? { percentage: 0.03 } 
+                            : argentinaProvinceStats.find(p => p.id === provGeo.id);
+                          const percentage = matchingStat ? matchingStat.percentage : 0.01;
 
-                    {/* Radial waves radiating from active/hovered province */}
-                    <div className="absolute pointer-events-none h-44 w-44 rounded-full border border-blue-500/20 active-glow transition-all duration-700 animate-ping opacity-20"
-                      style={{
-                        left: `${45 + (selectedProvince.coords[1] + 65) * 8}%`,
-                        top: `${45 + (selectedProvince.coords[0] + 32) * 5}%`,
-                      }}
-                    />
+                          // Dynamic Fill Colors with stylish cyberpunk neon styles
+                          let fillColor = '#0f172a'; // default dark
+                          if (isSelected) {
+                            fillColor = '#2563eb'; // blue-600
+                          } else if (isHovered) {
+                            fillColor = '#1e40af'; // blue-800
+                          } else {
+                            // Heat map colors proportional to sales
+                            if (provGeo.id !== 'other_north') {
+                              if (percentage > 0.40) fillColor = '#1d4ed8'; // intense blue-700
+                              else if (percentage > 0.15) fillColor = '#1e40af'; // blue-800
+                              else if (percentage > 0.08) fillColor = '#2563eb'; // blue-600
+                              else fillColor = '#1e293b'; // slate-800
+                            }
+                          }
 
-                    {/* Argentina stylized boundary hints */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="w-40 h-80 border-2 border-slate-800/20 rounded-[50%] rotate-2 flex items-center justify-center">
-                        <div className="w-16 h-60 border border-dashed border-slate-800/20 rounded-[50%]"></div>
-                      </div>
-                    </div>
+                          return (
+                            <g key={provGeo.id}>
+                              <path
+                                d={provGeo.path}
+                                fill={fillColor}
+                                stroke={isSelected ? '#60a5fa' : isHovered ? '#93c5fd' : '#475569'}
+                                strokeWidth={isSelected ? 2 : isHovered ? 1.5 : 1}
+                                strokeLinejoin="round"
+                                className="transition-all duration-300 cursor-pointer hover:brightness-110 active:scale-[0.99] origin-center"
+                                onClick={() => setSelectedProvinceId(provGeo.id)}
+                                onMouseEnter={() => setHoveredProvinceId(provGeo.id)}
+                                onMouseLeave={() => setHoveredProvinceId(null)}
+                              />
+                              
+                              {/* Pulsing indicator on Selected Province center */}
+                              {isSelected && (
+                                <circle 
+                                  cx={provGeo.labelX} 
+                                  cy={provGeo.labelY} 
+                                  r="6" 
+                                  fill="#60a5fa" 
+                                  className="pointer-events-none animate-ping opacity-60"
+                                />
+                              )}
+                              {isSelected && (
+                                <circle 
+                                  cx={provGeo.labelX} 
+                                  cy={provGeo.labelY} 
+                                  r="3" 
+                                  fill="#ffffff" 
+                                  className="pointer-events-none shadow"
+                                />
+                              )}
+                              
+                              {/* Sleek labeling texts */}
+                              <text
+                                x={provGeo.labelX}
+                                y={provGeo.labelY + (isSelected ? -12 : 12)}
+                                fill={isSelected ? '#93c5fd' : isHovered ? '#cbd5e1' : '#64748b'}
+                                fontSize="7"
+                                fontWeight="bold"
+                                textAnchor="middle"
+                                className="pointer-events-none font-mono uppercase tracking-widest select-none transition-all"
+                              >
+                                {provGeo.id !== 'other_north' ? `${(percentage * 100).toFixed(0)}%` : 'RESTO'}
+                              </text>
+                            </g>
+                          );
+                        })}
+                      </g>
+                    </svg>
 
-                    {/* Plot coordinates representing provinces */}
-                    {argentinaProvinceStats.map((prov) => {
-                      // Custom scaling equation mapping longitudes -72 to -58 to X pixels, and latitudes -22 to -55 to Y pixels
-                      const xPercent = 50 + (prov.coords[1] + 63) * 7.5;
-                      const yPercent = 50 + (prov.coords[0] + 31.5) * 5.5;
-
-                      const isSelected = selectedProvinceId === prov.id;
-                      const isHovered = hoveredProvinceId === prov.id;
-
-                      return (
-                        <button
-                          key={prov.id}
-                          onClick={() => setSelectedProvinceId(prov.id)}
-                          onMouseEnter={() => setHoveredProvinceId(prov.id)}
-                          onMouseLeave={() => setHoveredProvinceId(null)}
-                          className="absolute focus:outline-none cursor-pointer group z-20"
-                          style={{
-                            left: `${xPercent}%`,
-                            top: `${yPercent}%`,
-                            transform: 'translate(-50%, -50%)'
-                          }}
-                        >
-                          <div className="relative flex items-center justify-center">
-                            {/* Outer heat circle pulse */}
-                            <div 
-                              className={`absolute rounded-full transition-all duration-500 ${
-                                isSelected ? 'bg-blue-500/30 animate-pulse scale-125' : isHovered ? 'bg-slate-700/20' : 'bg-blue-500/10'
-                              }`}
-                              style={{
-                                width: `${24 + prov.percentage * 140}px`,
-                                height: `${24 + prov.percentage * 140}px`,
-                              }}
-                            />
-
-                            {/* Standard pulse rings */}
-                            {isSelected && (
-                              <div className="absolute w-8 h-8 rounded-full border border-blue-400/40 animate-ping pointer-events-none" />
-                            )}
-
-                            {/* Core geographical node color */}
-                            <div 
-                              className={`rounded-full shadow-lg border transition-all z-10 ${
-                                isSelected 
-                                  ? 'bg-blue-500 border-white shadow-blue-500/50 w-4.5 h-4.5' 
-                                  : isHovered 
-                                    ? 'bg-blue-400 border-slate-300 w-3.5 h-3.5'
-                                    : 'bg-slate-900 border-slate-750 w-3 h-3'
-                              }`}
-                            />
-
-                            {/* Floating tooltip title on Node hovering */}
-                            <div className={`absolute bottom-full mb-2 bg-slate-950 border border-slate-850 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase whitespace-nowrap tracking-wider font-mono shadow-2xl pointer-events-none transition-all duration-250 ${
-                              isHovered || isSelected ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-1 scale-90'
-                            }`}>
-                              {prov.name} <span className="text-blue-400 font-bold ml-1">{(prov.percentage*100).toFixed(0)}%</span>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-
-                    {/* Local Compass Coordinates Indicator */}
+                    {/* Compass Coordinates Overlay */}
                     <div className="absolute right-5 bottom-5 space-y-0.5 text-right font-mono text-[8px] text-slate-500 pointer-events-none">
                       <p>WGS84 ARG COORDINATES</p>
                       <p>S {selectedProvince.coords[0].toFixed(4)} ° / W {selectedProvince.coords[1].toFixed(4)} °</p>
