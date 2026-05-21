@@ -333,12 +333,15 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
                 { age: '55+', male: 4, female: 6 },
               ]}
               regions={[
-                { name: 'Argentina', value: 0.45, intensity: 1, coords: [-34.60, -58.38] },
-                { name: 'México', value: 0.20, intensity: 0.8, coords: [19.43, -99.13] },
-                { name: 'España', value: 0.15, intensity: 0.7, coords: [40.41, -3.70] },
-                { name: 'Chile', value: 0.10, intensity: 0.5, coords: [-33.44, -70.66] },
-                { name: 'EE.UU.', value: 0.10, intensity: 0.4, coords: [40.71, -74.00] },
+                { name: 'Buenos Aires', value: 0.52, intensity: 1, coords: [-34.60, -58.38] },
+                { name: 'Córdoba', value: 0.18, intensity: 0.8, coords: [-31.42, -64.19] },
+                { name: 'Santa Fe', value: 0.14, intensity: 0.7, coords: [-32.95, -60.64] },
+                { name: 'Mendoza', value: 0.08, intensity: 0.5, coords: [-32.89, -68.85] },
+                { name: 'Tucumán', value: 0.05, intensity: 0.4, coords: [-26.81, -65.22] },
+                { name: 'Patagonia', value: 0.03, intensity: 0.3, coords: [-38.95, -68.06] },
               ]}
+              accounts={accounts}
+              selectedAccountId={selectedAccountId}
             />
           </div>
 

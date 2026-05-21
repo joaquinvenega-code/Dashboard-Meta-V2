@@ -1502,6 +1502,7 @@ export default function App() {
       {/* Config Modal */}
       <FloatingAssistant
         accounts={accounts}
+        accountGroups={accountGroups}
         notes={notes}
         onAddNote={(note) => setNotes([...notes, note])}
         onAddOfflineSale={handleAddOfflineSaleLog}

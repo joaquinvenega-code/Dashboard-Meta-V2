@@ -7,6 +7,7 @@ import { AdAccount, AccountNote, OfflineSaleEntry } from '../types';
 
 interface FloatingAssistantProps {
   accounts: AdAccount[];
+  accountGroups?: any[];
   notes: AccountNote[];
   onAddNote: (note: AccountNote) => void;
   onAddOfflineSale: (accountId: string, amount: number, date: string) => void;
@@ -77,6 +78,7 @@ export function speakLocally(text: string, muted: boolean = false) {
 
 export default function FloatingAssistant({
   accounts,
+  accountGroups = [],
   notes,
   onAddNote,
   onAddOfflineSale,
@@ -210,16 +212,67 @@ export default function FloatingAssistant({
     addMessage('user', rawString);
     setIsProcessing(true);
 
+    // Build consolidated list of clients combining individual accounts and user group structures
+    const consolidatedClients = [
+      ...accounts.map(acc => {
+        const s = settings[acc.id];
+        return {
+          id: acc.id,
+          name: s?.customName || acc.name,
+          rawName: acc.name,
+          customName: s?.customName || undefined,
+          spend: acc.spend || 0,
+          revenue: acc.revenue || 0,
+          dailySeries: (acc as any).dailySeries || [],
+          isGroup: false,
+          currency: s?.currency || acc.currency || 'ARS'
+        };
+      }),
+      ...(accountGroups || []).map(group => {
+        const sG = settings[group.id];
+        // Filter constituent accounts in this group
+        const groupAccounts = accounts.filter(a => 
+          (group.accountIds || []).some(id => id?.toString() === a.id?.toString() || id?.toString() === a.account_id?.toString())
+        );
+        
+        // Aggregate dailySeries by date
+        const seriesMap: Record<string, { date: string, spend: number, revenue: number }> = {};
+        groupAccounts.forEach(acc => {
+          const ds = (acc as any).dailySeries || [];
+          ds.forEach((d: any) => {
+            if (!seriesMap[d.date]) {
+              seriesMap[d.date] = { date: d.date, spend: 0, revenue: 0 };
+            }
+            seriesMap[d.date].spend += d.spend || 0;
+            seriesMap[d.date].revenue += d.revenue || 0;
+          });
+        });
+        const aggregatedSeries = Object.values(seriesMap).sort((a, b) => a.date.localeCompare(b.date));
+
+        return {
+          id: group.id,
+          name: sG?.customName || group.name,
+          rawName: group.name,
+          customName: sG?.customName || undefined,
+          spend: groupAccounts.reduce((sum, a) => sum + (a.spend || 0), 0),
+          revenue: groupAccounts.reduce((sum, a) => sum + (a.revenue || 0), 0),
+          dailySeries: aggregatedSeries,
+          isGroup: true,
+          currency: sG?.currency || groupAccounts[0]?.currency || 'ARS'
+        };
+      })
+    ];
+
     // Map clients name array for exact parsing, including custom names
-    const mappedClients = accounts.map(acc => ({
-      id: acc.id,
-      name: acc.name,
-      customName: settings[acc.id]?.customName || undefined
+    const mappedClients = consolidatedClients.map(c => ({
+      id: c.id,
+      name: c.rawName,
+      customName: c.customName
     }));
 
     // 2. Parse command using custom Regex parser
     const parsed: ParsedVoiceCommand = parseAdvancedVoiceCommand(rawString, mappedClients);
-    const targetClient = accounts.find(acc => acc.name === parsed.clientName);
+    const targetClient = consolidatedClients.find(c => c.id === parsed.clientId);
 
     let systemResponse = '';
 

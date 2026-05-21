@@ -3,6 +3,7 @@ import { format, subDays } from 'date-fns';
 export interface ParsedVoiceCommand {
   intent: 'ADD_LOG_EXTENDED' | 'RECORD_OFFLINE_SALE' | 'CREATIVE_PERFORMANCE' | 'PERFORMANCE_RANKING' | 'UNKNOWN';
   clientName?: string;
+  clientId?: string;
   date: string; // YYYY-MM-DD
   amount?: number;
   noteText?: string;
@@ -69,37 +70,38 @@ export function parseAdvancedVoiceCommand(
     const customClean = client.customName ? cleanAccountName(client.customName) : '';
 
     // Check full customName match (Score: 100)
-    if (customNorm && normalized.includes(customNorm)) {
+    if (customNorm && (normalized.includes(customNorm) || customNorm.includes(normalized))) {
       score = Math.max(score, 100);
     }
-    // Check clean customName match (Score: 90)
-    if (customClean && customClean.length >= 3 && normalized.includes(customClean)) {
+    // Check clean customName match (Score: 95)
+    if (customClean && customClean.length >= 2 && (normalized.includes(customClean) || customClean.includes(normalized))) {
+      score = Math.max(score, 95);
+    }
+    // Check clean rawName match (Score: 90)
+    if (rawClean && rawClean.length >= 2 && (normalized.includes(rawClean) || rawClean.includes(normalized))) {
       score = Math.max(score, 90);
     }
-    // Check clean rawName match (Score: 80)
-    if (rawClean && rawClean.length >= 3 && normalized.includes(rawClean)) {
+    // Check full rawName match (Score: 80)
+    if (rawNorm && (normalized.includes(rawNorm) || rawNorm.includes(normalized))) {
       score = Math.max(score, 80);
     }
-    // Check full rawName match (Score: 70)
-    if (rawNorm && normalized.includes(rawNorm)) {
-      score = Math.max(score, 70);
+
+    // Token intersection matching
+    const queryTokens = normalized.split(/[^a-z0-9]+/).filter(w => w.length >= 2);
+    const clientTokens = rawClean.split(/[^a-z0-9]+/).filter(w => w.length >= 2);
+    const customTokens = customClean.split(/[^a-z0-9]+/).filter(w => w.length >= 2);
+
+    const clientIntersection = clientTokens.filter(t => normalized.includes(t) || queryTokens.includes(t)).length;
+    const customIntersection = customTokens.filter(t => normalized.includes(t) || queryTokens.includes(t)).length;
+
+    if (clientTokens.length > 0 && clientIntersection > 0) {
+      const ratio = clientIntersection / clientTokens.length;
+      score = Math.max(score, Math.round(ratio * 85));
     }
-
-    // Word-by-word fallback matching
-    const rawWords = rawClean.split(' ').filter(w => w.length >= 3);
-    const customWords = customClean.split(' ').filter(w => w.length >= 3);
-
-    rawWords.forEach(word => {
-      if (normalized.includes(word)) {
-        score = Math.max(score, 30);
-      }
-    });
-
-    customWords.forEach(word => {
-      if (normalized.includes(word)) {
-        score = Math.max(score, 40);
-      }
-    });
+    if (customTokens.length > 0 && customIntersection > 0) {
+      const ratio = customIntersection / customTokens.length;
+      score = Math.max(score, Math.round(ratio * 95));
+    }
 
     if (score > bestScore) {
       bestScore = score;
@@ -107,7 +109,8 @@ export function parseAdvancedVoiceCommand(
     }
   }
 
-  if (bestClient) {
+  // Minimum threshold score of 20 to prevent completely random matches
+  if (bestScore >= 20 && bestClient) {
     matchedClientName = bestClient.name;
   }
 
@@ -202,6 +205,7 @@ export function parseAdvancedVoiceCommand(
   return {
     intent,
     clientName: matchedClientName,
+    clientId: bestClient?.id,
     date: dateStr,
     amount,
     noteText,
