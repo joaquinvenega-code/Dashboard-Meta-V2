@@ -1,7 +1,7 @@
 import { format, subDays, setDate, setMonth, subMonths } from 'date-fns';
 
 export interface ParsedVoiceCommand {
-  intent: 'ADD_LOG_EXTENDED' | 'RECORD_OFFLINE_SALE' | 'CREATIVE_PERFORMANCE' | 'PERFORMANCE_RANKING' | 'UNKNOWN';
+  intent: 'ADD_LOG_EXTENDED' | 'RECORD_OFFLINE_SALE' | 'CREATIVE_PERFORMANCE' | 'PERFORMANCE_RANKING' | 'UNKNOWN' | 'MODIFY_PREVIOUS_ENTRY';
   clientName?: string;
   clientId?: string;
   date: string; // YYYY-MM-DD
@@ -168,7 +168,7 @@ export function parseAdvancedVoiceCommand(
 
   // 3. Match Intents
   // A. RECORD_OFFLINE_SALE
-  const saleKeywords = ['venta', 'ventas', 'registrar venta', 'monto', 'offline sale', 'vender', 'vendi'];
+  const saleKeywords = ['venta', 'ventas', 'registrar venta', 'monto', 'offline sale', 'vender', 'vendi', 'venda'];
   const isSale = saleKeywords.some(kw => normalized.includes(kw));
 
   // B. ADD_LOG_EXTENDED
@@ -183,8 +183,17 @@ export function parseAdvancedVoiceCommand(
   const rankingKeywords = ['ranking', 'mejores', 'peores', 'mejoraron', 'empeoraron', 'rendimiento global', 'como vamos'];
   const isRanking = rankingKeywords.some(kw => normalized.includes(kw));
 
-  // Determine intent based on keywords and priorities
-  if (isSale) {
+  // E. MODIFY_PREVIOUS_ENTRY
+  const modificationKeywords = [
+    'modifica', 'modificar', 'cambiale', 'cambiarle', 'ponele', 'ponle', 'corregir', 'corrije', 'corrige', 
+    'correccion', 'rectificar', 'rectifica', 'modifiques'
+  ];
+  const isModification = modificationKeywords.some(kw => normalized.includes(kw));
+
+  // Determine intent based on keywords and priorities (Modification dominates if detected)
+  if (isModification) {
+    intent = 'MODIFY_PREVIOUS_ENTRY';
+  } else if (isSale) {
     intent = 'RECORD_OFFLINE_SALE';
   } else if (isLog) {
     intent = 'ADD_LOG_EXTENDED';
@@ -198,7 +207,7 @@ export function parseAdvancedVoiceCommand(
   let noteText: string | undefined = undefined;
 
   // 4. Parameter Extraction
-  if (intent === 'RECORD_OFFLINE_SALE') {
+  if (intent === 'RECORD_OFFLINE_SALE' || intent === 'MODIFY_PREVIOUS_ENTRY') {
     // Robustly extract amounts, even if transcribed with spaces (e.g. "1 600 000" or "45 000")
     // or traditional symbols ("$1.600.000", "45,000")
     

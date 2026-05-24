@@ -10,7 +10,9 @@ interface FloatingAssistantProps {
   accountGroups?: any[];
   notes: AccountNote[];
   onAddNote: (note: AccountNote) => void;
-  onAddOfflineSale: (accountId: string, amount: number, date: string) => void;
+  onUpdateNote?: (note: AccountNote) => void;
+  onAddOfflineSale: (accountId: string, amount: number, date: string, customId?: string) => void;
+  onUpdateOfflineSale?: (accountId: string, entryId: string, updatedFields: Partial<any>) => void;
   settings: Record<string, any>;
 }
 
@@ -214,7 +216,9 @@ export default function FloatingAssistant({
   accountGroups = [],
   notes,
   onAddNote,
+  onUpdateNote,
   onAddOfflineSale,
+  onUpdateOfflineSale,
   settings
 }: FloatingAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -224,6 +228,14 @@ export default function FloatingAssistant({
   const [isMuted, setIsMuted] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [transcriptText, setTranscriptText] = useState('');
+  const [lastAction, setLastAction] = useState<{
+    type: 'RECORD_OFFLINE_SALE' | 'ADD_LOG_EXTENDED';
+    accountId: string;
+    entryId: string;
+    date: string;
+    amount?: number;
+    noteText?: string;
+  } | null>(null);
   
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -340,7 +352,7 @@ export default function FloatingAssistant({
         greeting = 'Buenas tardes';
       }
       
-      const welcomeText = `${greeting}, señor. El sistema asistente de Orión se encuentra activo y a sus completas órdenes para lo que necesite. ¿En qué cuenta publicitaria desea que audite el rendimiento hoy o qué registro desea agregar?`;
+      const welcomeText = `${greeting}, señor. Orión activo. ¿En qué cuenta o registro le asisto hoy?`;
       
       const timer = setTimeout(() => {
         addMessage('assistant', welcomeText);
@@ -516,6 +528,7 @@ export default function FloatingAssistant({
             break;
           }
           const noteText = parsed.noteText || "Nota guardada vía asistente de voz";
+          const generatedNoteId = 'voice_' + Math.random().toString(36).substring(2, 9);
           
           try {
             // Write to Firestore with robust 1.8 seconds timeout limit to prevent hanging if firebase or network freezes
@@ -523,7 +536,7 @@ export default function FloatingAssistant({
             
             // Instantly update local react state
             const newLocalNote: AccountNote = {
-              id: 'voice_' + Math.random().toString(36).substring(2, 9),
+              id: generatedNoteId,
               accountId: targetClient.id,
               text: noteText,
               timestamp: new Date().toISOString(),
@@ -532,13 +545,21 @@ export default function FloatingAssistant({
             };
             onAddNote(newLocalNote);
 
+            setLastAction({
+              type: 'ADD_LOG_EXTENDED',
+              accountId: targetClient.id,
+              entryId: generatedNoteId,
+              date: parsed.date,
+              noteText
+            });
+
             systemResponse = `A sus órdenes, señor. He registrado su entrada en la bitácora de ${targetClient.name} hoy ${parsed.date}. La nota se guardó exitosamente y se sincronizó con Firebase Firestore: "${noteText}". ¿Desea realizar alguna otra auditoría o registrar algo más, señor?`;
           } catch (fireErr) {
             console.warn("Fallo momentáneo de guardado en la nube en tiempo real (Timeout/Offline):", fireErr);
             
             // Instantly resguard locally through state, persisting to localStorage
             const newLocalNote: AccountNote = {
-              id: 'voice_' + Math.random().toString(36).substring(2, 9),
+              id: generatedNoteId,
               accountId: targetClient.id,
               text: noteText,
               timestamp: new Date().toISOString(),
@@ -546,6 +567,14 @@ export default function FloatingAssistant({
               tags: ['Local', 'Voz']
             };
             onAddNote(newLocalNote);
+
+            setLastAction({
+              type: 'ADD_LOG_EXTENDED',
+              accountId: targetClient.id,
+              entryId: generatedNoteId,
+              date: parsed.date,
+              noteText
+            });
 
             systemResponse = `Señor, he procesado su anotación para ${targetClient.name}: "${noteText}". Debido a que la base de datos de Firebase no respondió a tiempo debido a una fluctuación temporal de red, guardé la entrada de manera totalmente segura en la memoria y almacenamiento local del sistema. Se sincronizará por detrás de forma transparente apenas retorne la conexión estable.`;
           }
@@ -562,21 +591,112 @@ export default function FloatingAssistant({
             break;
           }
 
+          const generatedSaleId = 'sale_voice_' + Math.random().toString(36).substring(2, 9);
+
           try {
             // Try updating Firestore with a robust timeout limit of 1.8 seconds
             await executeWithTimeout(saveOfflineSaleToFirestore(targetClient.id, parsed.amount, parsed.date), 1800);
             
             // Local state mutation callback
-            onAddOfflineSale(targetClient.id, parsed.amount, parsed.date);
+            onAddOfflineSale(targetClient.id, parsed.amount, parsed.date, generatedSaleId);
+
+            setLastAction({
+              type: 'RECORD_OFFLINE_SALE',
+              accountId: targetClient.id,
+              entryId: generatedSaleId,
+              date: parsed.date,
+              amount: parsed.amount
+            });
 
             systemResponse = `Entendido, señor. He asentado con éxito una venta manual por un valor de $${parsed.amount.toLocaleString('es-AR')} en la cuenta de ${targetClient.name} con fecha ${parsed.date}. La entrada se sincronizó correctamente con Firebase Firestore. ¿Hay alguna otra tarea que requiera mi atención?`;
           } catch (fireErr) {
             console.warn("Fallo o tardanza en Firestore para venta offline:", fireErr);
             
             // Fallback: save to Local storage instantly so the user experience is flawless
-            onAddOfflineSale(targetClient.id, parsed.amount, parsed.date);
+            onAddOfflineSale(targetClient.id, parsed.amount, parsed.date, generatedSaleId);
+
+            setLastAction({
+              type: 'RECORD_OFFLINE_SALE',
+              accountId: targetClient.id,
+              entryId: generatedSaleId,
+              date: parsed.date,
+              amount: parsed.amount
+            });
 
             systemResponse = `Señor, he registrado con total éxito la venta manual de $${parsed.amount.toLocaleString('es-AR')} para ${targetClient.name} de la fecha ${parsed.date}. El servidor central de Firebase demoró en responder, por lo que he procedido a resguardarla localmente en el almacenamiento auxiliar del sistema, garantizando que el reporte se recalcule y actualice de inmediato.`;
+          }
+          break;
+        }
+
+        case 'MODIFY_PREVIOUS_ENTRY': {
+          if (!lastAction) {
+            systemResponse = `Lo siento mucho, señor. Entiendo que desea realizar una corrección o modificación, pero no tengo registro de ninguna acción o registro transaccional reciente que pueda modificar de forma automática en esta sesión. ¿Podría dictarme el comando completo de nuevo, por favor?`;
+            break;
+          }
+
+          const wantsDateChange = /dia|mes|fecha|ayer|hoy|anteayer|de este/gi.test(rawString.toLowerCase());
+          const wantsAmountChange = parsed.amount !== undefined;
+
+          if (!wantsDateChange && !wantsAmountChange && parsed.noteText === undefined) {
+            systemResponse = `Señor, comprendo que desea modificar el registro anterior, pero no logré descifrar el nuevo valor o la fecha que desea aplicar. ¿Podría repetirme qué cambio desea realizar (por ejemplo, "ponle la fecha del 18" o "cambia el monto a un millón")?`;
+            break;
+          }
+
+          const targetClientForModification = consolidatedClients.find(c => c.id === lastAction.accountId);
+          const clientLabel = targetClientForModification ? targetClientForModification.name : 'la cuenta';
+
+          if (lastAction.type === 'RECORD_OFFLINE_SALE') {
+            const updatedFields: Partial<any> = {};
+            let changeSummary = [];
+
+            if (wantsAmountChange && parsed.amount !== undefined) {
+              updatedFields.amount = parsed.amount;
+              changeSummary.push(`el importe a $${parsed.amount.toLocaleString('es-AR')}`);
+            }
+            if (wantsDateChange) {
+              updatedFields.date = parsed.date;
+              changeSummary.push(`la fecha al ${parsed.date}`);
+            }
+
+            if (Object.keys(updatedFields).length === 0) {
+              systemResponse = `Señor, no logré extraer modificaciones de su comando para aplicar a la venta anterior. ¿Desea modificar la fecha o el importe registrado?`;
+              break;
+            }
+
+            if (onUpdateOfflineSale) {
+              onUpdateOfflineSale(lastAction.accountId, lastAction.entryId, updatedFields);
+              
+              setLastAction({
+                ...lastAction,
+                ...updatedFields
+              });
+
+              systemResponse = `Perfecto, señor. He procedido a rectificar el registro de venta anterior para ${clientLabel}. He modificado con éxito ${changeSummary.join(' y ')}. Los coeficientes e informes de rendimiento se han recalculado de inmediato con los nuevos datos.`;
+            } else {
+              systemResponse = `Señor, el gestor de ventas local no tiene activa la facultad de rectificación en este entorno.`;
+            }
+          } else if (lastAction.type === 'ADD_LOG_EXTENDED') {
+            const newText = parsed.noteText || parsed.raw;
+            if (onUpdateNote) {
+              const updatedNote: AccountNote = {
+                id: lastAction.entryId,
+                accountId: lastAction.accountId,
+                text: newText,
+                timestamp: new Date().toISOString(),
+                category: 'observation',
+                tags: ['Voz', 'Corregido']
+              };
+              onUpdateNote(updatedNote);
+
+              setLastAction({
+                ...lastAction,
+                noteText: newText
+              });
+
+              systemResponse = `A sus órdenes, señor. He actualizado de inmediato la última anotación de bitácora para ${clientLabel}. El nuevo texto registrado es: "${newText}".`;
+            } else {
+              systemResponse = `Señor, el módulo de bitácoras no permite la edición retrospectiva en este panel.`;
+            }
           }
           break;
         }

@@ -462,13 +462,13 @@ export default function App() {
     localStorage.setItem('cr_settings', JSON.stringify(newSettings));
   };
 
-  const handleAddOfflineSaleLog = (accountId: string, amount: number, date: string) => {
+  const handleAddOfflineSaleLog = (accountId: string, amount: number, date: string, customId?: string) => {
     const accSettings = settings[accountId] || { objective: 0, budget: 0, currency: 'ARS', tracking: 'ecommerce' as const };
     const periodKey = date.substring(0, 7); // YYYY-MM
     const currentLogs = accSettings.offlineSalesLogByMonth?.[periodKey] || [];
     
     const newEntry: OfflineSaleEntry = {
-      id: Math.random().toString(36).substring(2, 11),
+      id: customId || Math.random().toString(36).substring(2, 11),
       amount,
       note: 'Registrado vía asistente de voz',
       date
@@ -480,6 +480,56 @@ export default function App() {
         ...(accSettings.offlineSalesLogByMonth || {}),
         [periodKey]: [...currentLogs, newEntry]
       }
+    };
+
+    handleSaveSettings(accountId, updatedSettings);
+  };
+
+  const handleUpdateOfflineSaleLog = (
+    accountId: string,
+    entryId: string,
+    updatedFields: Partial<OfflineSaleEntry>
+  ) => {
+    const accSettings = settings[accountId] || { objective: 0, budget: 0, currency: 'ARS', tracking: 'ecommerce' as const };
+    const logsByMonth = { ...(accSettings.offlineSalesLogByMonth || {}) };
+    
+    let foundEntry: OfflineSaleEntry | null = null;
+    let oldPeriodKey: string | null = null;
+
+    // 1. Locate and remove the entry from its current month list
+    for (const periodKey of Object.keys(logsByMonth)) {
+      const idx = logsByMonth[periodKey].findIndex(e => e.id === entryId);
+      if (idx !== -1) {
+        foundEntry = { ...logsByMonth[periodKey][idx] };
+        oldPeriodKey = periodKey;
+        logsByMonth[periodKey] = logsByMonth[periodKey].filter(e => e.id !== entryId);
+        if (logsByMonth[periodKey].length === 0) {
+          delete logsByMonth[periodKey];
+        }
+        break;
+      }
+    }
+
+    if (!foundEntry) {
+      console.warn(`No se encontró el registro de venta con ID ${entryId} para actualizar.`);
+      return;
+    }
+
+    // 2. Apply updates
+    const updatedEntry: OfflineSaleEntry = {
+      ...foundEntry,
+      ...updatedFields
+    };
+
+    // 3. Determine new periodKey (month) and place the updated entry
+    const newPeriodKey = updatedEntry.date.substring(0, 7); // YYYY-MM
+    const currentNewPeriodLogs = logsByMonth[newPeriodKey] || [];
+    logsByMonth[newPeriodKey] = [...currentNewPeriodLogs, updatedEntry];
+
+    // 4. Save updated settings
+    const updatedSettings: AccountSettings = {
+      ...accSettings,
+      offlineSalesLogByMonth: logsByMonth
     };
 
     handleSaveSettings(accountId, updatedSettings);
@@ -1505,7 +1555,9 @@ export default function App() {
         accountGroups={accountGroups}
         notes={notes}
         onAddNote={(note) => setNotes([...notes, note])}
+        onUpdateNote={(updatedNote) => setNotes(prev => prev.map(n => n.id === updatedNote.id ? updatedNote : n))}
         onAddOfflineSale={handleAddOfflineSaleLog}
+        onUpdateOfflineSale={handleUpdateOfflineSaleLog}
         settings={settings}
       />
       <AnimatePresence>
