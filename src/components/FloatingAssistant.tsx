@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Mic, MicOff, X, Volume2, VolumeX, Sparkles, Loader2, ArrowRight } from 'lucide-react';
 import { parseAdvancedVoiceCommand, ParsedVoiceCommand } from '../utils/voiceParser';
 import { saveLogToFirestore, saveOfflineSaleToFirestore } from '../services/firebaseService';
-import { AdAccount, AccountNote, OfflineSaleEntry } from '../types';
+import { AdAccount, AccountNote } from '../types';
 
 interface FloatingAssistantProps {
   accounts: AdAccount[];
@@ -22,7 +22,7 @@ interface ChatMessage {
   isProcessing?: boolean;
 }
 
-// Helper to sanitize and normalize text for marketing acronyms & decimal numbers
+// Helper to sanitize and normalize text for speech synthesis
 export function optimizeTextForSpeech(text: string): string {
   let cleaned = text;
 
@@ -43,37 +43,10 @@ export function optimizeTextForSpeech(text: string): string {
   });
 
   // Convert decimal points/commas to spoken word format "coma"
-  // e.g., 4.5 -> 4 coma 5
   cleaned = cleaned.replace(/(\d+)\.(\d+)/g, '$1 coma $2');
   cleaned = cleaned.replace(/(\d+),(\d+)/g, '$1 coma $2');
 
   return cleaned;
-}
-
-export function speakLocally(text: string, muted: boolean = false) {
-  if (muted || !window.speechSynthesis) return;
-
-  // Cancel any ongoing speaking
-  window.speechSynthesis.cancel();
-
-  const optimized = optimizeTextForSpeech(text);
-  const utterance = new SpeechSynthesisUtterance(optimized);
-  utterance.rate = 0.95; // Gently slow down speed for natural feel
-
-  // Attempt to select Google/Natural Spanish voices
-  const voices = window.speechSynthesis.getVoices();
-  const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
-  
-  // Look for "google" or "natural" in Spanish
-  const preferredVoice = spanishVoices.find(v => 
-    v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('natural')
-  ) || spanishVoices[0] || null;
-
-  if (preferredVoice) {
-    utterance.voice = preferredVoice;
-  }
-
-  window.speechSynthesis.speak(utterance);
 }
 
 export default function FloatingAssistant({
@@ -87,6 +60,7 @@ export default function FloatingAssistant({
   const [isOpen, setIsOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [transcriptText, setTranscriptText] = useState('');
@@ -101,7 +75,7 @@ export default function FloatingAssistant({
     }
   }, [messages, transcriptText]);
 
-  // Clean speaking on unmount
+  // Clean speaking on unmount or close
   useEffect(() => {
     return () => {
       if (window.speechSynthesis) {
@@ -110,10 +84,24 @@ export default function FloatingAssistant({
     };
   }, []);
 
+  // Cancel speaking when panel closes
+  useEffect(() => {
+    if (!isOpen) {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      setIsSpeaking(false);
+    }
+  }, [isOpen]);
+
   // Initialize SpeechSynthesis voices list
   useEffect(() => {
     if (window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined) {
-      window.speechSynthesis.onvoiceschanged = () => {};
+      window.speechSynthesis.onvoiceschanged = () => {
+        if (window.speechSynthesis) {
+          window.speechSynthesis.getVoices();
+        }
+      };
     }
   }, []);
 
@@ -122,11 +110,80 @@ export default function FloatingAssistant({
       id: Math.random().toString(36).substring(2, 9),
       sender,
       text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isProcessing
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     setMessages(prev => [...prev, newMessage]);
     return newMessage;
+  };
+
+  // Speaks using local Web Speech Synthesis with reactive starts/ends
+  const speakAsJarvis = (text: string) => {
+    if (isMuted || !window.speechSynthesis) {
+      setIsSpeaking(false);
+      return;
+    }
+
+    // Cancel dynamic speaking if any
+    window.speechSynthesis.cancel();
+
+    const optimized = optimizeTextForSpeech(text);
+    const utterance = new SpeechSynthesisUtterance(optimized);
+    utterance.rate = 0.95; // Slightly slower speed for a natural cadence
+
+    // Apply Spanish preferred voices (e.g. Google or standard Spanish)
+    const voices = window.speechSynthesis.getVoices();
+    const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
+    const preferredVoice = spanishVoices.find(v => 
+      v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('natural')
+    ) || spanishVoices[0] || null;
+
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+    };
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+    };
+
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Welcome greeting trigger when core becomes open
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      const hours = new Date().getHours();
+      let greeting = 'Buenas noches';
+      if (hours >= 5 && hours < 12) {
+        greeting = 'Buenos días';
+      } else if (hours >= 12 && hours < 21) {
+        greeting = 'Buenas tardes';
+      }
+      
+      const welcomeText = `${greeting}, señor. El asistente de voz Orión está en línea y a sus órdenes. ¿En qué puedo asistirle hoy o qué cuenta publicitaria desea de la que audite el rendimiento?`;
+      
+      const timer = setTimeout(() => {
+        addMessage('assistant', welcomeText);
+        speakAsJarvis(welcomeText);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  const toggleMute = () => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    if (nextMuted && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
   };
 
   const handleStartListening = () => {
@@ -135,21 +192,23 @@ export default function FloatingAssistant({
       return;
     }
 
-    // Cancel dynamic speaking if any
+    // Cancel spoken voice immediately to start recording clearly
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
+    setIsSpeaking(false);
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      addMessage('assistant', 'Lo siento, tu navegador no cuenta con soporte para Web Speech API.');
-      speakLocally('Lo siento, tu navegador no cuenta con soporte para Web Speech API.', isMuted);
+      const offlineMsg = 'Disculpe, señor. Su navegador actual no cuenta con soporte para el protocolo de transmisión de voz. Le sugiero utilizar Google Chrome.';
+      addMessage('assistant', offlineMsg);
+      speakAsJarvis(offlineMsg);
       return;
     }
 
     try {
       const rec = new SpeechRecognition();
-      rec.lang = 'es-AR'; // Argentine / generic Spanish
+      rec.lang = 'es-AR'; // Set Spanish Argentina/Latin accent
       rec.continuous = false;
       rec.interimResults = true;
 
@@ -176,13 +235,14 @@ export default function FloatingAssistant({
         console.error("Speech Recognition Error:", event.error);
         setIsListening(false);
         if (event.error !== 'no-speech') {
-          addMessage('assistant', `Se produjo un error al escuchar: ${event.error}`);
+          const errMsg = `Mis disculpas, señor. Al parecer ha surgido un inconveniente con el receptor de audio (${event.error}). ¿Podría intentarlo de nuevo?`;
+          addMessage('assistant', errMsg);
+          speakAsJarvis(errMsg);
         }
       };
 
       rec.onend = () => {
         setIsListening(false);
-        // Trigger command parsing if we have transcript
         setTranscriptText(prev => {
           if (prev.trim()) {
             processTranscription(prev);
@@ -195,7 +255,7 @@ export default function FloatingAssistant({
       rec.start();
 
     } catch (e) {
-      console.error("Failed to start speech recognition applet:", e);
+      console.error("Failed to start speech recognition context:", e);
       setIsListening(false);
     }
   };
@@ -230,7 +290,6 @@ export default function FloatingAssistant({
       }),
       ...(accountGroups || []).map(group => {
         const sG = settings[group.id];
-        // Filter constituent accounts in this group
         const groupAccounts = accounts.filter(a => 
           (group.accountIds || []).some(id => id?.toString() === a.id?.toString() || id?.toString() === a.account_id?.toString())
         );
@@ -280,7 +339,7 @@ export default function FloatingAssistant({
       switch (parsed.intent) {
         case 'ADD_LOG_EXTENDED': {
           if (!targetClient) {
-            systemResponse = `Entendí que quieres guardar una bitácora, pero no logré identificar a qué cliente pertenece. Por favor, especifica el nombre del cliente.`;
+            systemResponse = `Disculpe, señor. Comprendo que desea guardar una entrada en la bitácora, pero no logro identificar a cuál de sus cuentas se refiere. ¿Podría especificarme el nombre del cliente, por favor?`;
             break;
           }
           const noteText = parsed.noteText || "Nota guardada vía asistente de voz";
@@ -299,17 +358,17 @@ export default function FloatingAssistant({
           };
           onAddNote(newLocalNote);
 
-          systemResponse = `He registrado la bitácora para el cliente ${targetClient.name} el día ${parsed.date}. La nota dice: "${noteText}". Se guardó en la base de datos de Firestore de forma exitosa.`;
+          systemResponse = `Entendido, señor. He registrado su entrada en la bitácora para el cliente ${targetClient.name} con fecha del ${parsed.date}. He guardado de manera segura en Firestore la siguiente nota: "${noteText}". ¿Hay alguna otra actualización que requiera mi intervención, señor?`;
           break;
         }
 
         case 'RECORD_OFFLINE_SALE': {
           if (!targetClient) {
-            systemResponse = `Detecté una solicitud de venta manual, pero no encontré el cliente especificado. Intenta diciendo "registrar venta de 5000 para Nike".`;
+            systemResponse = `Lo lamento, señor. Detecté su solicitud para registrar una venta manual, pero no pude asociarla con un cliente existente. ¿Podría repetirme el comando especificando el nombre del cliente adecuadamente?`;
             break;
           }
           if (parsed.amount === undefined || isNaN(parsed.amount)) {
-            systemResponse = `Intenté registrar una venta offline para ${targetClient.name}, pero no logré parsear el monto numérico.`;
+            systemResponse = `Señor, he intentado asentar la venta offline para ${targetClient.name}, pero no he logrado detectar un monto numérico válido en su instrucción. ¿Sería tan amable de indicarme la cifra exacta?`;
             break;
           }
 
@@ -319,13 +378,13 @@ export default function FloatingAssistant({
           // Update local settings state instantly
           onAddOfflineSale(targetClient.id, parsed.amount, parsed.date);
 
-          systemResponse = `Entendido. Registré una venta offline por un importe de $${parsed.amount.toLocaleString('es-AR')} para ${targetClient.name} con fecha del día ${parsed.date}. La transacción fue sincronizada exitosamente con Firebase Firestore.`;
+          systemResponse = `A sus órdenes, señor. He registrado exitosamente la venta offline por un importe de $${parsed.amount.toLocaleString('es-AR')} para la cuenta de ${targetClient.name} con fecha del ${parsed.date}. La transacción fue sincronizada exitosamente con Firebase Firestore. ¿Desea que realice algo más por usted?`;
           break;
         }
 
         case 'CREATIVE_PERFORMANCE': {
           if (!targetClient) {
-            systemResponse = `Me solicitas el análisis de anuncios de un cliente, pero no pude asociar el nombre de la cuenta.`;
+            systemResponse = `Mis disculpas, señor. Comprendo que solicita una auditoría de creativos, pero no he logrado asociarla con ninguna de sus cuentas publicitarias. ¿Me indicaría para qué cliente desea que realice la consulta?`;
             break;
           }
 
@@ -334,45 +393,41 @@ export default function FloatingAssistant({
           const currentRevenue = targetClient.revenue || 0;
           const currentROAS = currentSpend > 0 ? (currentRevenue / currentSpend) : 0;
           
-          // Let's inspect dailySeries or historical data for a proper weekly delta
           let speakDeltaString = '';
           const clientDailySeries = (targetClient as any).dailySeries;
           if (clientDailySeries && clientDailySeries.length >= 7) {
             const series = clientDailySeries;
-            // Let's divide into actual and last week
             const recent7 = series.slice(-7);
             const past7 = series.slice(-14, -7);
 
-            const recSpend = recent7.reduce((sum, d) => sum + d.spend, 0);
-            const recRev = recent7.reduce((sum, d) => sum + d.revenue, 0);
+            const recSpend = recent7.reduce((sum: number, d: any) => sum + d.spend, 0);
+            const recRev = recent7.reduce((sum: number, d: any) => sum + d.revenue, 0);
             const recROAS = recSpend > 0 ? (recRev / recSpend) : 0;
 
-            const oldSpend = past7.reduce((sum, d) => sum + d.spend, 0);
-            const oldRev = past7.reduce((sum, d) => sum + d.revenue, 0);
+            const oldSpend = past7.reduce((sum: number, d: any) => sum + d.spend, 0);
+            const oldRev = past7.reduce((sum: number, d: any) => sum + d.revenue, 0);
             const oldROAS = oldSpend > 0 ? (oldRev / oldSpend) : 0;
 
             if (oldROAS > 0) {
               const changePct = ((recROAS - oldROAS) / oldROAS) * 100;
-              speakDeltaString = ` En los últimos siete días, tuvimos un retorno de inversión promedio de ${recROAS.toFixed(2)}, mostrando una variación del ${changePct.toFixed(1)}% con respecto a la semana previa.`;
+              speakDeltaString = ` En los últimos siete días, registramos un retorno de inversión promedio de ${recROAS.toFixed(2)}, mostrando una variación del ${changePct.toFixed(1)}% con respecto a la semana previa.`;
             }
           } else {
-            // General baseline simulation for natural voice speech response
             const simulatedPrevROAS = currentROAS > 0 ? currentROAS * 0.91 : 2.1;
             const delta = currentROAS > 0 ? ((currentROAS - simulatedPrevROAS) / simulatedPrevROAS) * 100 : 8.5;
             speakDeltaString = ` Actualmente muestra un retorno de la inversión de ${currentROAS.toFixed(2)}. Comparado con la semana pasada registramos un patrón positivo de crecimiento del ${delta.toFixed(1)}% en la rentabilidad de las creatividades nuevas.`;
           }
 
-          systemResponse = `Auditoría de Creativas para ${targetClient.name}: Las campañas actuales registran una inversión de $${currentSpend.toLocaleString('es-AR')} con un retorno global de $${currentRevenue.toLocaleString('es-AR')}.${speakDeltaString} Te recomiendo mantener las pautas optimizadas de mayor engagement.`;
+          systemResponse = `Por supuesto, señor. Aquí tiene la auditoría de creativos para ${targetClient.name}. Sus campañas actuales reportan un gasto acumulado de $${currentSpend.toLocaleString('es-AR')} con un retorno generado de $${currentRevenue.toLocaleString('es-AR')}.${speakDeltaString} Le sugiero enfáticamente priorizar las piezas con mayor tasa de clics y suspender las que eleven el costo por adquisición. ¿Tiene alguna directiva adicional que desee que ejecute?`;
           break;
         }
 
         case 'PERFORMANCE_RANKING': {
           if (accounts.length === 0) {
-            systemResponse = `Actualmente no hay cuentas de anuncios cargadas en el panel global para calcular el ranking de rendimiento.`;
+            systemResponse = `Señor, lamento informarle que no he encontrado cuentas publicitarias activas cargadas en el panel global necesarias para calcular el ranking de rendimiento. ¿Desea que espere a que se sincronice el sistema?`;
             break;
           }
 
-          // Calculate ROAS for each account
           const computedAccounts = accounts.map(acc => {
             const sp = acc.spend || 0;
             const rev = acc.revenue || 0;
@@ -383,38 +438,37 @@ export default function FloatingAssistant({
             };
           });
 
-          // Sort by highest ROAS
           const sorted = [...computedAccounts].sort((a, b) => b.roas - a.roas);
           const topAccount = sorted[0];
           const bottomAccount = sorted[sorted.length - 1];
 
-          let summaryText = `Análisis de Ranking de Rendimiento Global: `;
+          let summaryText = ``;
           if (topAccount && topAccount.roas > 0) {
             summaryText += `La cuenta con mejor rendimiento actual es ${topAccount.name}, liderando con un retorno de la inversión de ${topAccount.roas.toFixed(2)}. `;
           }
           if (bottomAccount && bottomAccount !== topAccount && bottomAccount.roas > 0) {
-            summaryText += `Por otro lado, la cuenta que requiere mayor optimización o revisión de CPA es ${bottomAccount.name}, la cual presenta un retorno de la inversión de ${bottomAccount.roas.toFixed(2)}.`;
+            summaryText += `Por otro lado, la cuenta que requiere mayor optimización es ${bottomAccount.name}, la cual presenta un retorno de la inversión de ${bottomAccount.roas.toFixed(2)}.`;
           } else {
             summaryText += `El resto de los clientes mantiene un margen promedio de rentabilidad estable.`;
           }
 
-          systemResponse = summaryText;
+          systemResponse = `Un momento, señor. Analizando... Listo. Aquí tiene el reporte de rendimiento global:\n\n${summaryText}\n\n¿Desea que profundice en alguna de estas métricas o prepare un reporte para nuestro cliente?`;
           break;
         }
 
         default: {
-          systemResponse = `Lo siento, no logré interpretar tu instrucción de voz. Recuerda que puedo registrar bitácoras, añadir ventas offline o auditar el rendimiento de tus clientes.`;
+          systemResponse = `Lo lamento mucho, señor. No he comprendido su instrucción con claridad. Le recuerdo que estoy capacitado para registrar bitácoras, añadir ventas manuales, realizar auditorías de creativos o calcular el ranking de rentabilidad global. ¿En qué le gustaría que colabore?`;
           break;
         }
       }
     } catch (err) {
       console.error(err);
-      systemResponse = `Entendí el comando pero surgió un fallo al procesar los datos en el servidor local.`;
+      systemResponse = `Lo siento, señor. Comprendí el comando pero surgió un fallo inesperado al asentar los datos en el servidor local.`;
     }
 
     setIsProcessing(false);
     addMessage('assistant', systemResponse);
-    speakLocally(systemResponse, isMuted);
+    speakAsJarvis(systemResponse);
   };
 
   return (
@@ -426,32 +480,33 @@ export default function FloatingAssistant({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.85, y: 30 }}
             transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-            className="absolute bottom-20 right-0 w-[350px] h-[480px] bg-[#0c0c0c] border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="absolute bottom-20 right-0 w-[360px] h-[500px] bg-[#090a0f]/95 backdrop-blur-xl border border-cyan-500/20 rounded-2xl shadow-3xl shadow-cyan-950/20 flex flex-col overflow-hidden"
           >
-            {/* Header */}
-            <div className="p-4 bg-[#121212] border-b border-white/5 flex items-center justify-between">
+            {/* Holographic Header */}
+            <div className="p-4 bg-[#0d0f17]/90 border-b border-cyan-500/10 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-1 px-2 rounded bg-blue-600/15 text-blue-400 text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-blue-400 animate-pulse" />
-                  Orion AI
+                <div className="p-1 px-2.5 rounded bg-cyan-500/10 text-cyan-400 text-[9px] font-mono font-black uppercase tracking-widest flex items-center gap-1.5 border border-cyan-500/20 shadow-[0_0_8px_rgba(6,182,212,0.15)]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                  ORIÓN J.A.R.V.I.S.
                 </div>
-                <span className="text-[10px] text-neutral-500 font-extrabold uppercase tracking-widest">Asistente Local</span>
+                <span className="text-[9px] text-cyan-450/40 font-mono tracking-widest uppercase">Protocolo Activo</span>
               </div>
 
               <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => setIsMuted(!isMuted)}
+                  type="button"
+                  onClick={toggleMute}
                   title={isMuted ? "Activar Voz" : "Silenciar"}
-                  className="p-1.5 hover:bg-white/5 rounded text-neutral-400 hover:text-white transition-all"
+                  className="p-1.5 hover:bg-cyan-500/10 rounded text-neutral-400 hover:text-cyan-400 transition-all border border-transparent hover:border-cyan-500/10"
                 >
-                  {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+                  {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-cyan-450" />}
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setIsOpen(false);
-                    if (window.speechSynthesis) window.speechSynthesis.cancel();
                   }}
-                  className="p-1.5 hover:bg-white/5 rounded text-neutral-400 hover:text-white transition-all"
+                  className="p-1.5 hover:bg-red-500/10 rounded text-neutral-400 hover:text-red-400 transition-all border border-transparent hover:border-red-500/10"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -459,25 +514,32 @@ export default function FloatingAssistant({
             </div>
 
             {/* Conversation Messages */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
+            <div className="flex-1 p-4 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-cyan-950 scrollbar-track-transparent">
               {messages.length === 0 && (
-                <div className="h-full flex flex-col items-center justify-center p-6 text-center space-y-3">
-                  <div className="relative">
+                <div className="h-full flex flex-col items-center justify-center p-6 text-center space-y-4">
+                  {/* Visual central pulsating radar */}
+                  <div className="relative flex items-center justify-center w-20 h-20">
                     <motion.div 
-                      animate={{ scale: [1, 1.15, 1] }} 
-                      transition={{ repeat: Infinity, duration: 3 }}
-                      className="w-12 h-12 bg-blue-600/10 rounded-full flex items-center justify-center border border-blue-500/15"
-                    >
-                      <Sparkles className="w-5 h-5 text-blue-500" />
-                    </motion.div>
+                      animate={{ scale: [1, 1.25, 1], opacity: [0.3, 0.6, 0.3] }} 
+                      transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                      className="absolute inset-0 rounded-full border border-cyan-500/30"
+                    />
+                    <motion.div 
+                      animate={{ scale: [1.2, 1, 1.2], opacity: [0.1, 0.4, 0.1] }} 
+                      transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
+                      className="absolute inset-2 rounded-full border-2 border-dashed border-cyan-500/20"
+                    />
+                    <div className="w-10 h-10 bg-cyan-950/40 border border-cyan-500/40 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+                      <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
+                    </div>
                   </div>
                   <div>
-                    <h4 className="text-xs font-black text-neutral-200 uppercase tracking-widest">Asistente por Voz</h4>
-                    <p className="text-[9px] text-neutral-500 font-medium leading-relaxed mt-1 uppercase tracking-wider">
-                      Presiona el micrófono y pide comandos como:<br/>
-                      <span className="text-neutral-400 font-bold block mt-1.5">"guardar bitacora para Nike que diga se modifico el presupuesto"</span>
-                      <span className="text-neutral-400 font-bold block mt-1">"registrar venta de 15000 para Adidas ayer"</span>
-                      <span className="text-neutral-400 font-bold block mt-1">"auditar creativos de Nike" o "ranking global"</span>
+                    <h4 className="text-[11px] font-mono font-black text-cyan-300 uppercase tracking-widest">Interfaz Asistente Jarvis</h4>
+                    <p className="text-[9px] text-neutral-400 font-medium leading-relaxed mt-2 uppercase tracking-wider max-w-[240px] mx-auto opacity-80">
+                      Presione el control de comando inferior o pronuncie de viva voz:<br/>
+                      <span className="text-cyan-440 font-bold block mt-2">"Guardar bitácora para Nike que diga se aumentó inversión"</span>
+                      <span className="text-cyan-440 font-bold block mt-1">"Registrar venta de 15000 para Adidas ayer"</span>
+                      <span className="text-cyan-440 font-bold block mt-1">"Auditar creativos de Nike" o "ranking global"</span>
                     </p>
                   </div>
                 </div>
@@ -489,14 +551,14 @@ export default function FloatingAssistant({
                   className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-xl px-3 py-2 text-[10px] leading-relaxed font-bold ${
+                    className={`max-w-[85%] rounded-xl px-3.5 py-2 text-[10px] leading-relaxed font-semibold transition-all duration-300 ${
                       msg.sender === 'user'
-                        ? 'bg-blue-600 text-white rounded-br-none'
-                        : 'bg-[#181818] border border-white/5 text-neutral-200 rounded-bl-none'
+                        ? 'bg-cyan-950/40 border border-cyan-500/30 text-cyan-100 rounded-br-none shadow-[0_4px_12px_rgba(6,182,212,0.05)]'
+                        : 'bg-neutral-900/95 border border-white/5 text-neutral-200 rounded-bl-none'
                     }`}
                   >
-                    <p>{msg.text}</p>
-                    <span className="block text-[8px] opacity-40 text-right mt-1 font-mono">{msg.timestamp}</span>
+                    <p className="whitespace-pre-line">{msg.text}</p>
+                    <span className="block text-[8px] opacity-45 text-right mt-1 font-mono tracking-wider">{msg.timestamp}</span>
                   </div>
                 </div>
               ))}
@@ -504,19 +566,19 @@ export default function FloatingAssistant({
               {/* Streaming Interim Transcript */}
               {isListening && transcriptText && (
                 <div className="flex justify-end">
-                  <div className="max-w-[85%] rounded-xl px-3 py-2 bg-blue-600/30 border border-blue-500/20 text-neutral-200 rounded-br-none animate-pulse">
-                    <p className="italic text-[10px] font-medium">{transcriptText}</p>
-                    <span className="block text-[8px] text-neutral-400 text-right mt-1 uppercase font-bold tracking-wider">Escuchando...</span>
+                  <div className="max-w-[85%] rounded-xl px-3.5 py-2 bg-red-950/30 border border-red-500/20 text-red-50 rounded-br-none animate-pulse">
+                    <p className="italic text-[10px] font-semibold text-red-100">{transcriptText}</p>
+                    <span className="block text-[8px] text-red-400 text-right mt-1 uppercase font-bold tracking-widest font-mono">Transcribiendo...</span>
                   </div>
                 </div>
               )}
 
               {/* Loader */}
               {isProcessing && (
-                <div className="flex justify-start">
-                  <div className="bg-[#181818] border border-white/5 rounded-xl rounded-bl-none px-3 py-2 flex items-center gap-2">
-                    <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />
-                    <span className="text-[9px] font-black uppercase text-neutral-400 tracking-widest">Interpretando voz...</span>
+                <div className="flex justify-start animate-pulse">
+                  <div className="bg-neutral-900 border border-cyan-500/10 rounded-xl rounded-bl-none px-3.5 py-2 flex items-center gap-2">
+                    <Loader2 className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+                    <span className="text-[9px] font-mono font-black uppercase text-cyan-400 tracking-widest">Calculando respuesta...</span>
                   </div>
                 </div>
               )}
@@ -524,23 +586,46 @@ export default function FloatingAssistant({
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Micro input and controls */}
-            <div className="p-4 bg-[#0e0e0e] border-t border-white/5 flex flex-col items-center gap-3">
-              {isListening ? (
-                <div className="flex items-center gap-1.5 justify-center py-1">
-                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping" />
-                  <span className="text-[8px] font-black uppercase tracking-widest text-red-500">Grabando audio local...</span>
+            {/* Speaking/Listening Equalizer and Core Trigger */}
+            <div className="p-4 bg-[#08090e]/95 border-t border-cyan-500/10 flex flex-col items-center gap-3">
+              {/* Voice equalizer waves when speaking */}
+              {isSpeaking && (
+                <div className="flex items-center justify-center gap-1.5 py-1">
+                  <span className="text-[8px] font-mono font-black uppercase tracking-widest text-cyan-400 mr-1.5">Sintetizando...</span>
+                  <div className="flex items-end gap-0.5 h-3">
+                    {[1, 2, 3, 4, 5].map((bar) => (
+                      <motion.div
+                        key={bar}
+                        animate={{
+                          height: ["20%", "100%", "20%"]
+                        }}
+                        transition={{
+                          duration: 0.5 + bar * 0.1,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
+                        className="w-0.5 bg-cyan-400 rounded-full"
+                      />
+                    ))}
+                  </div>
                 </div>
-              ) : null}
+              )}
+
+              {isListening && (
+                <div className="flex items-center gap-2 justify-center py-1">
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
+                  <span className="text-[8px] font-mono font-black uppercase tracking-widest text-red-500">Oyendo directivas...</span>
+                </div>
+              )}
 
               <div className="w-full flex items-center justify-between">
                 <button
                   type="button"
                   onClick={handleStartListening}
-                  className={`w-full py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+                  className={`w-full py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-[10px] font-mono font-black uppercase tracking-widest transition-all ${
                     isListening
-                      ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
-                      : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20'
+                      ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse shadow-lg shadow-red-950/40 border border-red-500/30'
+                      : 'bg-cyan-950/40 hover:bg-cyan-900 border border-cyan-500/30 text-cyan-300 shadow-lg shadow-cyan-950/30'
                   }`}
                 >
                   {isListening ? (
@@ -550,8 +635,8 @@ export default function FloatingAssistant({
                     </>
                   ) : (
                     <>
-                      <Mic className="w-3.5 h-3.5 text-white animate-bounce" />
-                      Dictar Comando por Voz
+                      <Mic className="w-3.5 h-3.5 text-cyan-400" />
+                      Transmitir Instrucción
                     </>
                   )}
                 </button>
@@ -561,22 +646,99 @@ export default function FloatingAssistant({
         )}
       </AnimatePresence>
 
-      {/* Launcher Button */}
-      <motion.button
-        onClick={() => {
-          setIsOpen(!isOpen);
-          if (isOpen && window.speechSynthesis) window.speechSynthesis.cancel();
+      {/* Floating Living Entity Orb (Core) */}
+      <motion.div
+        animate={{
+          y: isOpen ? 0 : [0, -8, 0],
         }}
-        whileHover={{ scale: 1.08 }}
-        whileTap={{ scale: 0.95 }}
-        className={`w-12 h-12 rounded-full shadow-2xl flex items-center justify-center border transition-all ${
-          isOpen
-            ? 'bg-[#141414] border-white/10 text-neutral-400 hover:text-white'
-            : 'bg-blue-600 hover:bg-blue-500 border-blue-400/20 text-white shadow-blue-500/10'
-        }`}
+        transition={{
+          y: {
+            repeat: Infinity,
+            duration: 4,
+            ease: "easeInOut"
+          }
+        }}
+        className="relative"
       >
-        {isOpen ? <X className="w-5 h-5" /> : <Mic className="w-5 h-5 text-white animate-pulse" />}
-      </motion.button>
+        {/* Holographic glowing bloom aura */}
+        <div className={`absolute inset-0 rounded-full blur-xl opacity-60 transition-all duration-700 ${
+          isListening 
+            ? 'bg-red-500/30 scale-125' 
+            : isProcessing 
+              ? 'bg-amber-500/30 scale-125' 
+              : 'bg-cyan-500/20'
+        }`} />
+
+        <button
+          type="button"
+          onClick={() => {
+            setIsOpen(!isOpen);
+          }}
+          className="relative w-16 h-16 rounded-full flex items-center justify-center select-none active:scale-95 transition-all duration-300 outline-none hover:shadow-[0_0_20px_rgba(6,182,212,0.3)] filter brightness-110"
+          id="jarvis-core-button"
+        >
+          {/* Constellation ring 1 - Clockwise */}
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 15, ease: "linear" }}
+            className={`absolute inset-0 border rounded-full ${
+              isListening 
+                ? 'border-red-500/30 border-dashed' 
+                : 'border-cyan-500/30 border-dashed'
+            }`}
+          />
+
+          {/* Core mechanism ring 2 - Counter-clock */}
+          <motion.div
+            animate={{ rotate: -360 }}
+            transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
+            className={`absolute inset-2 border-2 rounded-full border-t-transparent border-b-transparent ${
+              isListening
+                ? 'border-red-400/40'
+                : 'border-cyan-400/40'
+            }`}
+          />
+
+          {/* Equalizer waves radiating outward during speech output */}
+          {isSpeaking && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-20 h-20 border border-cyan-450/40 rounded-full animate-ping absolute opacity-60" />
+              <div className="w-24 h-24 border border-cyan-500/20 rounded-full animate-ping absolute opacity-40" style={{ animationDelay: '0.3s' }} />
+            </div>
+          )}
+
+          {/* Physical Living Orb container */}
+          <div className={`absolute inset-3 rounded-full flex items-center justify-center transition-all duration-500 ${
+            isListening
+              ? 'bg-gradient-to-br from-red-950/90 to-black border border-red-500/60 shadow-[inset_0_0_12px_rgba(239,68,68,0.5)]'
+              : isProcessing
+                ? 'bg-gradient-to-br from-amber-950/90 to-black border border-amber-500/60 shadow-[inset_0_0_12px_rgba(245,158,11,0.5)]'
+                : 'bg-gradient-to-br from-cyan-950/90 to-black border border-cyan-500/60 shadow-[inset_0_0_12px_rgba(6,182,212,0.5)]'
+          }`}>
+            {/* Reactive center nucleus */}
+            <motion.div
+              animate={isListening ? {
+                scale: [1, 1.4, 1],
+                backgroundColor: ["#ef4444", "#f87171", "#ef4444"],
+              } : isProcessing ? {
+                scale: [1, 1.25, 1],
+                backgroundColor: ["#f59e0b", "#fbbf24", "#f59e0b"],
+              } : {
+                scale: [1, 1.15, 1],
+                backgroundColor: ["#06b6d4", "#22d3ee", "#06b6d4"],
+              }}
+              transition={{ repeat: Infinity, duration: isListening ? 0.8 : isProcessing ? 1.4 : 2.5, ease: "easeInOut" }}
+              className="w-4.5 h-4.5 rounded-full shadow-[0_0_15px_currentColor] flex items-center justify-center"
+            >
+              {isOpen ? (
+                <X className="w-2.5 h-2.5 text-black font-extrabold" />
+              ) : (
+                <Sparkles className="w-2 h-2 text-black" />
+              )}
+            </motion.div>
+          </div>
+        </button>
+      </motion.div>
     </div>
   );
 }
