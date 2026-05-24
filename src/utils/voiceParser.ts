@@ -1,4 +1,4 @@
-import { format, subDays } from 'date-fns';
+import { format, subDays, setDate, setMonth, subMonths } from 'date-fns';
 
 export interface ParsedVoiceCommand {
   intent: 'ADD_LOG_EXTENDED' | 'RECORD_OFFLINE_SALE' | 'CREATIVE_PERFORMANCE' | 'PERFORMANCE_RANKING' | 'UNKNOWN';
@@ -47,15 +47,67 @@ export function parseAdvancedVoiceCommand(
   let intent: ParsedVoiceCommand['intent'] = 'UNKNOWN';
   let matchedClientName: string | undefined = undefined;
 
-  // 1. Calculate relative dates ("hoy", "ayer", "antes de ayer" or "anteayer")
-  let dateStr = format(new Date(), 'yyyy-MM-dd');
+  // 1. Calculate relative or custom dates in Spanish
+  // Default to today
+  let docDate = new Date();
+  let dateDetected = false;
+
+  // Detect relative indicators:
   if (normalized.includes('antes de ayer') || normalized.includes('anteayer')) {
-    dateStr = format(subDays(new Date(), 2), 'yyyy-MM-dd');
+    docDate = subDays(new Date(), 2);
+    dateDetected = true;
   } else if (normalized.includes('ayer')) {
-    dateStr = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+    docDate = subDays(new Date(), 1);
+    dateDetected = true;
   } else if (normalized.includes('hoy')) {
-    dateStr = format(new Date(), 'yyyy-MM-dd');
+    docDate = new Date();
+    dateDetected = true;
   }
+
+  // If no relative day detected yet, check for explicit days:
+  if (!dateDetected) {
+    // Regex for: "dia 18 de este mes", "dia 18", "el 18 de este mes", "el 18", "el dia 18"
+    // Also "dia 18 del mes pasado" or "18 del mes pasado"
+    const isPastMonth = normalized.includes('mes pasado') || normalized.includes('mes anterior');
+    
+    // Look for numbers of 1 or 2 digits representing a calendar day (1 to 31)
+    // Matches expressions like 'el dia 18', 'el 18', 'dia 18', 'fecha 18', 'el dia de 18'
+    const dayRegex = /\b(?:el\s+)?(?:dia\s+)?(?:de\s+)?(\d{1,2})\b/gi;
+    let match;
+    let fallbackDay: number | null = null;
+
+    // Scan the speech text for candidates
+    while ((match = dayRegex.exec(normalized)) !== null) {
+      const parsedDayNum = parseInt(match[1], 10);
+      if (parsedDayNum >= 1 && parsedDayNum <= 31) {
+        // Filter out matches that represent huge dollar amounts matched by mistake by keeping only those related to date context or near 'dia', 'de este mes', or end of string
+        const index = match.index;
+        const surroundingText = normalized.substring(Math.max(0, index - 20), Math.min(normalized.length, index + 35));
+        
+        const hasDateKeyword = /dia|mes|fecha|fecha de|ayer|hoy|el/gi.test(surroundingText);
+        // If it seems to be part of an amount (e.g. "1 600 000" or "$18"), let's not misinterpret it as a day
+        const isPartOfAmount = /peso|dolar|[\$\d\s]{5,}/gi.test(surroundingText) && !surroundingText.includes('mes') && !surroundingText.includes('dia');
+
+        if (hasDateKeyword && !isPartOfAmount) {
+          fallbackDay = parsedDayNum;
+          break;
+        }
+      }
+    }
+
+    if (fallbackDay !== null) {
+      if (isPastMonth) {
+        docDate = subMonths(new Date(), 1);
+      } else {
+        docDate = new Date();
+      }
+      docDate = setDate(docDate, fallbackDay);
+      dateDetected = true;
+    }
+  }
+
+  // Format final date
+  const dateStr = format(docDate, 'yyyy-MM-dd');
 
   // 2. Identify client match with scoring
   let bestScore = 0;
@@ -116,22 +168,18 @@ export function parseAdvancedVoiceCommand(
 
   // 3. Match Intents
   // A. RECORD_OFFLINE_SALE
-  // Keywords: venta, registrar venta, venta offline, offline sale
-  const saleKeywords = ['venta', 'ventas', 'registrar venta', 'monto', 'offline sale', 'vender'];
+  const saleKeywords = ['venta', 'ventas', 'registrar venta', 'monto', 'offline sale', 'vender', 'vendi'];
   const isSale = saleKeywords.some(kw => normalized.includes(kw));
 
   // B. ADD_LOG_EXTENDED
-  // Keywords: bitacora, nota, comentario, registrar bitacora, agregar bitacora, anotar
   const logKeywords = ['bitacora', 'nota', 'comentario', 'anotar', 'registrar bitacora', 'agregar bitacora', 'bitacoras'];
   const isLog = logKeywords.some(kw => normalized.includes(kw));
 
   // C. CREATIVE_PERFORMANCE
-  // Keywords: rendimiento de creativos, rendimiento de anuncios, creativos, anuncios, anuncio, creatividad
   const creativeKeywords = ['creativo', 'creativos', 'anuncio', 'anuncios', 'creatividad', 'rendimiento de creativos', 'rendimiento de anuncios'];
   const isCreative = creativeKeywords.some(kw => normalized.includes(kw));
 
   // D. PERFORMANCE_RANKING
-  // Keywords: ranking, mejores cuentas, peores cuentas, mejoraron, empeoraron, analisis global, ranking de rendimiento
   const rankingKeywords = ['ranking', 'mejores', 'peores', 'mejoraron', 'empeoraron', 'rendimiento global', 'como vamos'];
   const isRanking = rankingKeywords.some(kw => normalized.includes(kw));
 
@@ -151,16 +199,44 @@ export function parseAdvancedVoiceCommand(
 
   // 4. Parameter Extraction
   if (intent === 'RECORD_OFFLINE_SALE') {
-    // Extract a numeric value. Handled with regex, replacing possible dot thousand separators, keeping numbers.
-    // e.g. "registrar venta de 50.000" -> 50000
-    // Try to match numbers representing currency or amounts.
-    const numberMatches = normalized.match(/\b\d+([.,]\d+)?\b/g);
+    // Robustly extract amounts, even if transcribed with spaces (e.g. "1 600 000" or "45 000")
+    // or traditional symbols ("$1.600.000", "45,000")
+    
+    // Step A: Collapse space-separated numbers that look like thousands separation.
+    // Replace spaces that occur between digits, e.g. "1 600 000" -> "1600000"
+    // To do this safely, we find any space character that has digits on both sides
+    const collapsedSpacesText = normalized.replace(/(\d)\s+(?=\d)/g, '$1');
+
+    // Step B: Match standard formatted numbers (e.g. "1600000", "45000", "50.000", "12,50")
+    // Avoid capturing single digit days when larger numbers are available
+    const numberMatches = collapsedSpacesText.match(/\b\d+([.,]\d+)*\b/g);
     if (numberMatches) {
-      const cleanedMatch = numberMatches[0].replace(/\./g, '').replace(/,/g, '.');
-      amount = parseFloat(cleanedMatch);
+      // Find the best candidate: usually the largest number represents the financial sale amount,
+      // and smaller numbers (1 to 31) might be calendar days.
+      const candidates = numberMatches.map(numStr => {
+        const cleanedStr = numStr.replace(/\./g, '').replace(/,/g, '');
+        return {
+          original: numStr,
+          val: parseFloat(cleanedStr)
+        };
+      }).filter(c => !isNaN(c.val));
+
+      // Prefer candidate that is NOT a calendar day mentioned (such as 18) unless it is the only number.
+      let bestCandidate = candidates[0];
+      if (candidates.length > 1) {
+        // Filters out the day number if we matched it before
+        const filtered = candidates.filter(c => c.val > 31);
+        if (filtered.length > 0) {
+          bestCandidate = filtered[0];
+        }
+      }
+
+      if (bestCandidate) {
+        amount = bestCandidate.val;
+      }
     }
   } else if (intent === 'ADD_LOG_EXTENDED') {
-    // Extract text of the note. For example after "que diga" or "nota para [cliente]"
+    // Extract text of the note.
     let cleanText = rawText;
     const phrasesToStrip = [
       /agregar bitacora para/gi,
@@ -180,7 +256,6 @@ export function parseAdvancedVoiceCommand(
       /anteayer/gi,
     ];
 
-    // Also strip client name if matched
     if (matchedClientName) {
       const clientEscaped = matchedClientName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
       phrasesToStrip.push(new RegExp(clientEscaped, 'gi'));
@@ -195,7 +270,6 @@ export function parseAdvancedVoiceCommand(
       cleanText = cleanText.replace(regex, '');
     });
 
-    // Remove double spaces, dashes, or colons from start/end
     noteText = cleanText.replace(/^[:\s\-–—]+/g, '').replace(/[:\s\-–—]+$/g, '').trim();
     if (!noteText) {
       noteText = rawText; // Fallback

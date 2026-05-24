@@ -301,7 +301,8 @@ export default function FloatingAssistant({
 
     const optimized = optimizeTextForSpeech(text);
     const utterance = new SpeechSynthesisUtterance(optimized);
-    utterance.rate = 1.0; 
+    utterance.rate = 0.95; // Un ritmo ligeramente más pausado, solemne y calculado
+    utterance.pitch = 0.76; // Una voz notablemente más profunda, gruesa, grave e imponente
 
     const voices = window.speechSynthesis.getVoices();
     const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
@@ -881,12 +882,12 @@ export default function FloatingAssistant({
         {/* Glowing outer aura bloom */}
         <div className={`absolute inset-0 rounded-full blur-2xl opacity-75 transition-all duration-750 ${
           isListening 
-            ? 'bg-amber-500/40 scale-130' 
+            ? 'bg-amber-500/50 scale-140' 
             : isProcessing 
-              ? 'bg-amber-600/50 scale-125 animate-pulse' 
+              ? 'bg-amber-600/60 scale-130 animate-pulse' 
               : isSpeaking 
-                ? 'bg-amber-400/40 scale-135'
-                : 'bg-amber-500/25'
+                ? 'bg-amber-400/50 scale-145'
+                : 'bg-amber-500/30'
         }`} />
 
         <button
@@ -899,7 +900,7 @@ export default function FloatingAssistant({
             }
             setIsOpen(!isOpen);
           }}
-          className="relative w-20 h-20 rounded-full flex items-center justify-center select-none active:scale-95 transition-all duration-300 outline-none filter brightness-110"
+          className="relative w-28 h-28 rounded-full flex items-center justify-center select-none active:scale-95 transition-all duration-300 outline-none filter brightness-110"
           id="orion-living-core-button"
         >
           {/* Multiple complex concentric holographic rings of data matching the attached gold sphere file */}
@@ -910,8 +911,8 @@ export default function FloatingAssistant({
             transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
             className={`absolute inset-0 border-2 rounded-full border-dashed ${
               isListening 
-                ? 'border-amber-400/60' 
-                : 'border-amber-500/35'
+                ? 'border-amber-400/70 border-spacing-2' 
+                : 'border-amber-500/40'
             }`}
           />
 
@@ -919,7 +920,7 @@ export default function FloatingAssistant({
           <motion.div
             animate={{ rotate: -360 }}
             transition={{ repeat: Infinity, duration: 14, ease: "linear" }}
-            className="absolute inset-1.5 border border-dotted border-amber-450/45 rounded-full"
+            className="absolute inset-2 border border-dotted border-amber-400/50 rounded-full"
             style={{ transform: "rotateX(45deg) rotateY(15deg)" }}
           />
 
@@ -927,7 +928,7 @@ export default function FloatingAssistant({
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ repeat: Infinity, duration: 18, ease: "linear" }}
-            className="absolute inset-3 border border-amber-300/35 rounded-full"
+            className="absolute inset-4 border border-amber-300/40 rounded-full"
             style={{ transform: "rotateX(-30deg) rotateY(45deg)" }}
           />
 
@@ -935,7 +936,7 @@ export default function FloatingAssistant({
           <motion.div
             animate={{ rotate: -360 }}
             transition={{ repeat: Infinity, duration: 11, ease: "linear" }}
-            className="absolute inset-4.5 border border-amber-400/30 rounded-full"
+            className="absolute inset-6 border border-amber-400/35 rounded-full"
             style={{ transform: "rotateX(60deg) rotateY(-40deg)" }}
           />
 
@@ -943,40 +944,72 @@ export default function FloatingAssistant({
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ repeat: Infinity, duration: 5, ease: "linear" }}
-            className="absolute inset-6 border border-t-amber-300/60 border-r-transparent border-b-transparent border-l-transparent rounded-full"
+            className="absolute inset-8 border border-t-amber-300/75 border-r-transparent border-b-transparent border-l-transparent rounded-full"
           />
 
-          {/* Core Mechanism container */}
-          <div className={`absolute inset-5 rounded-full flex items-center justify-center transition-all duration-500 ${
+          {/* Core Mechanism container - No logos, pure organic plasma fluid dynamics */}
+          <div className={`absolute inset-7 rounded-full flex items-center justify-center transition-all duration-500 overflow-hidden ${
             isListening
-              ? 'bg-gradient-to-br from-amber-600/90 via-amber-950 to-black border border-amber-400 shadow-[inset_0_0_18px_rgba(245,158,11,0.65)]'
+              ? 'bg-gradient-to-br from-amber-500/95 via-amber-950 to-black border-2 border-amber-300 shadow-[inset_0_0_22px_rgba(245,158,11,0.8)]'
               : isProcessing
-                ? 'bg-gradient-to-br from-amber-700/90 via-amber-950 to-black border border-amber-400 shadow-[inset_0_0_18px_rgba(217,119,6,0.65)]'
-                : 'bg-gradient-to-br from-amber-900/90 via-[#181308] to-black border border-amber-500/60 shadow-[inset_0_0_15px_rgba(245,158,11,0.5)]'
+                ? 'bg-gradient-to-br from-amber-600/95 via-amber-950 to-black border-2 border-amber-400 shadow-[inset_0_0_22px_rgba(217,119,6,0.8)]'
+                : 'bg-gradient-to-br from-amber-800 via-[#181308] to-black border-2 border-amber-500/70 shadow-[inset_0_0_18px_rgba(245,158,11,0.6)]'
           }`}>
-            {/* Reactive centerpiece core sphere */}
+            {/* Multi-layered custom plasma cells inside the core sphere representing active consciousness */}
+            <div className="absolute inset-0.5 rounded-full overflow-hidden flex items-center justify-center">
+              {/* Outer plasma plasma ripple */}
+              <motion.div
+                animate={{
+                  scale: isListening ? [0.8, 1.4, 0.8] : isSpeaking ? [0.9, 1.3, 0.9] : [0.95, 1.15, 0.95],
+                  opacity: [0.35, 0.75, 0.35]
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: isListening ? 1.0 : isSpeaking ? 1.4 : 2.5,
+                  ease: "easeInOut"
+                }}
+                className="absolute inset-1 rounded-full bg-amber-400/25 blur-sm"
+              />
+
+              {/* Secondary offset pulsing shield */}
+              <motion.div
+                animate={{
+                  rotate: 360,
+                  scale: isListening ? [1.1, 0.85, 1.1] : [1, 0.9, 1]
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 8,
+                  ease: "linear"
+                }}
+                className="absolute inset-2 border border-dashed border-amber-300/50 rounded-full"
+              />
+            </div>
+
+            {/* Reactive centerpiece core sphere (Pure golden nucleus, no SVG Icons) */}
             <motion.div
               animate={isListening ? {
-                scale: [0.9, 1.45, 0.9],
-                backgroundColor: ["#f59e0b", "#fef08a", "#f59e0b"],
+                scale: [0.9, 1.5, 0.9],
+                backgroundColor: ["#f59e0b", "#fffbeb", "#f59e0b"],
+                boxShadow: ["0 0 25px 6px rgba(251,191,36,0.95)", "0 0 35px 12px rgba(251,191,36,0.99)", "0 0 25px 6px rgba(251,191,36,0.95)"]
               } : isProcessing ? {
-                scale: [1, 1.25, 1],
-                backgroundColor: ["#d97706", "#fbbf24", "#d97706"],
+                scale: [1, 1.3, 1],
+                backgroundColor: ["#d97706", "#fef3c7", "#d97706"],
+                boxShadow: ["0 0 18px 4px rgba(217,119,6,0.85)", "0 0 28px 8px rgba(217,119,6,0.95)", "0 0 18px 4px rgba(217,119,6,0.85)"]
               } : isSpeaking ? {
-                scale: [0.95, 1.35, 0.95],
+                scale: [0.95, 1.4, 0.95],
                 backgroundColor: ["#fbbf24", "#ffffff", "#fbbf24"],
+                boxShadow: ["0 0 30px 8px rgba(251,191,36,0.95)", "0 0 40px 14px rgba(255,255,255,0.99)", "0 0 30px 8px rgba(251,191,36,0.95)"]
               } : {
-                scale: [0.95, 1.15, 0.95],
-                backgroundColor: ["#f59e0b", "#b45309", "#f59e0b"],
+                scale: [0.95, 1.2, 0.95],
+                backgroundColor: ["#d97706", "#f59e0b", "#d97706"],
+                boxShadow: ["0 0 15px 3px rgba(245,158,11,0.7)", "0 0 25px 8px rgba(245,158,11,0.85)", "0 0 15px 3px rgba(245,158,11,0.7)"]
               }}
-              transition={{ repeat: Infinity, duration: isListening ? 0.75 : isProcessing ? 1.2 : isSpeaking ? 0.9 : 3.0, ease: "easeInOut" }}
-              className="w-5 h-5 rounded-full shadow-[0_0_20px_2px_rgba(245,158,11,1)] flex items-center justify-center text-black"
+              transition={{ repeat: Infinity, duration: isListening ? 0.8 : isProcessing ? 1.3 : isSpeaking ? 0.95 : 3.2, ease: "easeInOut" }}
+              className="w-7 h-7 rounded-full flex items-center justify-center relative z-10"
             >
-              {isOpen ? (
-                <X className="w-3 h-3 text-black font-extrabold" />
-              ) : (
-                <Sparkles className="w-2.5 h-2.5 text-black" />
-              )}
+              {/* Internal brilliant point light source */}
+              <div className="w-2.5 h-2.5 bg-white rounded-full blur-[1px] opacity-90 animate-pulse" />
             </motion.div>
           </div>
         </button>
