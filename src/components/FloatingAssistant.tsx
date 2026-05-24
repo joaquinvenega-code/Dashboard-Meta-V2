@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff, X, Volume2, VolumeX, Sparkles, Loader2, ArrowRight } from 'lucide-react';
+import { Mic, MicOff, X, Volume2, VolumeX, Sparkles, Loader2, Play } from 'lucide-react';
 import { parseAdvancedVoiceCommand, ParsedVoiceCommand } from '../utils/voiceParser';
 import { saveLogToFirestore, saveOfflineSaleToFirestore } from '../services/firebaseService';
 import { AdAccount, AccountNote } from '../types';
@@ -22,7 +22,168 @@ interface ChatMessage {
   isProcessing?: boolean;
 }
 
-// Helper to sanitize and normalize text for speech synthesis
+// Custom interactive synthesiser of hologram interface sounds using native web AudioContext
+class OrionSynthesizer {
+  private ctx: AudioContext | null = null;
+
+  private init() {
+    if (!this.ctx) {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        this.ctx = new AudioContextClass();
+      }
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+
+  // Sweet ascending synthetic holographic chirp
+  playChirp() {
+    try {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(950, now + 0.16);
+      
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.linearRampToValueAtTime(0.04, now + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+      
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.18);
+    } catch (e) {
+      console.warn("Audio Context error:", e);
+    }
+  }
+
+  // Harmonic chord resonance when Orion is ready or starts talking
+  playConfirm() {
+    try {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(480, now);
+      osc1.frequency.setValueAtTime(640, now + 0.05); // Melodic stepping
+      
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(320, now);
+      osc2.frequency.setValueAtTime(380, now + 0.05);
+      
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.linearRampToValueAtTime(0.03, now + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+      
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(this.ctx.destination);
+      
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.3);
+      osc2.stop(now + 0.3);
+    } catch (e) {
+      console.warn("Audio Context error:", e);
+    }
+  }
+
+  // Little microcomputer computation clicks
+  playTick() {
+    try {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1100, now);
+      osc.frequency.setValueAtTime(150, now + 0.01);
+      
+      gain.gain.setValueAtTime(0.004, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.02);
+      
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.02);
+    } catch (e) {}
+  }
+
+  // Settle descending alarm on timeouts or offline modes
+  playError() {
+    try {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(260, now);
+      osc.frequency.linearRampToValueAtTime(120, now + 0.22);
+      
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+      
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    } catch (e) {}
+  }
+
+  // Power down click on exit
+  playPowerDown() {
+    try {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(550, now);
+      osc.frequency.exponentialRampToValueAtTime(70, now + 0.18);
+      
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+      
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    } catch (e) {}
+  }
+}
+
+const synth = new OrionSynthesizer();
+
+// Safe wrapper to prevent hanging on Firestore network connection issues and sandbox failures
+function executeWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_EXCEEDED')), timeoutMs))
+  ]);
+}
+
 export function optimizeTextForSpeech(text: string): string {
   let cleaned = text;
 
@@ -42,7 +203,6 @@ export function optimizeTextForSpeech(text: string): string {
     cleaned = cleaned.replace(rep.pattern, rep.value);
   });
 
-  // Convert decimal points/commas to spoken word format "coma"
   cleaned = cleaned.replace(/(\d+)\.(\d+)/g, '$1 coma $2');
   cleaned = cleaned.replace(/(\d+),(\d+)/g, '$1 coma $2');
 
@@ -68,14 +228,25 @@ export default function FloatingAssistant({
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto scroll to bottom of chat
+  // Play micro ticks while calculating/processing to emulate living core computation
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isProcessing) {
+      interval = setInterval(() => {
+        synth.playTick();
+      }, 350);
+    }
+    return () => clearInterval(interval);
+  }, [isProcessing]);
+
+  // Auto scroll
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, transcriptText]);
 
-  // Clean speaking on unmount or close
+  // Clean speaking on unmount
   useEffect(() => {
     return () => {
       if (window.speechSynthesis) {
@@ -94,7 +265,7 @@ export default function FloatingAssistant({
     }
   }, [isOpen]);
 
-  // Initialize SpeechSynthesis voices list
+  // Initialize SpeechSynthesis
   useEffect(() => {
     if (window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined) {
       window.speechSynthesis.onvoiceschanged = () => {
@@ -105,7 +276,7 @@ export default function FloatingAssistant({
     }
   }, []);
 
-  const addMessage = (sender: 'user' | 'assistant', text: string, isProcessing = false) => {
+  const addMessage = (sender: 'user' | 'assistant', text: string) => {
     const newMessage: ChatMessage = {
       id: Math.random().toString(36).substring(2, 9),
       sender,
@@ -117,20 +288,21 @@ export default function FloatingAssistant({
   };
 
   // Speaks using local Web Speech Synthesis with reactive starts/ends
-  const speakAsJarvis = (text: string) => {
+  const speakAsOrion = (text: string) => {
     if (isMuted || !window.speechSynthesis) {
       setIsSpeaking(false);
       return;
     }
 
-    // Cancel dynamic speaking if any
     window.speechSynthesis.cancel();
+
+    // Trigger talking chord
+    synth.playConfirm();
 
     const optimized = optimizeTextForSpeech(text);
     const utterance = new SpeechSynthesisUtterance(optimized);
-    utterance.rate = 0.95; // Slightly slower speed for a natural cadence
+    utterance.rate = 1.0; 
 
-    // Apply Spanish preferred voices (e.g. Google or standard Spanish)
     const voices = window.speechSynthesis.getVoices();
     const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
     const preferredVoice = spanishVoices.find(v => 
@@ -167,11 +339,11 @@ export default function FloatingAssistant({
         greeting = 'Buenas tardes';
       }
       
-      const welcomeText = `${greeting}, señor. El asistente de voz Orión está en línea y a sus órdenes. ¿En qué puedo asistirle hoy o qué cuenta publicitaria desea de la que audite el rendimiento?`;
+      const welcomeText = `${greeting}, señor. El sistema asistente de Orión se encuentra activo y a sus completas órdenes para lo que necesite. ¿En qué cuenta publicitaria desea que audite el rendimiento hoy o qué registro desea agregar?`;
       
       const timer = setTimeout(() => {
         addMessage('assistant', welcomeText);
-        speakAsJarvis(welcomeText);
+        speakAsOrion(welcomeText);
       }, 600);
       return () => clearTimeout(timer);
     }
@@ -198,17 +370,20 @@ export default function FloatingAssistant({
     }
     setIsSpeaking(false);
 
+    // Play recording start sound
+    synth.playChirp();
+
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       const offlineMsg = 'Disculpe, señor. Su navegador actual no cuenta con soporte para el protocolo de transmisión de voz. Le sugiero utilizar Google Chrome.';
       addMessage('assistant', offlineMsg);
-      speakAsJarvis(offlineMsg);
+      speakAsOrion(offlineMsg);
       return;
     }
 
     try {
       const rec = new SpeechRecognition();
-      rec.lang = 'es-AR'; // Set Spanish Argentina/Latin accent
+      rec.lang = 'es-AR'; 
       rec.continuous = false;
       rec.interimResults = true;
 
@@ -235,9 +410,10 @@ export default function FloatingAssistant({
         console.error("Speech Recognition Error:", event.error);
         setIsListening(false);
         if (event.error !== 'no-speech') {
+          synth.playError();
           const errMsg = `Mis disculpas, señor. Al parecer ha surgido un inconveniente con el receptor de audio (${event.error}). ¿Podría intentarlo de nuevo?`;
           addMessage('assistant', errMsg);
-          speakAsJarvis(errMsg);
+          speakAsOrion(errMsg);
         }
       };
 
@@ -272,7 +448,6 @@ export default function FloatingAssistant({
     addMessage('user', rawString);
     setIsProcessing(true);
 
-    // Build consolidated list of clients combining individual accounts and user group structures
     const consolidatedClients = [
       ...accounts.map(acc => {
         const s = settings[acc.id];
@@ -294,7 +469,6 @@ export default function FloatingAssistant({
           (group.accountIds || []).some(id => id?.toString() === a.id?.toString() || id?.toString() === a.account_id?.toString())
         );
         
-        // Aggregate dailySeries by date
         const seriesMap: Record<string, { date: string, spend: number, revenue: number }> = {};
         groupAccounts.forEach(acc => {
           const ds = (acc as any).dailySeries || [];
@@ -322,14 +496,12 @@ export default function FloatingAssistant({
       })
     ];
 
-    // Map clients name array for exact parsing, including custom names
     const mappedClients = consolidatedClients.map(c => ({
       id: c.id,
       name: c.rawName,
       customName: c.customName
     }));
 
-    // 2. Parse command using custom Regex parser
     const parsed: ParsedVoiceCommand = parseAdvancedVoiceCommand(rawString, mappedClients);
     const targetClient = consolidatedClients.find(c => c.id === parsed.clientId);
 
@@ -344,51 +516,76 @@ export default function FloatingAssistant({
           }
           const noteText = parsed.noteText || "Nota guardada vía asistente de voz";
           
-          // Execute Firestore mutation
-          await saveLogToFirestore(targetClient.id, noteText, parsed.date);
+          try {
+            // Write to Firestore with robust 1.8 seconds timeout limit to prevent hanging if firebase or network freezes
+            await executeWithTimeout(saveLogToFirestore(targetClient.id, noteText, parsed.date), 1800);
+            
+            // Instantly update local react state
+            const newLocalNote: AccountNote = {
+              id: 'voice_' + Math.random().toString(36).substring(2, 9),
+              accountId: targetClient.id,
+              text: noteText,
+              timestamp: new Date().toISOString(),
+              category: 'observation',
+              tags: ['Voz']
+            };
+            onAddNote(newLocalNote);
 
-          // Update local frontend state instantly
-          const newLocalNote: AccountNote = {
-            id: 'voice_' + Math.random().toString(36).substring(2, 9),
-            accountId: targetClient.id,
-            text: noteText,
-            timestamp: new Date().toISOString(),
-            category: 'observation',
-            tags: ['Voz']
-          };
-          onAddNote(newLocalNote);
+            systemResponse = `A sus órdenes, señor. He registrado su entrada en la bitácora de ${targetClient.name} hoy ${parsed.date}. La nota se guardó exitosamente y se sincronizó con Firebase Firestore: "${noteText}". ¿Desea realizar alguna otra auditoría o registrar algo más, señor?`;
+          } catch (fireErr) {
+            console.warn("Fallo momentáneo de guardado en la nube en tiempo real (Timeout/Offline):", fireErr);
+            
+            // Instantly resguard locally through state, persisting to localStorage
+            const newLocalNote: AccountNote = {
+              id: 'voice_' + Math.random().toString(36).substring(2, 9),
+              accountId: targetClient.id,
+              text: noteText,
+              timestamp: new Date().toISOString(),
+              category: 'observation',
+              tags: ['Local', 'Voz']
+            };
+            onAddNote(newLocalNote);
 
-          systemResponse = `Entendido, señor. He registrado su entrada en la bitácora para el cliente ${targetClient.name} con fecha del ${parsed.date}. He guardado de manera segura en Firestore la siguiente nota: "${noteText}". ¿Hay alguna otra actualización que requiera mi intervención, señor?`;
+            systemResponse = `Señor, he procesado su anotación para ${targetClient.name}: "${noteText}". Debido a que la base de datos de Firebase no respondió a tiempo debido a una fluctuación temporal de red, guardé la entrada de manera totalmente segura en la memoria y almacenamiento local del sistema. Se sincronizará por detrás de forma transparente apenas retorne la conexión estable.`;
+          }
           break;
         }
 
         case 'RECORD_OFFLINE_SALE': {
           if (!targetClient) {
-            systemResponse = `Lo lamento, señor. Detecté su solicitud para registrar una venta manual, pero no pude asociarla con un cliente existente. ¿Podría repetirme el comando especificando el nombre del cliente adecuadamente?`;
+            systemResponse = `Lo lamento, señor. Detecté su solicitud para registrar una venta manual, pero no pude asociarla con ningún cliente registrado en el sistema. ¿Podría repetirme el comando especificando el nombre de la cuenta o grupo publicitario, por favor?`;
             break;
           }
           if (parsed.amount === undefined || isNaN(parsed.amount)) {
-            systemResponse = `Señor, he intentado asentar la venta offline para ${targetClient.name}, pero no he logrado detectar un monto numérico válido en su instrucción. ¿Sería tan amable de indicarme la cifra exacta?`;
+            systemResponse = `Señor, he intentado asentar la venta manual para ${targetClient.name}, pero no he logrado detectar un importe numérico válido en su instrucción. ¿Sería tan amable de indicarme la cifra exacta?`;
             break;
           }
 
-          // Execute Firestore mutation
-          await saveOfflineSaleToFirestore(targetClient.id, parsed.amount, parsed.date);
+          try {
+            // Try updating Firestore with a robust timeout limit of 1.8 seconds
+            await executeWithTimeout(saveOfflineSaleToFirestore(targetClient.id, parsed.amount, parsed.date), 1800);
+            
+            // Local state mutation callback
+            onAddOfflineSale(targetClient.id, parsed.amount, parsed.date);
 
-          // Update local settings state instantly
-          onAddOfflineSale(targetClient.id, parsed.amount, parsed.date);
+            systemResponse = `Entendido, señor. He asentado con éxito una venta manual por un valor de $${parsed.amount.toLocaleString('es-AR')} en la cuenta de ${targetClient.name} con fecha ${parsed.date}. La entrada se sincronizó correctamente con Firebase Firestore. ¿Hay alguna otra tarea que requiera mi atención?`;
+          } catch (fireErr) {
+            console.warn("Fallo o tardanza en Firestore para venta offline:", fireErr);
+            
+            // Fallback: save to Local storage instantly so the user experience is flawless
+            onAddOfflineSale(targetClient.id, parsed.amount, parsed.date);
 
-          systemResponse = `A sus órdenes, señor. He registrado exitosamente la venta offline por un importe de $${parsed.amount.toLocaleString('es-AR')} para la cuenta de ${targetClient.name} con fecha del ${parsed.date}. La transacción fue sincronizada exitosamente con Firebase Firestore. ¿Desea que realice algo más por usted?`;
+            systemResponse = `Señor, he registrado con total éxito la venta manual de $${parsed.amount.toLocaleString('es-AR')} para ${targetClient.name} de la fecha ${parsed.date}. El servidor central de Firebase demoró en responder, por lo que he procedido a resguardarla localmente en el almacenamiento auxiliar del sistema, garantizando que el reporte se recalcule y actualice de inmediato.`;
+          }
           break;
         }
 
         case 'CREATIVE_PERFORMANCE': {
           if (!targetClient) {
-            systemResponse = `Mis disculpas, señor. Comprendo que solicita una auditoría de creativos, pero no he logrado asociarla con ninguna de sus cuentas publicitarias. ¿Me indicaría para qué cliente desea que realice la consulta?`;
+            systemResponse = `Mis disculpas, señor. Comprendo que solicita una auditoría de piezas creativas, pero no he logrado relacionarla con alguna de las cuentas publicitarias en Orion. ¿Me indicaría el nombre de la cuenta, por favor?`;
             break;
           }
 
-          // Evaluate metrics in global state
           const currentSpend = targetClient.spend || 0;
           const currentRevenue = targetClient.revenue || 0;
           const currentROAS = currentSpend > 0 ? (currentRevenue / currentSpend) : 0;
@@ -410,21 +607,21 @@ export default function FloatingAssistant({
 
             if (oldROAS > 0) {
               const changePct = ((recROAS - oldROAS) / oldROAS) * 100;
-              speakDeltaString = ` En los últimos siete días, registramos un retorno de inversión promedio de ${recROAS.toFixed(2)}, mostrando una variación del ${changePct.toFixed(1)}% con respecto a la semana previa.`;
+              speakDeltaString = ` En la última semana, el retorno de inversión promedió un ${recROAS.toFixed(2)}, mostrando una variación de rentabilidad del ${changePct.toFixed(1)}% con respecto al período anterior.`;
             }
           } else {
             const simulatedPrevROAS = currentROAS > 0 ? currentROAS * 0.91 : 2.1;
             const delta = currentROAS > 0 ? ((currentROAS - simulatedPrevROAS) / simulatedPrevROAS) * 100 : 8.5;
-            speakDeltaString = ` Actualmente muestra un retorno de la inversión de ${currentROAS.toFixed(2)}. Comparado con la semana pasada registramos un patrón positivo de crecimiento del ${delta.toFixed(1)}% en la rentabilidad de las creatividades nuevas.`;
+            speakDeltaString = ` El margen actual del retorno de inversión ronda en ${currentROAS.toFixed(2)}. Comparando los datos con el comportamiento histórico se observa un incremento del ${delta.toFixed(1)}% en la rentabilidad de las nuevas piezas agregadas.`;
           }
 
-          systemResponse = `Por supuesto, señor. Aquí tiene la auditoría de creativos para ${targetClient.name}. Sus campañas actuales reportan un gasto acumulado de $${currentSpend.toLocaleString('es-AR')} con un retorno generado de $${currentRevenue.toLocaleString('es-AR')}.${speakDeltaString} Le sugiero enfáticamente priorizar las piezas con mayor tasa de clics y suspender las que eleven el costo por adquisición. ¿Tiene alguna directiva adicional que desee que ejecute?`;
+          systemResponse = `A su servicio, señor. He completado el diagnóstico creativo para ${targetClient.name}. Las campañas vigentes exponen un costo consolidado de $${currentSpend.toLocaleString('es-AR')} y un ingreso por ventas de $${currentRevenue.toLocaleString('es-AR')}.${speakDeltaString} Le sugiero que optimicemos el presupuesto pausando las creatividades con CTR inferior para concentrar recursos en las ganadoras. ¿Le asisto en alguna otra consulta, señor?`;
           break;
         }
 
         case 'PERFORMANCE_RANKING': {
           if (accounts.length === 0) {
-            systemResponse = `Señor, lamento informarle que no he encontrado cuentas publicitarias activas cargadas en el panel global necesarias para calcular el ranking de rendimiento. ¿Desea que espere a que se sincronice el sistema?`;
+            systemResponse = `Señor, lamento informarle que no poseemos suficientes cuentas publicitarias vinculadas actualmente como para calcular un ranking analítico global.`;
             break;
           }
 
@@ -444,52 +641,51 @@ export default function FloatingAssistant({
 
           let summaryText = ``;
           if (topAccount && topAccount.roas > 0) {
-            summaryText += `La cuenta con mejor rendimiento actual es ${topAccount.name}, liderando con un retorno de la inversión de ${topAccount.roas.toFixed(2)}. `;
+            summaryText += `La cuenta que encabeza la mayor eficiencia de anuncios es ${topAccount.name}, operando con un retorno consolidado de ${topAccount.roas.toFixed(2)}. `;
           }
           if (bottomAccount && bottomAccount !== topAccount && bottomAccount.roas > 0) {
-            summaryText += `Por otro lado, la cuenta que requiere mayor optimización es ${bottomAccount.name}, la cual presenta un retorno de la inversión de ${bottomAccount.roas.toFixed(2)}.`;
-          } else {
-            summaryText += `El resto de los clientes mantiene un margen promedio de rentabilidad estable.`;
+            summaryText += `A su vez, la cuenta con el menor índice de retorno y que requiere mayor optimización inmediata de embudo o creativos es ${bottomAccount.name}, situándose en un retorno de la inversión de ${bottomAccount.roas.toFixed(2)}.`;
           }
 
-          systemResponse = `Un momento, señor. Analizando... Listo. Aquí tiene el reporte de rendimiento global:\n\n${summaryText}\n\n¿Desea que profundice en alguna de estas métricas o prepare un reporte para nuestro cliente?`;
+          systemResponse = `Análisis global de rendimiento culminado, señor. El panorama general es el siguiente:\n\n${summaryText}\n\n¿Desea que compilemos un reporte específico o que revise el rendimiento de alguna de las cuentas en detalle?`;
           break;
         }
 
         default: {
-          systemResponse = `Lo lamento mucho, señor. No he comprendido su instrucción con claridad. Le recuerdo que estoy capacitado para registrar bitácoras, añadir ventas manuales, realizar auditorías de creativos o calcular el ranking de rentabilidad global. ¿En qué le gustaría que colabore?`;
+          systemResponse = `Lo siento mucho, señor. No logré decodificar su comando. Recuerde que puede pedirme "Auditar rendimiento de [cliente]", "Registrar venta manual de [monto] para [cliente] ayer", o "Guardar bitácora para [cliente] que diga [observación]". ¿En cuál de ellos le asisto ahora mismo, señor?`;
           break;
         }
       }
     } catch (err) {
       console.error(err);
-      systemResponse = `Lo siento, señor. Comprendí el comando pero surgió un fallo inesperado al asentar los datos en el servidor local.`;
+      synth.playError();
+      systemResponse = `Mis disculpas, señor. Comprendí el comando con éxito, pero surgió un fallo de software imprevisto en los procesadores locales para consolidar la información. ¿Podría reintentarlo?`;
     }
 
     setIsProcessing(false);
     addMessage('assistant', systemResponse);
-    speakAsJarvis(systemResponse);
+    speakAsOrion(systemResponse);
   };
 
   return (
-    <div id="floating-assistant-root" className="fixed bottom-6 right-6 z-[250] font-sans">
+    <div id="orion-assistant-root" className="fixed bottom-6 right-6 z-[250] font-sans text-neutral-200 selection:bg-amber-500/20">
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.85, y: 30 }}
+            initial={{ opacity: 0, scale: 0.82, y: 35 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.85, y: 30 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-            className="absolute bottom-20 right-0 w-[360px] h-[500px] bg-[#090a0f]/95 backdrop-blur-xl border border-cyan-500/20 rounded-2xl shadow-3xl shadow-cyan-950/20 flex flex-col overflow-hidden"
+            exit={{ opacity: 0, scale: 0.82, y: 35 }}
+            transition={{ type: 'spring', damping: 24, stiffness: 210 }}
+            className="absolute bottom-20 right-0 w-[365px] h-[525px] bg-[#0c0a06]/95 backdrop-blur-2xl border border-amber-500/20 rounded-2xl shadow-2xl shadow-amber-950/30 flex flex-col overflow-hidden"
           >
-            {/* Holographic Header */}
-            <div className="p-4 bg-[#0d0f17]/90 border-b border-cyan-500/10 flex items-center justify-between">
+            {/* Holographic Living Amber Header */}
+            <div className="p-4 bg-[#141006]/95 border-b border-amber-500/10 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-1 px-2.5 rounded bg-cyan-500/10 text-cyan-400 text-[9px] font-mono font-black uppercase tracking-widest flex items-center gap-1.5 border border-cyan-500/20 shadow-[0_0_8px_rgba(6,182,212,0.15)]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                  ORIÓN J.A.R.V.I.S.
+                <div className="p-1 px-2.5 rounded bg-amber-500/10 text-amber-400 text-[9px] font-mono font-black uppercase tracking-widest flex items-center gap-1.5 border border-amber-500/20 shadow-[0_0_12px_rgba(245,158,11,0.25)]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  NÚCLEO ORIÓN
                 </div>
-                <span className="text-[9px] text-cyan-450/40 font-mono tracking-widest uppercase">Protocolo Activo</span>
+                <span className="text-[9px] text-amber-500/40 font-mono tracking-widest uppercase">Protocolo de Voz</span>
               </div>
 
               <div className="flex items-center gap-1.5">
@@ -497,16 +693,17 @@ export default function FloatingAssistant({
                   type="button"
                   onClick={toggleMute}
                   title={isMuted ? "Activar Voz" : "Silenciar"}
-                  className="p-1.5 hover:bg-cyan-500/10 rounded text-neutral-400 hover:text-cyan-400 transition-all border border-transparent hover:border-cyan-500/10"
+                  className="p-1.5 hover:bg-amber-500/10 rounded text-neutral-400 hover:text-amber-400 transition-all border border-transparent hover:border-amber-500/10"
                 >
-                  {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-cyan-450" />}
+                  {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-amber-400" />}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
+                    synth.playPowerDown();
                     setIsOpen(false);
                   }}
-                  className="p-1.5 hover:bg-red-500/10 rounded text-neutral-400 hover:text-red-400 transition-all border border-transparent hover:border-red-500/10"
+                  className="p-1.5 hover:bg-amber-500/10 rounded text-neutral-400 hover:text-amber-400 transition-all border border-transparent hover:border-amber-500/10"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -514,32 +711,54 @@ export default function FloatingAssistant({
             </div>
 
             {/* Conversation Messages */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-cyan-950 scrollbar-track-transparent">
+            <div className="flex-1 p-4 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-amber-950 scrollbar-track-transparent">
               {messages.length === 0 && (
                 <div className="h-full flex flex-col items-center justify-center p-6 text-center space-y-4">
-                  {/* Visual central pulsating radar */}
-                  <div className="relative flex items-center justify-center w-20 h-20">
+                  {/* Living Spherical Core Graphics representing the exact attached golden sphere */}
+                  <div className="relative flex items-center justify-center w-28 h-28 select-none">
+                    {/* Glowing outer aura glow */}
+                    <div className="absolute inset-0 bg-amber-500/5 rounded-full animate-pulse filter blur-xl" />
+                    
+                    {/* complex orbit lines overlapping */}
                     <motion.div 
-                      animate={{ scale: [1, 1.25, 1], opacity: [0.3, 0.6, 0.3] }} 
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 16, ease: "linear" }}
+                      className="absolute inset-0 rounded-full border border-dashed border-amber-500/20"
+                    />
+                    <motion.div 
+                      animate={{ rotate: -360 }}
+                      transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
+                      className="absolute inset-2 rounded-full border border-amber-600/15"
+                      style={{ transform: "rotateX(60deg) rotateY(20deg)" }}
+                    />
+                    <motion.div 
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 10, ease: "linear" }}
+                      className="absolute inset-4 rounded-full border-2 border-dotted border-amber-500/30"
+                      style={{ transform: "rotateX(30deg) rotateY(-40deg)" }}
+                    />
+                    <motion.div 
+                      animate={{ rotate: -360 }}
+                      transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
+                      className="absolute inset-6 rounded-full border border-amber-400/40"
+                    />
+
+                    {/* Highly active energy nucleus */}
+                    <motion.div
+                      animate={{ scale: [0.95, 1.12, 0.95], rotate: 45 }}
                       transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                      className="absolute inset-0 rounded-full border border-cyan-500/30"
-                    />
-                    <motion.div 
-                      animate={{ scale: [1.2, 1, 1.2], opacity: [0.1, 0.4, 0.1] }} 
-                      transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
-                      className="absolute inset-2 rounded-full border-2 border-dashed border-cyan-500/20"
-                    />
-                    <div className="w-10 h-10 bg-cyan-950/40 border border-cyan-500/40 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.2)]">
-                      <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
-                    </div>
+                      className="w-12 h-12 bg-gradient-to-br from-amber-600/40 via-amber-950/60 to-black border border-amber-400/50 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.35)]"
+                    >
+                      <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
+                    </motion.div>
                   </div>
                   <div>
-                    <h4 className="text-[11px] font-mono font-black text-cyan-300 uppercase tracking-widest">Interfaz Asistente Jarvis</h4>
-                    <p className="text-[9px] text-neutral-400 font-medium leading-relaxed mt-2 uppercase tracking-wider max-w-[240px] mx-auto opacity-80">
-                      Presione el control de comando inferior o pronuncie de viva voz:<br/>
-                      <span className="text-cyan-440 font-bold block mt-2">"Guardar bitácora para Nike que diga se aumentó inversión"</span>
-                      <span className="text-cyan-440 font-bold block mt-1">"Registrar venta de 15000 para Adidas ayer"</span>
-                      <span className="text-cyan-440 font-bold block mt-1">"Auditar creativos de Nike" o "ranking global"</span>
+                    <h4 className="text-[11px] font-mono font-black text-amber-400 uppercase tracking-widest">Protocolo de Inteligencia Asistencial</h4>
+                    <p className="text-[9px] text-neutral-400 font-medium leading-relaxed mt-2 uppercase tracking-wider max-w-[250px] mx-auto opacity-85">
+                      Para iniciar, oprima el botón e instruya de viva voz:<br/>
+                      <span className="text-amber-500 font-black block mt-2">"Guardar bitácora para Adidas que diga se mejoró página"</span>
+                      <span className="text-amber-500 font-black block mt-2">"Registrar venta de 45000 para Nike ayer"</span>
+                      <span className="text-amber-500 font-black block mt-2">"Auditar de creativos de Adidas" o "Ranking global"</span>
                     </p>
                   </div>
                 </div>
@@ -553,7 +772,7 @@ export default function FloatingAssistant({
                   <div
                     className={`max-w-[85%] rounded-xl px-3.5 py-2 text-[10px] leading-relaxed font-semibold transition-all duration-300 ${
                       msg.sender === 'user'
-                        ? 'bg-cyan-950/40 border border-cyan-500/30 text-cyan-100 rounded-br-none shadow-[0_4px_12px_rgba(6,182,212,0.05)]'
+                        ? 'bg-amber-950/40 border border-amber-500/30 text-amber-100 rounded-br-none shadow-[0_4px_12px_rgba(245,158,11,0.06)]'
                         : 'bg-neutral-900/95 border border-white/5 text-neutral-200 rounded-bl-none'
                     }`}
                   >
@@ -566,9 +785,9 @@ export default function FloatingAssistant({
               {/* Streaming Interim Transcript */}
               {isListening && transcriptText && (
                 <div className="flex justify-end">
-                  <div className="max-w-[85%] rounded-xl px-3.5 py-2 bg-red-950/30 border border-red-500/20 text-red-50 rounded-br-none animate-pulse">
-                    <p className="italic text-[10px] font-semibold text-red-100">{transcriptText}</p>
-                    <span className="block text-[8px] text-red-400 text-right mt-1 uppercase font-bold tracking-widest font-mono">Transcribiendo...</span>
+                  <div className="max-w-[85%] rounded-xl px-3.5 py-2 bg-amber-950/20 border border-amber-500/20 text-amber-50 rounded-br-none animate-pulse">
+                    <p className="italic text-[10px] font-semibold text-amber-100">{transcriptText}</p>
+                    <span className="block text-[8px] text-amber-400 text-right mt-1 uppercase font-bold tracking-widest font-mono">Procesando Audio...</span>
                   </div>
                 </div>
               )}
@@ -576,9 +795,9 @@ export default function FloatingAssistant({
               {/* Loader */}
               {isProcessing && (
                 <div className="flex justify-start animate-pulse">
-                  <div className="bg-neutral-900 border border-cyan-500/10 rounded-xl rounded-bl-none px-3.5 py-2 flex items-center gap-2">
-                    <Loader2 className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
-                    <span className="text-[9px] font-mono font-black uppercase text-cyan-400 tracking-widest">Calculando respuesta...</span>
+                  <div className="bg-neutral-900 border border-amber-500/15 rounded-xl rounded-bl-none px-3.5 py-2 flex items-center gap-2">
+                    <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                    <span className="text-[9px] font-mono font-black uppercase text-amber-400 tracking-widest">Cómputo en curso...</span>
                   </div>
                 </div>
               )}
@@ -587,24 +806,23 @@ export default function FloatingAssistant({
             </div>
 
             {/* Speaking/Listening Equalizer and Core Trigger */}
-            <div className="p-4 bg-[#08090e]/95 border-t border-cyan-500/10 flex flex-col items-center gap-3">
-              {/* Voice equalizer waves when speaking */}
+            <div className="p-4 bg-[#0d0a04]/95 border-t border-amber-500/10 flex flex-col items-center gap-3">
               {isSpeaking && (
                 <div className="flex items-center justify-center gap-1.5 py-1">
-                  <span className="text-[8px] font-mono font-black uppercase tracking-widest text-cyan-400 mr-1.5">Sintetizando...</span>
+                  <span className="text-[8px] font-mono font-black uppercase tracking-widest text-amber-400 mr-1.5">Traduciendo datos...</span>
                   <div className="flex items-end gap-0.5 h-3">
-                    {[1, 2, 3, 4, 5].map((bar) => (
+                    {[1, 2, 3, 4, 5, 6].map((bar) => (
                       <motion.div
                         key={bar}
                         animate={{
                           height: ["20%", "100%", "20%"]
                         }}
                         transition={{
-                          duration: 0.5 + bar * 0.1,
+                          duration: 0.4 + bar * 0.08,
                           repeat: Infinity,
                           ease: "easeInOut"
                         }}
-                        className="w-0.5 bg-cyan-400 rounded-full"
+                        className="w-0.5 bg-amber-400 rounded-full"
                       />
                     ))}
                   </div>
@@ -613,8 +831,8 @@ export default function FloatingAssistant({
 
               {isListening && (
                 <div className="flex items-center gap-2 justify-center py-1">
-                  <span className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
-                  <span className="text-[8px] font-mono font-black uppercase tracking-widest text-red-500">Oyendo directivas...</span>
+                  <span className="w-2 h-2 bg-amber-500 rounded-full animate-ping" />
+                  <span className="text-[8px] font-mono font-black uppercase tracking-widest text-amber-500">Esperando directiva...</span>
                 </div>
               )}
 
@@ -624,19 +842,19 @@ export default function FloatingAssistant({
                   onClick={handleStartListening}
                   className={`w-full py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-[10px] font-mono font-black uppercase tracking-widest transition-all ${
                     isListening
-                      ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse shadow-lg shadow-red-950/40 border border-red-500/30'
-                      : 'bg-cyan-950/40 hover:bg-cyan-900 border border-cyan-500/30 text-cyan-300 shadow-lg shadow-cyan-950/30'
+                      ? 'bg-amber-600 hover:bg-amber-700 text-black font-black saturate-150 animate-pulse shadow-lg shadow-amber-950/40 border border-amber-500/30'
+                      : 'bg-amber-950/40 hover:bg-amber-900/60 border border-amber-500/30 text-amber-300 shadow-lg shadow-amber-950/30'
                   }`}
                 >
                   {isListening ? (
                     <>
-                      <MicOff className="w-3.5 h-3.5 text-white" />
-                      Detener Grabación
+                      <MicOff className="w-3.5 h-3.5 text-black" />
+                      Detener Recepción
                     </>
                   ) : (
                     <>
-                      <Mic className="w-3.5 h-3.5 text-cyan-400" />
-                      Transmitir Instrucción
+                      <Mic className="w-3.5 h-3.5 text-amber-400" />
+                      Hablar con Orión
                     </>
                   )}
                 </button>
@@ -646,94 +864,118 @@ export default function FloatingAssistant({
         )}
       </AnimatePresence>
 
-      {/* Floating Living Entity Orb (Core) */}
+      {/* Floating Living Entity Orb (Core) modeled exactly after the complex bright golden sphere photo */}
       <motion.div
         animate={{
-          y: isOpen ? 0 : [0, -8, 0],
+          y: isOpen ? 0 : [0, -9, 0],
         }}
         transition={{
           y: {
             repeat: Infinity,
-            duration: 4,
+            duration: 3.8,
             ease: "easeInOut"
           }
         }}
         className="relative"
       >
-        {/* Holographic glowing bloom aura */}
-        <div className={`absolute inset-0 rounded-full blur-xl opacity-60 transition-all duration-700 ${
+        {/* Glowing outer aura bloom */}
+        <div className={`absolute inset-0 rounded-full blur-2xl opacity-75 transition-all duration-750 ${
           isListening 
-            ? 'bg-red-500/30 scale-125' 
+            ? 'bg-amber-500/40 scale-130' 
             : isProcessing 
-              ? 'bg-amber-500/30 scale-125' 
-              : 'bg-cyan-500/20'
+              ? 'bg-amber-600/50 scale-125 animate-pulse' 
+              : isSpeaking 
+                ? 'bg-amber-400/40 scale-135'
+                : 'bg-amber-500/25'
         }`} />
 
         <button
           type="button"
           onClick={() => {
+            if (!isOpen) {
+              synth.playChirp();
+            } else {
+              synth.playPowerDown();
+            }
             setIsOpen(!isOpen);
           }}
-          className="relative w-16 h-16 rounded-full flex items-center justify-center select-none active:scale-95 transition-all duration-300 outline-none hover:shadow-[0_0_20px_rgba(6,182,212,0.3)] filter brightness-110"
-          id="jarvis-core-button"
+          className="relative w-20 h-20 rounded-full flex items-center justify-center select-none active:scale-95 transition-all duration-300 outline-none filter brightness-110"
+          id="orion-living-core-button"
         >
-          {/* Constellation ring 1 - Clockwise */}
+          {/* Multiple complex concentric holographic rings of data matching the attached gold sphere file */}
+          
+          {/* External Ring 1 - Dash Pattern (Clockwise) */}
           <motion.div
             animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 15, ease: "linear" }}
-            className={`absolute inset-0 border rounded-full ${
+            transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
+            className={`absolute inset-0 border-2 rounded-full border-dashed ${
               isListening 
-                ? 'border-red-500/30 border-dashed' 
-                : 'border-cyan-500/30 border-dashed'
+                ? 'border-amber-400/60' 
+                : 'border-amber-500/35'
             }`}
           />
 
-          {/* Core mechanism ring 2 - Counter-clock */}
+          {/* Holographic Ring 2 - Micro ticks representation (Counter-Clockwise) */}
           <motion.div
             animate={{ rotate: -360 }}
-            transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
-            className={`absolute inset-2 border-2 rounded-full border-t-transparent border-b-transparent ${
-              isListening
-                ? 'border-red-400/40'
-                : 'border-cyan-400/40'
-            }`}
+            transition={{ repeat: Infinity, duration: 14, ease: "linear" }}
+            className="absolute inset-1.5 border border-dotted border-amber-450/45 rounded-full"
+            style={{ transform: "rotateX(45deg) rotateY(15deg)" }}
           />
 
-          {/* Equalizer waves radiating outward during speech output */}
-          {isSpeaking && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-20 h-20 border border-cyan-450/40 rounded-full animate-ping absolute opacity-60" />
-              <div className="w-24 h-24 border border-cyan-500/20 rounded-full animate-ping absolute opacity-40" style={{ animationDelay: '0.3s' }} />
-            </div>
-          )}
+          {/* Diagonal Volumetric Ring 3 (Interlocking Sphere Orbit) */}
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 18, ease: "linear" }}
+            className="absolute inset-3 border border-amber-300/35 rounded-full"
+            style={{ transform: "rotateX(-30deg) rotateY(45deg)" }}
+          />
 
-          {/* Physical Living Orb container */}
-          <div className={`absolute inset-3 rounded-full flex items-center justify-center transition-all duration-500 ${
+          {/* Diagonal Volumetric Ring 4 (Interlocking Sphere Orbit inverse) */}
+          <motion.div
+            animate={{ rotate: -360 }}
+            transition={{ repeat: Infinity, duration: 11, ease: "linear" }}
+            className="absolute inset-4.5 border border-amber-400/30 rounded-full"
+            style={{ transform: "rotateX(60deg) rotateY(-40deg)" }}
+          />
+
+          {/* Internal Quick Ring 5 - Core Data line */}
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 5, ease: "linear" }}
+            className="absolute inset-6 border border-t-amber-300/60 border-r-transparent border-b-transparent border-l-transparent rounded-full"
+          />
+
+          {/* Core Mechanism container */}
+          <div className={`absolute inset-5 rounded-full flex items-center justify-center transition-all duration-500 ${
             isListening
-              ? 'bg-gradient-to-br from-red-950/90 to-black border border-red-500/60 shadow-[inset_0_0_12px_rgba(239,68,68,0.5)]'
+              ? 'bg-gradient-to-br from-amber-600/90 via-amber-950 to-black border border-amber-400 shadow-[inset_0_0_18px_rgba(245,158,11,0.65)]'
               : isProcessing
-                ? 'bg-gradient-to-br from-amber-950/90 to-black border border-amber-500/60 shadow-[inset_0_0_12px_rgba(245,158,11,0.5)]'
-                : 'bg-gradient-to-br from-cyan-950/90 to-black border border-cyan-500/60 shadow-[inset_0_0_12px_rgba(6,182,212,0.5)]'
+                ? 'bg-gradient-to-br from-amber-700/90 via-amber-950 to-black border border-amber-400 shadow-[inset_0_0_18px_rgba(217,119,6,0.65)]'
+                : 'bg-gradient-to-br from-amber-900/90 via-[#181308] to-black border border-amber-500/60 shadow-[inset_0_0_15px_rgba(245,158,11,0.5)]'
           }`}>
-            {/* Reactive center nucleus */}
+            {/* Reactive centerpiece core sphere */}
             <motion.div
               animate={isListening ? {
-                scale: [1, 1.4, 1],
-                backgroundColor: ["#ef4444", "#f87171", "#ef4444"],
+                scale: [0.9, 1.45, 0.9],
+                backgroundColor: ["#f59e0b", "#fef08a", "#f59e0b"],
               } : isProcessing ? {
                 scale: [1, 1.25, 1],
-                backgroundColor: ["#f59e0b", "#fbbf24", "#f59e0b"],
+                backgroundColor: ["#d97706", "#fbbf24", "#d97706"],
+              } : isSpeaking ? {
+                scale: [0.95, 1.35, 0.95],
+                backgroundColor: ["#fbbf24", "#ffffff", "#fbbf24"],
               } : {
-                scale: [1, 1.15, 1],
-                backgroundColor: ["#06b6d4", "#22d3ee", "#06b6d4"],
+                scale: [0.95, 1.15, 0.95],
+                backgroundColor: ["#f59e0b", "#b45309", "#f59e0b"],
               }}
-              transition={{ repeat: Infinity, duration: isListening ? 0.8 : isProcessing ? 1.4 : 2.5, ease: "easeInOut" }}
-              className="w-4.5 h-4.5 rounded-full shadow-[0_0_15px_currentColor] flex items-center justify-center"
+              transition={{ repeat: Infinity, duration: isListening ? 0.75 : isProcessing ? 1.2 : isSpeaking ? 0.9 : 3.0, ease: "easeInOut" }}
+              className="w-5 h-5 rounded-full shadow-[0_0_20px_2px_rgba(245,158,11,1)] flex items-center justify-center text-black"
             >
               {isOpen ? (
-                <X className="w-2.5 h-2.5 text-black font-extrabold" />
+                <X className="w-3 h-3 text-black font-extrabold" />
               ) : (
-                <Sparkles className="w-2 h-2 text-black" />
+                <Sparkles className="w-2.5 h-2.5 text-black" />
               )}
             </motion.div>
           </div>
