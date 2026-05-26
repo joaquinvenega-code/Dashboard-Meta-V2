@@ -5,6 +5,16 @@ import { Plus, Trash2, Calendar, FileText, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 
+const parseLocalDate = (dateStr: string) => {
+  if (!dateStr) return new Date();
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return new Date(dateStr);
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  return new Date(year, month, day);
+};
+
 interface OfflineSalesManagerProps {
   entries: OfflineSaleEntry[];
   currency: string;
@@ -118,12 +128,12 @@ export function OfflineSalesManager({ entries, currency, onAdd, onDelete, onClos
                 <p className="text-[10px] font-black uppercase tracking-widest">No hay entradas registradas</p>
               </div>
             ) : (
-              [...entries].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((entry) => (
+              [...entries].sort((a,b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime()).map((entry) => (
                 <div key={entry.id} className="bg-[#161616] border border-white/5 rounded-xl p-4 flex items-center justify-between group">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 bg-white/5 rounded-lg flex flex-col items-center justify-center text-[8px] font-black leading-none">
-                      <span className="text-neutral-500 uppercase">{format(new Date(entry.date), 'MMM')}</span>
-                      <span className="text-lg text-white mt-0.5">{format(new Date(entry.date), 'dd')}</span>
+                      <span className="text-neutral-500 uppercase">{format(parseLocalDate(entry.date), 'MMM')}</span>
+                      <span className="text-lg text-white mt-0.5">{format(parseLocalDate(entry.date), 'dd')}</span>
                     </div>
                     <div>
                       <div className="text-sm font-black text-white">{formatCurrency(entry.amount, currency)}</div>
