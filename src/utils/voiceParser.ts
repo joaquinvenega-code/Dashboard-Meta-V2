@@ -222,27 +222,61 @@ export function parseAdvancedVoiceCommand(
     // Step A: Collapse space-separated numbers that look like thousands separation.
     // Replace spaces that occur between digits, e.g. "1 600 000" -> "1600000"
     // To do this safely, we find any space character that has digits on both sides
-    const collapsedSpacesText = normalized.replace(/(\d)\s+(?=\d)/g, '$1');
+    let collapsedSpacesText = normalized.replace(/(\d)\s+(?=\d)/g, '$1');
 
-    // Step B: Match standard formatted numbers (e.g. "1600000", "45000", "50.000", "12,50")
-    // Avoid capturing single digit days when larger numbers are available
-    const numberMatches = collapsedSpacesText.match(/\b\d+([.,]\d+)*\b/g);
-    if (numberMatches) {
-      // Find the best candidate: usually the largest number represents the financial sale amount,
-      // and smaller numbers (1 to 31) might be calendar days.
-      const candidates = numberMatches.map(numStr => {
-        const cleanedStr = numStr.replace(/\./g, '').replace(/,/g, '');
-        return {
-          original: numStr,
-          val: parseFloat(cleanedStr)
-        };
-      }).filter(c => !isNaN(c.val));
+    // Replace common written word numbers representing isolated multipliers
+    collapsedSpacesText = collapsedSpacesText
+      .replace(/\bun\s+millon\b/g, '1 millon')
+      .replace(/\bun\s+mil\b/g, '1 mil')
+      .replace(/\bmedio\s+millon\b/g, '500000');
 
-      // Prefer candidate that is NOT a calendar day mentioned (such as 18) unless it is the only number.
+    // Step B: Extract numbers while scanning for adjacent verbal multipliers (millones, mil, k, m, etc.)
+    const numberRegex = /\b\d+([.,]\d+)*\b/g;
+    const candidates: Array<{ original: string; val: number; hasMultiplier: boolean }> = [];
+    let numMatch;
+
+    while ((numMatch = numberRegex.exec(collapsedSpacesText)) !== null) {
+      const numStr = numMatch[0];
+      const startIdx = numMatch.index;
+      const endIdx = startIdx + numStr.length;
+
+      // Snip the text directly following this matched number for multiplier words
+      const snippetAfter = collapsedSpacesText.slice(endIdx, endIdx + 40).trim();
+
+      const baseVal = parseFloat(numStr.replace(/\./g, '').replace(/,/g, ''));
+      if (isNaN(baseVal)) continue;
+
+      let multiplier = 1;
+      let hasMultiplier = false;
+
+      // Checking for millions, mil (thousands), and standard suffixes
+      if (/^(?:de\s+)?millon(?:es)?\b|^(?:de\s+)?million(?:s)?\b/i.test(snippetAfter)) {
+        multiplier = 1000000;
+        hasMultiplier = true;
+      } else if (/^m\b/i.test(snippetAfter)) {
+        multiplier = 1000000;
+        hasMultiplier = true;
+      } else if (/^mil\b/i.test(snippetAfter) || /^thousand(?:s)?\b/i.test(snippetAfter)) {
+        multiplier = 1000;
+        hasMultiplier = true;
+      } else if (/^k\b/i.test(snippetAfter)) {
+        multiplier = 1000;
+        hasMultiplier = true;
+      }
+
+      candidates.push({
+        original: numStr,
+        val: baseVal * multiplier,
+        hasMultiplier
+      });
+    }
+
+    if (candidates.length > 0) {
+      // Find the best candidate: prefer those with multiplier words OR those greater than 31
       let bestCandidate = candidates[0];
       if (candidates.length > 1) {
-        // Filters out the day number if we matched it before
-        const filtered = candidates.filter(c => c.val > 31);
+        // Filters out the day number if we matched a candidate that represents an actual sale amount
+        const filtered = candidates.filter(c => c.val > 31 || c.hasMultiplier);
         if (filtered.length > 0) {
           bestCandidate = filtered[0];
         }
