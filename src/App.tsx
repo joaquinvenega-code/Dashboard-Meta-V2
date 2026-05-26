@@ -1602,6 +1602,8 @@ export default function App() {
         onUpdateOfflineSale={handleUpdateOfflineSaleLog}
         onDeleteOfflineSale={handleDeleteOfflineSaleLog}
         settings={settings}
+        isSyncingGlobal={loading}
+        onTriggerSync={loadData}
       />
       <AnimatePresence>
         {configEntity && (

@@ -16,6 +16,8 @@ interface FloatingAssistantProps {
   onUpdateOfflineSale?: (accountId: string, entryId: string, updatedFields: Partial<any>) => void;
   onDeleteOfflineSale?: (accountId: string, entryId: string) => void;
   settings: Record<string, any>;
+  isSyncingGlobal?: boolean;
+  onTriggerSync?: () => Promise<void>;
 }
 
 interface ChatMessage {
@@ -223,13 +225,16 @@ export default function FloatingAssistant({
   onAddOfflineSale,
   onUpdateOfflineSale,
   onDeleteOfflineSale,
-  settings
+  settings,
+  isSyncingGlobal = false,
+  onTriggerSync
 }: FloatingAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isSuccessState, setIsSuccessState] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [transcriptText, setTranscriptText] = useState('');
   const [lastAction, setLastAction] = useState<{
@@ -244,6 +249,62 @@ export default function FloatingAssistant({
   const recognitionRef = useRef<any>(null);
   const silenceTimeoutRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Orion State Machine Active State Selection
+  let currentOrionState: 'standby' | 'listening' | 'thinking' | 'success' = 'standby';
+  if (isSuccessState) {
+    currentOrionState = 'success';
+  } else if (isSyncingGlobal || isProcessing) {
+    currentOrionState = 'thinking';
+  } else if (isListening) {
+    currentOrionState = 'listening';
+  } else {
+    currentOrionState = 'standby';
+  }
+
+  // Helper trigger for Orion UI to flash success (Golden/Emerald pulse expansion)
+  const triggerSuccessState = () => {
+    setIsSuccessState(true);
+    synth.playConfirm();
+    setTimeout(() => {
+      setIsSuccessState(false);
+    }, 1800);
+  };
+
+  // Reverts the last action recorded in this assistant session
+  const handleUndoLastAction = () => {
+    if (!lastAction) return;
+    
+    synth.playPowerDown();
+    
+    if (lastAction.type === 'RECORD_OFFLINE_SALE') {
+      if (onDeleteOfflineSale) {
+        onDeleteOfflineSale(lastAction.accountId, lastAction.entryId);
+        const undoMsg = `He procedido a deshacer de inmediato la venta manual de $${lastAction.amount?.toLocaleString('es-AR')} registrada en la cuenta.`;
+        addMessage('assistant', undoMsg);
+        speakAsOrion(undoMsg);
+      }
+    } else if (lastAction.type === 'ADD_LOG_EXTENDED') {
+      if (onDeleteNote) {
+        onDeleteNote(lastAction.entryId);
+        const undoMsg = `He deshecho y suprimido con éxito su última anotación de la bitácora anterior ("${lastAction.noteText}").`;
+        addMessage('assistant', undoMsg);
+        speakAsOrion(undoMsg);
+      }
+    }
+    
+    setLastAction(null);
+    triggerSuccessState();
+  };
+
+  // Sync state tracking to transition from thinking to success upon modular sync complete (Scenario A)
+  const prevSyncingGlobal = useRef(isSyncingGlobal);
+  useEffect(() => {
+    if (prevSyncingGlobal.current && !isSyncingGlobal) {
+      triggerSuccessState();
+    }
+    prevSyncingGlobal.current = isSyncingGlobal;
+  }, [isSyncingGlobal]);
 
   // Play micro ticks while calculating/processing to emulate living core computation
   useEffect(() => {
@@ -627,6 +688,7 @@ export default function FloatingAssistant({
 
             systemResponse = `Señor, he procesado su anotación para ${targetClient.name}: "${noteText}". Debido a que la base de datos de Firebase no respondió a tiempo debido a una fluctuación temporal de red, guardé la entrada de manera totalmente segura en la memoria y almacenamiento local del sistema. Se sincronizará por detrás de forma transparente apenas retorne la conexión estable.`;
           }
+          triggerSuccessState();
           break;
         }
 
@@ -672,8 +734,9 @@ export default function FloatingAssistant({
               amount: parsed.amount
             });
 
-            systemResponse = `Señor, he registrado con total éxito la venta manual de $${parsed.amount.toLocaleString('es-AR')} para ${targetClient.name} de la fecha ${parsed.date}. El servidor central de Firebase demoró en responder, por lo que he procedido a resguardarla localmente en el almacenamiento auxiliar del sistema, garantizando que el reporte se recalcule y actualice de inmediato.`;
+            systemResponse = `Señor, he registrado con total éxito la venta manual de $${parsed.amount.toLocaleString('es-AR')} para ${targetClient.name} de la fecha ${parsed.date}. El servidor central de Firebase demororó en responder, por lo que he procedido a resguardarla localmente en el almacenamiento auxiliar del sistema, garantizando que el reporte se recalcule y actualice de inmediato.`;
           }
+          triggerSuccessState();
           break;
         }
 
@@ -965,6 +1028,21 @@ export default function FloatingAssistant({
           break;
         }
 
+        case 'TRIGGER_SYNC': {
+          if (onTriggerSync) {
+            systemResponse = `Entendido, señor. Iniciando de inmediato la nave de carga y sincronizando la bitácora estelar de Orion con las últimas métricas de rendimiento.`;
+            onTriggerSync().then(() => {
+              synth.playConfirm();
+            }).catch(err => {
+              console.error("Fallo al actualizar por voz:", err);
+              synth.playError();
+            });
+          } else {
+            systemResponse = `Comprendo la orden de sincronización, señor, pero el canal de transferencia de datos con el servidor de Meta Ads no se encuentra acoplado en este momento.`;
+          }
+          break;
+        }
+
         case 'CREATIVE_PERFORMANCE': {
           if (!targetClient) {
             systemResponse = `Mis disculpas, señor. Comprendo que solicita una auditoría de piezas creativas, pero no he logrado relacionarla con alguna de las cuentas publicitarias en Orion. ¿Me indicaría el nombre de la cuenta, por favor?`;
@@ -1167,6 +1245,44 @@ export default function FloatingAssistant({
                 </div>
               ))}
 
+              {/* Interactive confirmation action box with custom "Undo" option when modification is saved */}
+              {lastAction && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  className="p-3 bg-amber-950/25 border border-amber-500/15 rounded-xl flex flex-col gap-2 shadow-inner"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider uppercase text-amber-400">
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      <span>Confirmación de Registro</span>
+                    </div>
+                    <span className="text-[8px] bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded uppercase font-extrabold tracking-widest font-mono select-none">
+                      Activo
+                    </span>
+                  </div>
+                  <p className="text-[9px] text-neutral-300 leading-normal">
+                    Se asentó un cambio en la bitácora de Orion. Si percibe un error u omisión, puede revertirlo ahora mismo.
+                  </p>
+                  <div className="flex gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={handleUndoLastAction}
+                      className="flex-1 py-1.5 bg-neutral-900 border border-amber-500/20 rounded text-[9px] font-mono font-black uppercase tracking-widest text-amber-400 hover:bg-amber-500 hover:text-black transition-all cursor-pointer"
+                    >
+                      Deshacer Último Registro
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLastAction(null)}
+                      className="px-3 py-1.5 bg-transparent border border-white/5 hover:border-white/10 text-neutral-400 hover:text-neutral-200 text-[9px] uppercase font-bold tracking-wider rounded transition-all cursor-pointer"
+                    >
+                      Omitir
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
               {/* Streaming Interim Transcript */}
               {isListening && transcriptText && (
                 <div className="flex justify-end">
@@ -1264,14 +1380,16 @@ export default function FloatingAssistant({
         className="relative"
       >
         {/* Glowing outer aura bloom */}
-        <div className={`absolute inset-0 rounded-full blur-2xl opacity-75 transition-all duration-750 ${
-          isListening 
-            ? 'bg-amber-500/50 scale-140' 
-            : isProcessing 
-              ? 'bg-amber-600/60 scale-130 animate-pulse' 
-              : isSpeaking 
-                ? 'bg-amber-400/50 scale-145'
-                : 'bg-amber-500/30'
+        <div className={`absolute inset-0 rounded-full blur-2xl opacity-75 transition-all duration-700 ${
+          currentOrionState === 'success'
+            ? 'bg-emerald-500/60 scale-150 animate-pulse'
+            : currentOrionState === 'listening'
+              ? 'bg-amber-500/50 scale-140'
+              : currentOrionState === 'thinking'
+                ? 'bg-amber-600/70 scale-135 animate-ping duration-300'
+                : isSpeaking
+                  ? 'bg-amber-400/50 scale-145'
+                  : 'bg-amber-500/30'
         }`} />
 
         <button
@@ -1289,55 +1407,81 @@ export default function FloatingAssistant({
         >
           {/* Multiple complex concentric holographic rings of data matching the attached gold sphere file */}
           
+          {/* Success Ring (Outward radiating pulse) */}
+          {currentOrionState === 'success' && (
+            <motion.div
+              key="success-pulse"
+              initial={{ scale: 0.8, opacity: 1, borderWidth: "4px" }}
+              animate={{ scale: 2.2, opacity: 0, borderWidth: "1px" }}
+              transition={{ duration: 1.1, ease: "easeOut" }}
+              className="absolute inset-0 rounded-full border border-emerald-400 bg-emerald-500/10 pointer-events-none z-30"
+            />
+          )}
+
           {/* External Ring 1 - Dash Pattern (Clockwise) */}
           <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
+            animate={currentOrionState === 'thinking' ? { rotate: 360, opacity: [0.3, 1, 0.3] } : { rotate: 360 }}
+            transition={{ 
+              rotate: { repeat: Infinity, duration: currentOrionState === 'thinking' ? 1.5 : 25, ease: "linear" },
+              opacity: { repeat: Infinity, duration: 0.5, ease: "easeInOut" }
+            }}
             className={`absolute inset-0 border-2 rounded-full border-dashed ${
-              isListening 
-                ? 'border-amber-400/70 border-spacing-2' 
-                : 'border-amber-500/40'
+              currentOrionState === 'success'
+                ? 'border-emerald-400/80 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                : currentOrionState === 'listening' 
+                  ? 'border-amber-400/70 border-spacing-2' 
+                  : 'border-amber-500/40'
             }`}
           />
 
           {/* Holographic Ring 2 - Micro ticks representation (Counter-Clockwise) */}
           <motion.div
             animate={{ rotate: -360 }}
-            transition={{ repeat: Infinity, duration: 14, ease: "linear" }}
-            className="absolute inset-2 border border-dotted border-amber-400/50 rounded-full"
+            transition={{ repeat: Infinity, duration: currentOrionState === 'thinking' ? 1.1 : 14, ease: "linear" }}
+            className={`absolute inset-2 border border-dotted rounded-full transition-colors ${
+              currentOrionState === 'success' ? 'border-emerald-400/60' : 'border-amber-400/50'
+            }`}
             style={{ transform: "rotateX(45deg) rotateY(15deg)" }}
           />
 
           {/* Diagonal Volumetric Ring 3 (Interlocking Sphere Orbit) */}
           <motion.div
             animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 18, ease: "linear" }}
-            className="absolute inset-4 border border-amber-300/40 rounded-full"
+            transition={{ repeat: Infinity, duration: currentOrionState === 'thinking' ? 1.3 : 18, ease: "linear" }}
+            className={`absolute inset-4 border rounded-full transition-colors ${
+              currentOrionState === 'success' ? 'border-emerald-300/50' : 'border-amber-300/40'
+            }`}
             style={{ transform: "rotateX(-30deg) rotateY(45deg)" }}
           />
 
           {/* Diagonal Volumetric Ring 4 (Interlocking Sphere Orbit inverse) */}
           <motion.div
             animate={{ rotate: -360 }}
-            transition={{ repeat: Infinity, duration: 11, ease: "linear" }}
-            className="absolute inset-6 border border-amber-400/35 rounded-full"
+            transition={{ repeat: Infinity, duration: currentOrionState === 'thinking' ? 0.9 : 11, ease: "linear" }}
+            className={`absolute inset-6 border rounded-full transition-colors ${
+              currentOrionState === 'success' ? 'border-emerald-400/45' : 'border-amber-400/35'
+            }`}
             style={{ transform: "rotateX(60deg) rotateY(-40deg)" }}
           />
 
           {/* Internal Quick Ring 5 - Core Data line */}
           <motion.div
             animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 5, ease: "linear" }}
-            className="absolute inset-8 border border-t-amber-300/75 border-r-transparent border-b-transparent border-l-transparent rounded-full"
+            transition={{ repeat: Infinity, duration: currentOrionState === 'thinking' ? 0.4 : 5, ease: "linear" }}
+            className={`absolute inset-8 border border-r-transparent border-b-transparent border-l-transparent rounded-full ${
+              currentOrionState === 'success' ? 'border-t-emerald-400/90' : 'border-t-amber-300/75'
+            }`}
           />
 
           {/* Core Mechanism container - No logos, pure organic plasma fluid dynamics */}
           <div className={`absolute inset-7 rounded-full flex items-center justify-center transition-all duration-500 overflow-hidden ${
-            isListening
-              ? 'bg-gradient-to-br from-amber-500/95 via-amber-950 to-black border-2 border-amber-300 shadow-[inset_0_0_22px_rgba(245,158,11,0.8)]'
-              : isProcessing
-                ? 'bg-gradient-to-br from-amber-600/95 via-amber-950 to-black border-2 border-amber-400 shadow-[inset_0_0_22px_rgba(217,119,6,0.8)]'
-                : 'bg-gradient-to-br from-amber-800 via-[#181308] to-black border-2 border-amber-500/70 shadow-[inset_0_0_18px_rgba(245,158,11,0.6)]'
+            currentOrionState === 'success'
+              ? 'bg-gradient-to-br from-emerald-600 via-emerald-950 to-black border-2 border-emerald-400 shadow-[inset_0_0_22px_rgba(16,185,129,0.8)]'
+              : currentOrionState === 'listening'
+                ? 'bg-gradient-to-br from-amber-500/95 via-amber-950 to-black border-2 border-amber-300 shadow-[inset_0_0_22px_rgba(245,158,11,0.8)]'
+                : currentOrionState === 'thinking'
+                  ? 'bg-gradient-to-br from-amber-600/95 via-amber-950 to-black border-2 border-amber-400 shadow-[inset_0_0_22px_rgba(217,119,6,0.8)]'
+                  : 'bg-gradient-to-br from-amber-800 via-[#181308] to-black border-2 border-amber-500/70 shadow-[inset_0_0_18px_rgba(245,158,11,0.6)]'
           }`}>
             {/* Multi-layered custom plasma cells inside the core sphere representing active consciousness */}
             <div className="absolute inset-0.5 rounded-full overflow-hidden flex items-center justify-center">
@@ -1370,13 +1514,17 @@ export default function FloatingAssistant({
               />
             </div>
 
-            {/* Reactive centerpiece core sphere (Pure golden nucleus, no SVG Icons) */}
+            {/* Reactive centerpiece core sphere (Pure golden/emerald nucleus, no SVG Icons) */}
             <motion.div
-              animate={isListening ? {
+              animate={currentOrionState === 'success' ? {
+                scale: [1, 1.4, 0.95],
+                backgroundColor: ["#10b981", "#34d399", "#10b981"],
+                boxShadow: ["0 0 25px 8px rgba(16,185,129,0.95)", "0 0 35px 14px rgba(52,211,153,0.99)", "0 0 25px 8px rgba(16,185,129,0.95)"]
+              } : currentOrionState === 'listening' ? {
                 scale: [0.9, 1.5, 0.9],
                 backgroundColor: ["#f59e0b", "#fffbeb", "#f59e0b"],
                 boxShadow: ["0 0 25px 6px rgba(251,191,36,0.95)", "0 0 35px 12px rgba(251,191,36,0.99)", "0 0 25px 6px rgba(251,191,36,0.95)"]
-              } : isProcessing ? {
+              } : currentOrionState === 'thinking' ? {
                 scale: [1, 1.3, 1],
                 backgroundColor: ["#d97706", "#fef3c7", "#d97706"],
                 boxShadow: ["0 0 18px 4px rgba(217,119,6,0.85)", "0 0 28px 8px rgba(217,119,6,0.95)", "0 0 18px 4px rgba(217,119,6,0.85)"]
@@ -1389,11 +1537,31 @@ export default function FloatingAssistant({
                 backgroundColor: ["#d97706", "#f59e0b", "#d97706"],
                 boxShadow: ["0 0 15px 3px rgba(245,158,11,0.7)", "0 0 25px 8px rgba(245,158,11,0.85)", "0 0 15px 3px rgba(245,158,11,0.7)"]
               }}
-              transition={{ repeat: Infinity, duration: isListening ? 0.8 : isProcessing ? 1.3 : isSpeaking ? 0.95 : 3.2, ease: "easeInOut" }}
+              transition={{ repeat: Infinity, duration: currentOrionState === 'listening' ? 0.8 : currentOrionState === 'thinking' ? 1.3 : isSpeaking ? 0.95 : 3.2, ease: "easeInOut" }}
               className="w-7 h-7 rounded-full flex items-center justify-center relative z-10"
             >
-              {/* Internal brilliant point light source */}
-              <div className="w-2.5 h-2.5 bg-white rounded-full blur-[1px] opacity-90 animate-pulse" />
+              {currentOrionState === 'listening' ? (
+                /* Dynamic inner frequency audio wave reactivity inside central golden core */
+                <div className="flex items-end justify-center gap-0.5 h-3">
+                  {[1, 2, 3].map((bar) => (
+                    <motion.div
+                      key={bar}
+                      animate={{
+                        height: ["25%", "100%", "25%"]
+                      }}
+                      transition={{
+                        duration: 0.3 + bar * 0.08,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                      className="w-[1.5px] bg-white rounded-full"
+                    />
+                  ))}
+                </div>
+              ) : (
+                /* Internal brilliant point light source */
+                <div className="w-2.5 h-2.5 bg-white rounded-full blur-[1px] opacity-90 animate-pulse" />
+              )}
             </motion.div>
           </div>
         </button>
