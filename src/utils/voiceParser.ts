@@ -295,20 +295,95 @@ export function parseAdvancedVoiceCommand(
     // Robustly extract amounts, even if transcribed with spaces (e.g. "1 600 000" or "45 000")
     // or traditional symbols ("$1.600.000", "45,000")
     
-    // Step A: Collapse space-separated numbers that look like thousands separation.
-    // Replace spaces that occur between digits, e.g. "1 600 000" -> "1600000"
-    // To do this safely, we find any space character that has digits on both sides
-    let collapsedSpacesText = normalized.replace(/(\d)\s+(?=\d)/g, '$1');
+    // First, convert Spanish written words for numbers into digit representations
+    let preprocessedText = normalized;
 
-    // Replace common written word numbers representing isolated multipliers
+    // Convert common Spanish multipliers and idioms
+    preprocessedText = preprocessedText
+      .replace(/\bmedio\s+millon\b/g, '500000')
+      .replace(/\b1\s+millon\s+y\s+medio\b/g, '1500000')
+      .replace(/\bun\s+millon\s+y\s+medio\b/g, '1500000');
+
+    // Hundreds
+    preprocessedText = preprocessedText
+      .replace(/\bdoscientos\b/g, '200')
+      .replace(/\btrescientos\b/g, '300')
+      .replace(/\bcuatrocientos\b/g, '400')
+      .replace(/\bquinientos\b/g, '500')
+      .replace(/\bseiscientos\b/g, '600')
+      .replace(/\bsetecientos\b/g, '700')
+      .replace(/\bochocientos\b/g, '800')
+      .replace(/\bnovecientos\b/g, '900')
+      .replace(/\bciento\b/g, '100')
+      .replace(/\bcien\b/g, '100');
+
+    // Tens
+    preprocessedText = preprocessedText
+      .replace(/\bnoventa\b/g, '90')
+      .replace(/\bochenta\b/g, '80')
+      .replace(/\bsetenta\b/g, '70')
+      .replace(/\bsesenta\b/g, '60')
+      .replace(/\bcincuenta\b/g, '50')
+      .replace(/\bcuarenta\b/g, '40')
+      .replace(/\btreinta\b/g, '30')
+      .replace(/\bveinte\b/g, '20')
+      .replace(/\bveintiun\b/g, '21')
+      .replace(/\bveintiuno\b/g, '21')
+      .replace(/\bveintidos\b/g, '22')
+      .replace(/\bveintitres\b/g, '23')
+      .replace(/\bveinticuatro\b/g, '24')
+      .replace(/\bveinticinco\b/g, '25')
+      .replace(/\bveintiseis\b/g, '26')
+      .replace(/\bveintisiete\b/g, '27')
+      .replace(/\bveintiocho\b/g, '28')
+      .replace(/\bveintinueve\b/g, '29')
+      .replace(/\bdiez\b/g, '10')
+      .replace(/\bonce\b/g, '11')
+      .replace(/\bdoce\b/g, '12')
+      .replace(/\btrece\b/g, '13')
+      .replace(/\bcatorce\b/g, '14')
+      .replace(/\bquince\b/g, '15')
+      .replace(/\bdieciseis\b/g, '16')
+      .replace(/\bdiecisiete\b/g, '17')
+      .replace(/\bdieciocho\b/g, '18')
+      .replace(/\bdiecinueve\b/g, '19');
+
+    // Single digits
+    preprocessedText = preprocessedText
+      .replace(/\bun\b/g, '1')
+      .replace(/\buno\b/g, '1')
+      .replace(/\buna\b/g, '1')
+      .replace(/\bdos\b/g, '2')
+      .replace(/\btres\b/g, '3')
+      .replace(/\bcuatro\b/g, '4')
+      .replace(/\bcinco\b/g, '5')
+      .replace(/\bseis\b/g, '6')
+      .replace(/\bsiete\b/g, '7')
+      .replace(/\bocho\b/g, '8')
+      .replace(/\bnueve\b/g, '9');
+
+    // Join tens & units (e.g. "30 y 5" -> "35")
+    preprocessedText = preprocessedText.replace(/\b(\d0)\s+y\s+(\d)\b/g, (_, p1, p2) => String(Number(p1) + Number(p2)));
+
+    // Collapse space-separated numbers that look like thousands separation (e.g. "1 200 000" -> "1200000")
+    let collapsedSpacesText = preprocessedText.replace(/(\d)\s+(?=\d)/g, '$1');
+
+    // Replace written-word helpers
     collapsedSpacesText = collapsedSpacesText
       .replace(/\bun\s+millon\b/g, '1 millon')
-      .replace(/\bun\s+mil\b/g, '1 mil')
-      .replace(/\bmedio\s+millon\b/g, '500000');
+      .replace(/\bun\s+mil\b/g, '1 mil');
 
-    // Step B: Extract numbers while scanning for adjacent verbal multipliers (millones, mil, k, m, etc.)
+    // Extract candidates tracking position & multiplier indices
     const numberRegex = /\b\d+([.,]\d+)*\b/g;
-    const candidates: Array<{ original: string; val: number; hasMultiplier: boolean }> = [];
+    interface Candidate {
+      original: string;
+      val: number;
+      hasMultiplier: boolean;
+      startIdx: number;
+      endIdx: number;
+      endIdxWithMultiplier: number;
+    }
+    const candidates: Candidate[] = [];
     let numMatch;
 
     while ((numMatch = numberRegex.exec(collapsedSpacesText)) !== null) {
@@ -324,35 +399,85 @@ export function parseAdvancedVoiceCommand(
 
       let multiplier = 1;
       let hasMultiplier = false;
+      let multiplierLength = 0;
 
-      // Checking for millions, mil (thousands), and standard suffixes
-      if (/^(?:de\s+)?millon(?:es)?\b|^(?:de\s+)?million(?:s)?\b/i.test(snippetAfter)) {
-        multiplier = 1000000;
+      // Check for millions, mil, and standard suffixes match
+      const multMatch = /^\s*(?:(?:de\s+)?millon(?:es)?\b|(?:de\s+)?million(?:s)?\b|m\b|mil\b|thousand(?:s)?\b|k\b)/i.exec(collapsedSpacesText.slice(endIdx));
+      
+      if (multMatch) {
+        const multWord = multMatch[0];
+        multiplierLength = multMatch.index + multWord.length;
         hasMultiplier = true;
-      } else if (/^m\b/i.test(snippetAfter)) {
-        multiplier = 1000000;
-        hasMultiplier = true;
-      } else if (/^mil\b/i.test(snippetAfter) || /^thousand(?:s)?\b/i.test(snippetAfter)) {
-        multiplier = 1000;
-        hasMultiplier = true;
-      } else if (/^k\b/i.test(snippetAfter)) {
-        multiplier = 1000;
-        hasMultiplier = true;
+        
+        const normalizedMult = multWord.toLowerCase();
+        if (normalizedMult.includes('millon') || normalizedMult.includes('million') || normalizedMult.trim() === 'm') {
+          multiplier = 1000000;
+        } else if (normalizedMult.includes('mil') || normalizedMult.includes('thousand') || normalizedMult.trim() === 'k') {
+          multiplier = 1000;
+        }
       }
 
       candidates.push({
         original: numStr,
         val: baseVal * multiplier,
-        hasMultiplier
+        hasMultiplier,
+        startIdx,
+        endIdx,
+        endIdxWithMultiplier: endIdx + multiplierLength
       });
     }
 
-    if (candidates.length > 0) {
+    // Pass: Merge adjacent candidate numbers to reconstruct complex composite numbers (e.g., "1 millon 200,000")
+    let mergedCandidates = [...candidates];
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let i = 0; i < mergedCandidates.length - 1; i++) {
+        const c1 = mergedCandidates[i];
+        const c2 = mergedCandidates[i + 1];
+        
+        const gap = collapsedSpacesText.slice(c1.endIdxWithMultiplier, c2.startIdx).trim();
+        // Allow gap to be empty, or 'y', or 'con', or a comma
+        if (gap === "" || gap === "y" || gap === "con" || gap === ",") {
+          let canMerge = false;
+          
+          // Rule A: Millions + anything smaller than a million
+          if (c1.val >= 1000000 && c1.val % 1000000 === 0 && c2.val < 1000000) {
+            canMerge = true;
+          }
+          // Rule B: Thousands + anything smaller than a thousand
+          else if (c1.val >= 1000 && c1.val % 1000 === 0 && c2.val < 1000) {
+            canMerge = true;
+          }
+          // Rule C: Tens + Units (just in case they were parsed separately)
+          else if (c1.val >= 10 && c1.val < 100 && c1.val % 10 === 0 && c2.val < 10) {
+            canMerge = true;
+          }
+          
+          if (canMerge) {
+            const mergedVal = c1.val + c2.val;
+            const newCandidate: Candidate = {
+              original: c1.original + " " + gap + " " + c2.original,
+              val: mergedVal,
+              hasMultiplier: c1.hasMultiplier || c2.hasMultiplier,
+              startIdx: c1.startIdx,
+              endIdx: c2.endIdx,
+              endIdxWithMultiplier: c2.endIdxWithMultiplier
+            };
+            
+            mergedCandidates.splice(i, 2, newCandidate);
+            changed = true;
+            break; 
+          }
+        }
+      }
+    }
+
+    if (mergedCandidates.length > 0) {
       // Find the best candidate: prefer those with multiplier words OR those greater than 31
-      let bestCandidate = candidates[0];
-      if (candidates.length > 1) {
-        // Filters out the day number if we matched a candidate that represents an actual sale amount
-        const filtered = candidates.filter(c => c.val > 31 || c.hasMultiplier);
+      let bestCandidate = mergedCandidates[0];
+      if (mergedCandidates.length > 1) {
+        const filtered = mergedCandidates.filter(c => c.val > 31 || c.hasMultiplier);
         if (filtered.length > 0) {
           bestCandidate = filtered[0];
         }
