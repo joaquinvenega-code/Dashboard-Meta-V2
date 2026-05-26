@@ -66,43 +66,103 @@ export function parseAdvancedVoiceCommand(
 
   // If no relative day detected yet, check for explicit days:
   if (!dateDetected) {
-    // Regex for: "dia 18 de este mes", "dia 18", "el 18 de este mes", "el 18", "el dia 18"
-    // Also "dia 18 del mes pasado" or "18 del mes pasado"
     const isPastMonth = normalized.includes('mes pasado') || normalized.includes('mes anterior');
     
-    // Look for numbers of 1 or 2 digits representing a calendar day (1 to 31)
-    // Matches expressions like 'el dia 18', 'el 18', 'dia 18', 'fecha 18', 'el dia de 18'
-    const dayRegex = /\b(?:el\s+)?(?:dia\s+)?(?:de\s+)?(\d{1,2})\b/gi;
+    // We scan for all 1-2 digit numbers that could represent a calendar day (1 to 31)
+    const dayRegex = /\b\d{1,2}\b/g;
     let match;
-    let fallbackDay: number | null = null;
+    
+    interface DayCandidate {
+      day: number;
+      score: number;
+    }
+    const candidatesDay: DayCandidate[] = [];
 
-    // Scan the speech text for candidates
     while ((match = dayRegex.exec(normalized)) !== null) {
-      const parsedDayNum = parseInt(match[1], 10);
+      const parsedDayNum = parseInt(match[0], 10);
       if (parsedDayNum >= 1 && parsedDayNum <= 31) {
-        // Filter out matches that represent huge dollar amounts matched by mistake by keeping only those related to date context or near 'dia', 'de este mes', or end of string
         const index = match.index;
-        const surroundingText = normalized.substring(Math.max(0, index - 20), Math.min(normalized.length, index + 35));
+        const numStr = match[0];
         
-        const hasDateKeyword = /dia|mes|fecha|fecha de|ayer|hoy|el/gi.test(surroundingText);
-        // If it seems to be part of an amount (e.g. "1 600 000" or "$18"), let's not misinterpret it as a day
-        const isPartOfAmount = /peso|dolar|[\$\d\s]{5,}/gi.test(surroundingText) && !surroundingText.includes('mes') && !surroundingText.includes('dia');
-
-        if (hasDateKeyword && !isPartOfAmount) {
-          fallbackDay = parsedDayNum;
-          break;
+        let score = 0;
+        
+        // 25 characters context window before and after
+        const contextBefore = normalized.slice(Math.max(0, index - 25), index);
+        const contextAfter = normalized.slice(index + numStr.length, Math.min(normalized.length, index + numStr.length + 25));
+        
+        const charBefore = index > 0 ? normalized[index - 1] : '';
+        const charAfter = index + numStr.length < normalized.length ? normalized[index + numStr.length] : '';
+        
+        // Positives - Before
+        if (/\bdia\s*$/i.test(contextBefore) || /\bfecha\s*$/i.test(contextBefore)) {
+          score += 55;
+        } else if (/\b(?:el|del|al)\s*$/i.test(contextBefore)) {
+          score += 35;
+        } else if (/\bde\s*$/i.test(contextBefore) && !/\b(?:valor|monto|monto\s+de|valor\s+de)\s+de\s*$/i.test(contextBefore)) {
+          score += 20;
         }
+        
+        if (/\bdia\b/i.test(contextBefore.slice(-15))) {
+          score += 30;
+        }
+        if (/\bfecha\b/i.test(contextBefore.slice(-15))) {
+          score += 30;
+        }
+        if (/\bmes\b/i.test(contextBefore.slice(-15))) {
+          score += 20;
+        }
+
+        // Positives - After
+        if (/^\s*de\s+(?:este\s+)?mes\b/i.test(contextAfter)) {
+          score += 55;
+        } else if (/^\s*de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/i.test(contextAfter)) {
+          score += 55;
+        } else if (/^\s*del\s+mes\b/i.test(contextAfter)) {
+          score += 55;
+        } else if (/^\s*del\s+corriente\b/i.test(contextAfter)) {
+          score += 45;
+        } else if (/^\s*de\s+este\b/i.test(contextAfter)) {
+          score += 30;
+        }
+
+        // Penalties - Context indicating currency or amounts
+        if (/[\$\s]*$/i.test(contextBefore) && (contextBefore.trim().endsWith('$') || /\b(?:pesos|dolares|usd|ars|valor|monto|importe)\b/i.test(contextBefore.slice(-12)))) {
+          score -= 90;
+        }
+        if (/\b(?:valor\s+de|monto\s+de|por|un\s+valor\s+de|importe\s+de)\s+\$?$/i.test(contextBefore)) {
+          score -= 90;
+        }
+        if (/^[\.,]\d{3}/.test(contextAfter)) {
+          score -= 100;
+        }
+        if (/^\s*(?:mil|millones|millon|k|m)\b/i.test(contextAfter)) {
+          score -= 100;
+        }
+        if (/^[\.,]\d+/.test(contextAfter)) {
+          score -= 60;
+        }
+        if (charBefore === ',' || charBefore === '.' || charAfter === ',' || charAfter === '.') {
+          score -= 95;
+        }
+
+        candidatesDay.push({ day: parsedDayNum, score });
       }
     }
 
-    if (fallbackDay !== null) {
-      if (isPastMonth) {
-        docDate = subMonths(new Date(), 1);
-      } else {
-        docDate = new Date();
+    // Select candidate with the highest score
+    if (candidatesDay.length > 0) {
+      candidatesDay.sort((a, b) => b.score - a.score);
+      const bestCandidate = candidatesDay[0];
+      
+      if (bestCandidate.score >= 5 || (candidatesDay.length === 1 && bestCandidate.score > -20)) {
+        if (isPastMonth) {
+          docDate = subMonths(new Date(), 1);
+        } else {
+          docDate = new Date();
+        }
+        docDate = setDate(docDate, bestCandidate.day);
+        dateDetected = true;
       }
-      docDate = setDate(docDate, fallbackDay);
-      dateDetected = true;
     }
   }
 
