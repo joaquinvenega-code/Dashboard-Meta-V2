@@ -274,21 +274,21 @@ export function parseAdvancedVoiceCommand(
   ];
   const isCapabilities = capabilitiesKeywords.some(kw => normalized.includes(kw));
 
-  // Determine intent based on keywords and priorities (Capabilities should take highest conversational priority)
+  // Determine intent based on keywords and priorities (Capabilities and specific intents should dominate over general Sync keywords)
   if (isCapabilities) {
     intent = 'ORION_CAPABILITIES';
-  } else if (isSync) {
-    intent = 'TRIGGER_SYNC';
   } else if (isDelete) {
     intent = 'DELETE_PREVIOUS_ENTRY';
   } else if (isModification) {
     intent = 'MODIFY_PREVIOUS_ENTRY';
+  } else if (isLog) {
+    intent = 'ADD_LOG_EXTENDED';
   } else if (isSale && isView) {
     intent = 'VIEW_OFFLINE_SALES';
   } else if (isSale) {
     intent = 'RECORD_OFFLINE_SALE';
-  } else if (isLog) {
-    intent = 'ADD_LOG_EXTENDED';
+  } else if (isSync) {
+    intent = 'TRIGGER_SYNC';
   } else if (isCreative) {
     intent = 'CREATIVE_PERFORMANCE';
   } else if (isRanking) {
