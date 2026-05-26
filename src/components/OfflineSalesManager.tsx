@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { OfflineSaleEntry } from '../types';
 import { formatCurrency } from '../lib/utils';
-import { Plus, Trash2, Calendar, FileText, X } from 'lucide-react';
+import { Plus, Trash2, Pencil, Calendar, FileText, X, Save, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 
@@ -20,22 +20,48 @@ interface OfflineSalesManagerProps {
   currency: string;
   onAdd: (amount: number, note: string, date: string) => void;
   onDelete: (id: string) => void;
+  onUpdate?: (id: string, amount: number, note: string, date: string) => void;
   onClose: () => void;
 }
 
-export function OfflineSalesManager({ entries, currency, onAdd, onDelete, onClose }: OfflineSalesManagerProps) {
+export function OfflineSalesManager({ entries, currency, onAdd, onDelete, onUpdate, onClose }: OfflineSalesManagerProps) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
 
   const total = entries.reduce((acc, entry) => acc + entry.amount, 0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || isNaN(Number(amount))) return;
-    onAdd(Number(amount), note, date);
+    
+    if (editingEntryId) {
+      if (onUpdate) {
+        onUpdate(editingEntryId, Number(amount), note, date);
+      }
+      setEditingEntryId(null);
+    } else {
+      onAdd(Number(amount), note, date);
+    }
+    
     setAmount('');
     setNote('');
+    setDate(format(new Date(), 'yyyy-MM-dd'));
+  };
+
+  const handleStartEdit = (entry: OfflineSaleEntry) => {
+    setEditingEntryId(entry.id);
+    setAmount(entry.amount.toString());
+    setNote(entry.note || '');
+    setDate(entry.date);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingEntryId(null);
+    setAmount('');
+    setNote('');
+    setDate(format(new Date(), 'yyyy-MM-dd'));
   };
 
   return (
@@ -107,15 +133,31 @@ export function OfflineSalesManager({ entries, currency, onAdd, onDelete, onClos
                 />
               </div>
             </div>
-
-            <button 
-              type="submit"
-              disabled={!amount}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-30 text-white h-12 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xl shadow-blue-600/20"
-            >
-              <Plus className="w-4 h-4" />
-              Agregar Entrada
-            </button>
+             <div className="flex gap-2">
+              <button 
+                type="submit"
+                disabled={!amount}
+                className={`flex-1 text-white h-12 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-xl ${
+                  editingEntryId 
+                    ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' 
+                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
+                }`}
+              >
+                {editingEntryId ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                {editingEntryId ? 'Guardar Cambios' : 'Agregar Entrada'}
+              </button>
+              
+              {editingEntryId && (
+                <button 
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 h-12 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Cancelar
+                </button>
+              )}
+            </div>
           </form>
         </div>
 
@@ -140,12 +182,22 @@ export function OfflineSalesManager({ entries, currency, onAdd, onDelete, onClos
                       <div className="text-[9px] font-bold text-neutral-600 uppercase tracking-wider">{entry.note || 'Sin nota'}</div>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => onDelete(entry.id)}
-                    className="p-2 hover:bg-red-500/10 text-neutral-800 hover:text-red-500 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button 
+                      onClick={() => handleStartEdit(entry)}
+                      className="p-2 hover:bg-amber-500/10 text-neutral-600 hover:text-amber-500 rounded-lg transition-all"
+                      title="Editar entrada"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => onDelete(entry.id)}
+                      className="p-2 hover:bg-red-500/10 text-neutral-600 hover:text-red-500 rounded-lg transition-all"
+                      title="Eliminar entrada"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))
             )}

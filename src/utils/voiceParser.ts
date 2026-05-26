@@ -1,7 +1,7 @@
 import { format, subDays, setDate, setMonth, subMonths } from 'date-fns';
 
 export interface ParsedVoiceCommand {
-  intent: 'ADD_LOG_EXTENDED' | 'RECORD_OFFLINE_SALE' | 'CREATIVE_PERFORMANCE' | 'PERFORMANCE_RANKING' | 'UNKNOWN' | 'MODIFY_PREVIOUS_ENTRY' | 'DELETE_PREVIOUS_ENTRY';
+  intent: 'ADD_LOG_EXTENDED' | 'RECORD_OFFLINE_SALE' | 'CREATIVE_PERFORMANCE' | 'PERFORMANCE_RANKING' | 'UNKNOWN' | 'MODIFY_PREVIOUS_ENTRY' | 'DELETE_PREVIOUS_ENTRY' | 'VIEW_OFFLINE_SALES';
   clientName?: string;
   clientId?: string;
   date: string; // YYYY-MM-DD
@@ -196,11 +196,19 @@ export function parseAdvancedVoiceCommand(
   ];
   const isDelete = deleteKeywords.some(kw => normalized.includes(kw));
 
+  // G. VIEW_OFFLINE_SALES
+  const viewKeywords = [
+    'ver', 'mostrar', 'mostrame', 'decime', 'menciona', 'mencioname', 'listar', 'lista', 'cuales tiene', 'que tiene', 'consulta', 'consultar', 'historial'
+  ];
+  const isView = viewKeywords.some(kw => normalized.includes(kw));
+
   // Determine intent based on keywords and priorities (Delete and Modification dominate if detected)
   if (isDelete) {
     intent = 'DELETE_PREVIOUS_ENTRY';
   } else if (isModification) {
     intent = 'MODIFY_PREVIOUS_ENTRY';
+  } else if (isSale && isView) {
+    intent = 'VIEW_OFFLINE_SALES';
   } else if (isSale) {
     intent = 'RECORD_OFFLINE_SALE';
   } else if (isLog) {

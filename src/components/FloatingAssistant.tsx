@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Mic, MicOff, X, Volume2, VolumeX, Sparkles, Loader2, Play } from 'lucide-react';
 import { parseAdvancedVoiceCommand, ParsedVoiceCommand } from '../utils/voiceParser';
 import { saveLogToFirestore, saveOfflineSaleToFirestore } from '../services/firebaseService';
-import { AdAccount, AccountNote } from '../types';
+import { AdAccount, AccountNote, OfflineSaleEntry } from '../types';
 
 interface FloatingAssistantProps {
   accounts: AdAccount[];
@@ -678,75 +678,252 @@ export default function FloatingAssistant({
         }
 
         case 'MODIFY_PREVIOUS_ENTRY': {
-          if (!lastAction) {
-            systemResponse = `Lo siento mucho, señor. Entiendo que desea realizar una corrección o modificación, pero no tengo registro de ninguna acción o registro transaccional reciente que pueda modificar de forma automática en esta sesión. ¿Podría dictarme el comando completo de nuevo, por favor?`;
+          // 1. Identify client to work on
+          let clientObj = targetClient;
+          if (!clientObj && lastAction) {
+            clientObj = consolidatedClients.find(c => c.id === lastAction.accountId);
+          }
+          if (!clientObj) {
+            const potentialClients = consolidatedClients.filter(c => {
+              const logs = settings[c.id]?.offlineSalesLogByMonth || {};
+              return Object.values(logs).some((list: any) => list.length > 0);
+            });
+            if (potentialClients.length === 1) {
+              clientObj = potentialClients[0];
+            }
+          }
+
+          if (!clientObj) {
+            systemResponse = `Disculpe, señor. Para poder buscar y editar una venta manual, me es indispensable saber a qué cliente pertenece. ¿Me podría indicar el nombre de la cuenta, por favor?`;
             break;
           }
 
-          const wantsDateChange = /dia|mes|fecha|ayer|hoy|anteayer|de este/gi.test(rawString.toLowerCase());
-          const wantsAmountChange = parsed.amount !== undefined;
+          const clientSettings = settings[clientObj.id] || {};
+          const logsByMonth = clientSettings.offlineSalesLogByMonth || {};
+          
+          const allEntries: Array<{ monthKey: string; entry: OfflineSaleEntry }> = [];
+          for (const mKey of Object.keys(logsByMonth)) {
+            const list = logsByMonth[mKey] || [];
+            list.forEach(entry => {
+              allEntries.push({ monthKey: mKey, entry });
+            });
+          }
 
-          if (!wantsDateChange && !wantsAmountChange && parsed.noteText === undefined) {
-            systemResponse = `Señor, comprendo que desea modificar el registro anterior, pero no logré descifrar el nuevo valor o la fecha que desea aplicar. ¿Podría repetirme qué cambio desea realizar (por ejemplo, "ponle la fecha del 18" o "cambia el monto a un millón")?`;
+          if (allEntries.length === 0) {
+            systemResponse = `Señor, no tengo registrado ningún reporte de venta manual para ${clientObj.name} en el sistema. ¿Desea que registremos una nueva venta primero?`;
             break;
           }
 
-          const targetClientForModification = consolidatedClients.find(c => c.id === lastAction.accountId);
-          const clientLabel = targetClientForModification ? targetClientForModification.name : 'la cuenta';
-
-          if (lastAction.type === 'RECORD_OFFLINE_SALE') {
-            const updatedFields: Partial<any> = {};
-            let changeSummary = [];
-
-            if (wantsAmountChange && parsed.amount !== undefined) {
-              updatedFields.amount = parsed.amount;
-              changeSummary.push(`el importe a $${parsed.amount.toLocaleString('es-AR')}`);
-            }
-            if (wantsDateChange) {
-              updatedFields.date = parsed.date;
-              changeSummary.push(`la fecha al ${parsed.date}`);
-            }
-
-            if (Object.keys(updatedFields).length === 0) {
-              systemResponse = `Señor, no logré extraer modificaciones de su comando para aplicar a la venta anterior. ¿Desea modificar la fecha o el importe registrado?`;
+          // Process the splitting to separate SEARCH values from REPLACEMENT values
+          const splitKeywords = [
+            ' cambiala a ', ' cambialo a ', ' modificala por ', ' modificalo por ', 
+            ' que sea ', ' corriga por ', ' corregilo por ', ' corregila por ', 
+            ' corregila a ', ' corregilo a ', ' a ', ' por ', ' ponele ', ' ponle '
+          ];
+          let partBefore = rawString.toLowerCase();
+          let partAfter = '';
+          
+          for (const kw of splitKeywords) {
+            const idx = partBefore.indexOf(kw);
+            if (idx !== -1) {
+              partAfter = partBefore.substring(idx + kw.length);
+              partBefore = partBefore.substring(0, idx);
               break;
             }
+          }
 
-            if (onUpdateOfflineSale) {
-              onUpdateOfflineSale(lastAction.accountId, lastAction.entryId, updatedFields);
-              
-              setLastAction({
-                ...lastAction,
-                ...updatedFields
-              });
+          const extractAllNumbers = (text: string): number[] => {
+            const normalized = text
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .trim();
+            let collapsedSpacesText = normalized.replace(/(\d)\s+(?=\d)/g, '$1');
+            collapsedSpacesText = collapsedSpacesText
+              .replace(/\bun\s+millon\b/g, '1 millon')
+              .replace(/\bun\s+mil\b/g, '1 mil')
+              .replace(/\bmedio\s+millon\b/g, '500000');
 
-              systemResponse = `Perfecto, señor. He procedido a rectificar el registro de venta anterior para ${clientLabel}. He modificado con éxito ${changeSummary.join(' y ')}. Los coeficientes e informes de rendimiento se han recalculado de inmediato con los nuevos datos.`;
-            } else {
-              systemResponse = `Señor, el gestor de ventas local no tiene activa la facultad de rectificación en este entorno.`;
+            const numberRegex = /\b\d+([.,]\d+)*\b/g;
+            const results: number[] = [];
+            let match;
+            while ((match = numberRegex.exec(collapsedSpacesText)) !== null) {
+              const numStr = match[0];
+              const endIdx = match.index + numStr.length;
+              const snippetAfter = collapsedSpacesText.slice(endIdx, endIdx + 40).trim();
+              const baseVal = parseFloat(numStr.replace(/\./g, '').replace(/,/g, ''));
+              if (isNaN(baseVal)) continue;
+
+              let multiplier = 1;
+              if (/^(?:de\s+)?millon(?:es)?\b|^(?:de\s+)?million(?:s)?\b/i.test(snippetAfter)) {
+                multiplier = 1000000;
+              } else if (/^m\b/i.test(snippetAfter)) {
+                multiplier = 1000000;
+              } else if (/^mil\b/i.test(snippetAfter) || /^thousand(?:s)?\b/i.test(snippetAfter)) {
+                multiplier = 1000;
+              } else if (/^k\b/i.test(snippetAfter)) {
+                multiplier = 1000;
+              }
+              results.push(baseVal * multiplier);
             }
-          } else if (lastAction.type === 'ADD_LOG_EXTENDED') {
-            const newText = parsed.noteText || parsed.raw;
-            if (onUpdateNote) {
-              const updatedNote: AccountNote = {
-                id: lastAction.entryId,
-                accountId: lastAction.accountId,
-                text: newText,
-                timestamp: new Date().toISOString(),
-                category: 'observation',
-                tags: ['Voz', 'Corregido']
-              };
-              onUpdateNote(updatedNote);
+            return results;
+          };
 
-              setLastAction({
-                ...lastAction,
-                noteText: newText
-              });
+          const searchNumbers = extractAllNumbers(partBefore);
+          const newNumbers = partAfter ? extractAllNumbers(partAfter) : [];
 
-              systemResponse = `A sus órdenes, señor. He actualizado de inmediato la última anotación de bitácora para ${clientLabel}. El nuevo texto registrado es: "${newText}".`;
-            } else {
-              systemResponse = `Señor, el módulo de bitácoras no permite la edición retrospectiva en este panel.`;
+          const findDayInText = (text: string) => {
+            const dayRegex = /\b(?:dia\s+|el\s+|del\s+|al\s+|fecha\s+)(\d{1,2})\b/gi;
+            const match = dayRegex.exec(text);
+            if (match) {
+              const dVal = parseInt(match[1], 10);
+              if (dVal >= 1 && dVal <= 31) return dVal;
+            }
+            return null;
+          };
+
+          const searchDay = findDayInText(partBefore);
+          const newDay = partAfter ? findDayInText(partAfter) : null;
+
+          let searchAmountCandidate: number | undefined = searchNumbers.find(num => num > 31);
+          if (searchAmountCandidate === undefined && searchNumbers.length > 0) {
+            searchAmountCandidate = searchNumbers.find(num => num !== searchDay);
+            if (searchAmountCandidate === undefined) {
+              searchAmountCandidate = searchNumbers[0];
             }
           }
+
+          let matchedEntries = allEntries;
+
+          if (searchDay !== null) {
+            matchedEntries = matchedEntries.filter(item => {
+              const dayStr = item.entry.date.split('-')[2];
+              return parseInt(dayStr, 10) === searchDay;
+            });
+          }
+
+          if (searchAmountCandidate !== undefined) {
+            const queryAmount = searchAmountCandidate;
+            matchedEntries = matchedEntries.filter(item => {
+              return Math.abs(item.entry.amount - queryAmount) < 0.01;
+            });
+          }
+
+          let targetMatch = null;
+          if (matchedEntries.length === 1) {
+            targetMatch = matchedEntries[0];
+          } else if (matchedEntries.length > 1) {
+            targetMatch = matchedEntries[0];
+          } else if (lastAction && lastAction.accountId === clientObj.id) {
+            const foundRec = allEntries.find(item => item.entry.id === lastAction.entryId);
+            if (foundRec) {
+              targetMatch = foundRec;
+            }
+          }
+
+          if (!targetMatch) {
+            const criteria = [];
+            if (searchAmountCandidate !== undefined) criteria.push(`importe de $${searchAmountCandidate.toLocaleString('es-AR')}`);
+            if (searchDay !== null) criteria.push(`día ${searchDay}`);
+            systemResponse = `Señor, no logré ubicar una venta manual específica para ${clientObj.name} que coincida con los criterios buscados (${criteria.join(' de la fecha del ') || 'ninguno'}). ¿Podría repetirme la fecha o el importe original con mayor precisión, señor?`;
+            break;
+          }
+
+          let updatedAmount = targetMatch.entry.amount;
+          let updatedDate = targetMatch.entry.date;
+          let updatedNote = targetMatch.entry.note || '';
+
+          const changeSummary = [];
+
+          let newAmountCandidate = newNumbers.find(num => num > 31);
+          if (newAmountCandidate === undefined && newNumbers.length > 0) {
+            newAmountCandidate = newNumbers.find(num => num !== newDay);
+            if (newAmountCandidate === undefined) {
+              newAmountCandidate = newNumbers[0];
+            }
+          }
+
+          if (newAmountCandidate !== undefined) {
+            updatedAmount = newAmountCandidate;
+            changeSummary.push(`el monto a $${newAmountCandidate.toLocaleString('es-AR')}`);
+          }
+
+          if (newDay !== null) {
+            const dateParts = targetMatch.entry.date.split('-');
+            const dayStr = newDay < 10 ? `0${newDay}` : `${newDay}`;
+            updatedDate = `${dateParts[0]}-${dateParts[1]}-${dayStr}`;
+            changeSummary.push(`la fecha al día ${newDay}`);
+          }
+
+          if (changeSummary.length === 0) {
+            systemResponse = `Señor, encontré el registro de venta manual por $${targetMatch.entry.amount.toLocaleString('es-AR')} del día ${targetMatch.entry.date.split('-')[2]} para ${clientObj.name}. Sin embargo, no logré precisar el cambio que desea realizar en ella. ¿Me indicaría el nuevo valor o fecha para aplicar, por favor?`;
+            break;
+          }
+
+          if (onUpdateOfflineSale) {
+            onUpdateOfflineSale(clientObj.id, targetMatch.entry.id, {
+              amount: updatedAmount,
+              date: updatedDate,
+              note: updatedNote
+            });
+
+            setLastAction({
+              type: 'RECORD_OFFLINE_SALE',
+              accountId: clientObj.id,
+              entryId: targetMatch.entry.id,
+              amount: updatedAmount,
+              date: updatedDate
+            });
+
+            systemResponse = `Soberbio, señor. He procedido a rectificar la venta manual en ${clientObj.name} de forma inmediata. Corregí ${changeSummary.join(' y ')}. Los coeficientes e informes de rendimiento se han recalculado de inmediato con los nuevos datos.`;
+          } else {
+            systemResponse = `Señor, el módulo de ventas manuales no permite la edición retrospectiva en este panel.`;
+          }
+          break;
+        }
+
+        case 'VIEW_OFFLINE_SALES': {
+          if (!targetClient) {
+            systemResponse = `Mis disculpas, señor. Comprendo que desea auditar o visualizar el registro de ventas manuales, pero no logro relacionar su solicitud con alguna de las cuentas publicitarias en Orion. ¿Me indicaría el nombre de la cuenta, por favor?`;
+            break;
+          }
+
+          const clientSettings = settings[targetClient.id] || {};
+          const logsByMonth = clientSettings.offlineSalesLogByMonth || {};
+          
+          const allEntries: Array<OfflineSaleEntry> = [];
+          for (const mKey of Object.keys(logsByMonth)) {
+            const list = logsByMonth[mKey] || [];
+            list.forEach(entry => {
+              allEntries.push(entry);
+            });
+          }
+
+          if (allEntries.length === 0) {
+            systemResponse = `Señor, no tengo registrado ningún reporte de venta manual para ${targetClient.name} en el sistema. ¿Desea que procedamos a registrar alguna de inmediato?`;
+            break;
+          }
+
+          const sorted = [...allEntries].sort((a, b) => b.date.localeCompare(a.date));
+          const listLimit = sorted.slice(0, 5);
+
+          const salesListText = listLimit.map((item, index) => {
+            const dateParts = item.date.split('-');
+            const day = dateParts[2];
+            const monthVal = parseInt(dateParts[1], 10);
+            const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            const monthName = months[monthVal - 1] || 'este mes';
+            const noteText = item.note ? ` ("${item.note}")` : '';
+            return `${index + 1}. El día ${day} de ${monthName}, por un importe de $${item.amount.toLocaleString('es-AR')}${noteText}`;
+          }).join('. ');
+
+          systemResponse = `Señor, para la cuenta de ${targetClient.name} tengo registradas las siguientes ventas manuales: ${salesListText}.`;
+          
+          if (sorted.length > 5) {
+            systemResponse += ` Y cuento con ${sorted.length - 5} registros más antiguos.`;
+          }
+
+          systemResponse += ` Me indica si desea editar o borrar alguna de ellas buscando por importe o fecha, señor.`;
           break;
         }
 

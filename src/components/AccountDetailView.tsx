@@ -1428,6 +1428,38 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                 }
               } as any);
             }}
+            onUpdate={(id, amount, note, date) => {
+              const clientSettings = settings[offlineManagerEntityId] || { objective: 0, budget: 0, currency: 'ARS', tracking: 'ecommerce' as const };
+              const logsByMonth = { ...(clientSettings.offlineSalesLogByMonth || {}) };
+              
+              let foundEntry = null;
+              for (const mKey of Object.keys(logsByMonth)) {
+                const idx = logsByMonth[mKey].findIndex(e => e.id === id);
+                if (idx !== -1) {
+                  foundEntry = { ...logsByMonth[mKey][idx] };
+                  logsByMonth[mKey] = logsByMonth[mKey].filter(e => e.id !== id);
+                  if (logsByMonth[mKey].length === 0) {
+                    delete logsByMonth[mKey];
+                  }
+                  break;
+                }
+              }
+
+              const updatedEntry: OfflineSaleEntry = {
+                id,
+                amount,
+                note,
+                date
+              };
+              const targetPeriodKey = date.substring(0, 7); // YYYY-MM
+              const destLogs = logsByMonth[targetPeriodKey] || [];
+              logsByMonth[targetPeriodKey] = [...destLogs, updatedEntry];
+
+              onSaveSettings(offlineManagerEntityId, {
+                ...clientSettings,
+                offlineSalesLogByMonth: logsByMonth
+              } as any);
+            }}
           />
         )}
       </AnimatePresence>
