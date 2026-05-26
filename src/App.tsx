@@ -1060,8 +1060,23 @@ export default function App() {
                           ) : (
                             overviewEntities.map((acc) => {
                               const s = overviewSettings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', tracking: 'ecommerce' };
-                              const log = s.offlineSalesLogByMonth?.[periodKey] || [];
-                              const manualRevenue = log.length > 0 ? log.reduce((sum, entry) => sum + entry.amount, 0) : (s.manualRevenueByMonth?.[periodKey] || 0);
+                              let manualRevenue = 0;
+                              if (s.offlineSalesLogByMonth) {
+                                const allEntries: any[] = [];
+                                Object.values(s.offlineSalesLogByMonth).forEach((list: any) => {
+                                  if (Array.isArray(list)) {
+                                    allEntries.push(...list);
+                                  }
+                                });
+                                if (allEntries.length > 0) {
+                                  const filteredEntries = allEntries.filter(entry => entry.date >= dateRange.since && entry.date <= dateRange.until);
+                                  manualRevenue = filteredEntries.reduce((sum, entry) => sum + entry.amount, 0);
+                                } else {
+                                  manualRevenue = s.manualRevenueByMonth?.[periodKey] || 0;
+                                }
+                              } else {
+                                manualRevenue = s.manualRevenueByMonth?.[periodKey] || 0;
+                              }
                               const totalRevenue = (acc.revenue || 0) + manualRevenue;
                               const roas = acc.spend && acc.spend > 0 ? totalRevenue / acc.spend : 0;
                               const progress = s.objective > 0 ? Math.min(totalRevenue / s.objective, 1.2) : 0;

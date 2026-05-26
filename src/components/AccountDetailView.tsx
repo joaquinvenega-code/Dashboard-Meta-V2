@@ -474,8 +474,23 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
   const renderMetric = (id: string, acc: AdAccount) => {
     const sAcc = settings[acc.id];
-    const log = sAcc?.offlineSalesLogByMonth?.[periodKey] || [];
-    const manualRevenue = log.length > 0 ? log.reduce((sum, entry) => sum + entry.amount, 0) : (sAcc?.manualRevenueByMonth?.[periodKey] || 0);
+    let manualRevenue = 0;
+    if (sAcc?.offlineSalesLogByMonth) {
+      const allEntries: any[] = [];
+      Object.values(sAcc.offlineSalesLogByMonth).forEach((list: any) => {
+        if (Array.isArray(list)) {
+          allEntries.push(...list);
+        }
+      });
+      if (allEntries.length > 0) {
+        const filteredEntries = allEntries.filter(entry => entry.date >= dateRange.since && entry.date <= dateRange.until);
+        manualRevenue = filteredEntries.reduce((sum, entry) => sum + entry.amount, 0);
+      } else {
+        manualRevenue = sAcc?.manualRevenueByMonth?.[periodKey] || 0;
+      }
+    } else {
+      manualRevenue = sAcc?.manualRevenueByMonth?.[periodKey] || 0;
+    }
     const totalRevenue = (acc.revenue || 0) + manualRevenue;
     
     switch(id) {

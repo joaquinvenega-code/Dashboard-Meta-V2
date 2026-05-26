@@ -11,11 +11,35 @@ interface IndividualReportProps {
 }
 
 export function IndividualReport({ account, settings, dateLabel, onClose }: IndividualReportProps) {
-  const monthKey = dateLabel.split(' al ')[0].substring(0, 7) || '2026-05';
-  const log = settings.offlineSalesLogByMonth?.[monthKey] || [];
-  const offlineSales = log.length > 0 
-    ? log.reduce((acc, entry) => acc + entry.amount, 0) 
-    : (settings.manualRevenueByMonth?.[monthKey] || 0);
+  const parts = dateLabel.includes(' — ') ? dateLabel.split(' — ') : dateLabel.split(' al ');
+  let since = '';
+  let until = '';
+  if (parts.length >= 2) {
+    since = parts[0].trim();
+    until = parts[1].trim();
+  } else {
+    since = dateLabel.trim().substring(0, 10);
+    until = dateLabel.trim().slice(-10);
+  }
+
+  const monthKey = since.substring(0, 7) || '2026-05';
+
+  const allEntries: any[] = [];
+  if (settings.offlineSalesLogByMonth) {
+    Object.values(settings.offlineSalesLogByMonth).forEach((list: any) => {
+      if (Array.isArray(list)) {
+        allEntries.push(...list);
+      }
+    });
+  }
+  const filteredLog = allEntries.filter(entry => entry.date >= since && entry.date <= until);
+
+  let offlineSales = 0;
+  if (filteredLog.length > 0) {
+    offlineSales = filteredLog.reduce((acc, entry) => acc + entry.amount, 0);
+  } else {
+    offlineSales = settings.manualRevenueByMonth?.[monthKey] || 0;
+  }
   
   const totalRevenue = (account.revenue || 0) + offlineSales;
   const roas = account.spend && account.spend > 0 ? totalRevenue / account.spend : 0;
@@ -68,7 +92,7 @@ export function IndividualReport({ account, settings, dateLabel, onClose }: Indi
             <ReportMetric 
               label={`Ventas Offline (${monthKey})`} 
               value={formatCurrency(offlineSales, account.currency)} 
-              secondary={log.length > 0 ? `${log.length} registros` : undefined}
+              secondary={filteredLog.length > 0 ? `${filteredLog.length} registros` : undefined}
             />
             <ReportMetric label="Facturación Total" value={formatCurrency(totalRevenue, account.currency)} highlight />
             <ReportMetric label="ROAS Real" value={`×${formatDecimal(roas)}`} highlight />
