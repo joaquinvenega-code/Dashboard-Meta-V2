@@ -1,7 +1,7 @@
 import { format, subDays, setDate, setMonth, subMonths } from 'date-fns';
 
 export interface ParsedVoiceCommand {
-  intent: 'ADD_LOG_EXTENDED' | 'RECORD_OFFLINE_SALE' | 'CREATIVE_PERFORMANCE' | 'PERFORMANCE_RANKING' | 'TRIGGER_SYNC' | 'UNKNOWN' | 'MODIFY_PREVIOUS_ENTRY' | 'DELETE_PREVIOUS_ENTRY' | 'VIEW_OFFLINE_SALES';
+  intent: 'ADD_LOG_EXTENDED' | 'RECORD_OFFLINE_SALE' | 'CREATIVE_PERFORMANCE' | 'PERFORMANCE_RANKING' | 'TRIGGER_SYNC' | 'UNKNOWN' | 'MODIFY_PREVIOUS_ENTRY' | 'DELETE_PREVIOUS_ENTRY' | 'VIEW_OFFLINE_SALES' | 'ORION_CAPABILITIES';
   clientName?: string;
   clientId?: string;
   date: string; // YYYY-MM-DD
@@ -268,8 +268,16 @@ export function parseAdvancedVoiceCommand(
   ];
   const isSync = syncKeywords.some(kw => normalized.includes(kw));
 
-  // Determine intent based on keywords and priorities (Delete and Modification dominate if detected)
-  if (isSync) {
+  // Capabilities & Help keywords
+  const capabilitiesKeywords = [
+    'capacidad', 'capacidades', 'acciones', 'ayudarme', 'ayuda', 'ayudame', 'potencial', 'funcionas', 'funciona', 'podes hacer', 'puedes hacer', 'quien sos', 'que sos', 'que haces', 'como andas', 'instrucciones', 'comandos', 'que se puede', 'que podemos'
+  ];
+  const isCapabilities = capabilitiesKeywords.some(kw => normalized.includes(kw));
+
+  // Determine intent based on keywords and priorities (Capabilities should take highest conversational priority)
+  if (isCapabilities) {
+    intent = 'ORION_CAPABILITIES';
+  } else if (isSync) {
     intent = 'TRIGGER_SYNC';
   } else if (isDelete) {
     intent = 'DELETE_PREVIOUS_ENTRY';

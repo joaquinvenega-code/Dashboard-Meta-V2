@@ -632,6 +632,21 @@ export default function FloatingAssistant({
 
     try {
       switch (parsed.intent) {
+        case 'ORION_CAPABILITIES': {
+          systemResponse = `A sus órdenes, señor. Mi núcleo operacional, el Protocolo Orión, está diseñado para ser la inteligencia táctica de su bitácora de Meta Ads. Estoy facultado para realizar múltiples cursos de acción por comandos de voz:
+
+1. **Registrar de Ventas Manuales**: Diciendo por ejemplo "Registrar venta de un millón doscientos mil en Productos de Fierro hoy". Procesaré de inmediato la cifra, el cliente y la fecha para insertarlo localmente y sincronizarlo ante Firebase Firestore.
+2. **Consultar Historial**: Al decirme "Mostrame las ventas de [Cliente]" o "Ver historial", le listaré los últimos registros de transacciones.
+3. **Bitácora Cualitativa**: Puede decirme "Anotar bitácora para [Cliente] de que pausamos campaña de retargeting" para sumar observaciones críticas.
+4. **Auditorías Creativas**: Preguntándome "Rendimiento creativo de [Cliente]" o "Auditar anuncios de [Cliente]". Analizaré los montos invertidos, conversión y sugeriré correcciones de presupuesto.
+5. **Fórmulas de Rendimiento y Ránkings**: Si me consulta por "ranking global" o "quiénes van mejor", organizaré sus marcas según ROAS determinando puntos de fuga y líderes de eficiencia.
+6. **Rectificación de Bitácora**: Si comete un error, puede ordenarme "Eliminar último registro" o presionar el botón "Deshacer" para revertir de manera instantánea el cambio.
+
+Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que su terminal siga operativa incluso bajo fluctuaciones o caídas en la conexión central. ¿Qué protocolo desea que iniciemos ahora, señor?`;
+          triggerSuccessState();
+          break;
+        }
+
         case 'ADD_LOG_EXTENDED': {
           if (!targetClient) {
             systemResponse = `Disculpe, señor. Comprendo que desea guardar una entrada en la bitácora, pero no logro identificar a cuál de sus cuentas se refiere. ¿Podría especificarme el nombre del cliente, por favor?`;
