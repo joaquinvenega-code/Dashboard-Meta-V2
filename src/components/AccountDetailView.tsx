@@ -800,8 +800,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
         <div className="flex items-center gap-2 ml-auto">
             {/* New Date Picker in Detail View (Minimalist) */}
-            <div className="flex items-center gap-1.5 bg-[#0a0a0a]/80 backdrop-blur-md px-2 py-1 rounded-lg border border-white/5 mr-2">
-              <Calendar className="w-3 h-3 text-neutral-300" />
+            <div className="flex items-center gap-1.5 bg-neutral-900 border border-white/10 px-4 h-10 rounded-xl transition-all mr-2 shadow-lg">
+              <Calendar className="w-3.5 h-3.5 text-neutral-400" />
               <select 
                 value={isCustomDate ? 'custom' : (
                   dateRange.since === todayStr && dateRange.until === todayStr ? 'today' : (
@@ -836,7 +836,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     }
                   }
                 }}
-                className="bg-transparent text-[8px] font-black text-neutral-200 uppercase tracking-widest outline-none cursor-pointer border-none py-0.5 pr-1 focus:text-neutral-100"
+                className="bg-transparent text-[10px] font-black text-neutral-200 uppercase tracking-widest outline-none cursor-pointer border-none py-0.5 pr-1 focus:text-neutral-100"
               >
                 <option value="today" className="bg-[#121212] text-neutral-200 font-bold uppercase">Hoy</option>
                 <option value="yesterday" className="bg-[#121212] text-neutral-200 font-bold uppercase">Ayer</option>
@@ -852,20 +852,20 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     type="date" 
                     value={tempSince}
                     onChange={(e) => setTempSince(e.target.value)}
-                    className="bg-transparent text-[8px] font-bold text-neutral-300 outline-none w-[90px] py-0.5"
+                    className="bg-transparent text-[10px] font-bold text-neutral-300 outline-none w-[95px] py-0.5"
                   />
-                  <span className="text-[8px] text-neutral-600 font-bold uppercase">a</span>
+                  <span className="text-[10px] text-neutral-600 font-bold uppercase">a</span>
                   <input 
                     type="date" 
                     value={tempUntil}
                     onChange={(e) => setTempUntil(e.target.value)}
-                    className="bg-transparent text-[8px] font-bold text-neutral-300 outline-none w-[90px] py-0.5"
+                    className="bg-transparent text-[10px] font-bold text-neutral-300 outline-none w-[95px] py-0.5"
                   />
                   <button
                     onClick={() => {
                       setDateRange({ since: tempSince, until: tempUntil });
                     }}
-                    className="bg-blue-600/25 hover:bg-blue-600/40 text-blue-400 border border-blue-500/10 text-[8px] font-black px-1.5 py-0.5 rounded transition-all uppercase tracking-wider"
+                    className="bg-blue-600/25 hover:bg-blue-600/40 text-blue-400 border border-blue-500/10 text-[10px] font-black px-2 py-0.5 rounded transition-all uppercase tracking-wider"
                   >
                     Aplicar
                   </button>
