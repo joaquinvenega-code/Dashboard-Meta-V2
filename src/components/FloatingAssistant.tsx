@@ -321,8 +321,8 @@ export default function FloatingAssistant({
 
     const optimized = optimizeTextForSpeech(text);
     const utterance = new SpeechSynthesisUtterance(optimized);
-    utterance.rate = 0.90; // Un ritmo elegante, pausado, natural y ceremonial
-    utterance.pitch = 0.64; // Una voz más profunda, grave, imponente y natural
+    utterance.rate = 1.15; // Habla de manera más fluida, ágil y rápida, respondiendo al ritmo solicitado
+    utterance.pitch = 0.52; // Tono notablemente más grave, profundo e imponente
 
     const voices = window.speechSynthesis.getVoices();
     const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
