@@ -535,6 +535,32 @@ export default function App() {
     handleSaveSettings(accountId, updatedSettings);
   };
 
+  const handleDeleteOfflineSaleLog = (accountId: string, entryId: string) => {
+    const accSettings = settings[accountId] || { objective: 0, budget: 0, currency: 'ARS', tracking: 'ecommerce' as const };
+    const logsByMonth = { ...(accSettings.offlineSalesLogByMonth || {}) };
+    
+    let deleted = false;
+    for (const periodKey of Object.keys(logsByMonth)) {
+      const initialLength = logsByMonth[periodKey].length;
+      logsByMonth[periodKey] = logsByMonth[periodKey].filter(e => e.id !== entryId);
+      if (logsByMonth[periodKey].length < initialLength) {
+        deleted = true;
+        if (logsByMonth[periodKey].length === 0) {
+          delete logsByMonth[periodKey];
+        }
+        break;
+      }
+    }
+
+    if (deleted) {
+      const updatedSettings: AccountSettings = {
+        ...accSettings,
+        offlineSalesLogByMonth: logsByMonth
+      };
+      handleSaveSettings(accountId, updatedSettings);
+    }
+  };
+
   const toggleCol = (col: string) => {
     if (visibleCols.includes(col)) {
       setVisibleCols(visibleCols.filter(c => c !== col));
@@ -1556,8 +1582,10 @@ export default function App() {
         notes={notes}
         onAddNote={(note) => setNotes([...notes, note])}
         onUpdateNote={(updatedNote) => setNotes(prev => prev.map(n => n.id === updatedNote.id ? updatedNote : n))}
+        onDeleteNote={(noteId) => setNotes(prev => prev.filter(n => n.id !== noteId))}
         onAddOfflineSale={handleAddOfflineSaleLog}
         onUpdateOfflineSale={handleUpdateOfflineSaleLog}
+        onDeleteOfflineSale={handleDeleteOfflineSaleLog}
         settings={settings}
       />
       <AnimatePresence>

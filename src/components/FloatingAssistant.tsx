@@ -11,8 +11,10 @@ interface FloatingAssistantProps {
   notes: AccountNote[];
   onAddNote: (note: AccountNote) => void;
   onUpdateNote?: (note: AccountNote) => void;
+  onDeleteNote?: (noteId: string) => void;
   onAddOfflineSale: (accountId: string, amount: number, date: string, customId?: string) => void;
   onUpdateOfflineSale?: (accountId: string, entryId: string, updatedFields: Partial<any>) => void;
+  onDeleteOfflineSale?: (accountId: string, entryId: string) => void;
   settings: Record<string, any>;
 }
 
@@ -217,8 +219,10 @@ export default function FloatingAssistant({
   notes,
   onAddNote,
   onUpdateNote,
+  onDeleteNote,
   onAddOfflineSale,
   onUpdateOfflineSale,
+  onDeleteOfflineSale,
   settings
 }: FloatingAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -238,6 +242,7 @@ export default function FloatingAssistant({
   } | null>(null);
   
   const recognitionRef = useRef<any>(null);
+  const silenceTimeoutRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Play micro ticks while calculating/processing to emulate living core computation
@@ -263,6 +268,9 @@ export default function FloatingAssistant({
     return () => {
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
+      }
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
       }
     };
   }, []);
@@ -313,14 +321,21 @@ export default function FloatingAssistant({
 
     const optimized = optimizeTextForSpeech(text);
     const utterance = new SpeechSynthesisUtterance(optimized);
-    utterance.rate = 0.95; // Un ritmo ligeramente más pausado, solemne y calculado
-    utterance.pitch = 0.76; // Una voz notablemente más profunda, gruesa, grave e imponente
+    utterance.rate = 0.90; // Un ritmo elegante, pausado, natural y ceremonial
+    utterance.pitch = 0.64; // Una voz más profunda, grave, imponente y natural
 
     const voices = window.speechSynthesis.getVoices();
     const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
+    
+    // Buscar la voz más premium y natural en español, priorizando voces Neural, Sabina (AR), Helena, o de Google
     const preferredVoice = spanishVoices.find(v => 
-      v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('natural')
-    ) || spanishVoices[0] || null;
+      v.name.toLowerCase().includes('sabina') ||       // Excelente voz premium de Argentina en macOS
+      v.name.toLowerCase().includes('natural') ||      // Voces naturales/neurales
+      v.name.toLowerCase().includes('helena') ||       // Excelente voz de España en macOS
+      v.name.toLowerCase().includes('google español') || // Google cloud-quality voices
+      v.name.toLowerCase().includes('google') ||
+      v.name.toLowerCase().includes('microsoft')       // Microsoft premium edge voices
+    ) || spanishVoices.find(v => v.lang.includes('AR')) || spanishVoices[0] || null;
 
     if (preferredVoice) {
       utterance.voice = preferredVoice;
@@ -397,31 +412,57 @@ export default function FloatingAssistant({
     try {
       const rec = new SpeechRecognition();
       rec.lang = 'es-AR'; 
-      rec.continuous = false;
+      rec.continuous = true;
       rec.interimResults = true;
 
       rec.onstart = () => {
         setIsListening(true);
         setTranscriptText('');
+        
+        // Start an idle timer (if they do not speak at all for 8 seconds, automatically shut down)
+        if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current);
+        }
+        silenceTimeoutRef.current = setTimeout(() => {
+          rec.stop();
+        }, 8000);
       };
 
       rec.onresult = (event: any) => {
-        let interim = '';
+        let finalTranscript = '';
+        let interimTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const trans = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            setTranscriptText(event.results[i][0].transcript);
+            finalTranscript += trans;
           } else {
-            interim += event.results[i][0].transcript;
+            interimTranscript += trans;
           }
         }
-        if (interim) {
-          setTranscriptText(interim);
+        
+        const currentText = finalTranscript || interimTranscript;
+        if (currentText.trim()) {
+          setTranscriptText(currentText);
         }
+
+        // On any speech activity, reset the silence timer!
+        // We give a generous 4.0 seconds silence period of absolute quiet before we trigger submit
+        if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current);
+        }
+        silenceTimeoutRef.current = setTimeout(() => {
+          console.log("Orion: Silence detected, stopping speech capture...");
+          rec.stop();
+        }, 4000);
       };
 
       rec.onerror = (event: any) => {
         console.error("Speech Recognition Error:", event.error);
         setIsListening(false);
+        if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current);
+          silenceTimeoutRef.current = null;
+        }
         if (event.error !== 'no-speech') {
           synth.playError();
           const errMsg = `Mis disculpas, señor. Al parecer ha surgido un inconveniente con el receptor de audio (${event.error}). ¿Podría intentarlo de nuevo?`;
@@ -432,6 +473,10 @@ export default function FloatingAssistant({
 
       rec.onend = () => {
         setIsListening(false);
+        if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current);
+          silenceTimeoutRef.current = null;
+        }
         setTranscriptText(prev => {
           if (prev.trim()) {
             processTranscription(prev);
@@ -450,6 +495,10 @@ export default function FloatingAssistant({
   };
 
   const stopListening = () => {
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
@@ -701,6 +750,44 @@ export default function FloatingAssistant({
           break;
         }
 
+        case 'DELETE_PREVIOUS_ENTRY': {
+          if (!lastAction) {
+            systemResponse = `Lo siento mucho, señor. Comprendo que desea eliminar o borrar la última entrada, pero no tengo registro de ninguna acción realizada en esta sesión para poder deshacer o suprimir. ¿En qué otra cosa le asisto, señor?`;
+            break;
+          }
+
+          const targetClientForDeletion = consolidatedClients.find(c => c.id === lastAction.accountId);
+          const clientLabel = targetClientForDeletion ? targetClientForDeletion.name : 'la cuenta';
+
+          if (lastAction.type === 'RECORD_OFFLINE_SALE') {
+            if (onDeleteOfflineSale) {
+              onDeleteOfflineSale(lastAction.accountId, lastAction.entryId);
+              
+              const deletedAmount = lastAction.amount || 0;
+              const deletedDate = lastAction.date;
+              
+              setLastAction(null);
+
+              systemResponse = `Entendido perfectamente, señor. He procedido a borrar de inmediato la última venta manual de $${deletedAmount.toLocaleString('es-AR')} registrada en ${clientLabel} con fecha del ${deletedDate}. Todos los reportes e índices se han recalculado correctamente.`;
+            } else {
+              systemResponse = `Señor, el módulo de ventas offline no tiene disponible la función de eliminación en esta sesión.`;
+            }
+          } else if (lastAction.type === 'ADD_LOG_EXTENDED') {
+            if (onDeleteNote) {
+              onDeleteNote(lastAction.entryId);
+              
+              const notePreview = lastAction.noteText || '';
+              
+              setLastAction(null);
+
+              systemResponse = `A sus exigencias, señor. He eliminado la última entrada de la bitácora correspondiente a ${clientLabel}. La nota ("${notePreview}") ha quedado suprimida del historial.`;
+            } else {
+              systemResponse = `Señor, no cuento con la facultad de eliminar notas en esta configuración.`;
+            }
+          }
+          break;
+        }
+
         case 'CREATIVE_PERFORMANCE': {
           if (!targetClient) {
             systemResponse = `Mis disculpas, señor. Comprendo que solicita una auditoría de piezas creativas, pero no he logrado relacionarla con alguna de las cuentas publicitarias en Orion. ¿Me indicaría el nombre de la cuenta, por favor?`;
@@ -789,7 +876,7 @@ export default function FloatingAssistant({
   };
 
   return (
-    <div id="orion-assistant-root" className="fixed bottom-6 right-6 z-[250] font-sans text-neutral-200 selection:bg-amber-500/20">
+    <div id="orion-assistant-root" className="fixed bottom-6 right-6 z-[250] font-sans text-neutral-200 selection:bg-amber-500/20 print:hidden">
       <AnimatePresence>
         {isOpen && (
           <motion.div

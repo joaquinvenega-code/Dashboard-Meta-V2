@@ -1,7 +1,7 @@
 import { format, subDays, setDate, setMonth, subMonths } from 'date-fns';
 
 export interface ParsedVoiceCommand {
-  intent: 'ADD_LOG_EXTENDED' | 'RECORD_OFFLINE_SALE' | 'CREATIVE_PERFORMANCE' | 'PERFORMANCE_RANKING' | 'UNKNOWN' | 'MODIFY_PREVIOUS_ENTRY';
+  intent: 'ADD_LOG_EXTENDED' | 'RECORD_OFFLINE_SALE' | 'CREATIVE_PERFORMANCE' | 'PERFORMANCE_RANKING' | 'UNKNOWN' | 'MODIFY_PREVIOUS_ENTRY' | 'DELETE_PREVIOUS_ENTRY';
   clientName?: string;
   clientId?: string;
   date: string; // YYYY-MM-DD
@@ -190,8 +190,16 @@ export function parseAdvancedVoiceCommand(
   ];
   const isModification = modificationKeywords.some(kw => normalized.includes(kw));
 
-  // Determine intent based on keywords and priorities (Modification dominates if detected)
-  if (isModification) {
+  // F. DELETE_PREVIOUS_ENTRY
+  const deleteKeywords = [
+    'borra', 'borrar', 'elimina', 'eliminar', 'cancela', 'cancelar', 'deshace', 'deshacer', 'quitar', 'quita'
+  ];
+  const isDelete = deleteKeywords.some(kw => normalized.includes(kw));
+
+  // Determine intent based on keywords and priorities (Delete and Modification dominate if detected)
+  if (isDelete) {
+    intent = 'DELETE_PREVIOUS_ENTRY';
+  } else if (isModification) {
     intent = 'MODIFY_PREVIOUS_ENTRY';
   } else if (isSale) {
     intent = 'RECORD_OFFLINE_SALE';
