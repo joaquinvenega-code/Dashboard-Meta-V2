@@ -1408,40 +1408,62 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
         {showOfflineManager && offlineManagerEntityId && (
           <OfflineSalesManager 
             currency={settings[offlineManagerEntityId]?.currency || 'ARS'}
-            entries={settings[offlineManagerEntityId]?.offlineSalesLogByMonth?.[periodKey] || []}
+            entries={(() => {
+              const clientSettings = settings[offlineManagerEntityId];
+              if (!clientSettings?.offlineSalesLogByMonth) return [];
+              const allEntries: OfflineSaleEntry[] = [];
+              Object.values(clientSettings.offlineSalesLogByMonth).forEach((list: any) => {
+                if (Array.isArray(list)) {
+                  allEntries.push(...list);
+                }
+              });
+              return allEntries.filter(entry => entry.date >= dateRange.since && entry.date <= dateRange.until);
+            })()}
             onClose={() => {
               setShowOfflineManager(false);
               setOfflineManagerEntityId(null);
             }}
             onAdd={(amount, note, date) => {
-              const currentLog = settings[offlineManagerEntityId]?.offlineSalesLogByMonth?.[periodKey] || [];
+              const clientSettings = settings[offlineManagerEntityId] || { objective: 0, budget: 0, currency: 'ARS', tracking: 'ecommerce' as const };
+              const logsByMonth = { ...(clientSettings.offlineSalesLogByMonth || {}) };
+              const targetPeriodKey = date.substring(0, 7); // YYYY-MM
+              const currentLog = logsByMonth[targetPeriodKey] || [];
               const newEntry: OfflineSaleEntry = {
                 id: Math.random().toString(36).substr(2, 9),
                 amount,
                 note,
                 date
               };
-              const nextLog = [...currentLog, newEntry];
+              logsByMonth[targetPeriodKey] = [...currentLog, newEntry];
               
               onSaveSettings(offlineManagerEntityId, {
-                ...settings[offlineManagerEntityId],
-                offlineSalesLogByMonth: {
-                  ...(settings[offlineManagerEntityId]?.offlineSalesLogByMonth || {}),
-                  [periodKey]: nextLog
-                }
+                ...clientSettings,
+                offlineSalesLogByMonth: logsByMonth
               } as any);
             }}
             onDelete={(id) => {
-              const currentLog = settings[offlineManagerEntityId]?.offlineSalesLogByMonth?.[periodKey] || [];
-              const nextLog = currentLog.filter(e => e.id !== id);
+              const clientSettings = settings[offlineManagerEntityId] || { objective: 0, budget: 0, currency: 'ARS', tracking: 'ecommerce' as const };
+              const logsByMonth = { ...(clientSettings.offlineSalesLogByMonth || {}) };
               
-              onSaveSettings(offlineManagerEntityId, {
-                ...settings[offlineManagerEntityId],
-                offlineSalesLogByMonth: {
-                  ...(settings[offlineManagerEntityId]?.offlineSalesLogByMonth || {}),
-                  [periodKey]: nextLog
+              let deleted = false;
+              for (const mKey of Object.keys(logsByMonth)) {
+                const initialLength = logsByMonth[mKey].length;
+                logsByMonth[mKey] = logsByMonth[mKey].filter(e => e.id !== id);
+                if (logsByMonth[mKey].length < initialLength) {
+                  deleted = true;
+                  if (logsByMonth[mKey].length === 0) {
+                    delete logsByMonth[mKey];
+                  }
+                  break;
                 }
-              } as any);
+              }
+              
+              if (deleted) {
+                onSaveSettings(offlineManagerEntityId, {
+                  ...clientSettings,
+                  offlineSalesLogByMonth: logsByMonth
+                } as any);
+              }
             }}
             onUpdate={(id, amount, note, date) => {
               const clientSettings = settings[offlineManagerEntityId] || { objective: 0, budget: 0, currency: 'ARS', tracking: 'ecommerce' as const };

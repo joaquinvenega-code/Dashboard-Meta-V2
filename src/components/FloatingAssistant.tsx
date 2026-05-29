@@ -1150,30 +1150,27 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.82, y: 35 }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.82, y: 35 }}
-            transition={{ type: 'spring', damping: 24, stiffness: 210 }}
-            className="absolute bottom-20 right-0 w-[365px] h-[525px] bg-[#0c0a06]/95 backdrop-blur-2xl border border-amber-500/20 rounded-2xl shadow-2xl shadow-amber-950/30 flex flex-col overflow-hidden"
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+            className="absolute bottom-20 right-0 w-[350px] h-[510px] bg-neutral-950/95 backdrop-blur-xl border border-white/[0.08] rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden"
           >
-            {/* Holographic Living Amber Header */}
-            <div className="p-4 bg-[#141006]/95 border-b border-amber-500/10 flex items-center justify-between">
+            {/* Minimalist Muted Header */}
+            <div className="p-4 bg-neutral-900/30 border-b border-white/[0.06] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-1 px-2.5 rounded bg-amber-500/10 text-amber-400 text-[9px] font-mono font-black uppercase tracking-widest flex items-center gap-1.5 border border-amber-500/20 shadow-[0_0_12px_rgba(245,158,11,0.25)]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  NÚCLEO ORIÓN
-                </div>
-                <span className="text-[9px] text-amber-500/40 font-mono tracking-widest uppercase">Protocolo de Voz</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
+                <span className="text-[10px] uppercase font-mono font-bold tracking-widest text-neutral-300">NÚCLEO ORIÓN</span>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={toggleMute}
                   title={isMuted ? "Activar Voz" : "Silenciar"}
-                  className="p-1.5 hover:bg-amber-500/10 rounded text-neutral-400 hover:text-amber-400 transition-all border border-transparent hover:border-amber-500/10"
+                  className="p-1.5 hover:bg-white/[0.06] rounded-lg text-neutral-400 hover:text-neutral-200 transition-all"
                 >
-                  {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-amber-400" />}
+                  {isMuted ? <VolumeX className="w-3.5 h-3.5 text-red-400" /> : <Volume2 className="w-3.5 h-3.5 text-neutral-300" />}
                 </button>
                 <button
                   type="button"
@@ -1181,63 +1178,55 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
                     synth.playPowerDown();
                     setIsOpen(false);
                   }}
-                  className="p-1.5 hover:bg-amber-500/10 rounded text-neutral-400 hover:text-amber-400 transition-all border border-transparent hover:border-amber-500/10"
+                  className="p-1.5 hover:bg-white/[0.06] rounded-lg text-neutral-400 hover:text-neutral-200 transition-all"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
             {/* Conversation Messages */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-amber-950 scrollbar-track-transparent">
+            <div className="flex-1 p-5 overflow-y-auto space-y-4 scrollbar-none">
               {messages.length === 0 && (
-                <div className="h-full flex flex-col items-center justify-center p-6 text-center space-y-4">
-                  {/* Living Spherical Core Graphics representing the exact attached golden sphere */}
-                  <div className="relative flex items-center justify-center w-28 h-28 select-none">
-                    {/* Glowing outer aura glow */}
-                    <div className="absolute inset-0 bg-amber-500/5 rounded-full animate-pulse filter blur-xl" />
-                    
-                    {/* complex orbit lines overlapping */}
-                    <motion.div 
-                      animate={{ rotate: 360 }}
-                      transition={{ repeat: Infinity, duration: 16, ease: "linear" }}
-                      className="absolute inset-0 rounded-full border border-dashed border-amber-500/20"
-                    />
-                    <motion.div 
-                      animate={{ rotate: -360 }}
-                      transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
-                      className="absolute inset-2 rounded-full border border-amber-600/15"
-                      style={{ transform: "rotateX(60deg) rotateY(20deg)" }}
-                    />
-                    <motion.div 
-                      animate={{ rotate: 360 }}
-                      transition={{ repeat: Infinity, duration: 10, ease: "linear" }}
-                      className="absolute inset-4 rounded-full border-2 border-dotted border-amber-500/30"
-                      style={{ transform: "rotateX(30deg) rotateY(-40deg)" }}
-                    />
-                    <motion.div 
-                      animate={{ rotate: -360 }}
-                      transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
-                      className="absolute inset-6 rounded-full border border-amber-400/40"
-                    />
-
-                    {/* Highly active energy nucleus */}
+                <div className="h-full flex flex-col items-center justify-center p-4 text-center space-y-5">
+                  <div className="relative flex items-center justify-center w-20 h-20 select-none">
+                    {/* Unique Minimal Orbit Dynamic */}
                     <motion.div
-                      animate={{ scale: [0.95, 1.12, 0.95], rotate: 45 }}
+                      animate={{ scale: [1, 1.05, 1], opacity: [0.15, 0.35, 0.15] }}
                       transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                      className="w-12 h-12 bg-gradient-to-br from-amber-600/40 via-amber-950/60 to-black border border-amber-400/50 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.35)]"
-                    >
-                      <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
-                    </motion.div>
+                      className="absolute inset-0 rounded-full border border-amber-500/20"
+                    />
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
+                      className="absolute inset-2 rounded-full border border-dashed border-amber-500/10"
+                    />
+                    <motion.div
+                      animate={{ scale: [0.97, 1.03, 0.97] }}
+                      transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                      className="w-4 h-4 rounded-full bg-amber-500/80 shadow-[0_0_15px_6px_rgba(245,158,11,0.4)]"
+                    />
                   </div>
-                  <div>
-                    <h4 className="text-[11px] font-mono font-black text-amber-400 uppercase tracking-widest">Protocolo de Inteligencia Asistencial</h4>
-                    <p className="text-[9px] text-neutral-400 font-medium leading-relaxed mt-2 uppercase tracking-wider max-w-[250px] mx-auto opacity-85">
-                      Para iniciar, oprima el botón e instruya de viva voz:<br/>
-                      <span className="text-amber-500 font-black block mt-2">"Guardar bitácora para Adidas que diga se mejoró página"</span>
-                      <span className="text-amber-500 font-black block mt-2">"Registrar venta de 45000 para Nike ayer"</span>
-                      <span className="text-amber-500 font-black block mt-2">"Auditar de creativos de Adidas" o "Ranking global"</span>
+                  
+                  <div className="space-y-4 max-w-[240px]">
+                    <h4 className="text-[11px] font-medium text-neutral-300 font-sans tracking-tight">Orión está listo para escuchar</h4>
+                    <p className="text-[10px] text-neutral-500 font-normal leading-relaxed">
+                      Presione el control de voz para iniciar una instrucción rápida en lenguaje natural:
                     </p>
+                    <div className="flex flex-col gap-1.5 text-left border-t border-white/[0.04] pt-3">
+                      <div className="text-[9px] font-mono text-neutral-400 flex items-center gap-2">
+                        <span className="w-1 h-3 bg-amber-500/60 rounded" />
+                        <span>"Guardar bitácora para [Cliente]"</span>
+                      </div>
+                      <div className="text-[9px] font-mono text-neutral-400 flex items-center gap-2">
+                        <span className="w-1 h-3 bg-amber-500/60 rounded" />
+                        <span>"Registrar venta de [monto] hoy"</span>
+                      </div>
+                      <div className="text-[9px] font-mono text-neutral-400 flex items-center gap-2">
+                        <span className="w-1 h-3 bg-amber-500/60 rounded" />
+                        <span>"Auditar rendimiento de [Cliente]"</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1248,14 +1237,14 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
                   className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-xl px-3.5 py-2 text-[10px] leading-relaxed font-semibold transition-all duration-300 ${
+                    className={`max-w-[85%] rounded-xl px-4 py-2 text-[11px] leading-relaxed font-normal transition-all duration-300 ${
                       msg.sender === 'user'
-                        ? 'bg-amber-950/40 border border-amber-500/30 text-amber-100 rounded-br-none shadow-[0_4px_12px_rgba(245,158,11,0.06)]'
-                        : 'bg-neutral-900/95 border border-white/5 text-neutral-200 rounded-bl-none'
+                        ? 'bg-neutral-900 border border-white/[0.06] text-neutral-200 rounded-tr-none'
+                        : 'bg-white/[0.02] border border-white/[0.04] text-neutral-200 rounded-tl-none'
                     }`}
                   >
-                    <p className="whitespace-pre-line">{msg.text}</p>
-                    <span className="block text-[8px] opacity-45 text-right mt-1 font-mono tracking-wider">{msg.timestamp}</span>
+                    <p className="whitespace-pre-line text-neutral-200">{msg.text}</p>
+                    <span className="block text-[8px] text-neutral-500 text-right mt-1.5 font-mono tracking-wider">{msg.timestamp}</span>
                   </div>
                 </div>
               ))}
@@ -1265,32 +1254,29 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95, y: 10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  className="p-3 bg-amber-950/25 border border-amber-500/15 rounded-xl flex flex-col gap-2 shadow-inner"
+                  className="p-3.5 bg-neutral-900 border border-white/[0.06] rounded-xl flex flex-col gap-2.5"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider uppercase text-amber-400">
-                      <Sparkles className="w-3 h-3 text-amber-500" />
-                      <span>Confirmación de Registro</span>
+                    <div className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider uppercase text-neutral-400">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span>Cambio Registrado</span>
                     </div>
-                    <span className="text-[8px] bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded uppercase font-extrabold tracking-widest font-mono select-none">
-                      Activo
-                    </span>
                   </div>
-                  <p className="text-[9px] text-neutral-300 leading-normal">
-                    Se asentó un cambio en la bitácora de Orion. Si percibe un error u omisión, puede revertirlo ahora mismo.
+                  <p className="text-[10px] text-neutral-400 leading-normal">
+                    La acción se asentó en la bitácora de Orión. ¿Deseas deshacer este registro ahora?
                   </p>
-                  <div className="flex gap-2 mt-1">
+                  <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={handleUndoLastAction}
-                      className="flex-1 py-1.5 bg-neutral-900 border border-amber-500/20 rounded text-[9px] font-mono font-black uppercase tracking-widest text-amber-400 hover:bg-amber-500 hover:text-black transition-all cursor-pointer"
+                      className="flex-1 py-1.5 bg-white hover:bg-neutral-200 text-black text-[9px] font-mono font-bold uppercase tracking-wider rounded transition-all cursor-pointer"
                     >
-                      Deshacer Último Registro
+                      Deshacer
                     </button>
                     <button
                       type="button"
                       onClick={() => setLastAction(null)}
-                      className="px-3 py-1.5 bg-transparent border border-white/5 hover:border-white/10 text-neutral-400 hover:text-neutral-200 text-[9px] uppercase font-bold tracking-wider rounded transition-all cursor-pointer"
+                      className="px-3 py-1.5 bg-transparent border border-white/[0.08] hover:border-white/[0.15] text-neutral-400 hover:text-neutral-200 text-[9px] uppercase font-bold tracking-wider rounded transition-all cursor-pointer"
                     >
                       Omitir
                     </button>
@@ -1301,19 +1287,19 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
               {/* Streaming Interim Transcript */}
               {isListening && transcriptText && (
                 <div className="flex justify-end">
-                  <div className="max-w-[85%] rounded-xl px-3.5 py-2 bg-amber-950/20 border border-amber-500/20 text-amber-50 rounded-br-none animate-pulse">
-                    <p className="italic text-[10px] font-semibold text-amber-100">{transcriptText}</p>
-                    <span className="block text-[8px] text-amber-400 text-right mt-1 uppercase font-bold tracking-widest font-mono">Procesando Audio...</span>
+                  <div className="max-w-[85%] rounded-xl px-4 py-2 bg-neutral-900/40 border border-amber-500/25 text-neutral-200 rounded-tr-none animate-pulse">
+                    <p className="italic text-[11px] font-medium text-neutral-300">{transcriptText}</p>
+                    <span className="block text-[8px] text-amber-500 text-right mt-1 uppercase font-bold tracking-widest font-mono">Escuchando...</span>
                   </div>
                 </div>
               )}
 
               {/* Loader */}
               {isProcessing && (
-                <div className="flex justify-start animate-pulse">
-                  <div className="bg-neutral-900 border border-amber-500/15 rounded-xl rounded-bl-none px-3.5 py-2 flex items-center gap-2">
-                    <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />
-                    <span className="text-[9px] font-mono font-black uppercase text-amber-400 tracking-widest">Cómputo en curso...</span>
+                <div className="flex justify-start">
+                  <div className="bg-neutral-900 border border-white/[0.04] rounded-xl rounded-tl-none px-4 py-2 flex items-center gap-2">
+                    <Loader2 className="w-3 h-3 text-neutral-400 animate-spin" />
+                    <span className="text-[9px] font-mono text-neutral-400 uppercase tracking-widest">Pensando...</span>
                   </div>
                 </div>
               )}
@@ -1322,23 +1308,23 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
             </div>
 
             {/* Speaking/Listening Equalizer and Core Trigger */}
-            <div className="p-4 bg-[#0d0a04]/95 border-t border-amber-500/10 flex flex-col items-center gap-3">
+            <div className="p-4 bg-neutral-950 border-t border-white/[0.06] flex flex-col items-center gap-3">
               {isSpeaking && (
-                <div className="flex items-center justify-center gap-1.5 py-1">
-                  <span className="text-[8px] font-mono font-black uppercase tracking-widest text-amber-400 mr-1.5">Traduciendo datos...</span>
-                  <div className="flex items-end gap-0.5 h-3">
-                    {[1, 2, 3, 4, 5, 6].map((bar) => (
+                <div className="flex items-center justify-center gap-1.5 py-0.5">
+                  <span className="text-[9px] font-mono tracking-wider text-neutral-400 mr-1">Hablando...</span>
+                  <div className="flex items-end gap-[1.5px] h-2.5">
+                    {[1, 2, 3, 4, 5].map((bar) => (
                       <motion.div
                         key={bar}
                         animate={{
-                          height: ["20%", "100%", "20%"]
+                          height: ["30%", "100%", "30%"]
                         }}
                         transition={{
-                          duration: 0.4 + bar * 0.08,
+                          duration: 0.3 + bar * 0.06,
                           repeat: Infinity,
                           ease: "easeInOut"
                         }}
-                        className="w-0.5 bg-amber-400 rounded-full"
+                        className="w-[1.5px] bg-amber-500/80 rounded-full"
                       />
                     ))}
                   </div>
@@ -1346,30 +1332,30 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
               )}
 
               {isListening && (
-                <div className="flex items-center gap-2 justify-center py-1">
-                  <span className="w-2 h-2 bg-amber-500 rounded-full animate-ping" />
-                  <span className="text-[8px] font-mono font-black uppercase tracking-widest text-amber-500">Esperando directiva...</span>
+                <div className="flex items-center gap-1.5 justify-center py-0.5 animate-pulse">
+                  <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                  <span className="text-[9px] font-mono text-amber-500 tracking-wider uppercase">Escuchando comando...</span>
                 </div>
               )}
 
-              <div className="w-full flex items-center justify-between">
+              <div className="w-full">
                 <button
                   type="button"
                   onClick={handleStartListening}
-                  className={`w-full py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-[10px] font-mono font-black uppercase tracking-widest transition-all ${
+                  className={`w-full py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 text-[10px] font-mono font-medium uppercase tracking-widest transition-all ${
                     isListening
-                      ? 'bg-amber-600 hover:bg-amber-700 text-black font-black saturate-150 animate-pulse shadow-lg shadow-amber-950/40 border border-amber-500/30'
-                      : 'bg-amber-950/40 hover:bg-amber-900/60 border border-amber-500/30 text-amber-300 shadow-lg shadow-amber-950/30'
+                      ? 'bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.35)] font-bold'
+                      : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-white/[0.08]'
                   }`}
                 >
                   {isListening ? (
                     <>
-                      <MicOff className="w-3.5 h-3.5 text-black" />
+                      <MicOff className="w-3.5 h-3.5" />
                       Detener Recepción
                     </>
                   ) : (
                     <>
-                      <Mic className="w-3.5 h-3.5 text-amber-400" />
+                      <Mic className="w-3.5 h-3.5" />
                       Hablar con Orión
                     </>
                   )}
