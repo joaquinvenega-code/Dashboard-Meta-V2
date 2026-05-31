@@ -447,15 +447,13 @@ export default function FloatingAssistant({
     const voices = window.speechSynthesis.getVoices();
     const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
     
-    // Buscar la voz más premium y natural en español, priorizando voces Neural, Sabina (AR), Helena, o de Google
-    const preferredVoice = spanishVoices.find(v => 
-      v.name.toLowerCase().includes('sabina') ||       // Excelente voz premium de Argentina en macOS
-      v.name.toLowerCase().includes('natural') ||      // Voces naturales/neurales
-      v.name.toLowerCase().includes('helena') ||       // Excelente voz de España en macOS
-      v.name.toLowerCase().includes('google español') || // Google cloud-quality voices
-      v.name.toLowerCase().includes('google') ||
-      v.name.toLowerCase().includes('microsoft')       // Microsoft premium edge voices
-    ) || spanishVoices.find(v => v.lang.includes('AR')) || spanishVoices[0] || null;
+    // Buscar la voz más premium y natural en español latino/neutro (es-MX, es-US, es-AR)
+    const preferredVoice = 
+      spanishVoices.find(v => (v.lang === 'es-MX' || v.lang === 'es-US' || v.lang === 'es-AR') && v.name.toLowerCase().includes('natural')) ||
+      spanishVoices.find(v => v.name.toLowerCase().includes('sabina')) || // Excelente voz en macOS
+      spanishVoices.find(v => v.lang === 'es-MX' || v.lang === 'es-US' || v.lang === 'es-AR' || v.lang === 'es-419') ||
+      spanishVoices.find(v => v.name.toLowerCase().includes('google') && !v.name.toLowerCase().includes('españa')) ||
+      spanishVoices[0] || null;
 
     if (preferredVoice) {
       utterance.voice = preferredVoice;
