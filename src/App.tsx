@@ -739,13 +739,42 @@ export default function App() {
     );
   }
 
+  const fallbackSpeechSynthesis = (text: string) => {
+    if (!window.speechSynthesis) {
+      setIsTestingVoice(false);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.15;
+    utterance.pitch = 0.52;
+
+    const voices = window.speechSynthesis.getVoices();
+    const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
+    const preferredVoice = 
+      spanishVoices.find(v => (v.lang === 'es-MX' || v.lang === 'es-US' || v.lang === 'es-AR') && v.name.toLowerCase().includes('natural')) ||
+      spanishVoices.find(v => v.name.toLowerCase().includes('sabina')) || 
+      spanishVoices.find(v => v.lang === 'es-MX' || v.lang === 'es-US' || v.lang === 'es-AR' || v.lang === 'es-419') ||
+      spanishVoices.find(v => v.name.toLowerCase().includes('google') && !v.name.toLowerCase().includes('españa')) ||
+      spanishVoices[0] || null;
+
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onend = () => setIsTestingVoice(false);
+    utterance.onerror = () => setIsTestingVoice(false);
+    window.speechSynthesis.speak(utterance);
+  };
+
   const playVoiceTest = async () => {
     setIsTestingVoice(true);
+    const testText = "Hola. Esta es una prueba de la voz seleccionada.";
     try {
       const response = await fetch('/api/tts-google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: "Hola. Esta es una prueba de voz para el asistente.", voiceName: previewVoiceType }),
+        body: JSON.stringify({ text: testText, voiceName: previewVoiceType }),
       });
       if (response.ok) {
         const audioBlob = await response.blob();
@@ -755,17 +784,21 @@ export default function App() {
           setIsTestingVoice(false);
           URL.revokeObjectURL(audioUrl);
         };
-        audioObj.onerror = () => setIsTestingVoice(false);
-        audioObj.play().catch((e) => {
-          console.error(e);
+        audioObj.onerror = () => {
           setIsTestingVoice(false);
+          fallbackSpeechSynthesis(testText);
+        };
+        audioObj.play().catch((e) => {
+          console.error("Audio playback error by browser. Redirecting to SpeechSynthesis.", e);
+          fallbackSpeechSynthesis(testText);
         });
       } else {
-        setIsTestingVoice(false);
+        console.warn("Google TTS failed. Using fallback browser synthesis.");
+        fallbackSpeechSynthesis(testText);
       }
     } catch (e) {
       console.error(e);
-      setIsTestingVoice(false);
+      fallbackSpeechSynthesis(testText);
     }
   };
 
