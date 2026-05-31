@@ -18,8 +18,14 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  // Logging general
+  app.use((req, res, next) => {
+    console.log(`[FLOW] ${req.method} ${req.url}`);
+    next();
+  });
+
   // --- API ROUTES ---
-  app.use('/api', orionModulesRouter);
+  app.use('/orion', orionModulesRouter);
 
   // --- API ENGINE V18 (LEGACY COMPATIBILITY) ---
   app.all('/v18-engine', async (req, res) => {
@@ -69,12 +75,6 @@ async function startServer() {
       console.error('[V18-FAIL]', err);
       return res.status(500).json({ error: err.message });
     }
-  });
-
-  // Logging general (después del endpoint crítico)
-  app.use((req, res, next) => {
-    console.log(`[FLOW] ${req.method} ${req.url}`);
-    next();
   });
 
 
