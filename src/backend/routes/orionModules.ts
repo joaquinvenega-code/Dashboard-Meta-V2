@@ -60,6 +60,16 @@ router.post('/tts-google', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Text is required' });
   }
 
+  if (!ttsClient && process.env.GOOGLE_CLOUD_TTS_CREDENTIALS_JSON) {
+    try {
+      const credentials = JSON.parse(process.env.GOOGLE_CLOUD_TTS_CREDENTIALS_JSON);
+      ttsClient = new TextToSpeechClient({ credentials });
+      console.log('[Orion System] Google Cloud TTS Client Lazy Initialized.');
+    } catch (e) {
+      console.error('[Orion System] Error parsing GOOGLE_CLOUD_TTS_CREDENTIALS_JSON.', e);
+    }
+  }
+
   if (!ttsClient) {
     return res.status(503).json({ error: 'Google Cloud TTS is not configured on the server. Please set GOOGLE_CLOUD_TTS_CREDENTIALS_JSON.' });
   }

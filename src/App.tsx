@@ -792,6 +792,9 @@ export default function App() {
           console.error("Audio playback error by browser. Redirecting to SpeechSynthesis.", e);
           fallbackSpeechSynthesis(testText);
         });
+      } else if (response.status === 503) {
+        alert("¡Falta vincular la clave de Google Cloud TTS! Se está reproduciendo una voz básica de respaldo porque el servicio Premium y Neural no está configurado.");
+        fallbackSpeechSynthesis(testText);
       } else {
         console.warn("Google TTS failed. Using fallback browser synthesis.");
         fallbackSpeechSynthesis(testText);
