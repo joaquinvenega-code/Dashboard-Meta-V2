@@ -54,7 +54,7 @@ router.post('/creativos/observacion', (req: Request, res: Response) => {
 
 // --- Google Cloud TTS Endpoint ---
 router.post('/tts-google', async (req: Request, res: Response) => {
-  const { text } = req.body;
+  const { text, voiceName } = req.body;
 
   if (!text) {
     return res.status(400).json({ error: 'Text is required' });
@@ -65,10 +65,16 @@ router.post('/tts-google', async (req: Request, res: Response) => {
   }
 
   try {
+    const defaultVoice = 'es-419-Neural2-C';
+    const selectedVoice = voiceName || defaultVoice;
+    // Extract language code from voice name (e.g. "es-419" from "es-419-Neural2-C")
+    const match = selectedVoice.match(/^([a-z]{2}-[A-Za-z0-9]+)-/);
+    const languageCode = match ? match[1] : 'es-419';
+
     const input = { text };
     const voice = {
-      languageCode: 'es-419',
-      name: 'es-419-Neural2-C', // Voz masculina muy natural
+      languageCode,
+      name: selectedVoice,
     };
     const audioConfig = {
       audioEncoding: 'MP3' as const,

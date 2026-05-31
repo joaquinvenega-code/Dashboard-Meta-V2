@@ -9,6 +9,14 @@ interface FloatingAssistantProps {
   accounts: AdAccount[];
   accountGroups?: any[];
   notes: AccountNote[];
+  orionSettings?: {
+    voiceType: string;
+    capabilities: {
+      notes: boolean;
+      offlineSales: boolean;
+      analyze: boolean;
+    };
+  };
   onAddNote: (note: AccountNote) => void;
   onUpdateNote?: (note: AccountNote) => void;
   onDeleteNote?: (noteId: string) => void;
@@ -220,6 +228,7 @@ export default function FloatingAssistant({
   accounts,
   accountGroups = [],
   notes,
+  orionSettings,
   onAddNote,
   onUpdateNote,
   onDeleteNote,
@@ -400,7 +409,7 @@ export default function FloatingAssistant({
       const response = await fetch('/api/tts-google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, voiceName: orionSettings?.voiceType || 'es-419-Neural2-C' }),
       });
 
       if (response.ok) {

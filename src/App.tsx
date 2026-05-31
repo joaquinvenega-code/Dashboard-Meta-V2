@@ -160,9 +160,9 @@ export default function App() {
   const [orionSettings, setOrionSettings] = useState<{voiceType: string, capabilities: {notes: boolean, offlineSales: boolean, analyze: boolean}}>(() => {
     try {
       const saved = localStorage.getItem('cr_orion_settings');
-      return saved ? JSON.parse(saved) : { voiceType: 'neutral', capabilities: { notes: true, offlineSales: true, analyze: true } };
+      return saved ? JSON.parse(saved) : { voiceType: 'es-419-Neural2-C', capabilities: { notes: true, offlineSales: true, analyze: true } };
     } catch {
-      return { voiceType: 'neutral', capabilities: { notes: true, offlineSales: true, analyze: true } };
+      return { voiceType: 'es-419-Neural2-C', capabilities: { notes: true, offlineSales: true, analyze: true } };
     }
   });
 
@@ -1369,6 +1369,32 @@ export default function App() {
                       <div>
                         <h4 className="text-[13px] font-black text-neutral-200 uppercase tracking-widest mb-4 flex items-center gap-2">
                           <Settings2 className="w-4 h-4 text-amber-500" />
+                          Voz del Sistema (Premium Neural)
+                        </h4>
+                        <div className="max-w-md">
+                          <select
+                            value={orionSettings.voiceType}
+                            onChange={(e) => setOrionSettings({...orionSettings, voiceType: e.target.value})}
+                            className="w-full bg-black/40 border border-white/5 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-amber-500/50 transition-all font-bold shadow-inner"
+                          >
+                            <option value="es-419-Neural2-C">Hombre - Castellano Neutro / Latino (Original)</option>
+                            <option value="es-419-Neural2-A">Mujer 1 - Castellano Neutro / Latino</option>
+                            <option value="es-419-Neural2-B">Mujer 2 - Castellano Neutro / Latino</option>
+                            <option value="es-US-Neural2-B">Hombre - EE.UU. (Hispano)</option>
+                            <option value="es-US-Neural2-A">Mujer - EE.UU. (Hispano)</option>
+                            <option value="es-ES-Neural2-B">Hombre - España</option>
+                            <option value="es-ES-Neural2-A">Mujer 1 - España</option>
+                            <option value="es-ES-Neural2-C">Mujer 2 - España</option>
+                            <option value="es-ES-Neural2-D">Mujer 3 - España</option>
+                            <option value="es-ES-Neural2-E">Mujer 4 - España</option>
+                            <option value="es-ES-Neural2-F">Hombre 2 - España</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-[13px] font-black text-neutral-200 uppercase tracking-widest mb-4 flex items-center gap-2">
+                          <Settings2 className="w-4 h-4 text-amber-500" />
                           Capacidades del Asistente
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1725,6 +1751,7 @@ export default function App() {
         accounts={accounts}
         accountGroups={accountGroups}
         notes={notes}
+        orionSettings={orionSettings}
         onAddNote={(note) => setNotes([...notes, note])}
         onUpdateNote={(updatedNote) => setNotes(prev => prev.map(n => n.id === updatedNote.id ? updatedNote : n))}
         onDeleteNote={(noteId) => setNotes(prev => prev.filter(n => n.id !== noteId))}
