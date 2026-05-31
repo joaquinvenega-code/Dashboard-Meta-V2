@@ -250,6 +250,7 @@ export default function FloatingAssistant({
   const recognitionRef = useRef<any>(null);
   const silenceTimeoutRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Orion State Machine Active State Selection
   let currentOrionState: 'standby' | 'listening' | 'thinking' | 'success' = 'standby';
@@ -328,6 +329,10 @@ export default function FloatingAssistant({
   // Clean speaking on unmount
   useEffect(() => {
     return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
@@ -340,6 +345,10 @@ export default function FloatingAssistant({
   // Cancel speaking when panel closes
   useEffect(() => {
     if (!isOpen) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
@@ -347,7 +356,7 @@ export default function FloatingAssistant({
     }
   }, [isOpen]);
 
-  // Initialize SpeechSynthesis
+  // Initialize SpeechSynthesis (fallback only)
   useEffect(() => {
     if (window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined) {
       window.speechSynthesis.onvoiceschanged = () => {
@@ -369,17 +378,66 @@ export default function FloatingAssistant({
     return newMessage;
   };
 
-  // Speaks using local Web Speech Synthesis with reactive starts/ends
-  const speakAsOrion = (text: string) => {
-    if (isMuted || !window.speechSynthesis) {
+  // Speaks using Google Cloud TTS (fallback to Web Speech API)
+  const speakAsOrion = async (text: string) => {
+    if (isMuted) {
       setIsSpeaking(false);
       return;
     }
 
-    window.speechSynthesis.cancel();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
 
     // Trigger talking chord
     synth.playConfirm();
+
+    try {
+      const response = await fetch('/api/tts-google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+
+      if (response.ok) {
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        
+        if (!audioRef.current) {
+          audioRef.current = new Audio();
+        }
+        
+        audioRef.current.src = audioUrl;
+        audioRef.current.onplay = () => setIsSpeaking(true);
+        audioRef.current.onended = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl); // cleanup
+        };
+        audioRef.current.onerror = () => setIsSpeaking(false);
+        
+        audioRef.current.play().catch(e => {
+          console.error("Audio playback failed, falling back to window.speechSynthesis", e);
+          fallbackSpeechSynthesis(text);
+        });
+      } else {
+        console.warn('Google Cloud TTS failed, falling back...');
+        fallbackSpeechSynthesis(text);
+      }
+    } catch (e) {
+      console.error('Error fetching Google Cloud TTS:', e);
+      fallbackSpeechSynthesis(text);
+    }
+  };
+
+  const fallbackSpeechSynthesis = (text: string) => {
+    if (!window.speechSynthesis) {
+      setIsSpeaking(false);
+      return;
+    }
 
     const optimized = optimizeTextForSpeech(text);
     const utterance = new SpeechSynthesisUtterance(optimized);
@@ -442,8 +500,14 @@ export default function FloatingAssistant({
   const toggleMute = () => {
     const nextMuted = !isMuted;
     setIsMuted(nextMuted);
-    if (nextMuted && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
+    if (nextMuted) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
       setIsSpeaking(false);
     }
   };
