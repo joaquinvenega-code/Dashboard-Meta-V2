@@ -1,10 +1,10 @@
-import http from 'https';
+import http from 'http';
 
 const data = JSON.stringify({ text: "hola" });
 
 const options = {
-  hostname: 'ais-dev-belublm2zvdwlsukgxgqqy-577098943678.us-east1.run.app',
-  port: 443,
+  hostname: 'localhost',
+  port: 3000,
   path: '/orion/tts-google',
   method: 'POST',
   headers: {
@@ -15,7 +15,10 @@ const options = {
 
 const req = http.request(options, (res) => {
   console.log(`STATUS: ${res.statusCode}`);
-  console.log(`HEADERS: ${JSON.stringify(res.headers)}`);
+  res.setEncoding('utf8');
+  res.on('data', (chunk) => {
+    console.log(`BODY: ${chunk}`);
+  });
 });
 
 req.on('error', (e) => {

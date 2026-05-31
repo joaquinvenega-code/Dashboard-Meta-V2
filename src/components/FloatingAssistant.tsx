@@ -409,7 +409,7 @@ export default function FloatingAssistant({
       const response = await fetch('/orion/tts-google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voiceName: orionSettings?.voiceType || 'es-419-Neural2-C' }),
+        body: JSON.stringify({ text, voiceName: orionSettings?.voiceType || 'es-US-Neural2-C' }),
       });
 
       if (response.ok) {

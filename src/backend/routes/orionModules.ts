@@ -75,7 +75,7 @@ router.post('/tts-google', async (req: Request, res: Response) => {
   }
 
   try {
-    const defaultVoice = 'es-419-Neural2-C';
+    const defaultVoice = 'es-US-Neural2-C';
     const selectedVoice = voiceName || defaultVoice;
     // Extract language code from voice name (e.g. "es-419" from "es-419-Neural2-C")
     const match = selectedVoice.match(/^([a-z]{2}-[A-Za-z0-9]+)-/);
