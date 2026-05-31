@@ -8,9 +8,13 @@ import {
   Settings2,
   Bell,
   FileText,
-  Network
+  Network,
+  ChevronDown,
+  User,
+  Bot
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface SidebarProps {
   activePage: string;
@@ -23,14 +27,24 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, loading, lastSync }: SidebarProps) {
-  const NavItem = ({ id, icon: Icon, label }: { id: string, icon: any, label: string }) => (
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+
+  // Auto-expand if a sub-item is active
+  useEffect(() => {
+    if (['accounts', 'alerts', 'user_settings', 'orion_settings'].includes(activePage)) {
+      setIsConfigOpen(true);
+    }
+  }, [activePage]);
+
+  const NavItem = ({ id, icon: Icon, label, className }: { id: string, icon: any, label: string, className?: string }) => (
     <button
       onClick={() => onPageChange(id)}
       className={cn(
         "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold tracking-tight transition-all w-full text-left",
         activePage === id 
           ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
-          : "text-neutral-500 hover:text-neutral-100 hover:bg-white/5"
+          : "text-neutral-500 hover:text-neutral-100 hover:bg-white/5",
+        className
       )}
     >
       <Icon className={cn("w-4 h-4 shrink-0", activePage === id ? "opacity-100" : "opacity-50")} />
@@ -57,9 +71,38 @@ export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, l
         <NavItem id="strategy" icon={Network} label="Estrategia" />
         <NavItem id="reports" icon={FileText} label="Informes" />
 
-        <div className="text-[10px] font-black text-neutral-700 uppercase tracking-[0.2em] px-3 mb-3 mt-8">Configuración</div>
-        <NavItem id="accounts" icon={Settings} label="Cuentas visibles" />
-        <NavItem id="alerts" icon={Bell} label="Alertas" />
+        <div className="text-[10px] font-black text-neutral-700 uppercase tracking-[0.2em] px-3 mb-3 mt-8">Sistema</div>
+        
+        <div className="space-y-1">
+          <button
+            onClick={() => setIsConfigOpen(!isConfigOpen)}
+            className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-bold tracking-tight transition-all w-full text-left text-neutral-500 hover:text-neutral-100 hover:bg-white/5"
+          >
+            <div className="flex items-center gap-3">
+              <Settings className="w-4 h-4 shrink-0 opacity-50" />
+              Configuración
+            </div>
+            <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform", isConfigOpen ? "rotate-180" : "rotate-0")} />
+          </button>
+          
+          <AnimatePresence>
+            {isConfigOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="pl-4 pr-2 space-y-1 mt-1 border-l-2 border-white/5 ml-4">
+                  <NavItem id="user_settings" icon={User} label="Perfil de Usuario" className="py-2 text-xs" />
+                  <NavItem id="orion_settings" icon={Bot} label="Asistente Orión" className="py-2 text-xs" />
+                  <NavItem id="accounts" icon={Settings2} label="Cuentas Visibles" className="py-2 text-xs" />
+                  <NavItem id="alerts" icon={Bell} label="Centro de Alertas" className="py-2 text-xs" />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </nav>
 
       <div className="p-4 border-t border-white/5 space-y-4">

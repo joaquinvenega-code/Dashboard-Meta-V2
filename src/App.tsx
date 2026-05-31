@@ -148,6 +148,32 @@ export default function App() {
     }
   });
 
+  const [agencySettings, setAgencySettings] = useState<{agencyName: string, logoUrl: string}>(() => {
+    try {
+      const saved = localStorage.getItem('cr_agency_settings');
+      return saved ? JSON.parse(saved) : { agencyName: '', logoUrl: '' };
+    } catch {
+      return { agencyName: '', logoUrl: '' };
+    }
+  });
+
+  const [orionSettings, setOrionSettings] = useState<{voiceType: string, capabilities: {notes: boolean, offlineSales: boolean, analyze: boolean}}>(() => {
+    try {
+      const saved = localStorage.getItem('cr_orion_settings');
+      return saved ? JSON.parse(saved) : { voiceType: 'neutral', capabilities: { notes: true, offlineSales: true, analyze: true } };
+    } catch {
+      return { voiceType: 'neutral', capabilities: { notes: true, offlineSales: true, analyze: true } };
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('cr_agency_settings', JSON.stringify(agencySettings));
+  }, [agencySettings]);
+
+  useEffect(() => {
+    localStorage.setItem('cr_orion_settings', JSON.stringify(orionSettings));
+  }, [orionSettings]);
+
   const [notes, setNotes] = useState<AccountNote[]>(() => {
     try {
       const saved = localStorage.getItem('cr_notes');
@@ -739,6 +765,8 @@ export default function App() {
                  activePage === 'accounts' ? 'Cuentas visibles' : 
                  activePage === 'alerts' ? 'Centro de Alertas' :
                  activePage === 'reports' ? 'Informes Mensuales' :
+                 activePage === 'user_settings' ? 'Perfil de Usuario' :
+                 activePage === 'orion_settings' ? 'Configuración de Orión' :
                  activePage === 'strategy' ? 'Lienzo Estratégico' : activePage}
                 {activePage === 'strategy' && (
                   <div className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-600/20 rounded-full text-[8px] text-blue-500 uppercase tracking-widest">Planificación</div>
@@ -1284,6 +1312,108 @@ export default function App() {
                     notes={notes} 
                     setDateRange={setDateRange}
                   />
+                </div>
+              )}
+
+              {activePage === 'user_settings' && (
+                <div className="animate-in fade-in duration-500 max-w-4xl mx-auto pb-20">
+                  <div className="bg-[#111] rounded-lg border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col">
+                    <div className="mb-8 border-b border-white/5 pb-4">
+                      <h3 className="text-xl font-black text-white uppercase tracking-widest">Perfil de Usuario / Agencia</h3>
+                      <p className="text-xs font-bold text-neutral-500 mt-1 uppercase tracking-widest">Configura la información que se mostrará en los informes</p>
+                    </div>
+
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Nombre de la Agencia o Profesional</label>
+                        <input
+                          type="text"
+                          value={agencySettings.agencyName}
+                          onChange={(e) => setAgencySettings({...agencySettings, agencyName: e.target.value})}
+                          placeholder="Ej. Orion Media"
+                          className="w-full bg-black/40 border border-white/5 rounded-xl py-3 px-4 text-sm text-white placeholder-neutral-700 outline-none focus:border-blue-600/50 transition-all font-bold shadow-inner"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">URL del Logo (Opcional)</label>
+                        <input
+                          type="url"
+                          value={agencySettings.logoUrl}
+                          onChange={(e) => setAgencySettings({...agencySettings, logoUrl: e.target.value})}
+                          placeholder="https://ejemplo.com/logo.png"
+                          className="w-full bg-black/40 border border-white/5 rounded-xl py-3 px-4 text-sm text-white placeholder-neutral-700 outline-none focus:border-blue-600/50 transition-all font-bold shadow-inner"
+                        />
+                        <p className="text-[10px] text-neutral-500 mt-2 font-medium">Este logo se utilizará al exportar los reportes PDF. Preferiblemente formato PNG con fondo transparente.</p>
+                        
+                        {agencySettings.logoUrl && (
+                          <div className="mt-4 p-4 border border-white/5 rounded-xl bg-black/50 inline-block">
+                            <img src={agencySettings.logoUrl} alt="Logo Preview" className="h-12 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activePage === 'orion_settings' && (
+                <div className="animate-in fade-in duration-500 max-w-4xl mx-auto pb-20">
+                  <div className="bg-[#111] rounded-lg border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col">
+                    <div className="mb-8 border-b border-white/5 pb-4">
+                      <h3 className="text-xl font-black text-white uppercase tracking-widest">Configuración de Orión</h3>
+                      <p className="text-xs font-bold text-neutral-500 mt-1 uppercase tracking-widest">Ajustes del asistente inteligente de voz y texto</p>
+                    </div>
+
+                    <div className="space-y-8">
+                      <div>
+                        <h4 className="text-[13px] font-black text-neutral-200 uppercase tracking-widest mb-4 flex items-center gap-2">
+                          <Settings2 className="w-4 h-4 text-amber-500" />
+                          Capacidades del Asistente
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <label className="flex items-start gap-3 p-4 rounded-xl border border-white/5 bg-black/20 cursor-pointer hover:bg-white/[0.02] hover:border-white/10 transition-all">
+                            <input
+                              type="checkbox"
+                              checked={orionSettings.capabilities.notes}
+                              onChange={(e) => setOrionSettings({...orionSettings, capabilities: {...orionSettings.capabilities, notes: e.target.checked}})}
+                              className="mt-1 shrink-0 rounded border-white/10 bg-black/50 text-amber-500 focus:ring-amber-500/20"
+                            />
+                            <div>
+                              <div className="text-xs font-bold text-white mb-0.5">Tomar notas de voz</div>
+                              <div className="text-[10px] text-neutral-500 leading-relaxed">Guardar automáticamente observaciones, aprendizajes y bitácoras dictadas por voz.</div>
+                            </div>
+                          </label>
+
+                          <label className="flex items-start gap-3 p-4 rounded-xl border border-white/5 bg-black/20 cursor-pointer hover:bg-white/[0.02] hover:border-white/10 transition-all">
+                            <input
+                              type="checkbox"
+                              checked={orionSettings.capabilities.offlineSales}
+                              onChange={(e) => setOrionSettings({...orionSettings, capabilities: {...orionSettings.capabilities, offlineSales: e.target.checked}})}
+                              className="mt-1 shrink-0 rounded border-white/10 bg-black/50 text-amber-500 focus:ring-amber-500/20"
+                            />
+                            <div>
+                              <div className="text-xs font-bold text-white mb-0.5">Anotar ventas offline</div>
+                              <div className="text-[10px] text-neutral-500 leading-relaxed">Permite instruir por voz las ventas generadas en el local para corregir el ROAS real.</div>
+                            </div>
+                          </label>
+
+                          <label className="flex items-start gap-3 p-4 rounded-xl border border-white/5 bg-black/20 cursor-pointer hover:bg-white/[0.02] hover:border-white/10 transition-all">
+                            <input
+                              type="checkbox"
+                              checked={orionSettings.capabilities.analyze}
+                              onChange={(e) => setOrionSettings({...orionSettings, capabilities: {...orionSettings.capabilities, analyze: e.target.checked}})}
+                              className="mt-1 shrink-0 rounded border-white/10 bg-black/50 text-amber-500 focus:ring-amber-500/20"
+                            />
+                            <div>
+                              <div className="text-xs font-bold text-white mb-0.5">Análisis de cuentas</div>
+                              <div className="text-[10px] text-neutral-500 leading-relaxed">Permite consultas en voz y respuestas estructuradas sobre el rendimiento en vivo de las cuentas.</div>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
