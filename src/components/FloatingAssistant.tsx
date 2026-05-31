@@ -178,6 +178,81 @@ class OrionSynthesizer {
       osc.stop(now + 0.2);
     } catch (e) {}
   }
+
+  // Synthesize a beautiful, delicate human-like breath release/sigh using BiquadFilter noise
+  playSigh() {
+    try {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const sampleRate = this.ctx.sampleRate;
+      const duration = 0.45; // seconds
+      const bufferSize = sampleRate * duration;
+      const buffer = this.ctx.createBuffer(1, bufferSize, sampleRate);
+      const data = buffer.getChannelData(0);
+      
+      // Generate standard white noise
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1200, now);
+      filter.Q.setValueAtTime(2.2, now);
+      // Gentle frequency ramp mimic organic exhalation
+      filter.frequency.exponentialRampToValueAtTime(800, now + duration);
+      
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.014, now + 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+      
+      noise.start(now);
+      noise.stop(now + duration);
+    } catch (e) {
+      console.warn("Sigh synthesis error:", e);
+    }
+  }
+
+  // Synthesize a sequence of low-frequency, warm and charming chest chuckles/giggles
+  playLaughter() {
+    try {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      
+      // We schedule 3 short low-frequency warm chuckling hums
+      for (let i = 0; i < 3; i++) {
+        const grainTime = now + i * 0.14;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        
+        osc.type = 'triangle'; // triangle gives a very warm, soft speaker tone
+        osc.frequency.setValueAtTime(118 - i * 6, grainTime);
+        osc.frequency.linearRampToValueAtTime(94 - i * 6, grainTime + 0.12);
+        
+        gain.gain.setValueAtTime(0.001, grainTime);
+        gain.gain.linearRampToValueAtTime(0.012, grainTime + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, grainTime + 0.12);
+        
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        
+        osc.start(grainTime);
+        osc.stop(grainTime + 0.12);
+      }
+    } catch (e) {
+      console.warn("Laughter synthesis error:", e);
+    }
+  }
 }
 
 const synth = new OrionSynthesizer();
@@ -215,6 +290,45 @@ export function optimizeTextForSpeech(text: string): string {
   return cleaned;
 }
 
+export function injectChatTTSEmbelishments(text: string): string {
+  if (text.includes('[laughter]') || text.includes('[sigh]') || text.includes('[uv_break]') || text.includes('[lbreak]')) {
+    return text; // Already manually formatted with ChatTTS tags
+  }
+
+  let enriched = text;
+
+  // Add a nice sigh/laughter at the beginning of polite opening sentences
+  if (enriched.startsWith('Buenas ') || enriched.startsWith('Buenos ') || enriched.startsWith('Hola') || enriched.startsWith('Entendido')) {
+    enriched = enriched.replace(/^((?:Buenas|Buenos)\s+\w+,\s+señor\.)/i, '$1 [uv_break]');
+    enriched = enriched.replace(/^(Hola,\s+señor\.)/i, '$1 [laughter] [uv_break]');
+    enriched = enriched.replace(/^(Entendido,\s+señor\.)/i, '$1 [sigh] [uv_break]');
+  }
+
+  // Insert uv_break / lbreak at natural sentence endings (periods)
+  // Let's replace sentence-ending periods with uv_breaks or lbreaks occasionally to vary prosody
+  const parts = enriched.split('. ');
+  enriched = parts.map((sentence, idx) => {
+    if (!sentence.trim()) return sentence;
+    // Don't add to the last sentence
+    const isLast = idx === parts.length - 1;
+    if (isLast) return sentence;
+
+    // Introduce variety of breaks
+    if (idx % 3 === 0) {
+      return sentence + '. [uv_break]';
+    } else if (idx % 3 === 1) {
+      return sentence + '. [lbreak]';
+    } else {
+      return sentence + '.';
+    }
+  }).join(' ');
+
+  // Inject a warm, subtle laughter on celebratory/polite words
+  enriched = enriched.replace(/(\bperfecto\b|\bexcelente\b|\bsoberbio\b|\ba\s+sus\s+órdenes\b)/gi, '[laughter] $1');
+
+  return enriched;
+}
+
 export default function FloatingAssistant({
   accounts,
   accountGroups = [],
@@ -249,6 +363,25 @@ export default function FloatingAssistant({
   const recognitionRef = useRef<any>(null);
   const silenceTimeoutRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // ChatTTS queues and controllers for sequential audio engine
+  const speechQueueRef = useRef<any[]>([]);
+  const isPlayingQueueRef = useRef<boolean>(false);
+  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const queueTimeoutRef = useRef<any>(null);
+
+  const cancelSpeechQueue = () => {
+    speechQueueRef.current = [];
+    isPlayingQueueRef.current = false;
+    if (queueTimeoutRef.current) {
+      clearTimeout(queueTimeoutRef.current);
+      queueTimeoutRef.current = null;
+    }
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    currentUtteranceRef.current = null;
+  };
 
   // Orion State Machine Active State Selection
   let currentOrionState: 'standby' | 'listening' | 'thinking' | 'success' = 'standby';
@@ -327,9 +460,7 @@ export default function FloatingAssistant({
   // Clean speaking on unmount
   useEffect(() => {
     return () => {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      cancelSpeechQueue();
       if (silenceTimeoutRef.current) {
         clearTimeout(silenceTimeoutRef.current);
       }
@@ -339,9 +470,7 @@ export default function FloatingAssistant({
   // Cancel speaking when panel closes
   useEffect(() => {
     if (!isOpen) {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      cancelSpeechQueue();
       setIsSpeaking(false);
     }
   }, [isOpen]);
@@ -370,51 +499,127 @@ export default function FloatingAssistant({
 
   // Speaks using local Web Speech Synthesis with reactive starts/ends
   const speakAsOrion = (text: string) => {
-    if (isMuted || !window.speechSynthesis) {
+    cancelSpeechQueue();
+
+    if (isMuted) {
       setIsSpeaking(false);
       return;
     }
 
-    window.speechSynthesis.cancel();
-
     // Trigger talking chord
     synth.playConfirm();
 
-    const optimized = optimizeTextForSpeech(text);
-    const utterance = new SpeechSynthesisUtterance(optimized);
-    utterance.rate = 1.15; // Habla de manera más fluida, ágil y rápida, respondiendo al ritmo solicitado
-    utterance.pitch = 0.52; // Tono notablemente más grave, profundo e imponente
+    // Enforce ChatTTS human style tags (auto-enrich if there are none)
+    const enrichedText = injectChatTTSEmbelishments(text);
 
-    const voices = window.speechSynthesis.getVoices();
-    const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
-    
-    // Buscar la voz más premium y natural en español, priorizando voces Neural, Sabina (AR), Helena, o de Google
-    const preferredVoice = spanishVoices.find(v => 
-      v.name.toLowerCase().includes('sabina') ||       // Excelente voz premium de Argentina en macOS
-      v.name.toLowerCase().includes('natural') ||      // Voces naturales/neurales
-      v.name.toLowerCase().includes('helena') ||       // Excelente voz de España en macOS
-      v.name.toLowerCase().includes('google español') || // Google cloud-quality voices
-      v.name.toLowerCase().includes('google') ||
-      v.name.toLowerCase().includes('microsoft')       // Microsoft premium edge voices
-    ) || spanishVoices.find(v => v.lang.includes('AR')) || spanishVoices[0] || null;
+    // Parse the text into a sequence of instructions (text or audio cues)
+    const tokenRegex = /(\[laughter\]|\[sigh\]|\[uv_break\]|\[lbreak\])/g;
+    const parts = enrichedText.split(tokenRegex);
+    const queue: Array<{ type: 'text' | 'laughter' | 'sigh' | 'uv_break' | 'lbreak'; content: string }> = [];
 
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
+    parts.forEach(part => {
+      if (!part) return;
+      if (part === '[laughter]') {
+        queue.push({ type: 'laughter', content: part });
+      } else if (part === '[sigh]') {
+        queue.push({ type: 'sigh', content: part });
+      } else if (part === '[uv_break]') {
+        queue.push({ type: 'uv_break', content: part });
+      } else if (part === '[lbreak]') {
+        queue.push({ type: 'lbreak', content: part });
+      } else {
+        const optimized = optimizeTextForSpeech(part);
+        if (optimized.trim()) {
+          queue.push({ type: 'text', content: optimized });
+        }
+      }
+    });
+
+    if (queue.length === 0) {
+      setIsSpeaking(false);
+      return;
     }
 
-    utterance.onstart = () => {
-      setIsSpeaking(true);
+    // Proxy the TTS request to our back-end route to enable centralized logging or server API hooks
+    fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        text: enrichedText, 
+        speed: 1.15, 
+        temperature: 0.35, 
+        refine_text: true 
+      })
+    }).catch(() => {});
+
+    speechQueueRef.current = queue;
+    isPlayingQueueRef.current = true;
+    setIsSpeaking(true);
+
+    let currentIndex = 0;
+
+    const playNextChunk = () => {
+      if (!isPlayingQueueRef.current || currentIndex >= queue.length) {
+        setIsSpeaking(false);
+        isPlayingQueueRef.current = false;
+        return;
+      }
+
+      const item = queue[currentIndex];
+      currentIndex++;
+
+      if (item.type === 'text') {
+        if (!window.speechSynthesis) {
+          queueTimeoutRef.current = setTimeout(playNextChunk, 50);
+          return;
+        }
+
+        const utterance = new SpeechSynthesisUtterance(item.content);
+        utterance.rate = 1.15; // smooth, quick human tempo
+        utterance.pitch = 0.52; // deeper grave authority authority
+
+        const voices = window.speechSynthesis.getVoices();
+        const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
+        
+        // Find best voice: Sabina (AR macOS), Neural, Helena, Google Cloud quality
+        const preferredVoice = spanishVoices.find(v => 
+          v.name.toLowerCase().includes('sabina') ||
+          v.name.toLowerCase().includes('natural') ||
+          v.name.toLowerCase().includes('helena') ||
+          v.name.toLowerCase().includes('google español') ||
+          v.name.toLowerCase().includes('google') ||
+          v.name.toLowerCase().includes('microsoft')
+        ) || spanishVoices.find(v => v.lang.includes('AR')) || spanishVoices[0] || null;
+
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+
+        currentUtteranceRef.current = utterance;
+
+        utterance.onend = () => {
+          queueTimeoutRef.current = setTimeout(playNextChunk, 140); // slight human sentence spacing
+        };
+
+        utterance.onerror = () => {
+          queueTimeoutRef.current = setTimeout(playNextChunk, 50);
+        };
+
+        window.speechSynthesis.speak(utterance);
+      } else if (item.type === 'laughter') {
+        synth.playLaughter();
+        queueTimeoutRef.current = setTimeout(playNextChunk, 580);
+      } else if (item.type === 'sigh') {
+        synth.playSigh();
+        queueTimeoutRef.current = setTimeout(playNextChunk, 480);
+      } else if (item.type === 'uv_break') {
+        queueTimeoutRef.current = setTimeout(playNextChunk, 240);
+      } else if (item.type === 'lbreak') {
+        queueTimeoutRef.current = setTimeout(playNextChunk, 480);
+      }
     };
 
-    utterance.onend = () => {
-      setIsSpeaking(false);
-    };
-
-    utterance.onerror = () => {
-      setIsSpeaking(false);
-    };
-
-    window.speechSynthesis.speak(utterance);
+    playNextChunk();
   };
 
   // Welcome greeting trigger when core becomes open
