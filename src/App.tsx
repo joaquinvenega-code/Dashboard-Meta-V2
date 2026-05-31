@@ -50,7 +50,9 @@ import {
   Bell,
   Search,
   FileText,
-  Network
+  Network,
+  Loader2,
+  Play
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, parseISO, subDays, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
@@ -165,6 +167,9 @@ export default function App() {
       return { voiceType: 'es-419-Neural2-C', capabilities: { notes: true, offlineSales: true, analyze: true } };
     }
   });
+
+  const [previewVoiceType, setPreviewVoiceType] = useState<string>(orionSettings.voiceType);
+  const [isTestingVoice, setIsTestingVoice] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('cr_agency_settings', JSON.stringify(agencySettings));
@@ -733,6 +738,40 @@ export default function App() {
       </div>
     );
   }
+
+  const playVoiceTest = async () => {
+    setIsTestingVoice(true);
+    try {
+      const response = await fetch('/api/tts-google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: "Hola. Esta es una prueba de voz para el asistente.", voiceName: previewVoiceType }),
+      });
+      if (response.ok) {
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audioObj = new Audio(audioUrl);
+        audioObj.onended = () => {
+          setIsTestingVoice(false);
+          URL.revokeObjectURL(audioUrl);
+        };
+        audioObj.onerror = () => setIsTestingVoice(false);
+        audioObj.play().catch((e) => {
+          console.error(e);
+          setIsTestingVoice(false);
+        });
+      } else {
+        setIsTestingVoice(false);
+      }
+    } catch (e) {
+      console.error(e);
+      setIsTestingVoice(false);
+    }
+  };
+
+  const handleSaveVoice = () => {
+    setOrionSettings({ ...orionSettings, voiceType: previewVoiceType });
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex selection:bg-blue-600 selection:text-white">
@@ -1371,10 +1410,10 @@ export default function App() {
                           <Settings2 className="w-4 h-4 text-amber-500" />
                           Voz del Sistema (Premium Neural)
                         </h4>
-                        <div className="max-w-md">
+                        <div className="max-w-md space-y-4">
                           <select
-                            value={orionSettings.voiceType}
-                            onChange={(e) => setOrionSettings({...orionSettings, voiceType: e.target.value})}
+                            value={previewVoiceType}
+                            onChange={(e) => setPreviewVoiceType(e.target.value)}
                             className="w-full bg-black/40 border border-white/5 rounded-xl py-3 px-4 text-sm text-white outline-none focus:border-amber-500/50 transition-all font-bold shadow-inner"
                           >
                             <option value="es-419-Neural2-C">Hombre - Castellano Neutro / Latino (Original)</option>
@@ -1389,6 +1428,24 @@ export default function App() {
                             <option value="es-ES-Neural2-E">Mujer 4 - España</option>
                             <option value="es-ES-Neural2-F">Hombre 2 - España</option>
                           </select>
+                          
+                          <div className="flex gap-3">
+                            <button
+                              onClick={playVoiceTest}
+                              disabled={isTestingVoice}
+                              className="flex-1 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 active:bg-white/5 text-white font-bold py-2.5 px-4 rounded-xl transition-all disabled:opacity-50"
+                            >
+                              {isTestingVoice ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
+                              Escuchar Prueba
+                            </button>
+                            <button
+                              onClick={handleSaveVoice}
+                              disabled={previewVoiceType === orionSettings.voiceType}
+                              className="flex-1 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-500 text-black font-black py-2.5 px-4 rounded-xl transition-all disabled:opacity-50 disabled:bg-neutral-800 disabled:text-neutral-500"
+                            >
+                              {previewVoiceType === orionSettings.voiceType ? 'Voz Actual' : 'Definir Voz'}
+                            </button>
+                          </div>
                         </div>
                       </div>
 
