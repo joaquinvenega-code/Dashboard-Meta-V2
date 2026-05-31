@@ -432,8 +432,8 @@ export default function FloatingAssistant({
           console.error("Audio playback failed, falling back to window.speechSynthesis", e);
           fallbackSpeechSynthesis(text);
         });
-      } else if (response.status === 503) {
-        console.warn("Google Cloud TTS configuracion faltante. Usando respaldo...");
+      } else if (response.status === 503 || response.status === 500) {
+        console.warn(`Google Cloud TTS configuracion faltante API Error: ${response.status}. Usando respaldo...`);
         fallbackSpeechSynthesis(text);
       } else {
         console.warn('Google Cloud TTS failed, falling back...');

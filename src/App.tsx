@@ -792,11 +792,12 @@ export default function App() {
           console.error("Audio playback error by browser. Redirecting to SpeechSynthesis.", e);
           fallbackSpeechSynthesis(testText);
         });
-      } else if (response.status === 503) {
-        alert("¡Falta vincular la clave de Google Cloud TTS! Se está reproduciendo una voz básica de respaldo porque el servicio Premium y Neural no está configurado.");
+      } else if (response.status === 503 || response.status === 500) {
+        const errObj = await response.json().catch(() => ({}));
+        alert(`Google Cloud TTS api error: ${response.status} - ${errObj.error || 'Unknown'}. Usando voz basica de respaldo.`);
         fallbackSpeechSynthesis(testText);
       } else {
-        console.warn("Google TTS failed. Using fallback browser synthesis.");
+        alert("Google TTS failed with status: " + response.status + ". Using fallback browser synthesis.");
         fallbackSpeechSynthesis(testText);
       }
     } catch (e) {
