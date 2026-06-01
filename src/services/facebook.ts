@@ -247,6 +247,33 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
   };
 }
 
+// Función segura para limpiar resoluciones restringidas de la CDN de Facebook
+const ensureHighResFbCdn = (urlStr: string | null) => {
+  if (!urlStr) return null;
+  try {
+    if (!urlStr.includes('fbcdn.net') && !urlStr.includes('instagram.com')) return urlStr;
+    const url = new URL(urlStr);
+    
+    // Eliminamos el parámetro de scale/crop (ej. stp=dst-jpg_s180x540)
+    if (url.searchParams.has('stp')) {
+      url.searchParams.delete('stp');
+    }
+    
+    let path = url.pathname;
+    // Eliminamos carpetas limitadoras de resolución comunes (s240x240, p240x240)
+    path = path.replace(/\/[sp]\d+x\d+\//g, '/');
+    // Eliminamos carpetas compuestas de crop (c0.10.200.200)
+    path = path.replace(/\/c\d+\.\d+\.\d+\.\d+\//g, '/');
+    // Tratar de cambiar sufijo _s.jpg (small) a _n.jpg (normal/high-res) o _o.jpg (original)
+    path = path.replace(/_s\.jpg$/, '_n.jpg');
+    
+    url.pathname = path;
+    return url.toString();
+  } catch (e) {
+    return urlStr;
+  }
+};
+
 export async function fetchTopAds(accountId: string, since: string, until: string, n: number, sortBy: string): Promise<Ad[]> {
   const buster = Math.floor(Math.random() * 9000) + 1000;
   console.info(`%c*** [TopAds] V4.6 ENGINE ACTIVE (#${buster}) - ULTRA SHARP FIX ***`, "color: #ffff00; font-weight: bold; font-size: 14px; background: #000; padding: 4px; border: 1px solid #ffff00;");
@@ -320,19 +347,49 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         const creative = adRes.creative;
         const spec = creative.object_story_spec || {};
 
+        // BLOQUE 1.5: Instagram Native Media (Alta prioridad para Reels / Feed IG en alta resolución nativa)
+        if (!thumb && creative.effective_instagram_story_id) {
+          adType = "publicacion_redes";
+          const igStoryId = creative.effective_instagram_story_id;
+          const igNode: any = await new Promise((resolve) => {
+            // Pedimos campos específicos del IG Media para identificar el formato
+            window.FB.api(`/${igStoryId}`, 'GET', { fields: 'thumbnail_url,media_url,media_type,children{media_url,thumbnail_url,media_type}' }, (res: any) => resolve(res));
+          });
+          if (igNode && !igNode.error) {
+            // Manejamos los 3 formatos principales de IG:
+            if (igNode.media_type === 'IMAGE') {
+               // 1. Feed (Imagen)
+               thumb = igNode.media_url;
+            } else if (igNode.media_type === 'CAROUSEL_ALBUM') {
+               // 2. Feed (Secuencia de imágenes)
+               thumb = igNode.children?.data?.[0]?.media_url || igNode.media_url;
+            } else if (igNode.media_type === 'VIDEO') {
+               // 3. Reel (Video) - Preferimos el thumbnail de alta calidad
+               thumb = igNode.thumbnail_url || igNode.media_url;
+            }
+            if (!thumb && igNode.media_url) thumb = igNode.media_url; // Seguridad final del nodo
+            if (thumb) winningStep = `instagram native media node high-res (${igNode.media_type})`;
+          }
+        }
+
         // BLOQUE 2: Posteos de Redes / Reels (effective_object_story_id)
         if (!thumb && creative.effective_object_story_id) {
           adType = "publicacion_redes";
           const storyId = creative.effective_object_story_id;
           const storyNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,attachments{target{id},media{source,image{src,height,width}},subattachments{target{id},media{image{src,height,width}}}}' }, (res: any) => resolve(res));
+            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,attachments{media_type,target{id},media{source,image{src,height,width}},subattachments{media_type,target{id},media{image{src,height,width}}}}' }, (res: any) => resolve(res));
           });
           
           if (storyNode && !storyNode.error) {
             let hdCandidate: string | null = null;
+            let formatDetected = 'imagen';
             
             // Prioridad A: Buscar target.id (Video / Foto nativo) para obtener el formato HD real
             if (!hdCandidate && storyNode.attachments?.data) {
+              const mainAttach = storyNode.attachments.data[0];
+              if (mainAttach.media_type) formatDetected = mainAttach.media_type;
+              else if (mainAttach.subattachments?.data) formatDetected = 'carousel';
+              
               let targetId = null;
               const scanTarget = (it: any[]) => it.forEach(i => { if (i.target?.id && !targetId) targetId = i.target.id; if (i.subattachments?.data) scanTarget(i.subattachments.data); });
               scanTarget(storyNode.attachments.data);
@@ -343,9 +400,11 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
                  });
                  if (targetNode && !targetNode.error) {
                     if (targetNode.images && Array.isArray(targetNode.images)) {
+                       // Es una imagen (o frame de secuencia)
                        const sortedImages = [...targetNode.images].sort((a,b) => (b.width * b.height) - (a.width * a.height));
                        hdCandidate = sortedImages[0]?.source || null;
                     } else if (targetNode.format && Array.isArray(targetNode.format)) {
+                       // Es un video (Reel / FB Video)
                        const sortedFormat = [...targetNode.format].sort((a,b) => (b.width * b.height) - (a.width * a.height));
                        hdCandidate = sortedFormat[0]?.picture || null; // Picture en format suele ser el thumbnail HD del video
                     }
@@ -366,26 +425,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             if (!hdCandidate && creative.image_url) hdCandidate = creative.image_url;
 
             thumb = hdCandidate || storyNode.full_picture;
-            if (thumb) winningStep = hdCandidate ? "story/reel high-res target fetch" : "story fallback full_picture";
-          }
-        }
-
-        // BLOQUE 3: Instagram Native Media (Fallback manual a high-res en caso de Fallo)
-        if (!thumb && creative.effective_instagram_story_id) {
-          adType = "publicacion_redes";
-          const igStoryId = creative.effective_instagram_story_id;
-          const igNode: any = await new Promise((resolve) => {
-            // Intentamos pedir los campos del IG Media
-            window.FB.api(`/${igStoryId}`, 'GET', { fields: 'thumbnail_url,media_url,media_type,children{media_url,thumbnail_url,media_type}' }, (res: any) => resolve(res));
-          });
-          if (igNode && !igNode.error) {
-            if (igNode.media_type === 'IMAGE' || igNode.media_type === 'CAROUSEL_ALBUM') {
-               thumb = igNode.media_url || igNode.children?.data?.[0]?.media_url;
-            }
-            if (!thumb) {
-               thumb = igNode.thumbnail_url || igNode.children?.data?.[0]?.thumbnail_url;
-            }
-            if (thumb) winningStep = "instagram native media node high-res";
+            if (thumb) winningStep = hdCandidate ? `story/reel high-res target fetch (${formatDetected})` : "story fallback full_picture";
           }
         }
 
@@ -482,7 +522,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         }
       }
 
-      ad.thumbnail = thumb;
+      ad.thumbnail = ensureHighResFbCdn(thumb);
 
       // PASO FINAL: Link de Previsualización (Aislado de la carga de imágenes para evitar bloqueos)
       try {
