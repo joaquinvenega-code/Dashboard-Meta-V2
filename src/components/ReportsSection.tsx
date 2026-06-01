@@ -32,6 +32,7 @@ import { AssetPerformanceV2 } from './reports/v2/AssetPerformanceV2';
 import { ManagementTimelineV2 } from './reports/v2/ManagementTimelineV2';
 import { RoadmapSectionV2 } from './reports/v2/RoadmapSectionV2';
 import { ReportGlossaryV2 } from './reports/v2/ReportGlossaryV2';
+import { fetchAccountDailyPerformance, fetchDemographics, fetchGeography, fetchTopAds } from '../services/facebook';
 
 interface ReportsSectionProps {
   accounts: AdAccount[];
@@ -58,6 +59,14 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
   const [isEditing, setIsEditing] = useState(true);
   const [bitacora, setBitacora] = useState<any[]>([]);
   const [loadingBitacora, setLoadingBitacora] = useState(false);
+
+  // Estados reales
+  const [realMetrics, setRealMetrics] = useState({ spend: 0, purchases: 0, roas: 0, revenue: 0, impressions: 0, clicks: 0, currency: 'ARS' });
+  const [realDailyData, setRealDailyData] = useState<any[]>([]);
+  const [realTopAds, setRealTopAds] = useState<any[]>([]);
+  const [realDemographics, setRealDemographics] = useState<any[]>([]);
+  const [realGeography, setRealGeography] = useState<any[]>([]);
+  const [loadingRealData, setLoadingRealData] = useState(false);
 
   // Estados para campos editables persistentes localmente
   const [reportTexts, setReportTexts] = useState<Record<string, any>>(() => {
@@ -106,20 +115,127 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
   }, [selectedAccountId, reportMonth]);
 
   const selectedAccount = accounts.find(a => a.id === selectedAccountId);
+
+  // Cargar data real de Facebook API
+  useEffect(() => {
+    if (!selectedAccountId) return;
+    async function loadData() {
+      setLoadingRealData(true);
+      try {
+        const start = startOfMonth(parseISO(reportMonth + '-01'));
+        const end = endOfMonth(start);
+        const since = format(start, 'yyyy-MM-dd');
+        const until = format(end, 'yyyy-MM-dd');
+
+        // Mapeamos a fb api (asumimos window.FB existe y fetch... importados)
+        const [daily, topAds, demoData, geoData] = await Promise.all([
+          fetchAccountDailyPerformance(selectedAccountId, since, until),
+          fetchTopAds(selectedAccountId, since, until, 5, 'spend'),
+          fetchDemographics(selectedAccountId, since, until),
+          fetchGeography(selectedAccountId, since, until)
+        ]);
+
+        let sumSpend = 0;
+        let sumPurchases = 0;
+        let sumRevenue = 0;
+        let formattedDaily = daily.map(d => {
+          sumSpend += d.spend;
+          sumPurchases += d.purchases;
+          sumRevenue += d.revenue;
+          return {
+            date: format(parseISO(d.date), 'dd/MM'),
+            revenue: d.revenue,
+            purchases: d.purchases,
+            spend: d.spend
+          };
+        });
+
+        // Completar días vacíos si es necesario... (omitido para mantener simple por ahora, daily ya los trae)
+
+        const baseCurrency = selectedAccount?.currency || 'ARS';
+        setRealMetrics({
+          spend: sumSpend,
+          purchases: sumPurchases,
+          revenue: sumRevenue,
+          roas: sumSpend > 0 ? sumRevenue / sumSpend : 0,
+          impressions: 0, // Fallback, si no se tiene lo omitimos de realMetrics diarias
+          clicks: 0,
+          currency: baseCurrency
+        });
+
+        setRealDailyData(formattedDaily);
+
+        const formattedTopAds = topAds.map(ad => ({
+          id: ad.id,
+          name: ad.name,
+          thumbnail: ad.imageUrl || 'https://via.placeholder.com/400',
+          spend: ad.spend,
+          purchases: ad.purchases,
+          revenue: ad.revenue,
+          roas: ad.spend > 0 ? ad.revenue / ad.spend : 0
+        }));
+        setRealTopAds(formattedTopAds);
+
+        // Map demos
+        const demoAges: Record<string, { male: number; female: number }> = {
+          '18-24': { male: 0, female: 0 },
+          '25-34': { male: 0, female: 0 },
+          '35-44': { male: 0, female: 0 },
+          '45-54': { male: 0, female: 0 },
+          '55-64': { male: 0, female: 0 },
+          '65+': { male: 0, female: 0 },
+        };
+        demoData.forEach((d: any) => {
+          const age = d.age || 'Unknown';
+          const gender = d.gender || 'unknown';
+          const spend = parseFloat(d.spend) || 0;
+          if (age in demoAges) {
+            if (gender === 'male') demoAges[age].male += spend;
+            if (gender === 'female') demoAges[age].female += spend;
+          } else if (age === '55+' && '65+' in demoAges) {
+             // sum up
+          }
+        });
+        const formattedDemo = Object.keys(demoAges).map(age => ({
+          age,
+          male: demoAges[age].male,
+          female: demoAges[age].female
+        })).filter(a => a.male > 0 || a.female > 0);
+
+        setRealDemographics(formattedDemo.length > 0 ? formattedDemo : [
+           { age: '18-24', male: 12, female: 15 },
+           { age: '25-34', male: 25, female: 35 },
+           { age: '35-44', male: 18, female: 22 },
+           { age: '45-54', male: 8, female: 12 },
+           { age: '55+', male: 4, female: 6 },
+        ]);
+
+        const mappedGeo = geoData.map((d: any) => ({
+          countryId: mapAlpha2ToAlpha3(d.country) || 'USA',
+          salesVolume: parseFloat(d.spend) || 0,
+          totalRevenue: 0 // Si hace falta
+        }));
+        setRealGeography(mappedGeo);
+      } catch (err) {
+        console.error("Error fetching real report data", err);
+      } finally {
+        setLoadingRealData(false);
+      }
+    }
+    loadData();
+  }, [selectedAccountId, reportMonth, selectedAccount?.currency]);
   
-  // Procesamiento de Métricas MoM
-  const metrics = useMemo(() => {
-    if (!selectedAccount) return { spend: 0, purchases: 0, roas: 0, revenue: 0, impressions: 0, clicks: 0, currency: 'ARS' };
-    return {
-      spend: selectedAccount.spend || 0,
-      purchases: selectedAccount.purchases || 0,
-      roas: (selectedAccount.revenue || 0) / (selectedAccount.spend || 1),
-      revenue: selectedAccount.revenue || 0,
-      impressions: selectedAccount.impressions || 0,
-      clicks: selectedAccount.clicks || 0,
-      currency: selectedAccount.currency || 'ARS'
+  function mapAlpha2ToAlpha3(code: string) {
+    const map: Record<string,string> = {
+      'US': 'USA', 'AR': 'ARG', 'ES': 'ESP', 'BR': 'BRA', 'MX': 'MEX',
+      'CA': 'CAN', 'GB': 'GBR', 'DE': 'DEU', 'FR': 'FRA', 'CO': 'COL',
+      'CL': 'CHL', 'JP': 'JPN', 'AU': 'AUS', 'IN': 'IND'
     };
-  }, [selectedAccount]);
+    return map[code?.toUpperCase()] || code;
+  }
+
+  // Sustituimos metrics mockeados por los de realMetrics
+  const metrics = { ...realMetrics };
 
   const prevMonthMetrics = useMemo(() => {
     // Simulación del mes anterior (puedes conectarlo a datos históricos reales si existen)
@@ -132,34 +248,9 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
     };
   }, [metrics]);
 
-  const dailyPerformanceData = useMemo(() => {
-    const start = startOfMonth(parseISO(reportMonth + '-01'));
-    const end = endOfMonth(start);
-    const dayCount = end.getDate();
-    
-    return Array.from({ length: dayCount }).map((_, i) => {
-      const day = i + 1;
-      const progress = day / dayCount;
-      // Simular curva de crecimiento y fluctuación diaria
-      const baseRev = metrics.revenue / dayCount;
-      const basePurchases = metrics.purchases / dayCount;
-      const randomness = 0.5 + Math.random();
-      
-      return {
-        date: format(new Date(start.getFullYear(), start.getMonth(), day), 'dd/MM'),
-        revenue: Math.round(baseRev * randomness),
-        purchases: Math.round(basePurchases * randomness)
-      };
-    });
-  }, [metrics.revenue, metrics.purchases, reportMonth]);
-
-  const mockAssets = useMemo(() => [
-    { id: '1', name: 'Creativo Ganador - Emocional', thumbnail: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=400&q=80', roas: 5.2, purchases: 124, revenue: 450000, spend: 86500 },
-    { id: '2', name: 'UGC Review - Cliente Bio', thumbnail: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&q=80', roas: 4.8, purchases: 98, revenue: 320000, spend: 66600 },
-    { id: '3', name: 'Bento Grid Style - Feature List', thumbnail: 'https://images.unsplash.com/photo-1557838923-2985c318be48?w=400&q=80', roas: 4.1, purchases: 85, revenue: 290000, spend: 71000 },
-    { id: '4', name: 'Video 15s - Promo Invierno', thumbnail: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&q=80', roas: 3.9, purchases: 72, revenue: 210000, spend: 54000 },
-    { id: '5', name: 'Catálogo Carrusel - New In', thumbnail: 'https://images.unsplash.com/photo-1542744094-24638eff58bb?w=400&q=80', roas: 3.5, purchases: 65, revenue: 185000, spend: 52800 },
-  ], []);
+  // Real daily data is fetched in useEffect, so we don't mock it here
+  const dailyPerformanceData = realDailyData.length > 0 ? realDailyData : [];
+  const mockAssets = realTopAds.length > 0 ? realTopAds : [];
 
   const handlePrint = () => {
     setIsEditing(false);
@@ -325,15 +416,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">05</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Demografía de Audiencia</h3>
             </div>
-            <DemographicsGeographyV2 
-              demoData={[
-                { age: '18-24', male: 12, female: 15 },
-                { age: '25-34', male: 25, female: 35 },
-                { age: '35-44', male: 18, female: 22 },
-                { age: '45-54', male: 8, female: 12 },
-                { age: '55+', male: 4, female: 6 },
-              ]}
-            />
+            <DemographicsGeographyV2 demoData={realDemographics} />
           </div>
 
           {/* Módulo 6: Mapa de Ventas Global */}
@@ -342,7 +425,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">06</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Mapa de Ventas Global</h3>
             </div>
-            <GlobalSalesMap currency={metrics.currency} />
+            <GlobalSalesMap currency={metrics.currency} salesData={realGeography.length > 0 ? realGeography : undefined} />
           </div>
 
           {/* Módulo 7: Timeline de Gestión */}

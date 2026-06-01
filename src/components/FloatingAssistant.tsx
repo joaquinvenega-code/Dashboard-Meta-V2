@@ -406,7 +406,8 @@ export default function FloatingAssistant({
     synth.playConfirm();
 
     try {
-      const response = await fetch('/orion/tts-google', {
+      const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
+      const response = await fetch(`${baseUrl}/orion/tts-google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, voiceName: orionSettings?.voiceType || 'es-US-Neural2-C' }),

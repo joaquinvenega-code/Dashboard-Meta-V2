@@ -771,7 +771,8 @@ export default function App() {
     setIsTestingVoice(true);
     const testText = "Hola. Esta es una prueba de la voz seleccionada.";
     try {
-      const response = await fetch('/orion/tts-google', {
+      const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
+      const response = await fetch(`${baseUrl}/orion/tts-google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: testText, voiceName: previewVoiceType }),
