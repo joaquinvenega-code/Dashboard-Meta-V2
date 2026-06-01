@@ -247,18 +247,17 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
   };
 }
 
-// v4.6 - MOTOR DE RESOLUCIÓN POR BLOQUES (ULTRA SHARP, CATALOG RESCUE & AMARILLO NEON)
+// v4.7 - MOTOR DE RESOLUCIÓN POR BLOQUES (ULTRA SHARP, CATALOG RESCUE & AMARILLO NEON)
 const upgradeToHD = (url: string | null) => {
   if (!url) return null;
-  // Preservamos URLs con firmas de seguridad (_o, _n) para evitar 403 Forbidden
-  if (url.includes('_o.jpg') || url.includes('_n.jpg') || url.includes('s1080x1080')) return url;
+  // Preservamos URLs con firmas de seguridad (_o, _n) si ya están limpias de recortes
   
   if (url.includes('fbcdn.net') || url.includes('instagram.com')) {
-    // Reemplazamos patrones de tamaño común en FB e IG
-    return url.replace(/\/[sp]\d+x\d+\//, '/s1080x1080/')
-              .replace(/\/s\d+x\d+\//, '/s1080x1080/')
-              .replace(/\/p\d+x\d+\//, '/s1080x1080/')
-              .replace(/_s\.jpg/, '_o.jpg'); // Intento de forzar original
+    // Reemplazamos patrones de tamaño restrictivos (ej: /p240x240/ o /s130x130/) por barra simple para obtener el original validado por CDN
+    let hdUrl = url.replace(/\/[sp]\d+x\d+\//g, '/');
+    hdUrl = hdUrl.replace(/_s\.jpg(\?|$)/, '_n.jpg$1'); // Intento de forzar normal resolution (1080p), _o.jpg a veces falla por firmas
+    hdUrl = hdUrl.replace(/_a\.jpg(\?|$)/, '_n.jpg$1');
+    return hdUrl;
   }
   return url;
 };
@@ -322,7 +321,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       // PASO 0: Llamada inicial (v4.3 - Reforzamos campos de video y thumbnails)
       let adRes: any = await new Promise((resolve) => {
         window.FB.api(`/${ad.id}`, 'GET', {
-          fields: 'creative{id,image_url,image_hash,thumbnail_url,object_story_spec,asset_feed_spec,effective_object_story_id,video_id}'
+          fields: 'creative{id,image_url,image_hash,thumbnail_url,object_story_spec,asset_feed_spec,effective_object_story_id,effective_instagram_story_id,video_id}'
         }, (res: any) => resolve(res));
       });
 
@@ -335,6 +334,23 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       if (adRes && !adRes.error && adRes.creative) {
         const creative = adRes.creative;
         const spec = creative.object_story_spec || {};
+
+        // NUEVO BLOQUE: Instagram Native Media (Alta prioridad para Reels / Feed IG en alta resolución nativa)
+        if (!thumb && creative.effective_instagram_story_id) {
+          adType = "publicacion_redes";
+          const igStoryId = creative.effective_instagram_story_id;
+          const igNode: any = await new Promise((resolve) => {
+            // Intentamos pedir los campos del IG Media
+            window.FB.api(`/${igStoryId}`, 'GET', { fields: 'thumbnail_url,media_url,children{media_url,thumbnail_url}' }, (res: any) => resolve(res));
+          });
+          if (igNode && !igNode.error) {
+            thumb = igNode.thumbnail_url || igNode.media_url;
+            if (!thumb && igNode.children?.data) {
+              thumb = igNode.children.data[0]?.thumbnail_url || igNode.children.data[0]?.media_url;
+            }
+            if (thumb) winningStep = "instagram native media node high-res";
+          }
+        }
 
         // BLOQUE 3: Posteos de Redes / Reels
         if (!thumb && creative.effective_object_story_id) {

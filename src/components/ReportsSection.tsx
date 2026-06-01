@@ -168,7 +168,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
         const formattedTopAds = topAds.map(ad => ({
           id: ad.id,
           name: ad.name,
-          thumbnail: ad.imageUrl || 'https://via.placeholder.com/400',
+          thumbnail: ad.thumbnail || 'https://via.placeholder.com/400',
           spend: ad.spend,
           purchases: ad.purchases,
           revenue: ad.revenue,

@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   initFacebookSdk, 
