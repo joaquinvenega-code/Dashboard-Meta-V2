@@ -247,22 +247,6 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
   };
 }
 
-// v4.7 - MOTOR DE RESOLUCIÓN POR BLOQUES (ULTRA SHARP, CATALOG RESCUE & AMARILLO NEON)
-const upgradeToHD = (url: string | null) => {
-  if (!url) return null;
-  // Preservamos URLs con firmas de seguridad (_o, _n) si ya están limpias de recortes
-  
-  if (url.includes('fbcdn.net') || url.includes('instagram.com')) {
-    // Reemplazamos patrones de tamaño restrictivos y crops (ej: /p240x240/, /s130x130/, /c0.15.500.500/) por barra simple para obtener el original
-    let hdUrl = url.replace(/\/[sp]\d+x\d+\//g, '/'); // Remueve p200x200 o s200x200
-    hdUrl = hdUrl.replace(/\/c\d+\.\d+\.\d+\.\d+\//g, '/'); // Remueve crops como c0.25.400.400
-    hdUrl = hdUrl.replace(/_s\.jpg(\?|$)/, '_n.jpg$1'); // Intento de forzar normal resolution (1080p), _o.jpg a veces falla por firmas
-    hdUrl = hdUrl.replace(/_a\.jpg(\?|$)/, '_n.jpg$1');
-    return hdUrl;
-  }
-  return url;
-};
-
 export async function fetchTopAds(accountId: string, since: string, until: string, n: number, sortBy: string): Promise<Ad[]> {
   const buster = Math.floor(Math.random() * 9000) + 1000;
   console.info(`%c*** [TopAds] V4.6 ENGINE ACTIVE (#${buster}) - ULTRA SHARP FIX ***`, "color: #ffff00; font-weight: bold; font-size: 14px; background: #000; padding: 4px; border: 1px solid #ffff00;");
@@ -341,45 +325,48 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           adType = "publicacion_redes";
           const storyId = creative.effective_object_story_id;
           const storyNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,thumbnail_url,display_resources,attachments{target{id},media{image{src,height,width}},subattachments{target{id},media{image{src,height,width}}}}' }, (res: any) => resolve(res));
+            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,attachments{target{id},media{source,image{src,height,width}},subattachments{target{id},media{image{src,height,width}}}}' }, (res: any) => resolve(res));
           });
+          
           if (storyNode && !storyNode.error) {
-            // Instagram a veces tiene display_resources con el HD real
-            if (storyNode.display_resources && Array.isArray(storyNode.display_resources)) {
-              const sorted = [...storyNode.display_resources].sort((a,b) => (b.config_width || 0) - (a.config_width || 0));
-              thumb = sorted[0]?.src || null;
-            }
-            // ESCANEO PROFUNDO: Buscar target.id para obtener el HD original
-            if (!thumb && storyNode.attachments?.data) {
+            let hdCandidate: string | null = null;
+            
+            // Prioridad A: Buscar target.id (Video / Foto nativo) para obtener el formato HD real
+            if (!hdCandidate && storyNode.attachments?.data) {
               let targetId = null;
               const scanTarget = (it: any[]) => it.forEach(i => { if (i.target?.id && !targetId) targetId = i.target.id; if (i.subattachments?.data) scanTarget(i.subattachments.data); });
               scanTarget(storyNode.attachments.data);
               
               if (targetId) {
                  const targetNode: any = await new Promise((resolve) => {
-                    window.FB.api(`/${targetId}`, 'GET', { fields: 'images,format,picture,thumbnails{thumbnails}' }, (res: any) => resolve(res));
+                    window.FB.api(`/${targetId}`, 'GET', { fields: 'images,format,picture' }, (res: any) => resolve(res));
                  });
                  if (targetNode && !targetNode.error) {
                     if (targetNode.images && Array.isArray(targetNode.images)) {
                        const sortedImages = [...targetNode.images].sort((a,b) => (b.width * b.height) - (a.width * a.height));
-                       thumb = sortedImages[0]?.source || null;
+                       hdCandidate = sortedImages[0]?.source || null;
                     } else if (targetNode.format && Array.isArray(targetNode.format)) {
                        const sortedFormat = [...targetNode.format].sort((a,b) => (b.width * b.height) - (a.width * a.height));
-                       thumb = sortedFormat[0]?.picture || null;
+                       hdCandidate = sortedFormat[0]?.picture || null; // Picture en format suele ser el thumbnail HD del video
                     }
                  }
               }
             }
-            // Si seguimos sin thumb, usamos imagenes por defecto de media o fallback
-            if (!thumb && storyNode.attachments?.data) {
+            
+            // Prioridad B: Buscar media.image.src si no hubo targetId
+            if (!hdCandidate && storyNode.attachments?.data) {
               const allMedia: any[] = [];
               const scan = (it: any[]) => it.forEach(i => { if (i.media?.image) allMedia.push(i.media.image); if (i.subattachments?.data) scan(i.subattachments.data); });
               scan(storyNode.attachments.data);
               allMedia.sort((a, b) => (b.width * b.height) - (a.width * a.height));
-              thumb = allMedia[0]?.src || null;
+              hdCandidate = allMedia[0]?.src || null;
             }
-            thumb = thumb || storyNode.thumbnail_url || storyNode.full_picture;
-            if (thumb) winningStep = "story/reel high-res node search";
+
+            // Prioridad C: creative.image_url (A veces FB inyecta aquí el thumbnail orgánico en alta calidad)
+            if (!hdCandidate && creative.image_url) hdCandidate = creative.image_url;
+
+            thumb = hdCandidate || storyNode.full_picture;
+            if (thumb) winningStep = hdCandidate ? "story/reel high-res target fetch" : "story fallback full_picture";
           }
         }
 
@@ -495,7 +482,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         }
       }
 
-      ad.thumbnail = upgradeToHD(thumb);
+      ad.thumbnail = thumb;
 
       // PASO FINAL: Link de Previsualización (Aislado de la carga de imágenes para evitar bloqueos)
       try {
