@@ -253,8 +253,9 @@ const upgradeToHD = (url: string | null) => {
   // Preservamos URLs con firmas de seguridad (_o, _n) si ya están limpias de recortes
   
   if (url.includes('fbcdn.net') || url.includes('instagram.com')) {
-    // Reemplazamos patrones de tamaño restrictivos (ej: /p240x240/ o /s130x130/) por barra simple para obtener el original validado por CDN
-    let hdUrl = url.replace(/\/[sp]\d+x\d+\//g, '/');
+    // Reemplazamos patrones de tamaño restrictivos y crops (ej: /p240x240/, /s130x130/, /c0.15.500.500/) por barra simple para obtener el original
+    let hdUrl = url.replace(/\/[sp]\d+x\d+\//g, '/'); // Remueve p200x200 o s200x200
+    hdUrl = hdUrl.replace(/\/c\d+\.\d+\.\d+\.\d+\//g, '/'); // Remueve crops como c0.25.400.400
     hdUrl = hdUrl.replace(/_s\.jpg(\?|$)/, '_n.jpg$1'); // Intento de forzar normal resolution (1080p), _o.jpg a veces falla por firmas
     hdUrl = hdUrl.replace(/_a\.jpg(\?|$)/, '_n.jpg$1');
     return hdUrl;
@@ -357,7 +358,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           adType = "publicacion_redes";
           const storyId = creative.effective_object_story_id;
           const storyNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,thumbnail_url,attachments{media{image{src,height,width}},subattachments{media{image{src,height,width}}},display_resources}' }, (res: any) => resolve(res));
+            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,thumbnail_url,display_resources,attachments{target{id},media{image{src,height,width}},subattachments{target{id},media{image{src,height,width}}}}' }, (res: any) => resolve(res));
           });
           if (storyNode && !storyNode.error) {
             // Instagram a veces tiene display_resources con el HD real
@@ -365,7 +366,28 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               const sorted = [...storyNode.display_resources].sort((a,b) => (b.config_width || 0) - (a.config_width || 0));
               thumb = sorted[0]?.src || null;
             }
-            // Si no, escaneamos adjuntos
+            // ESCANEO PROFUNDO: Buscar target.id para obtener el HD original
+            if (!thumb && storyNode.attachments?.data) {
+              let targetId = null;
+              const scanTarget = (it: any[]) => it.forEach(i => { if (i.target?.id && !targetId) targetId = i.target.id; if (i.subattachments?.data) scanTarget(i.subattachments.data); });
+              scanTarget(storyNode.attachments.data);
+              
+              if (targetId) {
+                 const targetNode: any = await new Promise((resolve) => {
+                    window.FB.api(`/${targetId}`, 'GET', { fields: 'images,format,picture,thumbnails{thumbnails}' }, (res: any) => resolve(res));
+                 });
+                 if (targetNode && !targetNode.error) {
+                    if (targetNode.images && Array.isArray(targetNode.images)) {
+                       const sortedImages = [...targetNode.images].sort((a,b) => (b.width * b.height) - (a.width * a.height));
+                       thumb = sortedImages[0]?.source || null;
+                    } else if (targetNode.format && Array.isArray(targetNode.format)) {
+                       const sortedFormat = [...targetNode.format].sort((a,b) => (b.width * b.height) - (a.width * a.height));
+                       thumb = sortedFormat[0]?.picture || null;
+                    }
+                 }
+              }
+            }
+            // Si seguimos sin thumb, usamos imagenes por defecto de media o fallback
             if (!thumb && storyNode.attachments?.data) {
               const allMedia: any[] = [];
               const scan = (it: any[]) => it.forEach(i => { if (i.media?.image) allMedia.push(i.media.image); if (i.subattachments?.data) scan(i.subattachments.data); });
