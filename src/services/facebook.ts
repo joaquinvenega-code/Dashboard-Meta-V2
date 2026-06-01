@@ -336,24 +336,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         const creative = adRes.creative;
         const spec = creative.object_story_spec || {};
 
-        // NUEVO BLOQUE: Instagram Native Media (Alta prioridad para Reels / Feed IG en alta resolución nativa)
-        if (!thumb && creative.effective_instagram_story_id) {
-          adType = "publicacion_redes";
-          const igStoryId = creative.effective_instagram_story_id;
-          const igNode: any = await new Promise((resolve) => {
-            // Intentamos pedir los campos del IG Media
-            window.FB.api(`/${igStoryId}`, 'GET', { fields: 'thumbnail_url,media_url,children{media_url,thumbnail_url}' }, (res: any) => resolve(res));
-          });
-          if (igNode && !igNode.error) {
-            thumb = igNode.thumbnail_url || igNode.media_url;
-            if (!thumb && igNode.children?.data) {
-              thumb = igNode.children.data[0]?.thumbnail_url || igNode.children.data[0]?.media_url;
-            }
-            if (thumb) winningStep = "instagram native media node high-res";
-          }
-        }
-
-        // BLOQUE 3: Posteos de Redes / Reels
+        // BLOQUE 2: Posteos de Redes / Reels (effective_object_story_id)
         if (!thumb && creative.effective_object_story_id) {
           adType = "publicacion_redes";
           const storyId = creative.effective_object_story_id;
@@ -397,6 +380,25 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             }
             thumb = thumb || storyNode.thumbnail_url || storyNode.full_picture;
             if (thumb) winningStep = "story/reel high-res node search";
+          }
+        }
+
+        // BLOQUE 3: Instagram Native Media (Fallback manual a high-res en caso de Fallo)
+        if (!thumb && creative.effective_instagram_story_id) {
+          adType = "publicacion_redes";
+          const igStoryId = creative.effective_instagram_story_id;
+          const igNode: any = await new Promise((resolve) => {
+            // Intentamos pedir los campos del IG Media
+            window.FB.api(`/${igStoryId}`, 'GET', { fields: 'thumbnail_url,media_url,media_type,children{media_url,thumbnail_url,media_type}' }, (res: any) => resolve(res));
+          });
+          if (igNode && !igNode.error) {
+            if (igNode.media_type === 'IMAGE' || igNode.media_type === 'CAROUSEL_ALBUM') {
+               thumb = igNode.media_url || igNode.children?.data?.[0]?.media_url;
+            }
+            if (!thumb) {
+               thumb = igNode.thumbnail_url || igNode.children?.data?.[0]?.thumbnail_url;
+            }
+            if (thumb) winningStep = "instagram native media node high-res";
           }
         }
 

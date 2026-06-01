@@ -590,13 +590,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     loading="lazy"
                     onError={(e) => {
                       const img = e.target as HTMLImageElement;
-                      const originalUrl = img.getAttribute('data-original') || '';
-                      
-                      if (img.src.includes('/s1080x1080/')) {
-                        img.src = originalUrl.replace('/s1080x1080/', '/'); 
-                        return;
-                      }
-
                       img.style.display = 'none';
                       const placeholder = img.parentElement?.querySelector('.ad-placeholder');
                       if (placeholder) placeholder.classList.remove('hidden');
