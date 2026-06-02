@@ -247,9 +247,31 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
   };
 }
 
-// Función segura para limpiar resoluciones restringidas de la CDN de Facebook
+// Función segura para limpiar resoluciones restringidas de la CDN de Facebook sin romper firmas (signatures)
 const ensureHighResFbCdn = (urlStr: string | null) => {
-  return urlStr; // Modificando la URL rompemos los signatures del CDN (oh, oe). Mejor buscar el HD desde node.
+  if (!urlStr) return null;
+  try {
+    if (!urlStr.includes('fbcdn.net') && !urlStr.includes('instagram.com')) return urlStr;
+    const url = new URL(urlStr);
+    
+    // Eliminamos parámetros restrictivos temporales de scale
+    if (url.searchParams.has('stp')) {
+      url.searchParams.delete('stp');
+    }
+    
+    let path = url.pathname;
+    // Eliminamos carpetas limitadoras de resolución (ej. s240x240, p240x240, p480x480)
+    path = path.replace(/\/[sp]\d+x\d+\//g, '/');
+    // Eliminamos carpetas de crop duro (ej. c0.10.200.200)
+    path = path.replace(/\/c\d+\.\d+\.\d+\.\d+\//g, '/');
+    
+    // NOTA: No modificamos el sufijo _s.jpg a _n.jpg ni borramos parámetros _nc, oh, oe, para no invalidar el CDN signature.
+    
+    url.pathname = path;
+    return url.toString();
+  } catch (e) {
+    return urlStr;
+  }
 };
 
 export async function fetchTopAds(accountId: string, since: string, until: string, n: number, sortBy: string): Promise<Ad[]> {
