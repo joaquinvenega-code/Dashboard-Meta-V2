@@ -584,15 +584,20 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                   <img 
                     src={ad.thumbnail} 
                     alt={ad.name} 
-                    data-original={ad.thumbnail}
+                    data-original={ad.originalThumbnailUrl || ad.thumbnail}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" 
                     referrerPolicy="no-referrer"
                     loading="lazy"
                     onError={(e) => {
                       const img = e.target as HTMLImageElement;
-                      img.style.display = 'none';
-                      const placeholder = img.parentElement?.querySelector('.ad-placeholder');
-                      if (placeholder) placeholder.classList.remove('hidden');
+                      if (!img.getAttribute('data-retried') && ad.originalThumbnailUrl && ad.originalThumbnailUrl !== ad.thumbnail) {
+                        img.setAttribute('data-retried', 'true');
+                        img.src = ad.originalThumbnailUrl;
+                      } else {
+                        img.style.display = 'none';
+                        const placeholder = img.parentElement?.querySelector('.ad-placeholder');
+                        if (placeholder) placeholder.classList.remove('hidden');
+                      }
                     }}
                     style={{ 
                       WebkitFontSmoothing: 'antialiased',

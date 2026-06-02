@@ -247,9 +247,28 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
   };
 }
 
-// Función de paso transparente para evitar romper las firmas del CDN de Facebook (403 Forbidden)
+// Función analítica para limpiar resoluciones restringidas de la CDN de Facebook sin invalidar firmas
 const ensureHighResFbCdn = (urlStr: string | null) => {
-  return urlStr;
+  if (!urlStr) return null;
+  try {
+    const url = new URL(urlStr);
+    
+    if (url.searchParams.has('stp')) {
+      url.searchParams.delete('stp');
+    }
+    
+    let path = url.pathname;
+    
+    // Eliminamos carpetas limitadoras de resolución comunes (s240x240, p240x240, etc)
+    path = path.replace(/\/[sp]\d+x\d+\//g, '/');
+    // Eliminamos carpetas compuestas de crop (c0.10.200.200)
+    path = path.replace(/\/c\d+\.\d+\.\d+\.\d+\//g, '/');
+    
+    url.pathname = path;
+    return url.toString();
+  } catch (e) {
+    return urlStr;
+  }
 };
 
 export async function fetchTopAds(accountId: string, since: string, until: string, n: number, sortBy: string): Promise<Ad[]> {
@@ -523,6 +542,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         }
       }
 
+      ad.originalThumbnailUrl = thumb;
       ad.thumbnail = ensureHighResFbCdn(thumb);
 
       // PASO FINAL: Link de Previsualización (Aislado de la carga de imágenes para evitar bloqueos)
