@@ -249,29 +249,7 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
 
 // Función segura para limpiar resoluciones restringidas de la CDN de Facebook
 const ensureHighResFbCdn = (urlStr: string | null) => {
-  if (!urlStr) return null;
-  try {
-    if (!urlStr.includes('fbcdn.net') && !urlStr.includes('instagram.com')) return urlStr;
-    const url = new URL(urlStr);
-    
-    // Eliminamos el parámetro de scale/crop (ej. stp=dst-jpg_s180x540)
-    if (url.searchParams.has('stp')) {
-      url.searchParams.delete('stp');
-    }
-    
-    let path = url.pathname;
-    // Eliminamos carpetas limitadoras de resolución comunes (s240x240, p240x240)
-    path = path.replace(/\/[sp]\d+x\d+\//g, '/');
-    // Eliminamos carpetas compuestas de crop (c0.10.200.200)
-    path = path.replace(/\/c\d+\.\d+\.\d+\.\d+\//g, '/');
-    // Tratar de cambiar sufijo _s.jpg (small) a _n.jpg (normal/high-res) o _o.jpg (original)
-    path = path.replace(/_s\.jpg$/, '_n.jpg');
-    
-    url.pathname = path;
-    return url.toString();
-  } catch (e) {
-    return urlStr;
-  }
+  return urlStr; // Modificando la URL rompemos los signatures del CDN (oh, oe). Mejor buscar el HD desde node.
 };
 
 export async function fetchTopAds(accountId: string, since: string, until: string, n: number, sortBy: string): Promise<Ad[]> {
@@ -352,27 +330,22 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           adType = "publicacion_redes";
           const igStoryId = creative.effective_instagram_story_id;
           const igNode: any = await new Promise((resolve) => {
-            // Pedimos campos específicos del IG Media para identificar el formato
             window.FB.api(`/${igStoryId}`, 'GET', { fields: 'thumbnail_url,media_url,media_type,children{media_url,thumbnail_url,media_type}' }, (res: any) => resolve(res));
           });
           if (igNode && !igNode.error) {
-            // Manejamos los 3 formatos principales de IG:
             if (igNode.media_type === 'IMAGE') {
-               // 1. Feed (Imagen)
                thumb = igNode.media_url;
             } else if (igNode.media_type === 'CAROUSEL_ALBUM') {
-               // 2. Feed (Secuencia de imágenes)
                thumb = igNode.children?.data?.[0]?.media_url || igNode.media_url;
             } else if (igNode.media_type === 'VIDEO') {
-               // 3. Reel (Video) - Preferimos el thumbnail de alta calidad
                thumb = igNode.thumbnail_url || igNode.media_url;
             }
-            if (!thumb && igNode.media_url) thumb = igNode.media_url; // Seguridad final del nodo
+            if (!thumb && igNode.media_url) thumb = igNode.media_url;
             if (thumb) winningStep = `instagram native media node high-res (${igNode.media_type})`;
           }
         }
 
-        // BLOQUE 2: Posteos de Redes / Reels (effective_object_story_id)
+        // BLOQUE 1.6: Posteos de Redes / Reels (effective_object_story_id)
         if (!thumb && creative.effective_object_story_id) {
           adType = "publicacion_redes";
           const storyId = creative.effective_object_story_id;
@@ -384,7 +357,6 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             let hdCandidate: string | null = null;
             let formatDetected = 'imagen';
             
-            // Prioridad A: Buscar target.id (Video / Foto nativo) para obtener el formato HD real
             if (!hdCandidate && storyNode.attachments?.data) {
               const mainAttach = storyNode.attachments.data[0];
               if (mainAttach.media_type) formatDetected = mainAttach.media_type;
@@ -400,19 +372,16 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
                  });
                  if (targetNode && !targetNode.error) {
                     if (targetNode.images && Array.isArray(targetNode.images)) {
-                       // Es una imagen (o frame de secuencia)
                        const sortedImages = [...targetNode.images].sort((a,b) => (b.width * b.height) - (a.width * a.height));
                        hdCandidate = sortedImages[0]?.source || null;
                     } else if (targetNode.format && Array.isArray(targetNode.format)) {
-                       // Es un video (Reel / FB Video)
                        const sortedFormat = [...targetNode.format].sort((a,b) => (b.width * b.height) - (a.width * a.height));
-                       hdCandidate = sortedFormat[0]?.picture || null; // Picture en format suele ser el thumbnail HD del video
+                       hdCandidate = sortedFormat[0]?.picture || null;
                     }
                  }
               }
             }
             
-            // Prioridad B: Buscar media.image.src si no hubo targetId
             if (!hdCandidate && storyNode.attachments?.data) {
               const allMedia: any[] = [];
               const scan = (it: any[]) => it.forEach(i => { if (i.media?.image) allMedia.push(i.media.image); if (i.subattachments?.data) scan(i.subattachments.data); });
@@ -421,7 +390,6 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               hdCandidate = allMedia[0]?.src || null;
             }
 
-            // Prioridad C: creative.image_url (A veces FB inyecta aquí el thumbnail orgánico en alta calidad)
             if (!hdCandidate && creative.image_url) hdCandidate = creative.image_url;
 
             thumb = hdCandidate || storyNode.full_picture;
@@ -429,7 +397,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           }
         }
 
-        // BLOQUE 2: Videos (Búsqueda agresiva en nodo y metadata)
+        // BLOQUE 1: Videos (Búsqueda agresiva en nodo y metadata)
         if (!thumb && (creative.video_id || spec.video_data)) {
           adType = "video";
           const vidId = creative.video_id || spec.video_data?.video_id;
@@ -498,7 +466,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           }
         }
 
-        // BLOQUE 1: Imagen Estática / Manual
+        // FALLBACK 1: Imagen Estática / Manual
         if (!thumb) {
           adType = adType === "desconocido" ? "imagen_estatica" : adType;
           const hashList = [creative.image_hash, spec.photo_data?.image_hash, spec.link_data?.image_hash, spec.link_data?.child_attachments?.[0]?.image_hash].filter(Boolean);
@@ -511,7 +479,29 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           }
         }
 
-        // FALLBACK FINAL
+        // FALLBACK 2: Publicación de Redes Orgánica (Recuperar imagen nativa si no hubo metadata HD)
+        if (!thumb && creative.effective_object_story_id) {
+          adType = "publicacion_redes";
+          const storyId = creative.effective_object_story_id;
+          const storyNode: any = await new Promise((resolve) => {
+            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,attachments{media{image{src,width,height}},subattachments{media{image{src,width,height}}}}' }, (res: any) => resolve(res));
+          });
+          
+          if (storyNode && !storyNode.error) {
+            // Buscamos la imagen más grande en attachments
+            if (storyNode.attachments?.data) {
+              const allMedia: any[] = [];
+              const scan = (it: any[]) => it.forEach(i => { if (i.media?.image) allMedia.push(i.media.image); if (i.subattachments?.data) scan(i.subattachments.data); });
+              scan(storyNode.attachments.data);
+              allMedia.sort((a, b) => (b.width * b.height) - (a.width * a.height));
+              thumb = allMedia[0]?.src || null;
+            }
+            if (!thumb) thumb = storyNode.full_picture;
+            if (thumb) winningStep = "organic post native resolution";
+          }
+        }
+
+        // FALLBACK EMERGENCIA
         if (!thumb || thumb.includes('safe_image.php')) {
           thumb = spec.link_data?.picture || spec.photo_data?.url || creative.image_url || creative.thumbnail_url;
           if (thumb) winningStep = "emergency deep fallback";
