@@ -247,31 +247,9 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
   };
 }
 
-// Función segura para limpiar resoluciones restringidas de la CDN de Facebook sin romper firmas (signatures)
+// Función de paso transparente para evitar romper las firmas del CDN de Facebook (403 Forbidden)
 const ensureHighResFbCdn = (urlStr: string | null) => {
-  if (!urlStr) return null;
-  try {
-    if (!urlStr.includes('fbcdn.net') && !urlStr.includes('instagram.com')) return urlStr;
-    const url = new URL(urlStr);
-    
-    // Eliminamos parámetros restrictivos temporales de scale
-    if (url.searchParams.has('stp')) {
-      url.searchParams.delete('stp');
-    }
-    
-    let path = url.pathname;
-    // Eliminamos carpetas limitadoras de resolución (ej. s240x240, p240x240, p480x480)
-    path = path.replace(/\/[sp]\d+x\d+\//g, '/');
-    // Eliminamos carpetas de crop duro (ej. c0.10.200.200)
-    path = path.replace(/\/c\d+\.\d+\.\d+\.\d+\//g, '/');
-    
-    // NOTA: No modificamos el sufijo _s.jpg a _n.jpg ni borramos parámetros _nc, oh, oe, para no invalidar el CDN signature.
-    
-    url.pathname = path;
-    return url.toString();
-  } catch (e) {
-    return urlStr;
-  }
+  return urlStr;
 };
 
 export async function fetchTopAds(accountId: string, since: string, until: string, n: number, sortBy: string): Promise<Ad[]> {
@@ -347,7 +325,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         const creative = adRes.creative;
         const spec = creative.object_story_spec || {};
 
-        // BLOQUE 1.5: Instagram Native Media (Alta prioridad para Reels / Feed IG en alta resolución nativa)
+        // BLOQUE 1.5: Instagram Native Media (Alta resolución Reels / Feed)
         if (!thumb && creative.effective_instagram_story_id) {
           adType = "publicacion_redes";
           const igStoryId = creative.effective_instagram_story_id;
@@ -356,23 +334,29 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           });
           if (igNode && !igNode.error) {
             if (igNode.media_type === 'IMAGE') {
-               thumb = igNode.media_url;
+               thumb = igNode.media_url; // Direct image (high-res)
             } else if (igNode.media_type === 'CAROUSEL_ALBUM') {
-               thumb = igNode.children?.data?.[0]?.media_url || igNode.media_url;
+               const firstChild = igNode.children?.data?.[0];
+               if (firstChild) {
+                   thumb = firstChild.media_type === 'VIDEO' ? firstChild.thumbnail_url : firstChild.media_url;
+               } else {
+                   thumb = igNode.media_url;
+               }
             } else if (igNode.media_type === 'VIDEO') {
-               thumb = igNode.thumbnail_url || igNode.media_url;
+               // Only use thumbnail_url for videos, DO NOT fallback to media_url as it's an MP4!
+               thumb = igNode.thumbnail_url || null;
             }
-            if (!thumb && igNode.media_url) thumb = igNode.media_url;
             if (thumb) winningStep = `instagram native media node high-res (${igNode.media_type})`;
           }
         }
 
-        // BLOQUE 1.6: Posteos de Redes / Reels (effective_object_story_id)
+        // BLOQUE 1.6: Posteos de Redes / Reels FB (effective_object_story_id)
         if (!thumb && creative.effective_object_story_id) {
           adType = "publicacion_redes";
           const storyId = creative.effective_object_story_id;
           const storyNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,attachments{media_type,target{id},media{source,image{src,height,width}},subattachments{media_type,target{id},media{image{src,height,width}}}}' }, (res: any) => resolve(res));
+            // Note: Use 'type', NOT 'media_type' which is invalid on attachments
+            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,attachments{type,target{id},media{source,image{src,height,width}},subattachments{type,target{id},media{image{src,height,width}}}}' }, (res: any) => resolve(res));
           });
           
           if (storyNode && !storyNode.error) {
@@ -381,7 +365,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
             
             if (!hdCandidate && storyNode.attachments?.data) {
               const mainAttach = storyNode.attachments.data[0];
-              if (mainAttach.media_type) formatDetected = mainAttach.media_type;
+              if (mainAttach.type) formatDetected = mainAttach.type;
               else if (mainAttach.subattachments?.data) formatDetected = 'carousel';
               
               let targetId = null;
@@ -394,9 +378,11 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
                  });
                  if (targetNode && !targetNode.error) {
                     if (targetNode.images && Array.isArray(targetNode.images)) {
+                       // Photo node
                        const sortedImages = [...targetNode.images].sort((a,b) => (b.width * b.height) - (a.width * a.height));
                        hdCandidate = sortedImages[0]?.source || null;
                     } else if (targetNode.format && Array.isArray(targetNode.format)) {
+                       // Video node
                        const sortedFormat = [...targetNode.format].sort((a,b) => (b.width * b.height) - (a.width * a.height));
                        hdCandidate = sortedFormat[0]?.picture || null;
                     }
@@ -412,10 +398,13 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
               hdCandidate = allMedia[0]?.src || null;
             }
 
-            if (!hdCandidate && creative.image_url) hdCandidate = creative.image_url;
+            // A veces creative.image_url tiene el hd de la foto (pero sólo usarlo si no es fbcdn con extension rar/mp4)
+            if (!hdCandidate && creative.image_url && !creative.image_url.includes('.mp4')) {
+               hdCandidate = creative.image_url;
+            }
 
             thumb = hdCandidate || storyNode.full_picture;
-            if (thumb) winningStep = hdCandidate ? `story/reel high-res target fetch (${formatDetected})` : "story fallback full_picture";
+            if (thumb) winningStep = hdCandidate ? `story/reel high-res target module (${formatDetected})` : "story fallback full_picture";
           }
         }
 
