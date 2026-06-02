@@ -41,7 +41,8 @@ import {
   Mic,
   MicOff,
   History,
-  Rocket
+  Rocket,
+  ImageOff
 } from 'lucide-react';
 
 export const RocketLoader = () => (
@@ -605,9 +606,9 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     }}
                   />
                 ) : null}
-                <div className={`ad-placeholder absolute inset-0 z-0 flex flex-col items-center justify-center opacity-10 gap-2 text-white ${ad.thumbnail ? 'hidden' : ''}`}>
-                  <Package className="w-6 h-6 print:text-black" />
-                  <span className="text-[10px] uppercase font-black">Sin imagen</span>
+                <div className={`ad-placeholder absolute inset-0 z-0 flex flex-col items-center justify-center bg-[#050505] text-neutral-600 gap-3 ${ad.thumbnail ? 'hidden' : ''}`}>
+                  <ImageOff className="w-8 h-8 print:text-neutral-400" strokeWidth={1} />
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#444] print:text-neutral-500">Sin miniatura</span>
                 </div>
              </div>
           </div>

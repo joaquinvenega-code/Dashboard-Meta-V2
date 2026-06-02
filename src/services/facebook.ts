@@ -374,56 +374,32 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           adType = "publicacion_redes";
           const storyId = creative.effective_object_story_id;
           const storyNode: any = await new Promise((resolve) => {
-            // Note: Use 'type', NOT 'media_type' which is invalid on attachments
-            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,attachments{type,target{id},media{source,image{src,height,width}},subattachments{type,target{id},media{image{src,height,width}}}}' }, (res: any) => resolve(res));
+            window.FB.api(`/${storyId}`, 'GET', { fields: 'thumbnail_url,full_picture,attachments{type,target{id},media{source,image{src,height,width}},subattachments{type,target{id},media{image{src,height,width}}}}' }, (res: any) => resolve(res));
           });
           
           if (storyNode && !storyNode.error) {
-            let hdCandidate: string | null = null;
-            let formatDetected = 'imagen';
-            
-            if (!hdCandidate && storyNode.attachments?.data) {
-              const mainAttach = storyNode.attachments.data[0];
-              if (mainAttach.type) formatDetected = mainAttach.type;
-              else if (mainAttach.subattachments?.data) formatDetected = 'carousel';
-              
-              let targetId = null;
-              const scanTarget = (it: any[]) => it.forEach(i => { if (i.target?.id && !targetId) targetId = i.target.id; if (i.subattachments?.data) scanTarget(i.subattachments.data); });
-              scanTarget(storyNode.attachments.data);
-              
-              if (targetId) {
-                 const targetNode: any = await new Promise((resolve) => {
-                    window.FB.api(`/${targetId}`, 'GET', { fields: 'images,format,picture' }, (res: any) => resolve(res));
-                 });
-                 if (targetNode && !targetNode.error) {
-                    if (targetNode.images && Array.isArray(targetNode.images)) {
-                       // Photo node
-                       const sortedImages = [...targetNode.images].sort((a,b) => (b.width * b.height) - (a.width * a.height));
-                       hdCandidate = sortedImages[0]?.source || null;
-                    } else if (targetNode.format && Array.isArray(targetNode.format)) {
-                       // Video node
-                       const sortedFormat = [...targetNode.format].sort((a,b) => (b.width * b.height) - (a.width * a.height));
-                       hdCandidate = sortedFormat[0]?.picture || null;
-                    }
-                 }
-              }
-            }
-            
-            if (!hdCandidate && storyNode.attachments?.data) {
-              const allMedia: any[] = [];
-              const scan = (it: any[]) => it.forEach(i => { if (i.media?.image) allMedia.push(i.media.image); if (i.subattachments?.data) scan(i.subattachments.data); });
-              scan(storyNode.attachments.data);
-              allMedia.sort((a, b) => (b.width * b.height) - (a.width * a.height));
-              hdCandidate = allMedia[0]?.src || null;
-            }
+            // Prioridad #1: metadata.thumbnail_url del post o full_picture nativo
+            if (storyNode.thumbnail_url) {
+               thumb = storyNode.thumbnail_url;
+               winningStep = "post object thumbnail_url";
+            } else if (storyNode.full_picture) {
+               thumb = storyNode.full_picture;
+               winningStep = "post object full_picture";
+            } else {
+               // Fallback a attachments deep scan
+               let hdCandidate: string | null = null;
+               
+               if (!hdCandidate && storyNode.attachments?.data) {
+                 const allMedia: any[] = [];
+                 const scan = (it: any[]) => it.forEach(i => { if (i.media?.image) allMedia.push(i.media.image); if (i.subattachments?.data) scan(i.subattachments.data); });
+                 scan(storyNode.attachments.data);
+                 allMedia.sort((a, b) => (b.width * b.height) - (a.width * a.height));
+                 hdCandidate = allMedia[0]?.src || null;
+               }
 
-            // A veces creative.image_url tiene el hd de la foto (pero sólo usarlo si no es fbcdn con extension rar/mp4)
-            if (!hdCandidate && creative.image_url && !creative.image_url.includes('.mp4')) {
-               hdCandidate = creative.image_url;
+               thumb = hdCandidate || creative.image_url;
+               if (thumb) winningStep = "story fallback attachments scan";
             }
-
-            thumb = hdCandidate || storyNode.full_picture;
-            if (thumb) winningStep = hdCandidate ? `story/reel high-res target module (${formatDetected})` : "story fallback full_picture";
           }
         }
 
