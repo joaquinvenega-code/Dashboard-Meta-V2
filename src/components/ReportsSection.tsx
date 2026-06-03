@@ -283,7 +283,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
     <div className="space-y-6 pb-20 animate-in fade-in duration-700">
       {/* TOOLBAR */}
       <div className="bg-[#0a0a0a] rounded-lg border border-white/5 p-4 flex flex-wrap items-center justify-between gap-4 print:hidden sticky top-4 z-[110] backdrop-blur-md bg-opacity-90 shadow-2xl">
-        <div className="flex items-center gap-4">
+        <div className="flex items-end gap-4">
           <div className="flex flex-col gap-1">
             <label className="text-[7px] font-black text-blue-500 uppercase tracking-widest">Cuenta Activa</label>
             <select 
