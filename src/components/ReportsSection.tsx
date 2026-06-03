@@ -14,7 +14,8 @@ import {
   ChevronDown,
   BarChart3,
   X,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import { cn, formatCurrency, formatDecimal } from '../lib/utils';
 import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns';
@@ -308,6 +309,13 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               ))}
             </select>
           </div>
+
+          {(loadingRealData || loadingBitacora) && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-md text-blue-400">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span className="text-[8px] font-black uppercase tracking-widest">Orion Procesando</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -334,7 +342,18 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
       </div>
 
       {/* REPORT SURFACE */}
-      <div className="max-w-5xl mx-auto bg-white shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] p-16 md:p-24 text-black print:shadow-none print:p-0 print:max-w-none transition-all duration-500">
+      <div className={cn(
+        "max-w-5xl mx-auto bg-white shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] p-16 md:p-24 text-black print:shadow-none print:p-0 print:max-w-none transition-all duration-500 relative",
+        (loadingRealData || loadingBitacora) ? "opacity-60 pointer-events-none overflow-hidden" : "opacity-100"
+      )}>
+        {(loadingRealData || loadingBitacora) && (
+          <div className="absolute inset-0 z-50 bg-white/20 backdrop-blur-[2px] flex items-center justify-center print:hidden">
+            <div className="bg-slate-900 text-white px-6 py-4 rounded-xl shadow-2xl flex flex-col items-center gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Orion Actualizando Informe...</span>
+            </div>
+          </div>
+        )}
         
         <ReportHeader 
           name={settings[selectedAccountId]?.customName || selectedAccount.name} 
