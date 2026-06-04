@@ -78,7 +78,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa de clic</span>
              <div className="text-[14px] font-black tracking-tight">{formatDecimal(impressions > 0 ? (clicks / impressions) * 100 : 0)}%</div>
           </div>
-          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.2em] ml-1">CTR</div>
+          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.2em] ml-2 text-right shrink-0">CTR</div>
         </div>
 
         {/* Tasa de Visita a Página */}
@@ -88,7 +88,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa de visita</span>
              <div className="text-[14px] font-black tracking-tight">{formatDecimal(clicks > 0 ? (pageViews / clicks) * 100 : 0)}%</div>
           </div>
-          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.1em] ml-1">Tasa Visita</div>
+          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.1em] ml-2 text-right leading-tight shrink-0">TASA<br/>VISITA</div>
         </div>
 
         {/* Tasa de Agregado al Carrito */}
@@ -98,7 +98,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa agregados</span>
              <div className="text-[14px] font-black tracking-tight">{formatDecimal(pageViews > 0 ? (atc / pageViews) * 100 : 0)}%</div>
           </div>
-          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.2em] ml-1">Tasa ATC</div>
+          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.2em] ml-2 text-right leading-tight shrink-0">TASA<br/>ATC</div>
         </div>
 
         {/* Tasa de Compras (Conversion Rate) */}
@@ -108,7 +108,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa compras</span>
              <div className="text-[14px] font-black tracking-tight">{formatDecimal(atc > 0 ? (purchases / atc) * 100 : 0)}%</div>
           </div>
-          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.2em] ml-1">Conv.</div>
+          <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.2em] ml-2 text-right shrink-0">CONV.</div>
         </div>
       </div>
     </div>
