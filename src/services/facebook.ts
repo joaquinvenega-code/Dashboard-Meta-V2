@@ -291,8 +291,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
     return [];
   }
 
-  const sortKey = (sortBy === 'purchases' || sortBy === 'revenue' || sortBy === 'messages') ? sortBy : 'roas';
-  const ads = insRes.data
+  const allAds = insRes.data
     .map((d: any) => {
       const spend = parseFloat(d.spend) || 0;
       const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase');
@@ -314,9 +313,22 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         previewUrl: null,
       };
     })
-    .filter((a: any) => a.spend > 0)
-    .sort((a: any, b: any) => (b[sortKey] || 0) - (a[sortKey] || 0))
-    .slice(0, n);
+    .filter((a: any) => a.spend > 0);
+
+  // Seleccionamos los top N según múltiples criterios para asegurar que no falte ninguno ganador
+  const topRoas = [...allAds].sort((a, b) => b.roas - a.roas).slice(0, n);
+  const topPurchases = [...allAds].sort((a, b) => b.purchases - a.purchases).slice(0, n);
+  const topRevenue = [...allAds].sort((a, b) => b.revenue - a.revenue).slice(0, n);
+  const topSpend = [...allAds].sort((a, b) => b.spend - a.spend).slice(0, n);
+
+  const uniqueAdsMap = new Map();
+  [...topPurchases, ...topRevenue, ...topRoas, ...topSpend].forEach(ad => {
+    if (!uniqueAdsMap.has(ad.id)) {
+      uniqueAdsMap.set(ad.id, ad);
+    }
+  });
+
+  const ads = Array.from(uniqueAdsMap.values());
 
   for (const ad of ads) {
       // BASELINE: Link garantizado a la biblioteca de anuncios (NUNCA estará vacío para el PDF)
