@@ -191,34 +191,47 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
         setRealTopAds(formattedTopAds);
 
         // Map demos
-        const demoAges: Record<string, { male: number; female: number }> = {
-          '18-24': { male: 0, female: 0 },
-          '25-34': { male: 0, female: 0 },
-          '35-44': { male: 0, female: 0 },
-          '45-54': { male: 0, female: 0 },
-          '55-64': { male: 0, female: 0 },
-          '65+': { male: 0, female: 0 },
+        const demoAges: Record<string, { male: number; female: number; revenue: number; spend: number }> = {
+          '18-24': { male: 0, female: 0, revenue: 0, spend: 0 },
+          '25-34': { male: 0, female: 0, revenue: 0, spend: 0 },
+          '35-44': { male: 0, female: 0, revenue: 0, spend: 0 },
+          '45-54': { male: 0, female: 0, revenue: 0, spend: 0 },
+          '55-64': { male: 0, female: 0, revenue: 0, spend: 0 },
+          '65+': { male: 0, female: 0, revenue: 0, spend: 0 },
         };
         let totalDemoSpend = 0;
+        let totalDemoRevenue = 0;
         demoData.forEach((d: any) => {
           const age = d.age || 'Unknown';
           const gender = d.gender || 'unknown';
           const spend = parseFloat(d.spend) || 0;
+          const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase');
+          const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase') || purchases || spend; // fallback
+
           if (age in demoAges) {
             if (gender === 'male') demoAges[age].male += spend;
             if (gender === 'female') demoAges[age].female += spend;
+            demoAges[age].revenue += revenue;
+            demoAges[age].spend += spend;
             totalDemoSpend += spend;
+            totalDemoRevenue += revenue;
           } else if (age === '55+' || age === '65+') {
              if (gender === 'male') demoAges['65+'].male += spend;
              if (gender === 'female') demoAges['65+'].female += spend;
+             demoAges['65+'].revenue += revenue;
+             demoAges['65+'].spend += spend;
              totalDemoSpend += spend;
+             totalDemoRevenue += revenue;
           }
         });
+        const useDemoSpendForValue = totalDemoRevenue === 0;
+
         const formattedDemo = Object.keys(demoAges).map(age => ({
           age,
           male: totalDemoSpend > 0 ? parseFloat(((demoAges[age].male / totalDemoSpend) * 100).toFixed(2)) : 0,
-          female: totalDemoSpend > 0 ? parseFloat(((demoAges[age].female / totalDemoSpend) * 100).toFixed(2)) : 0
-        })).filter(a => a.male > 0 || a.female > 0);
+          female: totalDemoSpend > 0 ? parseFloat(((demoAges[age].female / totalDemoSpend) * 100).toFixed(2)) : 0,
+          rawValue: useDemoSpendForValue ? demoAges[age].spend : demoAges[age].revenue
+        })).filter(a => a.male > 0 || a.female > 0 || a.rawValue > 0);
 
         setRealDemographics(formattedDemo.length > 0 ? formattedDemo : [
            { age: '18-24', male: 12, female: 15 },
