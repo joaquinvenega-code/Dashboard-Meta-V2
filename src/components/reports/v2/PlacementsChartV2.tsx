@@ -79,12 +79,12 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({ data }) =>
             />
             <Legend 
               verticalAlign="bottom" 
-              height={36}
+              height={70}
               content={({ payload }) => (
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2 px-4">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 pb-6 px-4">
                   {payload?.map((entry: any, index: number) => (
                     <div key={`legend-${index}`} className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                      <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
                       <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight truncate">
                         {entry.value}
                       </span>
