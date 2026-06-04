@@ -392,7 +392,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
                 <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">02</div>
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Análisis del Funnel</h3>
               </div>
-              <div className="h-[430px]">
+              <div className="h-auto min-h-[460px] flex flex-col">
                 <ReportFunnelBoard 
                   spend={metrics.spend}
                   ctr={metrics.clicks > 0 ? (metrics.clicks / (metrics.impressions || 1) * 100) : 0}

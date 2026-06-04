@@ -148,6 +148,14 @@ export function ReportFunnelBoard({ spend, ctr, purchases, messages, atc, viewCo
           purchases={finalPurchases}
         />
       </div>
+      <div className="mt-4 pt-4 border-t border-slate-100 shrink-0">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[9px] text-slate-500 font-medium leading-relaxed">
+          <div><strong className="text-slate-800 font-bold tracking-wide uppercase text-[8px] mb-1 block">CTR</strong>Porcentaje de clics vs vistas del anuncio.</div>
+          <div><strong className="text-slate-800 font-bold tracking-wide uppercase text-[8px] mb-1 block">Tasa Visita</strong>Porcentaje de clics que cargaron la web.</div>
+          <div><strong className="text-slate-800 font-bold tracking-wide uppercase text-[8px] mb-1 block">Tasa ATC</strong>Porcentaje de visitas que añadieron al carrito.</div>
+          <div><strong className="text-slate-800 font-bold tracking-wide uppercase text-[8px] mb-1 block">Conv.</strong>Porcentaje de carritos que terminaron en compra.</div>
+        </div>
+      </div>
     </div>
   );
 }
