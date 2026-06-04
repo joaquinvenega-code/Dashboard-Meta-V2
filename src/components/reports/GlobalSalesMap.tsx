@@ -15,6 +15,7 @@ interface CountrySales {
 
 interface RegionSales {
   regionId: string; // Combined country and region code (e.g. "US-CA", "AR-B", "ES-MD")
+  regionName?: string;
   salesVolume: number;
   totalRevenue: number;
 }
@@ -112,11 +113,22 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
     return map;
   }, [salesData]);
 
-  // Index region sales by regionId for fast O(1) checks
+  // Helper to normalize strings for comparison
+  const normalize = (val?: string) => {
+    if (!val) return '';
+    return val.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, "") // remove accents
+      .replace(/[^a-z0-9]/g, '');
+  };
+
+  // Index region sales by regionId AND normalized name for fast O(1) checks
   const regionSalesMap = useMemo(() => {
     const map = new Map<string, RegionSales>();
     regionSalesData.forEach(item => {
       map.set(item.regionId.toUpperCase(), item);
+      if (item.regionName) {
+         map.set(normalize(item.regionName), item);
+      }
     });
     return map;
   }, [regionSalesData]);
@@ -272,10 +284,21 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
       const { type, coordinates } = geometry;
       let pathData = '';
 
+      let allPointsX = 0;
+      let allPointsY = 0;
+      let pointsCount = 0;
+
       if (type === 'Polygon') {
         pathData = coordinates
           .map((ring: any[]) => {
-            const points = ring.map((coord) => localProject(coord[0], coord[1]));
+            const points = ring.map((coord) => {
+              const proj = localProject(coord[0], coord[1]);
+              const pt = proj.split(',');
+              allPointsX += parseFloat(pt[0]);
+              allPointsY += parseFloat(pt[1]);
+              pointsCount++;
+              return proj;
+            });
             return `M${points.join('L')}Z`;
           })
           .join(' ');
@@ -284,7 +307,14 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
           .map((polygon: any[][]) => {
             return polygon
               .map((ring: any[]) => {
-                const points = ring.map((coord) => localProject(coord[0], coord[1]));
+                const points = ring.map((coord) => {
+                  const proj = localProject(coord[0], coord[1]);
+                  const pt = proj.split(',');
+                  allPointsX += parseFloat(pt[0]);
+                  allPointsY += parseFloat(pt[1]);
+                  pointsCount++;
+                  return proj;
+                });
                 return `M${points.join('L')}Z`;
               })
               .join(' ');
@@ -294,7 +324,9 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
 
       return {
         ...feature,
-        pathData
+        pathData,
+        centroidX: pointsCount > 0 ? allPointsX / pointsCount : null,
+        centroidY: pointsCount > 0 ? allPointsY / pointsCount : null
       };
     });
   }, [selectedCountry]);
@@ -319,23 +351,19 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
     return `rgb(${r}, ${g}, ${b})`;
   };
 
-  // Color generator for internal states or communities
-  const getRegionFeatureColor = (feature: any) => {
+  // Helper to find region sales from a feature safely
+  const getRegionSale = (feature: any) => {
     const id = feature.id ? feature.id.toUpperCase() : '';
-    const sale = regionSalesMap.get(id);
-    if (!sale || sale.salesVolume === 0) {
-      return '#141a29'; // Subtly deeper elegant contrast for internal inactive zones
+    let sale = regionSalesMap.get(id);
+    if (!sale && feature.properties?.name) {
+      sale = regionSalesMap.get(normalize(feature.properties.name));
     }
-    const intensity = Math.max(0.18, sale.salesVolume / maxRegionSalesVolume);
-    
-    const startColor = { r: 245, g: 158, b: 11 }; // Amber-500
-    const endColor = { r: 239, g: 68, b: 68 };    // Red-500
+    return sale;
+  };
 
-    const r = Math.round(startColor.r + (endColor.r - startColor.r) * intensity);
-    const g = Math.round(startColor.g + (endColor.g - startColor.g) * intensity);
-    const b = Math.round(startColor.b + (endColor.b - startColor.b) * intensity);
-
-    return `rgb(${r}, ${g}, ${b})`;
+  // Color generator for interval states or communities
+  const getRegionFeatureColor = (feature: any) => {
+    return '#1b4a85'; // Deep map blue to match the user's reference base map
   };
 
   const formatValue = (val: number) => {
@@ -505,15 +533,22 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
             className="w-full h-auto max-h-[500px] animate-in fade-in duration-300 zoom-in-95"
             xmlns="http://www.w3.org/2000/svg"
           >
+            <defs>
+              <radialGradient id="heatGradient" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="rgba(220, 38, 38, 0.9)" /> {/* Red core */}
+                <stop offset="20%" stopColor="rgba(239, 68, 68, 0.75)" />
+                <stop offset="45%" stopColor="rgba(245, 158, 11, 0.6)" /> {/* Amber mid */}
+                <stop offset="70%" stopColor="rgba(252, 211, 77, 0.4)" /> {/* Yellow fade */}
+                <stop offset="100%" stopColor="rgba(252, 211, 77, 0)" />
+              </radialGradient>
+            </defs>
             <rect width="1000" height="550" fill="transparent" />
             <g id="country-subregions-paths">
               {countryPaths.map((feature: any) => {
                 if (!feature.pathData) return null;
 
-                const id = feature.id ? feature.id.toUpperCase() : '';
                 const isHovered = hoveredElement?.id === feature.id;
-                
-                const sale = regionSalesMap.get(id);
+                const sale = getRegionSale(feature);
                 const hasSales = sale && sale.salesVolume > 0;
 
                 return (
@@ -521,12 +556,12 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                     key={feature.id}
                     d={feature.pathData}
                     fill={getRegionFeatureColor(feature)}
-                    stroke={isHovered ? '#ffffff' : '#070b13'}
-                    strokeWidth={isHovered ? '1.5' : '0.5'}
+                    stroke={isHovered ? '#60a5fa' : '#070b13'}
+                    strokeWidth={isHovered ? '2' : '0.5'}
                     style={{
-                      transition: 'fill 250ms ease, stroke 150ms ease, stroke-width 150ms ease'
+                      transition: 'stroke 150ms ease, stroke-width 150ms ease'
                     }}
-                    className={`transition-all ${hasSales ? 'hover:brightness-110 hover:opacity-100' : 'opacity-80 hover:opacity-95'}`}
+                    className="opacity-95 hover:opacity-100 transition-all cursor-pointer"
                     onMouseEnter={() => {
                       setHoveredElement({
                         id: feature.id,
@@ -541,7 +576,46 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                 );
               })}
             </g>
+            <g id="country-subregions-heat">
+              {countryPaths.map((feature: any) => {
+                if (!feature.centroidX || !feature.centroidY) return null;
+                const sale = getRegionSale(feature);
+                if (!sale || sale.salesVolume === 0) return null;
+
+                // Scale heat radius based on sales volume relative to the max regional sales
+                const intensity = Math.min(1, sale.salesVolume / maxRegionSalesVolume);
+                // Min radius of 15, max radius of 80 to avoid overwhelming the map
+                const radius = 15 + (65 * Math.pow(intensity, 0.5)); // SQRT scale for better visual progression
+
+                return (
+                  <circle
+                    key={`heat-${feature.id}`}
+                    cx={feature.centroidX}
+                    cy={feature.centroidY}
+                    r={radius}
+                    fill="url(#heatGradient)"
+                    style={{ pointerEvents: 'none' }} // Don't block hover on paths
+                  />
+                );
+              })}
+            </g>
           </svg>
+        )}
+
+        {/* MAP LEGEND */}
+        {selectedCountry && (
+          <div className="absolute bottom-4 right-4 z-40 bg-slate-900/40 backdrop-blur-md border border-slate-700/50 rounded-xl px-4 py-3 pb-2.5 flex flex-col gap-1.5 shadow-lg select-none">
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-100/90 text-center">
+              Actividad de Ventas
+            </span>
+            <div className="flex flex-col gap-1">
+              <div className="w-32 h-1.5 rounded-full" style={{ background: 'linear-gradient(to right, rgb(220, 38, 38), rgb(245, 158, 11), rgb(252, 211, 77), rgba(252, 211, 77, 0.2))' }} />
+              <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-wider text-slate-300">
+                <span>Alta</span>
+                <span>Baja</span>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* FLOATING RICH TOOLTIP */}

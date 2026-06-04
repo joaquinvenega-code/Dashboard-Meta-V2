@@ -67,6 +67,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
   const [realTopAds, setRealTopAds] = useState<any[]>([]);
   const [realDemographics, setRealDemographics] = useState<any[]>([]);
   const [realGeography, setRealGeography] = useState<any[]>([]);
+  const [realGeographyRegions, setRealGeographyRegions] = useState<any[]>([]);
   const [realPlacements, setRealPlacements] = useState<any[]>([]);
   const [loadingRealData, setLoadingRealData] = useState(false);
 
@@ -251,12 +252,44 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
            { age: '55+', male: 4, female: 6, rawValue: 1200 },
         ]);
 
-        const mappedGeo = geoData.map((d: any) => ({
-          countryId: mapAlpha2ToAlpha3(d.country) || 'USA',
-          salesVolume: parseFloat(d.spend) || 0,
-          totalRevenue: 0 // Si hace falta
+        const countrySalesMap: Record<string, { spend: number, revenue: number }> = {};
+        const regionSalesMap: Record<string, { spend: number, revenue: number, country: string }> = {};
+
+        geoData.forEach((d: any) => {
+          const cId = mapAlpha2ToAlpha3(d.country) || 'USA';
+          const spend = parseFloat(d.spend) || 0;
+          const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase');
+          const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase') || purchases || spend; // fallback
+
+          if (!countrySalesMap[cId]) countrySalesMap[cId] = { spend: 0, revenue: 0 };
+          countrySalesMap[cId].spend += spend;
+          countrySalesMap[cId].revenue += revenue;
+
+          if (d.region) {
+            // Keep original region name
+            const rName = String(d.region);
+            const key = `${cId}_${rName}`;
+            if (!regionSalesMap[key]) regionSalesMap[key] = { spend: 0, revenue: 0, country: cId };
+            regionSalesMap[key].spend += spend;
+            regionSalesMap[key].revenue += revenue;
+          }
+        });
+
+        const mappedGeo = Object.keys(countrySalesMap).map(cId => ({
+          countryId: cId,
+          salesVolume: countrySalesMap[cId].spend,
+          totalRevenue: countrySalesMap[cId].revenue
         }));
+
+        const mappedRegions = Object.keys(regionSalesMap).map(key => ({
+          regionId: key, // Will pass it as regionName in the component mapping maybe
+          regionName: key.split('_')[1],
+          salesVolume: regionSalesMap[key].spend,
+          totalRevenue: regionSalesMap[key].revenue
+        }));
+
         setRealGeography(mappedGeo);
+        setRealGeographyRegions(mappedRegions);
 
         const platformTotals: Record<string, { purchases: number, spend: number }> = {};
         let totalPurchasesAll = 0;
@@ -539,7 +572,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">06</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Mapa de Ventas Global</h3>
             </div>
-            <GlobalSalesMap currency={metrics.currency} salesData={realGeography.length > 0 ? realGeography : undefined} />
+            <GlobalSalesMap currency={metrics.currency} salesData={realGeography.length > 0 ? realGeography : undefined} regionSalesData={realGeographyRegions.length > 0 ? realGeographyRegions : undefined} />
           </div>
 
           {/* Módulo 7: Timeline de Gestión */}

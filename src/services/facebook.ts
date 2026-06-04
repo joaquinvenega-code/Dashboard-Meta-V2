@@ -741,7 +741,7 @@ export async function fetchGeography(accountId: string, since: string, until: st
       fields: 'spend,actions,action_values',
       time_range,
       level: 'account',
-      breakdowns: 'country',
+      breakdowns: 'country,region',
       limit: 1000,
     }, (res: any) => resolve(res));
   });
