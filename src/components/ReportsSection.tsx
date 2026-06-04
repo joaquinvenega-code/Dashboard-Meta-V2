@@ -199,6 +199,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           '55-64': { male: 0, female: 0 },
           '65+': { male: 0, female: 0 },
         };
+        let totalDemoSpend = 0;
         demoData.forEach((d: any) => {
           const age = d.age || 'Unknown';
           const gender = d.gender || 'unknown';
@@ -206,14 +207,17 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           if (age in demoAges) {
             if (gender === 'male') demoAges[age].male += spend;
             if (gender === 'female') demoAges[age].female += spend;
-          } else if (age === '55+' && '65+' in demoAges) {
-             // sum up
+            totalDemoSpend += spend;
+          } else if (age === '55+' || age === '65+') {
+             if (gender === 'male') demoAges['65+'].male += spend;
+             if (gender === 'female') demoAges['65+'].female += spend;
+             totalDemoSpend += spend;
           }
         });
         const formattedDemo = Object.keys(demoAges).map(age => ({
           age,
-          male: demoAges[age].male,
-          female: demoAges[age].female
+          male: totalDemoSpend > 0 ? parseFloat(((demoAges[age].male / totalDemoSpend) * 100).toFixed(2)) : 0,
+          female: totalDemoSpend > 0 ? parseFloat(((demoAges[age].female / totalDemoSpend) * 100).toFixed(2)) : 0
         })).filter(a => a.male > 0 || a.female > 0);
 
         setRealDemographics(formattedDemo.length > 0 ? formattedDemo : [
