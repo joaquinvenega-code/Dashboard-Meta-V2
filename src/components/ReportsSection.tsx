@@ -130,6 +130,12 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
         const until = format(end, 'yyyy-MM-dd');
 
         // Mapeamos a fb api (asumimos window.FB existe y fetch... importados)
+        const getAction = (actionsList: any[], type: string) => {
+          if (!actionsList) return 0;
+          const action = actionsList.find((a: any) => a.action_type === type);
+          return action ? parseFloat(action.value) : 0;
+        };
+
         const [daily, topAds, demoData, geoData, placementsData] = await Promise.all([
           fetchAccountDailyPerformance(selectedAccountId, since, until),
           fetchTopAds(selectedAccountId, since, until, 5, 'spend'),
@@ -234,11 +240,11 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
         })).filter(a => a.male > 0 || a.female > 0 || a.rawValue > 0);
 
         setRealDemographics(formattedDemo.length > 0 ? formattedDemo : [
-           { age: '18-24', male: 12, female: 15 },
-           { age: '25-34', male: 25, female: 35 },
-           { age: '35-44', male: 18, female: 22 },
-           { age: '45-54', male: 8, female: 12 },
-           { age: '55+', male: 4, female: 6 },
+           { age: '18-24', male: 12, female: 15, rawValue: 1200 },
+           { age: '25-34', male: 25, female: 35, rawValue: 5000 },
+           { age: '35-44', male: 18, female: 22, rawValue: 4000 },
+           { age: '45-54', male: 8, female: 12, rawValue: 2000 },
+           { age: '55+', male: 4, female: 6, rawValue: 1200 },
         ]);
 
         const mappedGeo = geoData.map((d: any) => ({
@@ -247,12 +253,6 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           totalRevenue: 0 // Si hace falta
         }));
         setRealGeography(mappedGeo);
-
-        const getAction = (actionsList: any[], type: string) => {
-          if (!actionsList) return 0;
-          const action = actionsList.find((a: any) => a.action_type === type);
-          return action ? parseFloat(action.value) : 0;
-        };
 
         const platformTotals: Record<string, { purchases: number, spend: number }> = {};
         let totalPurchasesAll = 0;
@@ -526,7 +526,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">05</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Demografía de Audiencia</h3>
             </div>
-            <DemographicsGeographyV2 demoData={realDemographics} />
+            <DemographicsGeographyV2 demoData={realDemographics} currency={metrics.currency} />
           </div>
 
           {/* Módulo 6: Mapa de Ventas Global */}
