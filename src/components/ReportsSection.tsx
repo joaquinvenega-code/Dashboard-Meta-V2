@@ -237,11 +237,12 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           return action ? parseFloat(action.value) : 0;
         };
 
-        const platformTotals: Record<string, number> = {};
+        const platformTotals: Record<string, { purchases: number, spend: number }> = {};
+        let totalPurchasesAll = 0;
+        
         placementsData.forEach((d: any) => {
           const spend = parseFloat(d.spend) || 0;
-          const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase') || spend; // fallback to spend if no purchases to show something
-          const value = purchases; // We define value as purchases, or spend if we want to show distribution
+          const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase') || 0;
           
           const platform = String(d.publisher_platform).toLowerCase();
           const position = String(d.platform_position).toLowerCase();
@@ -263,16 +264,25 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
              key = 'Messenger';
           }
 
-          platformTotals[key] = (platformTotals[key] || 0) + value;
+          if (!platformTotals[key]) {
+            platformTotals[key] = { purchases: 0, spend: 0 };
+          }
+          platformTotals[key].purchases += purchases;
+          platformTotals[key].spend += spend;
+          totalPurchasesAll += purchases;
         });
 
-        const totalPlacementsValue = Object.values(platformTotals).reduce((a, b) => a + b, 0);
+        const useSpend = totalPurchasesAll === 0;
+
+        const totalValue = Object.values(platformTotals).reduce((sum, data) => sum + (useSpend ? data.spend : data.purchases), 0);
         const sortedPlacements = Object.entries(platformTotals)
-          .sort((a, b) => b[1] - a[1])
-          .map(([name, value], i) => {
+          .map(([name, data]) => ({ name, value: useSpend ? data.spend : data.purchases }))
+          .filter(p => p.value > 0)
+          .sort((a, b) => b.value - a.value)
+          .map((item, i) => {
              const colors = ['#3b82f6', '#10b981', '#6366f1', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f43f5e'];
-             const percentage = totalPlacementsValue > 0 ? Math.round((value / totalPlacementsValue) * 100) : 0;
-             return { name, value: percentage, color: colors[i % colors.length], rawValue: value };
+             const percentage = totalValue > 0 ? Math.round((item.value / totalValue) * 100) : 0;
+             return { name: item.name, value: percentage, color: colors[i % colors.length], rawValue: item.value };
           })
           .filter(p => p.value > 0);
 
