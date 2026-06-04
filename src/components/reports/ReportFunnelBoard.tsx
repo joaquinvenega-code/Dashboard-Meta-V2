@@ -26,55 +26,55 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
   return (
     <div className="w-full flex items-center gap-4 h-full py-2">
       {/* Funnel Vessel (Left) */}
-      <div className="w-[180px] md:w-[200px] flex flex-col gap-1 items-center justify-center shrink-0">
+      <div className="w-[180px] md:w-[200px] flex flex-col items-center justify-center shrink-0" style={{ gap: '2px' }}>
         <div 
           className="w-full h-[68px] bg-blue-300 shadow-xl flex items-center justify-center relative overflow-hidden"
           style={{ clipPath: 'polygon(0% 0%, 100% 0%, 92% 100%, 8% 100%)' }}
         >
           <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent" />
           <div className="flex flex-col items-center relative z-10">
-            <span className="text-[7px] font-black text-blue-900/60 uppercase tracking-[0.2em]">CLICS</span>
-            <span className="text-[12px] font-black text-blue-950 tracking-tight">{formatDecimal(clicks, 0)}</span>
+             <span className="text-[7px] font-black text-blue-900/60 uppercase tracking-[0.2em]">CLICS</span>
+             <span className="text-[12px] font-black text-blue-950 tracking-tight">{formatDecimal(clicks, 0)}</span>
           </div>
         </div>
         <div 
-          className="w-[86%] h-[68px] bg-blue-500 shadow-lg flex items-center justify-center relative overflow-hidden -mt-0.5"
+          className="w-[86%] h-[68px] bg-blue-500 shadow-lg flex items-center justify-center relative overflow-hidden"
           style={{ clipPath: 'polygon(4.5% 0%, 95.5% 0%, 88% 100%, 12% 100%)' }}
         >
           <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
           <div className="flex flex-col items-center relative z-10">
-            <span className="text-[7px] font-black text-white/60 uppercase tracking-[0.2em]">VISITA A PÁGINA</span>
-            <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(pageViews, 0)}</span>
+             <span className="text-[7px] font-black text-white/60 uppercase tracking-[0.2em]">VISITA A PÁGINA</span>
+             <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(pageViews, 0)}</span>
           </div>
         </div>
         <div 
-          className="w-[78%] h-[68px] bg-blue-700 shadow-xl flex items-center justify-center relative overflow-hidden -mt-0.5"
+          className="w-[78%] h-[68px] bg-blue-700 shadow-xl flex items-center justify-center relative overflow-hidden"
           style={{ clipPath: 'polygon(9% 0%, 91% 0%, 84% 100%, 16% 100%)' }}
         >
           <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
           <div className="flex flex-col items-center relative z-10">
-            <span className="text-[7px] font-black text-white/60 uppercase tracking-[0.1em] text-center">AGREGADOS AL CARRITO</span>
-            <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(atc, 0)}</span>
+             <span className="text-[7px] font-black text-white/60 uppercase tracking-[0.1em] text-center">AGREGADOS AL CARRITO</span>
+             <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(atc, 0)}</span>
           </div>
         </div>
         <div 
-          className="w-[69%] h-[68px] bg-blue-900 shadow-2xl flex items-center justify-center relative overflow-hidden -mt-0.5"
+          className="w-[69%] h-[68px] bg-blue-900 shadow-2xl flex items-center justify-center relative overflow-hidden"
           style={{ clipPath: 'polygon(14% 0%, 86% 0%, 80% 100%, 20% 100%)' }}
         >
           <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
           <div className="flex flex-col items-center relative z-10">
-            <span className="text-[7px] font-black text-white/60 uppercase tracking-[0.2em]">COMPRAS</span>
-            <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(purchases, 0)}</span>
+             <span className="text-[7px] font-black text-white/60 uppercase tracking-[0.2em]">COMPRAS</span>
+             <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(purchases, 0)}</span>
           </div>
         </div>
       </div>
 
       {/* Lateral Pills (Right) */}
-      <div className="flex-1 flex flex-col gap-2 min-w-0 h-full justify-between py-1">
+      <div className="flex-1 flex flex-col justify-center min-w-0 shrink-0" style={{ gap: '2px' }}>
         {/* Tasa de Clics (CTR) */}
-        <div className="bg-blue-300 rounded-r-[1.5rem] rounded-l-md px-2 py-3 flex items-center justify-between text-blue-950 shadow-lg relative overflow-hidden border border-blue-400/30">
+        <div className="h-[68px] bg-blue-300 rounded-r-[1.5rem] rounded-l-md px-3 flex items-center justify-between text-blue-950 shadow-lg relative overflow-hidden border border-blue-400/30">
           <div className="absolute inset-0 bg-white/20" />
-          <div className="relative z-10 flex-0.5 flex flex-col min-w-0">
+          <div className="relative z-10 flex-0.5 flex flex-col min-w-0 justify-center">
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa de clic</span>
              <div className="text-[14px] font-black tracking-tight">{formatDecimal(clicks / (impressions || 1) * 100)}%</div>
           </div>
@@ -82,9 +82,9 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
         </div>
 
         {/* Tasa de Visita a Página */}
-        <div className="bg-blue-500 rounded-r-[1.5rem] rounded-l-md px-2 py-3 flex items-center justify-between text-white shadow-md relative overflow-hidden">
+        <div className="h-[68px] bg-blue-500 rounded-r-[1.5rem] rounded-l-md px-3 flex items-center justify-between text-white shadow-md relative overflow-hidden">
           <div className="absolute inset-0 bg-blue-600 opacity-20" />
-          <div className="relative z-10 flex-0.5 flex flex-col min-w-0">
+          <div className="relative z-10 flex-0.5 flex flex-col min-w-0 justify-center">
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa de visita</span>
              <div className="text-[14px] font-black tracking-tight">{formatDecimal(pageViews / (clicks || 1) * 100)}%</div>
           </div>
@@ -92,9 +92,9 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
         </div>
 
         {/* Tasa de Agregado al Carrito */}
-        <div className="bg-blue-700 rounded-r-[1.5rem] rounded-l-md px-2 py-3 flex items-center justify-between text-white shadow-lg relative overflow-hidden">
+        <div className="h-[68px] bg-blue-700 rounded-r-[1.5rem] rounded-l-md px-3 flex items-center justify-between text-white shadow-lg relative overflow-hidden">
           <div className="absolute inset-0 bg-blue-800 opacity-20" />
-          <div className="relative z-10 flex-0.5 flex flex-col min-w-0">
+          <div className="relative z-10 flex-0.5 flex flex-col min-w-0 justify-center">
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa agregados</span>
              <div className="text-[14px] font-black tracking-tight">{formatDecimal(atc / (pageViews || 1) * 100)}%</div>
           </div>
@@ -102,9 +102,9 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
         </div>
 
         {/* Tasa de Compras (Conversion Rate) */}
-        <div className="bg-blue-900 rounded-r-[1.5rem] rounded-l-md px-2 py-3 flex items-center justify-between text-white shadow-2xl relative overflow-hidden">
+        <div className="h-[68px] bg-blue-900 rounded-r-[1.5rem] rounded-l-md px-3 flex items-center justify-between text-white shadow-2xl relative overflow-hidden">
           <div className="absolute inset-0 bg-black/20" />
-          <div className="relative z-10 flex-0.5 flex flex-col min-w-0">
+          <div className="relative z-10 flex-0.5 flex flex-col min-w-0 justify-center">
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa compras</span>
              <div className="text-[14px] font-black tracking-tight">{formatDecimal(purchases / (atc || 1) * 100)}%</div>
           </div>
