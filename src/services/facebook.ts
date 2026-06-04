@@ -751,3 +751,20 @@ export async function fetchGeography(accountId: string, since: string, until: st
   return response.data;
 }
 
+export async function fetchPlacements(accountId: string, since: string, until: string): Promise<any[]> {
+  const time_range = JSON.stringify({ since, until });
+  const response: any = await new Promise((resolve) => {
+    window.FB.api(`/${accountId}/insights`, 'GET', {
+      fields: 'spend,actions,action_values',
+      time_range,
+      level: 'account',
+      breakdowns: 'publisher_platform,platform_position',
+      limit: 1000,
+    }, (res: any) => resolve(res));
+  });
+
+  if (!response || response.error || !Array.isArray(response.data)) return [];
+
+  return response.data;
+}
+

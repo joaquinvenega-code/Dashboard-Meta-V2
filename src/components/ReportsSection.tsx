@@ -33,7 +33,7 @@ import { AssetPerformanceV2 } from './reports/v2/AssetPerformanceV2';
 import { ManagementTimelineV2 } from './reports/v2/ManagementTimelineV2';
 import { RoadmapSectionV2 } from './reports/v2/RoadmapSectionV2';
 import { ReportGlossaryV2 } from './reports/v2/ReportGlossaryV2';
-import { fetchAccountDailyPerformance, fetchDemographics, fetchGeography, fetchTopAds } from '../services/facebook';
+import { fetchAccountDailyPerformance, fetchDemographics, fetchGeography, fetchTopAds, fetchPlacements } from '../services/facebook';
 
 interface ReportsSectionProps {
   accounts: AdAccount[];
@@ -67,6 +67,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
   const [realTopAds, setRealTopAds] = useState<any[]>([]);
   const [realDemographics, setRealDemographics] = useState<any[]>([]);
   const [realGeography, setRealGeography] = useState<any[]>([]);
+  const [realPlacements, setRealPlacements] = useState<any[]>([]);
   const [loadingRealData, setLoadingRealData] = useState(false);
 
   // Estados para campos editables persistentes localmente
@@ -129,11 +130,12 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
         const until = format(end, 'yyyy-MM-dd');
 
         // Mapeamos a fb api (asumimos window.FB existe y fetch... importados)
-        const [daily, topAds, demoData, geoData] = await Promise.all([
+        const [daily, topAds, demoData, geoData, placementsData] = await Promise.all([
           fetchAccountDailyPerformance(selectedAccountId, since, until),
           fetchTopAds(selectedAccountId, since, until, 5, 'spend'),
           fetchDemographics(selectedAccountId, since, until),
-          fetchGeography(selectedAccountId, since, until)
+          fetchGeography(selectedAccountId, since, until),
+          fetchPlacements(selectedAccountId, since, until)
         ]);
 
         let sumSpend = 0;
@@ -228,6 +230,54 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           totalRevenue: 0 // Si hace falta
         }));
         setRealGeography(mappedGeo);
+
+        const getAction = (actionsList: any[], type: string) => {
+          if (!actionsList) return 0;
+          const action = actionsList.find((a: any) => a.action_type === type);
+          return action ? parseFloat(action.value) : 0;
+        };
+
+        const platformTotals: Record<string, number> = {};
+        placementsData.forEach((d: any) => {
+          const spend = parseFloat(d.spend) || 0;
+          const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase') || spend; // fallback to spend if no purchases to show something
+          const value = purchases; // We define value as purchases, or spend if we want to show distribution
+          
+          const platform = String(d.publisher_platform).toLowerCase();
+          const position = String(d.platform_position).toLowerCase();
+          
+          let key = 'Otros';
+          if (platform === 'instagram') {
+             if (position.includes('story')) key = 'Instagram Stories';
+             else if (position.includes('reels') || position.includes('reels_overlay')) key = 'Instagram Reels';
+             else if (position.includes('feed') || position.includes('explore')) key = 'Instagram Feed';
+             else key = 'Instagram Otros';
+          } else if (platform === 'facebook') {
+             if (position.includes('reels') || position.includes('reels_overlay')) key = 'Facebook Reels';
+             else if (position.includes('feed')) key = 'Facebook Feed';
+             else if (position.includes('story')) key = 'Facebook Stories';
+             else key = 'Facebook Otros';
+          } else if (platform === 'audience_network') {
+             key = 'Audience Network';
+          } else if (platform === 'messenger') {
+             key = 'Messenger';
+          }
+
+          platformTotals[key] = (platformTotals[key] || 0) + value;
+        });
+
+        const totalPlacementsValue = Object.values(platformTotals).reduce((a, b) => a + b, 0);
+        const sortedPlacements = Object.entries(platformTotals)
+          .sort((a, b) => b[1] - a[1])
+          .map(([name, value], i) => {
+             const colors = ['#3b82f6', '#10b981', '#6366f1', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f43f5e'];
+             const percentage = totalPlacementsValue > 0 ? Math.round((value / totalPlacementsValue) * 100) : 0;
+             return { name, value: percentage, color: colors[i % colors.length], rawValue: value };
+          })
+          .filter(p => p.value > 0);
+
+        setRealPlacements(sortedPlacements);
+
       } catch (err) {
         console.error("Error fetching real report data", err);
       } finally {
@@ -387,12 +437,12 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           {/* Módulo 2 & 3: Funnel & Placements (GRID) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
             {/* Funnel Module */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3 shrink-0 h-8">
                 <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">02</div>
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Análisis del Funnel</h3>
               </div>
-              <div className="h-auto min-h-[460px] flex flex-col">
+              <div className="flex-1 min-h-[460px] flex flex-col">
                 <ReportFunnelBoard 
                   spend={metrics.spend}
                   ctr={metrics.clicks > 0 ? (metrics.clicks / (metrics.impressions || 1) * 100) : 0}
@@ -408,16 +458,18 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
             </div>
 
             {/* Placements Chart Module */}
-            <div className="space-y-4">
-              <div className="w-full h-8" /> {/* Spacer to align with funnel title */}
-              <PlacementsChartV2 
-                data={[
-                  { name: 'Instagram Stories', value: 45, color: '#3b82f6' },
-                  { name: 'Instagram Reels', value: 30, color: '#10b981' },
-                  { name: 'Facebook Reels', value: 15, color: '#6366f1' },
-                  { name: 'Instagram Feed', value: 10, color: '#f59e0b' },
-                ]}
-              />
+            <div className="flex flex-col gap-4">
+              <div className="w-full h-8 shrink-0" /> {/* Spacer to align with funnel title */}
+              <div className="flex-1 flex flex-col min-h-[460px]">
+                <PlacementsChartV2 
+                  data={realPlacements.length > 0 ? realPlacements : [
+                    { name: 'Instagram Stories', value: 45, color: '#3b82f6' },
+                    { name: 'Instagram Reels', value: 30, color: '#10b981' },
+                    { name: 'Facebook Reels', value: 15, color: '#6366f1' },
+                    { name: 'Instagram Feed', value: 10, color: '#f59e0b' },
+                  ]}
+                />
+              </div>
             </div>
           </div>
 
