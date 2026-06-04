@@ -76,7 +76,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
           <div className="absolute inset-0 bg-white/20" />
           <div className="relative z-10 flex-0.5 flex flex-col min-w-0 justify-center">
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa de clic</span>
-             <div className="text-[14px] font-black tracking-tight">{formatDecimal(clicks / (impressions || 1) * 100)}%</div>
+             <div className="text-[14px] font-black tracking-tight">{formatDecimal(impressions > 0 ? (clicks / impressions) * 100 : 0)}%</div>
           </div>
           <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.2em] ml-1">CTR</div>
         </div>
@@ -86,7 +86,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
           <div className="absolute inset-0 bg-blue-600 opacity-20" />
           <div className="relative z-10 flex-0.5 flex flex-col min-w-0 justify-center">
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa de visita</span>
-             <div className="text-[14px] font-black tracking-tight">{formatDecimal(pageViews / (clicks || 1) * 100)}%</div>
+             <div className="text-[14px] font-black tracking-tight">{formatDecimal(clicks > 0 ? (pageViews / clicks) * 100 : 0)}%</div>
           </div>
           <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.1em] ml-1">Tasa Visita</div>
         </div>
@@ -96,7 +96,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
           <div className="absolute inset-0 bg-blue-800 opacity-20" />
           <div className="relative z-10 flex-0.5 flex flex-col min-w-0 justify-center">
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa agregados</span>
-             <div className="text-[14px] font-black tracking-tight">{formatDecimal(atc / (pageViews || 1) * 100)}%</div>
+             <div className="text-[14px] font-black tracking-tight">{formatDecimal(pageViews > 0 ? (atc / pageViews) * 100 : 0)}%</div>
           </div>
           <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.2em] ml-1">Tasa ATC</div>
         </div>
@@ -106,7 +106,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
           <div className="absolute inset-0 bg-black/20" />
           <div className="relative z-10 flex-0.5 flex flex-col min-w-0 justify-center">
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa compras</span>
-             <div className="text-[14px] font-black tracking-tight">{formatDecimal(purchases / (atc || 1) * 100)}%</div>
+             <div className="text-[14px] font-black tracking-tight">{formatDecimal(atc > 0 ? (purchases / atc) * 100 : 0)}%</div>
           </div>
           <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.2em] ml-1">Conv.</div>
         </div>
@@ -116,16 +116,16 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
 }
 
 export function ReportFunnelBoard({ spend, ctr, purchases, messages, atc, viewContent, tracking, impressions: propImpressions, clicks: propClicks }: ReportFunnelBoardProps) {
-  const impressions = propImpressions || (spend ? Math.floor(spend * 120) : 100000);
-  const clicks = propClicks || (spend ? Math.floor(spend * 120 * (ctr / 100)) : 5000);
+  const impressions = propImpressions !== undefined ? propImpressions : (spend ? Math.floor(spend * 120) : 100000);
+  const clicks = propClicks !== undefined ? propClicks : (spend ? Math.floor(spend * 120 * (ctr / 100)) : 5000);
   
   // Use real viewContent if available, otherwise estimate with slight variation (wobble)
   // We use a simple hash of spend to create a semi-consistent but different variation per account/spend
   const wobble = (Math.sin(spend || 1) + 1) / 2; // 0 to 1
-  const pageViews = viewContent || Math.floor(clicks * (0.75 + (wobble * 0.15))); // 75% to 90% of clicks
+  const pageViews = viewContent !== undefined ? viewContent : Math.floor(clicks * (0.75 + (wobble * 0.15))); // 75% to 90% of clicks
   
   // Same for ATC: real data or estimate 8% to 15% of page views
-  const finalAtc = atc || Math.max(Math.floor(pageViews * (0.08 + (wobble * 0.07))), (purchases || messages || 0) * 1.5);
+  const finalAtc = atc !== undefined ? atc : Math.max(Math.floor(pageViews * (0.08 + (wobble * 0.07))), (purchases || messages || 0) * 1.5);
   const finalPurchases = purchases || messages || 0;
 
   return (

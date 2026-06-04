@@ -62,7 +62,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
   const [loadingBitacora, setLoadingBitacora] = useState(false);
 
   // Estados reales
-  const [realMetrics, setRealMetrics] = useState({ spend: 0, purchases: 0, roas: 0, revenue: 0, impressions: 0, clicks: 0, currency: 'ARS' });
+  const [realMetrics, setRealMetrics] = useState({ spend: 0, purchases: 0, roas: 0, revenue: 0, impressions: 0, clicks: 0, atc: 0, viewContent: 0, currency: 'ARS' });
   const [realDailyData, setRealDailyData] = useState<any[]>([]);
   const [realTopAds, setRealTopAds] = useState<any[]>([]);
   const [realDemographics, setRealDemographics] = useState<any[]>([]);
@@ -139,10 +139,19 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
         let sumSpend = 0;
         let sumPurchases = 0;
         let sumRevenue = 0;
+        let sumImpressions = 0;
+        let sumClicks = 0;
+        let sumAtc = 0;
+        let sumViewContent = 0;
+
         let formattedDaily = daily.map(d => {
-          sumSpend += d.spend;
-          sumPurchases += d.purchases;
-          sumRevenue += d.revenue;
+          sumSpend += d.spend || 0;
+          sumPurchases += d.purchases || 0;
+          sumRevenue += d.revenue || 0;
+          sumImpressions += d.impressions || 0;
+          sumClicks += d.clicks || 0;
+          sumAtc += d.atc || 0;
+          sumViewContent += d.viewContent || 0;
           return {
             date: format(parseISO(d.date), 'dd/MM'),
             revenue: d.revenue,
@@ -159,8 +168,10 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           purchases: sumPurchases,
           revenue: sumRevenue,
           roas: sumSpend > 0 ? sumRevenue / sumSpend : 0,
-          impressions: 0, // Fallback, si no se tiene lo omitimos de realMetrics diarias
-          clicks: 0,
+          impressions: sumImpressions,
+          clicks: sumClicks,
+          atc: sumAtc,
+          viewContent: sumViewContent,
           currency: baseCurrency
         });
 
@@ -384,10 +395,11 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               <div className="h-[430px]">
                 <ReportFunnelBoard 
                   spend={metrics.spend}
-                  ctr={metrics.clicks / (metrics.impressions || 1) * 100}
+                  ctr={metrics.clicks > 0 ? (metrics.clicks / (metrics.impressions || 1) * 100) : 0}
                   purchases={metrics.purchases}
                   messages={0}
-                  atc={Math.floor(metrics.clicks * 0.1)} 
+                  atc={metrics.atc}
+                  viewContent={metrics.viewContent}
                   impressions={metrics.impressions}
                   clicks={metrics.clicks}
                   tracking="ecommerce"

@@ -685,7 +685,7 @@ export async function fetchAccountDailyPerformance(accountId: string, since: str
   const time_range = JSON.stringify({ since, until });
   const response: any = await new Promise((resolve) => {
     window.FB.api(`/${accountId}/insights`, 'GET', {
-      fields: 'date_start,spend,actions,action_values',
+      fields: 'date_start,spend,actions,action_values,clicks,impressions',
       time_range,
       level: 'account',
       time_increment: 1,
@@ -699,11 +699,20 @@ export async function fetchAccountDailyPerformance(accountId: string, since: str
     const spend = parseFloat(d.spend) || 0;
     const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase');
     const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase');
+    const clicks = parseInt(d.clicks) || 0;
+    const impressions = parseInt(d.impressions) || 0;
+    const atc = getAction(d.actions, 'add_to_cart') || getAction(d.actions, 'offsite_conversion.fb_pixel_add_to_cart');
+    const viewContent = getAction(d.actions, 'view_content') || getAction(d.actions, 'offsite_conversion.fb_pixel_view_content');
+
     return {
       date: d.date_start, // usually "YYYY-MM-DD"
       spend,
       purchases,
-      revenue
+      revenue,
+      clicks,
+      impressions,
+      atc,
+      viewContent
     };
   }).sort((a: any, b: any) => a.date.localeCompare(b.date));
 }
