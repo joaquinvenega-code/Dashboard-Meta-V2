@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Trophy, ChevronDown, Star, Target, DollarSign, ShoppingBag } from 'lucide-react';
+import { Trophy, ChevronDown, Star, Target, DollarSign, ShoppingBag, ImageOff } from 'lucide-react';
 import { cn, formatCurrency } from '../../../lib/utils';
 
 type SortCriteria = 'roas' | 'purchases' | 'revenue';
@@ -68,14 +68,36 @@ export const AssetPerformanceV2: React.FC<AssetPerformanceV2Props> = ({ assets }
               #{index + 1}
             </div>
             
-            <div className="aspect-square relative overflow-hidden bg-slate-100">
+            <div className="aspect-square relative overflow-hidden bg-slate-100 flex items-center justify-center">
               <img 
                 src={ad.thumbnail} 
-                alt={ad.name} 
-                className="w-full h-full object-cover"
+                alt={ad.name}
+                data-original={ad.originalThumbnailUrl || ad.thumbnail}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 referrerPolicy="no-referrer"
+                loading="lazy"
+                onError={(e) => {
+                  const img = e.target as HTMLImageElement;
+                  if (!img.getAttribute('data-retried') && ad.originalThumbnailUrl && ad.originalThumbnailUrl !== ad.thumbnail) {
+                    img.setAttribute('data-retried', 'true');
+                    img.src = ad.originalThumbnailUrl;
+                  } else {
+                    img.style.display = 'none';
+                    const placeholder = img.parentElement?.querySelector('.ad-placeholder');
+                    if (placeholder) placeholder.classList.remove('hidden');
+                  }
+                }}
+                style={{ 
+                  WebkitFontSmoothing: 'antialiased',
+                  imageRendering: 'high-quality',
+                  transform: 'translateZ(0)'
+                }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className={`ad-placeholder absolute inset-0 z-0 flex flex-col items-center justify-center bg-[#050505] text-neutral-600 gap-3 ${ad.thumbnail ? 'hidden' : ''}`}>
+                <ImageOff className="w-8 h-8 print:text-neutral-400" strokeWidth={1} />
+                <span className="text-[10px] uppercase font-bold tracking-widest text-[#444] print:text-neutral-500">Sin miniatura</span>
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none" />
             </div>
 
             <div className="p-2 space-y-2 flex-1">
