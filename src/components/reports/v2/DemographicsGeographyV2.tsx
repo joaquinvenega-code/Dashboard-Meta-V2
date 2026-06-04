@@ -13,6 +13,7 @@ import {
   Cell
 } from 'recharts';
 import { formatCurrency } from '../../../lib/utils';
+import { BarLabel } from './BarLabel';
 
 interface DemographicsGeographyV2Props {
   demoData?: {
@@ -62,9 +63,9 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
         </div>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         {/* Gráfico de Barras (Demografía) */}
-        <div className="lg:col-span-3 h-[360px] flex flex-col">
+        <div className="h-[360px] flex flex-col">
           <div className="flex items-center gap-4 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100 self-start mb-4">
             <div className="flex items-center gap-1.5 font-mono">
               <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm" />
@@ -77,7 +78,7 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
           </div>
           <div className="flex-1 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={demoData} margin={{ top: 20, right: 10, left: -20, bottom: 5 }}>
+              <BarChart data={demoData} margin={{ top: 20, right: 30, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#f1f5f9" />
                 <XAxis 
                   dataKey="age" 
@@ -105,15 +106,15 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
                   }}
                   formatter={(val: number) => [`${val}%`, '']}
                 />
-                <Bar dataKey="male" fill="#3b82f6" stackId="a" radius={[0, 0, 0, 0]} barSize={28} label={{ position: 'inside', formatter: (val: any) => val > 0 ? `${val}%` : '', fontSize: 8, fontWeight: 800, fill: '#ffffff' }} />
-                <Bar dataKey="female" fill="#f472b6" stackId="a" radius={[6, 6, 0, 0]} barSize={28} label={{ position: 'inside', formatter: (val: any) => val > 0 ? `${val}%` : '', fontSize: 8, fontWeight: 800, fill: '#ffffff' }} />
+                <Bar dataKey="male" fill="#3b82f6" stackId="a" radius={[0, 0, 0, 0]} barSize={32} label={<BarLabel />} />
+                <Bar dataKey="female" fill="#f472b6" stackId="a" radius={[6, 6, 0, 0]} barSize={32} label={<BarLabel />} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Gráfico de Torta (Facturación) */}
-        <div className="lg:col-span-2 h-[360px] bg-slate-50 border border-slate-100 rounded-2xl p-6 flex flex-col">
+        <div className="h-[360px] bg-slate-50 border border-slate-100 rounded-2xl p-6 flex flex-col">
            <div className="mb-4 text-center">
              <h5 className="text-xs font-black text-slate-800 uppercase tracking-wider">Facturación por Edad</h5>
              <p className="text-[10px] text-slate-500 font-medium mt-1">Distribución global de ingresos</p>
@@ -125,13 +126,17 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
                   data={pieData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={30}
-                  outerRadius={60}
+                  innerRadius={50}
+                  outerRadius={85}
                   paddingAngle={2}
                   dataKey="value"
-                  label={({ cx, cy, midAngle, innerRadius, outerRadius, value, index }) => {
+                  label={({ cx, cy, midAngle, innerRadius, outerRadius, value, index, percent }) => {
+                    // Si el porcentaje es muy chico (< 3%), no mostramos leader-line para no colisionar. 
+                    // El usuario puede verlo en el tooltip.
+                    if (percent < 0.03) return null;
+                    
                     const RADIAN = Math.PI / 180;
-                    const radius = outerRadius * 1.5;
+                    const radius = outerRadius * 1.35;
                     const x = cx + radius * Math.cos(-midAngle * RADIAN);
                     const y = cy + radius * Math.sin(-midAngle * RADIAN);
                     const textAnchor = x > cx ? 'start' : 'end';
@@ -145,23 +150,23 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
                            fill="none"
                         />
                         <text 
-                          x={x + (x > cx ? 4 : -4)} 
+                          x={x + (x > cx ? 6 : -6)} 
                           y={y - 8} 
                           textAnchor={textAnchor} 
                           dominantBaseline="central"
                           fill="#334155"
-                          fontSize={9}
+                          fontSize={10}
                           fontWeight={800}
                         >
                           {pieData[index].name}
                         </text>
                         <text 
-                          x={x + (x > cx ? 4 : -4)} 
+                          x={x + (x > cx ? 6 : -6)} 
                           y={y + 6} 
                           textAnchor={textAnchor} 
                           dominantBaseline="central"
                           fill="#64748b"
-                          fontSize={8}
+                          fontSize={9}
                           fontWeight={600}
                         >
                           {formatCurrency(value, currency)}

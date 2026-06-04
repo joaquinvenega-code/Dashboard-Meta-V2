@@ -215,19 +215,23 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase') || purchases || spend; // fallback
 
           if (age in demoAges) {
-            if (gender === 'male') demoAges[age].male += spend;
-            if (gender === 'female') demoAges[age].female += spend;
-            demoAges[age].revenue += revenue;
-            demoAges[age].spend += spend;
-            totalDemoSpend += spend;
-            totalDemoRevenue += revenue;
+            if (gender === 'male' || gender === 'female') {
+              if (gender === 'male') demoAges[age].male += spend;
+              if (gender === 'female') demoAges[age].female += spend;
+              demoAges[age].revenue += revenue;
+              demoAges[age].spend += spend;
+              totalDemoSpend += spend;
+              totalDemoRevenue += revenue;
+            }
           } else if (age === '55+' || age === '65+') {
-             if (gender === 'male') demoAges['65+'].male += spend;
-             if (gender === 'female') demoAges['65+'].female += spend;
-             demoAges['65+'].revenue += revenue;
-             demoAges['65+'].spend += spend;
-             totalDemoSpend += spend;
-             totalDemoRevenue += revenue;
+             if (gender === 'male' || gender === 'female') {
+               if (gender === 'male') demoAges['65+'].male += spend;
+               if (gender === 'female') demoAges['65+'].female += spend;
+               demoAges['65+'].revenue += revenue;
+               demoAges['65+'].spend += spend;
+               totalDemoSpend += spend;
+               totalDemoRevenue += revenue;
+             }
           }
         });
         const useDemoSpendForValue = totalDemoRevenue === 0;
