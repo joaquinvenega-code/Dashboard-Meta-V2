@@ -155,11 +155,29 @@ export function parseAdvancedVoiceCommand(
       const bestCandidate = candidatesDay[0];
       
       if (bestCandidate.score >= 5 || (candidatesDay.length === 1 && bestCandidate.score > -20)) {
-        if (isPastMonth) {
-          docDate = subMonths(new Date(), 1);
-        } else {
-          docDate = new Date();
+        docDate = new Date();
+        
+        let monthDetected = false;
+        const monthsStr = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+        
+        // Scan around the matched day to see if a month is specified
+        const dayRegex2 = new RegExp(`\\b${bestCandidate.day}\\b`);
+        const match2 = dayRegex2.exec(normalized);
+        if (match2) {
+           const contextAfter2 = normalized.slice(match2.index + match2[0].length, Math.min(normalized.length, match2.index + match2[0].length + 25));
+           for (let i = 0; i < monthsStr.length; i++) {
+              if (contextAfter2.includes(monthsStr[i])) {
+                 docDate = setMonth(docDate, i);
+                 monthDetected = true;
+                 break;
+              }
+           }
         }
+        
+        if (!monthDetected && isPastMonth) {
+          docDate = subMonths(new Date(), 1);
+        }
+        
         docDate = setDate(docDate, bestCandidate.day);
         dateDetected = true;
       }
@@ -496,43 +514,72 @@ export function parseAdvancedVoiceCommand(
       }
     }
   } else if (intent === 'ADD_LOG_EXTENDED') {
-    // Extract text of the note.
-    let cleanText = rawText;
-    const phrasesToStrip = [
-      /agregar bitacora para/gi,
-      /guardar bitacora para/gi,
-      /registrar bitacora para/gi,
-      /anotar bitacora para/gi,
-      /agregar nota para/gi,
-      /guardar nota para/gi,
-      /registrar nota para/gi,
-      /anotar nota para/gi,
-      /que diga/gi,
-      /diciendo/gi,
-      /sobre/gi,
-      /ayer/gi,
-      /hoy/gi,
-      /antes de ayer/gi,
-      /anteayer/gi,
+    // We try to find markers indicating the content
+    let noteTextRaw = rawText;
+    const contentMarkers = [
+       /que diga lo siguiente\s*/gi,
+       /lo siguiente es\s*/gi,
+       /lo siguiente\s*/gi,
+       /que diga\s*/gi,
+       /diciendo\s*/gi,
+       /con el texto\s*/gi,
+       /que es\s*/gi
     ];
-
-    if (matchedClientName) {
-      const clientEscaped = matchedClientName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-      phrasesToStrip.push(new RegExp(clientEscaped, 'gi'));
+    
+    let foundMarker = false;
+    for (const marker of contentMarkers) {
+       const match = marker.exec(noteTextRaw);
+       if (match) {
+          noteTextRaw = noteTextRaw.substring(match.index + match[0].length);
+          foundMarker = true;
+          break; // Stop at first marker
+       }
     }
 
-    if (bestClient && bestClient.customName) {
-      const customEscaped = bestClient.customName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-      phrasesToStrip.push(new RegExp(customEscaped, 'gi'));
-    }
+    if (foundMarker) {
+       // Just clean up the beginning and end
+       noteText = noteTextRaw.replace(/^[\s:,\-]+/, '').trim();
+       if (noteText.length > 0) {
+         noteText = noteText.charAt(0).toUpperCase() + noteText.slice(1);
+       }
+    } else {
+       let cleanText = rawText;
+       const phrasesToStrip = [
+         /quiero que \w+ una bit[aá]cora (para|en) el cliente /gi,
+         /quiero que \w+ una bit[aá]cora para /gi,
+         /quiero dejar una (nota|bit[aá]cora) para /gi,
+         /(agregar|guardar|registrar|anotar|crear|hacer) bit[aá]cora para/gi,
+         /(agregar|guardar|registrar|anotar|crear|hacer) nota para/gi,
+         /quiero que anotes( para)?/gi,
+         /para el d[ií]a \d{1,2}( de [a-z]+)?/gi,
+         /el d[ií]a \d{1,2}( de [a-z]+)?/gi,
+         /que diga/gi,
+         /diciendo/gi,
+         /sobre/gi,
+         /ayer/gi,
+         /hoy/gi,
+         /antes de ayer/gi,
+         /anteayer/gi,
+       ];
 
-    phrasesToStrip.forEach(regex => {
-      cleanText = cleanText.replace(regex, '');
-    });
+       if (matchedClientName) {
+         const clientEscaped = matchedClientName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+         phrasesToStrip.push(new RegExp(clientEscaped, 'gi'));
+       }
 
-    noteText = cleanText.replace(/^[:\s\-–—]+/g, '').replace(/[:\s\-–—]+$/g, '').trim();
-    if (!noteText) {
-      noteText = rawText; // Fallback
+       if (bestClient && bestClient.customName) {
+         const customEscaped = bestClient.customName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+         phrasesToStrip.push(new RegExp(customEscaped, 'gi'));
+       }
+
+       phrasesToStrip.forEach(regex => {
+         cleanText = cleanText.replace(regex, '');
+       });
+
+       noteText = cleanText.replace(/^[:\s\-–—]+/g, '').replace(/[:\s\-–—]+$/g, '').trim();
+       if (!noteText) {
+         noteText = rawText; // Fallback
+       }
     }
   }
 
