@@ -583,9 +583,8 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
 
                 // Scale heat radius based on total revenue relative to the max regional revenue
                 const intensity = Math.min(1, sale.totalRevenue / maxRegionRevenue);
-                // Reduce the base radius and drastically increase the scaling factor 
-                // so regions with low revenue look small, and big ones look significantly larger
-                const radius = 14 + (180 * Math.pow(intensity, 1.1));
+                // Cap the maximum radius to avoid visual clutter from large outliers
+                const radius = Math.min(75, 16 + (110 * Math.pow(intensity, 0.85)));
 
                 return (
                   <circle
