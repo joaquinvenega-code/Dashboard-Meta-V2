@@ -605,8 +605,8 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                     key={`stroke-${feature.id}`}
                     d={feature.pathData}
                     fill="transparent"
-                    stroke={isHovered ? '#60a5fa' : '#334155'}
-                    strokeWidth={isHovered ? '2' : '0.5'}
+                    stroke={isHovered ? '#ffffff' : 'rgba(255, 255, 255, 0.3)'}
+                    strokeWidth={isHovered ? '2' : '0.8'}
                     style={{
                       transition: 'stroke 150ms ease, stroke-width 150ms ease'
                     }}
