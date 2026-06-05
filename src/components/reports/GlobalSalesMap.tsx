@@ -353,7 +353,12 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
 
   // Helper to find region sales from a feature safely
   const getRegionSale = (feature: any) => {
-    const id = feature.id ? feature.id.toUpperCase() : '';
+    let id = feature.id ? feature.id.toUpperCase() : '';
+    // Special handling for Malvinas to group with Tierra del Fuego (AR-V)
+    if (id.startsWith('AR-V-MALVINAS') || feature.properties?.name === 'Islas Malvinas') {
+      id = 'AR-V';
+    }
+    
     let sale = regionSalesMap.get(id);
     if (!sale && feature.properties?.name) {
       sale = regionSalesMap.get(normalize(feature.properties.name));
@@ -535,11 +540,12 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
           >
             <defs>
               <radialGradient id="heatGradient" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="rgba(220, 38, 38, 0.9)" /> {/* Red core */}
-                <stop offset="20%" stopColor="rgba(239, 68, 68, 0.75)" />
-                <stop offset="45%" stopColor="rgba(245, 158, 11, 0.6)" /> {/* Amber mid */}
-                <stop offset="70%" stopColor="rgba(252, 211, 77, 0.4)" /> {/* Yellow fade */}
-                <stop offset="100%" stopColor="rgba(252, 211, 77, 0)" />
+                <stop offset="0%" stopColor="rgba(255, 0, 0, 1)" />
+                <stop offset="15%" stopColor="rgba(255, 165, 0, 0.9)" />
+                <stop offset="40%" stopColor="rgba(255, 255, 0, 0.7)" />
+                <stop offset="65%" stopColor="rgba(0, 255, 0, 0.4)" />
+                <stop offset="85%" stopColor="rgba(0, 150, 255, 0.2)" />
+                <stop offset="100%" stopColor="rgba(0, 0, 255, 0)" />
               </radialGradient>
             </defs>
             <rect width="1000" height="550" fill="transparent" />
@@ -556,7 +562,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                     key={feature.id}
                     d={feature.pathData}
                     fill={getRegionFeatureColor(feature)}
-                    stroke={isHovered ? '#60a5fa' : '#070b13'}
+                    stroke={isHovered ? '#60a5fa' : '#334155'}
                     strokeWidth={isHovered ? '2' : '0.5'}
                     style={{
                       transition: 'stroke 150ms ease, stroke-width 150ms ease'
@@ -576,7 +582,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                 );
               })}
             </g>
-            <g id="country-subregions-heat">
+            <g id="country-subregions-heat" style={{ mixBlendMode: 'screen' }}>
               {countryPaths.map((feature: any) => {
                 if (!feature.centroidX || !feature.centroidY) return null;
                 const sale = getRegionSale(feature);
@@ -584,8 +590,8 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
 
                 // Scale heat radius based on sales volume relative to the max regional sales
                 const intensity = Math.min(1, sale.salesVolume / maxRegionSalesVolume);
-                // Min radius of 15, max radius of 80 to avoid overwhelming the map
-                const radius = 15 + (65 * Math.pow(intensity, 0.5)); // SQRT scale for better visual progression
+                // Increased radius bounds for a stronger blooming effect
+                const radius = 25 + (120 * Math.pow(intensity, 0.4));
 
                 return (
                   <circle
@@ -609,7 +615,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
               Actividad de Ventas
             </span>
             <div className="flex flex-col gap-1">
-              <div className="w-32 h-1.5 rounded-full" style={{ background: 'linear-gradient(to right, rgb(220, 38, 38), rgb(245, 158, 11), rgb(252, 211, 77), rgba(252, 211, 77, 0.2))' }} />
+              <div className="w-32 h-1.5 rounded-full" style={{ background: 'linear-gradient(to right, rgb(255, 0, 0), rgb(255, 255, 0), rgb(0, 255, 0), rgba(0, 150, 255, 0.4))' }} />
               <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-wider text-slate-300">
                 <span>Alta</span>
                 <span>Baja</span>
