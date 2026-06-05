@@ -1,8 +1,16 @@
 import { parseAdvancedVoiceCommand, AvailableClient } from './src/utils/voiceParser.js';
 
-const clients = [{ id: '1', name: 'Lucky baby' }];
-const raw = "quiero que Ares una bitácora para el cliente Lucky baby para el día 22 de abril lo siguiente se bajó el presupuesto para que los anuncios lleguen activos al martes próximo por pedido del cliente";
+const clients = [{ id: '1', name: 'Lucky baby' }, { id: '2', name: 'Inmobiliaria Cuyo' }];
+const tests = [
+  "anotar la siguiente bitácora para el cliente Lucky baby el día 22 de abril se redujo el presupuesto para que se mantuvieran activos los anuncios hasta el martes próximo con el presupuesto actual",
+  "Anotar en la bitácora de Inmobiliaria Cuyo con fecha 16 de mayo nos conectamos con Alejandro",
+  "Anotar en la bitácora de Inmobiliaria Cuyo el 14 se subió el presupuesto",
+  "Agregar nota para Lucky baby ayer bajamos el presupuesto",
+  "Anotar bitácora para cliente Inmobiliaria Cuyo el día de hoy tuvimos una reunión técnica",
+  "el día veintidós de abril"
+];
 
-const res = parseAdvancedVoiceCommand(raw, clients);
-console.log("DATE:", res.date);
-console.log("NOTE:", res.noteText);
+for(const t of tests) {
+  const res = parseAdvancedVoiceCommand(t, clients);
+  console.log(`\nTEXT: ${t}\nDATE: ${res.date}\nNOTE: ${res.noteText}`);
+}

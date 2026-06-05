@@ -38,15 +38,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
   
   const getYPos = (index: number) => {
      const rowIndex = Math.floor(index / itemsPerRow);
-     const blockIndex = Math.floor(rowIndex / 2); 
-     const isSecondInBlock = rowIndex % 2 === 1;
-     
-     let y = 180; 
-     y += blockIndex * (60 + 200); 
-     if (isSecondInBlock) {
-        y += 60;
-     }
-     return y;
+     return 80 + (rowIndex * 130);
   };
 
   const drawPathStr = () => {
@@ -62,7 +54,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
            d += ` L ${x2} ${y2}`;
         } else {
            const isRightSide = x1 > 500; 
-           const curveOffset = isRightSide ? 200 : -200; 
+           const curveOffset = isRightSide ? 150 : -150; 
            d += ` C ${x1 + curveOffset} ${y1}, ${x2 + curveOffset} ${y2}, ${x2} ${y2}`;
         }
     }
@@ -70,7 +62,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
   };
 
   const lastY = logs.length > 0 ? getYPos(logs.length - 1) : 0;
-  const totalHeight = lastY + 200;
+  const totalHeight = lastY + 140;
 
   return (
     <div className="w-full relative">
@@ -123,7 +115,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
            const colIndex = index % itemsPerRow;
            const isEvenRow = rowIndex % 2 === 0;
            const visualColIndex = isEvenRow ? colIndex : (itemsPerRow - 1 - colIndex);
-           const cardTop = rowIndex % 2 === 0;
+           const cardTop = visualColIndex === 0;
 
            return (
              <div 
@@ -165,7 +157,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
         {/* Center Line for alternating timeline */}
         <div className="absolute left-[24px] sm:left-1/2 sm:-translate-x-1/2 top-0 bottom-0 w-1 bg-[#94a3b8] opacity-70 rounded-full" />
 
-        <div className="space-y-4 sm:-space-y-10 relative pt-2">
+        <div className="space-y-4 sm:-space-y-16 relative pt-2">
             {logs.map((log, index) => {
               const isEven = index % 2 === 0;
               return (
