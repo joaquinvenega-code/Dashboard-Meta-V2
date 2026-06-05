@@ -599,7 +599,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           </div>
 
           {/* Módulo 2 & 3: Funnel & Placements (GRID) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100 print:block print:space-y-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 print:grid-cols-2 gap-8 items-stretch animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
             {/* Funnel Module */}
             <div className="flex flex-col gap-4 print-module">
               <div className="flex items-center gap-3 shrink-0 h-8">

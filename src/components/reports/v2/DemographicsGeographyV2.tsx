@@ -63,7 +63,7 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
         </div>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start print:block print:space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 print:grid-cols-2 gap-8 items-start">
         {/* Gráfico de Barras (Demografía) */}
         <div className="h-[360px] print:h-[280px] flex flex-col">
           <div className="flex items-center gap-4 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100 self-start mb-4">

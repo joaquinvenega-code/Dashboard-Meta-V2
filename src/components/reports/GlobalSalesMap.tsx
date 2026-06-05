@@ -725,7 +725,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
       </div>
 
       {/* RIGHT SIDEBAR: METRICS + LIST */}
-      <div className="w-full lg:w-[40%] flex flex-col md:flex-row gap-3 max-h-[500px] print:max-h-none">
+      <div className="w-full lg:w-[40%] flex flex-col md:flex-row print:flex-row gap-3 max-h-[500px] print:max-h-none">
         
         {/* COL 1: METRICS & LEGEND */}
         <div className="w-full md:w-[45%] flex flex-col gap-3">
