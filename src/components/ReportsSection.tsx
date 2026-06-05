@@ -252,39 +252,41 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
            { age: '55+', male: 4, female: 6, rawValue: 1200 },
         ]);
 
-        const countrySalesMap: Record<string, { spend: number, revenue: number }> = {};
-        const regionSalesMap: Record<string, { spend: number, revenue: number, country: string }> = {};
+        const countrySalesMap: Record<string, { spend: number, purchases: number, revenue: number }> = {};
+        const regionSalesMap: Record<string, { spend: number, purchases: number, revenue: number, country: string }> = {};
 
         geoData.forEach((d: any) => {
           const cId = mapAlpha2ToAlpha3(d.country) || 'USA';
           const spend = parseFloat(d.spend) || 0;
-          const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase');
-          const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase') || purchases || spend; // fallback
+          const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase') || 0;
+          const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase') || 0;
 
-          if (!countrySalesMap[cId]) countrySalesMap[cId] = { spend: 0, revenue: 0 };
+          if (!countrySalesMap[cId]) countrySalesMap[cId] = { spend: 0, purchases: 0, revenue: 0 };
           countrySalesMap[cId].spend += spend;
+          countrySalesMap[cId].purchases += purchases;
           countrySalesMap[cId].revenue += revenue;
 
           if (d.region) {
             // Keep original region name
             const rName = String(d.region);
             const key = `${cId}_${rName}`;
-            if (!regionSalesMap[key]) regionSalesMap[key] = { spend: 0, revenue: 0, country: cId };
+            if (!regionSalesMap[key]) regionSalesMap[key] = { spend: 0, purchases: 0, revenue: 0, country: cId };
             regionSalesMap[key].spend += spend;
+            regionSalesMap[key].purchases += purchases;
             regionSalesMap[key].revenue += revenue;
           }
         });
 
         const mappedGeo = Object.keys(countrySalesMap).map(cId => ({
           countryId: cId,
-          salesVolume: countrySalesMap[cId].spend,
+          salesVolume: countrySalesMap[cId].purchases,
           totalRevenue: countrySalesMap[cId].revenue
         }));
 
         const mappedRegions = Object.keys(regionSalesMap).map(key => ({
           regionId: key, // Will pass it as regionName in the component mapping maybe
           regionName: key.split('_')[1],
-          salesVolume: regionSalesMap[key].spend,
+          salesVolume: regionSalesMap[key].purchases,
           totalRevenue: regionSalesMap[key].revenue
         }));
 

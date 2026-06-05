@@ -578,7 +578,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                 // Scale heat radius based on sales volume relative to the max regional sales
                 const intensity = Math.min(1, sale.salesVolume / maxRegionSalesVolume);
                 // Adjust radius bounds for a balanced blooming effect
-                const radius = 18 + (100 * Math.pow(intensity, 0.45));
+                const radius = 22 + (110 * Math.pow(intensity, 0.42));
 
                 return (
                   <circle
