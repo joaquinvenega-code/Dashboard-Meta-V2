@@ -34,8 +34,8 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
     );
   }
 
-  const itemsPerRow = 3;
-  const rowHeight = 360; 
+  const itemsPerRow = 2;
+  const rowHeight = 160; 
 
   const getXPercent = (index: number) => {
      const rowIndex = Math.floor(index / itemsPerRow);
@@ -63,7 +63,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
            d += ` L ${x2} ${y2}`;
         } else {
            const isRightSide = x1 > 500; 
-           const curveOffset = isRightSide ? 140 : -140; 
+           const curveOffset = isRightSide ? 200 : -200; 
            d += ` C ${x1 + curveOffset} ${y1}, ${x2 + curveOffset} ${y2}, ${x2} ${y2}`;
         }
     }
@@ -106,7 +106,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
              <div 
                key={log.id} 
                className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500 will-change-transform"
-               style={{ left: `${xPos}%`, top: `${yPos}px`, width: `${85 / itemsPerRow}%`, animationDelay: `${index * 50}ms` }}
+               style={{ left: `${xPos}%`, top: `${yPos}px`, width: `${92 / itemsPerRow}%`, animationDelay: `${index * 50}ms` }}
              >
                {/* Node Dot */}
                <div className="relative z-20 w-5 h-5 bg-[#3b82f6] rounded-full border-[4px] border-white shadow flex items-center justify-center">
@@ -114,28 +114,18 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
                </div>
 
                {/* Date Label */}
-               <div className={`absolute ${cardTop ? 'top-[16px]' : '-top-[32px]'} font-black text-slate-900 text-[11px] tracking-widest bg-white/95 px-1.5 py-0.5 rounded backdrop-blur-sm z-30 shadow-sm border border-slate-100`}>
+               <div className={`absolute ${cardTop ? 'top-[16px]' : '-top-[28px]'} font-black text-slate-900 text-[10px] tracking-widest bg-white/95 px-1.5 py-0.5 rounded backdrop-blur-sm z-30 shadow-sm border border-slate-100`}>
                  {log.date}
                </div>
 
                {/* Card Container */}
-               <div className={`absolute ${cardTop ? 'bottom-[30px]' : 'top-[30px]'} left-1/2 -translate-x-1/2 w-full px-1 z-10 hover:z-50`}>
-                 <div className="bg-white border-2 border-slate-200 hover:border-blue-400 rounded-xl p-3 shadow-sm hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] transition-all cursor-default relative">
+               <div className={`absolute ${cardTop ? 'bottom-[28px]' : 'top-[28px]'} left-1/2 -translate-x-1/2 w-full px-1 z-10 hover:z-50`}>
+                 <div className="bg-white border text-center border-slate-200 hover:border-blue-400 rounded-xl p-2.5 shadow-sm hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] transition-all cursor-default relative">
                     {/* Directional Arrow pointing to node */}
-                    <div className={`absolute left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white border-r-2 border-b-2 border-slate-200 transform rotate-45 transition-colors ${cardTop ? '-bottom-[8px] rotate-[45deg]' : '-top-[8px] rotate-[-135deg] border-t-2 border-l-2 border-r-0 border-b-0'} group-hover:border-blue-400`} />
+                    <div className={`absolute left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white border-r border-b border-slate-200 transform rotate-45 transition-colors ${cardTop ? '-bottom-[7px] rotate-[45deg]' : '-top-[7px] rotate-[-135deg] border-t border-l border-r-0 border-b-0'} group-hover:border-blue-400`} />
                     
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <div className="p-1 text-slate-500 rounded bg-slate-50 border border-slate-100">
-                          <CategoryIcon category={log.category} />
-                        </div>
-                        <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none pt-0.5">
-                          {log.category || 'Acción'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="max-h-[140px] overflow-y-auto pr-1 space-y-1 scrollbar-thin scrollbar-thumb-slate-200">
-                      <p className="text-[11px] text-slate-600 font-medium leading-normal">
+                    <div className="max-h-[100px] overflow-y-auto px-1 scrollbar-thin scrollbar-thumb-slate-200">
+                      <p className="text-[10px] text-slate-600 font-medium leading-tight">
                          {log.description}
                       </p>
                     </div>
@@ -163,27 +153,19 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
                   </div>
 
                   {/* Card wrapper */}
-                  <div className={`w-full sm:w-[45%] pl-[56px] sm:pl-0 ${isEven ? 'sm:pr-8' : 'sm:pl-8'}`}>
-                     <div className="bg-white border-2 border-slate-200 rounded-xl p-4 relative shadow-sm hover:border-blue-400 transition-all cursor-default">
+                  <div className={`w-full sm:w-[50%] pl-[56px] sm:pl-0 ${isEven ? 'sm:pr-6' : 'sm:pl-6'}`}>
+                     <div className="bg-white text-center border border-slate-200 rounded-xl p-3 relative shadow-sm hover:border-blue-400 transition-all cursor-default">
                         
                         {/* Mobile arrow (left) */}
-                        <div className={`absolute top-4 -left-[9px] w-4 h-4 bg-white border-b-2 border-l-2 border-slate-200 transform rotate-45 sm:hidden`} />
+                        <div className={`absolute top-4 -left-[6px] w-3 h-3 bg-white border-b border-l border-slate-200 transform rotate-45 sm:hidden`} />
                         
                         {/* Tablet arrow (alternating) */}
-                        <div className={`hidden sm:block absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-slate-200 transform rotate-45 ${isEven ? '-right-[9px] border-t-2 border-r-2' : '-left-[9px] border-b-2 border-l-2'}`} />
+                        <div className={`hidden sm:block absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-slate-200 transform rotate-45 ${isEven ? '-right-[6px] border-t border-r' : '-left-[6px] border-b border-l'}`} />
 
-                        <div className="flex items-center justify-between gap-2 mb-2 border-b border-slate-100 pb-2">
-                          <div className="flex items-center gap-1.5">
-                            <div className="p-1 bg-slate-50 border border-slate-100 rounded text-slate-500">
-                              <CategoryIcon category={log.category} />
-                            </div>
-                            <span className="text-[9px] font-black text-slate-700 uppercase tracking-widest pt-0.5">
-                              {log.category || 'Acción'}
-                            </span>
-                          </div>
+                        <div className="flex items-center justify-center mb-1 pb-1">
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-tight">{log.date}</span>
                         </div>
-                        <p className="text-xs text-slate-600 leading-relaxed font-medium">{log.description}</p>
+                        <p className="text-[10px] text-slate-600 leading-tight font-medium">{log.description}</p>
                      </div>
                   </div>
 
