@@ -43,28 +43,28 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
         >
           <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent print:hidden" />
           <div className="flex flex-col items-center relative z-10">
-             <span className="text-[7px] font-black text-white/60 uppercase tracking-[0.2em]">VISITA A PÁGINA</span>
-             <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(pageViews, 0)}</span>
+             <span className="text-[7px] font-black text-white/60 print:text-blue-900/60 uppercase tracking-[0.2em]">VISITA A PÁGINA</span>
+             <span className="text-[12px] font-black text-white print:text-blue-950 tracking-tight">{formatDecimal(pageViews, 0)}</span>
           </div>
         </div>
         <div 
-          className="w-[78%] h-[68px] bg-blue-700 shadow-xl flex items-center justify-center relative overflow-hidden"
+          className="w-[78%] h-[68px] bg-blue-700 shadow-xl flex items-center justify-center relative overflow-hidden print:border print:border-blue-700 print:bg-transparent"
           style={{ clipPath: 'polygon(9% 0%, 91% 0%, 84% 100%, 16% 100%)' }}
         >
           <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent print:hidden" />
           <div className="flex flex-col items-center relative z-10">
-             <span className="text-[7px] font-black text-white/60 uppercase tracking-[0.1em] text-center">AGREGADOS AL CARRITO</span>
-             <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(atc, 0)}</span>
+             <span className="text-[7px] font-black text-white/60 print:text-blue-900/60 uppercase tracking-[0.1em] text-center">AGREGADOS AL CARRITO</span>
+             <span className="text-[12px] font-black text-white print:text-blue-950 tracking-tight">{formatDecimal(atc, 0)}</span>
           </div>
         </div>
         <div 
-          className="w-[69%] h-[68px] bg-blue-900 shadow-2xl flex items-center justify-center relative overflow-hidden"
+          className="w-[69%] h-[68px] bg-blue-900 shadow-2xl flex items-center justify-center relative overflow-hidden print:border print:border-blue-900 print:bg-transparent"
           style={{ clipPath: 'polygon(14% 0%, 86% 0%, 80% 100%, 20% 100%)' }}
         >
           <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent print:hidden" />
           <div className="flex flex-col items-center relative z-10">
-             <span className="text-[7px] font-black text-white/60 uppercase tracking-[0.2em]">COMPRAS</span>
-             <span className="text-[12px] font-black text-white tracking-tight">{formatDecimal(purchases, 0)}</span>
+             <span className="text-[7px] font-black text-white/60 print:text-blue-900/60 uppercase tracking-[0.2em]">COMPRAS</span>
+             <span className="text-[12px] font-black text-white print:text-blue-950 tracking-tight">{formatDecimal(purchases, 0)}</span>
           </div>
         </div>
       </div>
@@ -82,7 +82,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
         </div>
 
         {/* Tasa de Visita a Página */}
-        <div className="h-[68px] bg-blue-500 rounded-r-[1.5rem] rounded-l-md px-3 flex items-center justify-between text-white shadow-md relative overflow-hidden">
+        <div className="h-[68px] bg-blue-500 rounded-r-[1.5rem] rounded-l-md px-3 flex items-center justify-between text-white shadow-md relative overflow-hidden print:bg-transparent print:border print:border-blue-500 print:text-blue-950">
           <div className="absolute inset-0 bg-blue-600 opacity-20 print:hidden" />
           <div className="relative z-10 flex-0.5 flex flex-col min-w-0 justify-center">
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa de visita</span>
@@ -92,7 +92,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
         </div>
 
         {/* Tasa de Agregado al Carrito */}
-        <div className="h-[68px] bg-blue-700 rounded-r-[1.5rem] rounded-l-md px-3 flex items-center justify-between text-white shadow-lg relative overflow-hidden">
+        <div className="h-[68px] bg-blue-700 rounded-r-[1.5rem] rounded-l-md px-3 flex items-center justify-between text-white shadow-lg relative overflow-hidden print:bg-transparent print:border print:border-blue-700 print:text-blue-950">
           <div className="absolute inset-0 bg-blue-800 opacity-20 print:hidden" />
           <div className="relative z-10 flex-0.5 flex flex-col min-w-0 justify-center">
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa agregados</span>
@@ -102,7 +102,7 @@ function TrafficFunnel({ impressions, clicks, pageViews, atc, purchases }: {
         </div>
 
         {/* Tasa de Compras (Conversion Rate) */}
-        <div className="h-[68px] bg-blue-900 rounded-r-[1.5rem] rounded-l-md px-3 flex items-center justify-between text-white shadow-2xl relative overflow-hidden">
+        <div className="h-[68px] bg-blue-900 rounded-r-[1.5rem] rounded-l-md px-3 flex items-center justify-between text-white shadow-2xl relative overflow-hidden print:bg-transparent print:border print:border-blue-900 print:text-blue-950">
           <div className="absolute inset-0 bg-black/20 print:hidden" />
           <div className="relative z-10 flex-0.5 flex flex-col min-w-0 justify-center">
              <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">Tasa compras</span>

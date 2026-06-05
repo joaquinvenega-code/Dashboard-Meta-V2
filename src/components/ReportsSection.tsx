@@ -587,7 +587,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           month={reportMonth} 
         />
 
-        <div className="space-y-16 mt-12">
+        <div className="space-y-16 mt-12 print:space-y-6 print:mt-6">
           {/* Módulo 1: Resumen Ejecutivo */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 print-module">
             <ExecutiveSummaryV2 
