@@ -102,6 +102,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [hoveredElement, setHoveredElement] = useState<any | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [mapZoom, setMapZoom] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Index country sales data by countryId for fast O(1) checks
@@ -460,17 +461,38 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
       </div>
 
       {/* CONTENT SECTION */}
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex flex-col lg:flex-row gap-6 items-stretch">
         
         {/* INTERACTIVE SVG MAP CONTAINER */}
         <div 
           ref={containerRef}
           onMouseMove={handleMouseMove}
           onMouseLeave={() => setHoveredElement(null)}
-          className="relative bg-[#070b13] rounded-2xl border border-slate-950 p-2 overflow-hidden flex items-center justify-center w-full lg:w-[70%] shadow-inner"
-          style={{ minHeight: '420px' }}
+          className="relative bg-[#070b13] rounded-2xl border border-slate-950 p-2 overflow-hidden flex items-center justify-center w-full lg:w-[60%] shadow-inner min-h-[420px] lg:min-h-0"
         >
         
+        {/* ZOOM CONTROLS */}
+        <div className="absolute top-4 right-4 z-40 flex flex-col gap-1">
+          <button 
+            onClick={() => setMapZoom(prev => Math.min(prev + 0.25, 3))}
+            className="w-7 h-7 bg-slate-900/60 hover:bg-slate-800 text-white rounded flex items-center justify-center border border-slate-700/50 backdrop-blur-md transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+          <button 
+            onClick={() => setMapZoom(prev => Math.max(prev - 0.25, 0.5))}
+            className="w-7 h-7 bg-slate-900/60 hover:bg-slate-800 text-white rounded flex items-center justify-center border border-slate-700/50 backdrop-blur-md transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+          <button 
+            onClick={() => setMapZoom(1)}
+            className="w-7 h-7 bg-slate-900/60 hover:bg-slate-800 text-slate-300 rounded flex items-center justify-center border border-slate-700/50 backdrop-blur-md transition-colors text-[8px] font-black mt-1"
+          >
+            1x
+          </button>
+        </div>
+
         {/* RETORNO FLOATING BUTTON */}
         <AnimatePresence>
           {selectedCountry && (
@@ -489,13 +511,18 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
           )}
         </AnimatePresence>
 
-        {/* CONDITIONALLY RENDER GLOBES / DETAILS */}
-        {!selectedCountry ? (
-          /* GLOBE BASE LAYER */
-          <svg 
-            viewBox="0 0 1010 660" 
-            className="w-full h-auto max-h-[500px]"
-            xmlns="http://www.w3.org/2000/svg"
+        {/* MAP CONTENT WITH ZOOM */}
+        <div 
+          style={{ transform: `scale(${mapZoom})`, transition: 'transform 300ms cubic-bezier(0.2, 0, 0, 1)' }}
+          className="w-full h-full flex items-center justify-center p-4"
+        >
+          {/* CONDITIONALLY RENDER GLOBES / DETAILS */}
+          {!selectedCountry ? (
+            /* GLOBE BASE LAYER */
+            <svg 
+              viewBox="0 0 1010 660" 
+              className="w-full h-auto max-h-[500px]"
+              xmlns="http://www.w3.org/2000/svg"
           >
             <rect width="1010" height="660" fill="transparent" />
             <g id="world-map-countries">
@@ -639,23 +666,8 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
               })}
             </g>
           </svg>
-        )}
-
-        {/* MAP LEGEND */}
-        {selectedCountry && (
-          <div className="absolute bottom-4 right-4 z-40 bg-slate-900/40 backdrop-blur-md border border-slate-700/50 rounded-xl px-4 py-3 pb-2.5 flex flex-col gap-1.5 shadow-lg select-none">
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-100/90 text-center">
-              Actividad de Ventas
-            </span>
-            <div className="flex flex-col gap-1">
-              <div className="w-32 h-1.5 rounded-full" style={{ background: 'linear-gradient(to right, rgb(255, 0, 0), rgb(255, 255, 0), rgb(0, 255, 0), rgba(0, 150, 255, 0.4))' }} />
-              <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-wider text-slate-300">
-                <span>Alta</span>
-                <span>Baja</span>
-              </div>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* FLOATING RICH TOOLTIP */}
         <AnimatePresence>
@@ -725,47 +737,65 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
       </div>
 
       {/* RIGHT SIDEBAR: METRICS + LIST */}
-      <div className="w-full lg:w-[30%] flex flex-col gap-4">
-        {/* METRICS PANEL */}
-        <div id="map-summary-panel" className="flex flex-col gap-3 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 shadow-xs">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Zonas Activas</span>
-            <span className="text-sm font-black text-slate-900 font-mono">{summary.zonesCount} Provincias / Países</span>
+      <div className="w-full lg:w-[40%] flex flex-col md:flex-row gap-4 max-h-[500px]">
+        
+        {/* COL 1: METRICS & LEGEND */}
+        <div className="w-full md:w-[45%] flex flex-col gap-4">
+          {/* METRICS PANEL */}
+          <div id="map-summary-panel" className="flex flex-col gap-3 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 shadow-xs">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Zonas Activas</span>
+              <span className="text-sm font-black text-slate-900 font-mono">{summary.zonesCount} Provincias / Países</span>
+            </div>
+            <div className="w-full h-[1px] bg-slate-200" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Volumen Total BOFU</span>
+              <span className="text-sm font-black text-slate-900 font-mono">{summary.totalSales.toLocaleString('es-AR')} Conversiones</span>
+            </div>
+            <div className="w-full h-[1px] bg-slate-200" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Facturación Consolidada</span>
+              <span className="text-sm font-black text-rose-600 font-mono">{formatValue(summary.totalRev)}</span>
+            </div>
           </div>
-          <div className="w-full h-[1px] bg-slate-200" />
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Volumen Total BOFU</span>
-            <span className="text-sm font-black text-slate-900 font-mono">{summary.totalSales.toLocaleString('es-AR')} Conversiones</span>
-          </div>
-          <div className="w-full h-[1px] bg-slate-200" />
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Facturación Consolidada</span>
-            <span className="text-sm font-black text-rose-600 font-mono">{formatValue(summary.totalRev)}</span>
+
+          {/* MAP LEGEND */}
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 flex flex-col gap-2 shadow-xs">
+            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 font-mono">
+              Actividad de Ventas
+            </span>
+            <div className="flex flex-col gap-1.5 mt-1">
+              <div className="w-full h-2 rounded-full" style={{ background: 'linear-gradient(to right, rgb(255, 0, 0), rgb(255, 255, 0), rgb(0, 255, 0), rgba(0, 150, 255, 0.4))' }} />
+              <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-wider text-slate-500">
+                <span>Alta</span>
+                <span>Baja</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* REGIONS LIST */}
-        <div className="flex-1 min-h-0 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col overflow-hidden shadow-xs">
-          <div className="px-4 py-3 border-b border-slate-200 bg-white">
+        {/* COL 2: REGIONS LIST */}
+        <div className="w-full md:w-[55%] flex-1 min-h-[400px] bg-slate-50 border border-slate-100 rounded-2xl flex flex-col overflow-hidden shadow-xs">
+          <div className="px-4 py-3 border-b border-slate-200 bg-white shadow-sm z-10">
             <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider font-mono">
               {selectedCountry ? 'Top Regiones' : 'Top Países'}
             </span>
           </div>
-          <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1 max-h-[350px]">
+          <div className="flex-1 overflow-y-auto p-1.5 flex flex-col">
             {listData.length === 0 ? (
               <div className="text-xs text-center text-slate-400 py-8 font-medium">No hay zonas activas</div>
             ) : (
               listData.map((item, idx) => (
-                <div key={item.id} className="flex flex-col gap-1 px-3 py-2 border-b last:border-0 border-slate-100 hover:bg-white rounded-lg transition-colors cursor-default">
+                <div key={item.id} className="flex flex-col gap-0.5 px-2.5 py-1.5 border-b border-slate-100/50 hover:bg-white rounded-md transition-colors cursor-default group">
                   <div className="flex justify-between items-center">
-                    <span className="font-black text-xs text-slate-900 uppercase truncate pr-2">
+                    <span className="font-black text-[10px] text-slate-800 uppercase truncate pr-2 group-hover:text-blue-600 transition-colors">
                        {idx + 1}. {item.name}
                     </span>
-                    <span className="text-[10px] font-black font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                    <span className="text-[9px] font-black font-mono text-slate-500 bg-slate-100 px-1 py-0.5 rounded">
                       {item.salesVolume}
                     </span>
                   </div>
-                  <span className="font-black text-rose-500 text-xs font-mono">
+                  <span className="font-black text-rose-500 text-[10px] font-mono opacity-90 group-hover:opacity-100 transition-opacity">
                     {formatValue(item.totalRevenue)}
                   </span>
                 </div>
