@@ -136,13 +136,13 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
   // Find max country sales volume for global color scales
   const maxSalesVolume = useMemo(() => {
     if (salesData.length === 0) return 1;
-    return Math.max(...salesData.map(item => item.salesVolume), 1);
+    return Math.max(...salesData.map(item => item.totalRevenue), 1);
   }, [salesData]);
 
   // Find max regional sales volume for country color scales
   const maxRegionSalesVolume = useMemo(() => {
     if (regionSalesData.length === 0) return 1;
-    return Math.max(...regionSalesData.map(item => item.salesVolume), 1);
+    return Math.max(...regionSalesData.map(item => item.totalRevenue), 1);
   }, [regionSalesData]);
 
   // Global map geometry: Miller Cylindrical representation
@@ -338,7 +338,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
     if (!sale || sale.salesVolume === 0) {
       return '#1b233a'; // Classic high contrast dark background
     }
-    const intensity = Math.max(0.15, sale.salesVolume / maxSalesVolume);
+    const intensity = Math.max(0.15, sale.totalRevenue / maxSalesVolume);
     
     // Warm Amber to Coral/Red transition
     const startColor = { r: 245, g: 158, b: 11 }; // Amber-500
@@ -541,10 +541,10 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
             <defs>
               <radialGradient id="heatGradient" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="rgba(255, 0, 0, 1)" />
-                <stop offset="15%" stopColor="rgba(255, 165, 0, 0.9)" />
-                <stop offset="40%" stopColor="rgba(255, 255, 0, 0.7)" />
-                <stop offset="65%" stopColor="rgba(0, 255, 0, 0.4)" />
-                <stop offset="85%" stopColor="rgba(0, 150, 255, 0.2)" />
+                <stop offset="10%" stopColor="rgba(255, 165, 0, 0.8)" />
+                <stop offset="25%" stopColor="rgba(255, 255, 0, 0.4)" />
+                <stop offset="50%" stopColor="rgba(0, 255, 0, 0.15)" />
+                <stop offset="75%" stopColor="rgba(0, 150, 255, 0.05)" />
                 <stop offset="100%" stopColor="rgba(0, 0, 255, 0)" />
               </radialGradient>
             </defs>
@@ -576,9 +576,9 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                 if (!sale || sale.salesVolume === 0) return null;
 
                 // Scale heat radius based on sales volume relative to the max regional sales
-                const intensity = Math.min(1, sale.salesVolume / maxRegionSalesVolume);
-                // Increased radius bounds for a stronger blooming effect
-                const radius = 25 + (120 * Math.pow(intensity, 0.4));
+                const intensity = Math.min(1, sale.totalRevenue / maxRegionSalesVolume);
+                // Reduce radius bounds for a tighter blooming effect
+                const radius = 15 + (85 * Math.pow(intensity, 0.5));
 
                 return (
                   <circle
