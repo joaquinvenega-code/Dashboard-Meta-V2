@@ -145,6 +145,12 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
     return Math.max(...regionSalesData.map(item => item.salesVolume), 1);
   }, [regionSalesData]);
 
+  // Find max regional revenue for heat map intensity
+  const maxRegionRevenue = useMemo(() => {
+    if (regionSalesData.length === 0) return 1;
+    return Math.max(...regionSalesData.map(item => item.totalRevenue), 1);
+  }, [regionSalesData]);
+
   // Global map geometry: Miller Cylindrical representation
   const projectGlobal = useMemo(() => {
     const width = 1010;
@@ -541,10 +547,10 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
             <defs>
               <radialGradient id="heatGradient" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="rgba(255, 0, 0, 1)" />
-                <stop offset="15%" stopColor="rgba(255, 165, 0, 0.85)" />
-                <stop offset="40%" stopColor="rgba(255, 255, 0, 0.55)" />
-                <stop offset="65%" stopColor="rgba(0, 255, 0, 0.25)" />
-                <stop offset="85%" stopColor="rgba(0, 150, 255, 0.1)" />
+                <stop offset="15%" stopColor="rgba(255, 100, 0, 0.85)" />
+                <stop offset="35%" stopColor="rgba(255, 200, 0, 0.45)" />
+                <stop offset="55%" stopColor="rgba(0, 255, 0, 0.2)" />
+                <stop offset="75%" stopColor="rgba(0, 150, 255, 0.1)" />
                 <stop offset="100%" stopColor="rgba(0, 0, 255, 0)" />
               </radialGradient>
             </defs>
@@ -575,10 +581,11 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                 const sale = getRegionSale(feature);
                 if (!sale || sale.salesVolume === 0) return null;
 
-                // Scale heat radius based on sales volume relative to the max regional sales
-                const intensity = Math.min(1, sale.salesVolume / maxRegionSalesVolume);
-                // Adjust radius bounds to be a bit larger again
-                const radius = 28 + (125 * Math.pow(intensity, 0.45));
+                // Scale heat radius based on total revenue relative to the max regional revenue
+                const intensity = Math.min(1, sale.totalRevenue / maxRegionRevenue);
+                // Reduce the base radius and drastically increase the scaling factor 
+                // so regions with low revenue look small, and big ones look significantly larger
+                const radius = 14 + (180 * Math.pow(intensity, 1.1));
 
                 return (
                   <circle
