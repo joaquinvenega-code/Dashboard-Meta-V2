@@ -549,35 +549,22 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
               </radialGradient>
             </defs>
             <rect width="1000" height="550" fill="transparent" />
-            <g id="country-subregions-paths">
+            <g id="country-subregions-fill">
               {countryPaths.map((feature: any) => {
                 if (!feature.pathData) return null;
 
                 const isHovered = hoveredElement?.id === feature.id;
-                const sale = getRegionSale(feature);
-                const hasSales = sale && sale.salesVolume > 0;
 
                 return (
                   <path
-                    key={feature.id}
+                    key={`fill-${feature.id}`}
                     d={feature.pathData}
                     fill={getRegionFeatureColor(feature)}
-                    stroke={isHovered ? '#60a5fa' : '#334155'}
-                    strokeWidth={isHovered ? '2' : '0.5'}
+                    stroke="none"
                     style={{
-                      transition: 'stroke 150ms ease, stroke-width 150ms ease'
+                      transition: 'fill 150ms ease'
                     }}
-                    className="opacity-95 hover:opacity-100 transition-all cursor-pointer"
-                    onMouseEnter={() => {
-                      setHoveredElement({
-                        id: feature.id,
-                        name: feature.properties.name,
-                        type: 'region',
-                        salesVolume: sale ? sale.salesVolume : 0,
-                        totalRevenue: sale ? sale.totalRevenue : 0,
-                        active: hasSales
-                      });
-                    }}
+                    className="opacity-95 transition-all"
                   />
                 );
               })}
@@ -601,6 +588,39 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                     r={radius}
                     fill="url(#heatGradient)"
                     style={{ pointerEvents: 'none' }} // Don't block hover on paths
+                  />
+                );
+              })}
+            </g>
+            <g id="country-subregions-stroke">
+              {countryPaths.map((feature: any) => {
+                if (!feature.pathData) return null;
+
+                const isHovered = hoveredElement?.id === feature.id;
+                const sale = getRegionSale(feature);
+                const hasSales = sale && sale.salesVolume > 0;
+
+                return (
+                  <path
+                    key={`stroke-${feature.id}`}
+                    d={feature.pathData}
+                    fill="transparent"
+                    stroke={isHovered ? '#60a5fa' : '#334155'}
+                    strokeWidth={isHovered ? '2' : '0.5'}
+                    style={{
+                      transition: 'stroke 150ms ease, stroke-width 150ms ease'
+                    }}
+                    className="transition-all cursor-pointer"
+                    onMouseEnter={() => {
+                      setHoveredElement({
+                        id: feature.id,
+                        name: feature.properties.name,
+                        type: 'region',
+                        salesVolume: sale ? sale.salesVolume : 0,
+                        totalRevenue: sale ? sale.totalRevenue : 0,
+                        active: hasSales
+                      });
+                    }}
                   />
                 );
               })}
