@@ -499,6 +499,19 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-700">
+      <style>{`
+        @media print {
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .print-module {
+             page-break-inside: avoid;
+             break-inside: avoid;
+          }
+        }
+      `}</style>
+      
       {/* TOOLBAR */}
       <div className="bg-[#0a0a0a] rounded-lg border border-white/5 p-4 flex flex-wrap items-center justify-between gap-4 print:hidden sticky top-4 z-[110] backdrop-blur-md bg-opacity-90 shadow-2xl">
         <div className="flex items-end gap-4">
@@ -576,7 +589,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
 
         <div className="space-y-16 mt-12">
           {/* Módulo 1: Resumen Ejecutivo */}
-          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 print-module">
             <ExecutiveSummaryV2 
               metrics={metrics}
               narrative={reportTexts.narrative}
@@ -586,14 +599,14 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           </div>
 
           {/* Módulo 2 & 3: Funnel & Placements (GRID) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100 print:block print:space-y-16">
             {/* Funnel Module */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 print-module">
               <div className="flex items-center gap-3 shrink-0 h-8">
                 <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">02</div>
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Análisis del Funnel</h3>
               </div>
-              <div className="flex-1 min-h-[460px] flex flex-col">
+              <div className="flex-1 min-h-[460px] print:min-h-0 flex flex-col">
                 <ReportFunnelBoard 
                   spend={metrics.spend}
                   ctr={metrics.clicks > 0 ? (metrics.clicks / (metrics.impressions || 1) * 100) : 0}
@@ -609,9 +622,13 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
             </div>
 
             {/* Placements Chart Module */}
-            <div className="flex flex-col gap-4">
-              <div className="w-full h-8 shrink-0" /> {/* Spacer to align with funnel title */}
-              <div className="flex-1 flex flex-col min-h-[460px]">
+            <div className="flex flex-col gap-4 print-module">
+              <div className="w-full h-8 shrink-0 print:hidden" /> {/* Spacer to align with funnel title */}
+              <div className="flex items-center gap-3 shrink-0 h-8 hidden print:flex">
+                <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">02B</div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Distribución de Ubicaciones</h3>
+              </div>
+              <div className="flex-1 flex flex-col min-h-[460px] print:min-h-0">
                 <PlacementsChartV2 
                   data={realPlacements.length > 0 ? realPlacements : [
                     { name: 'Instagram Stories', value: 45, color: '#3b82f6' },
@@ -625,7 +642,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           </div>
 
           {/* Módulo 4: Performance Chart (Full Width / Stacked) */}
-          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150 print-module">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">03</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Proyección de Rendimiento</h3>
@@ -636,7 +653,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           </div>
 
           {/* Módulo 4: Asset Performance */}
-          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200 print-module">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">04</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Anuncios Ganadores</h3>
@@ -645,7 +662,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           </div>
 
           {/* Módulo 5: Demographics */}
-          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-250">
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-250 print-module">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">05</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Demografía de Audiencia</h3>
@@ -654,16 +671,18 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           </div>
 
           {/* Módulo 6: Mapa de Ventas Global */}
-          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-275">
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-275 print-module">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">06</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Mapa de Ventas</h3>
             </div>
-            <GlobalSalesMap currency={metrics.currency} salesData={realGeography.length > 0 ? realGeography : undefined} regionSalesData={realGeographyRegions.length > 0 ? realGeographyRegions : undefined} />
+            <div className="print:min-h-0 min-h-[500px]">
+              <GlobalSalesMap currency={metrics.currency} salesData={realGeography.length > 0 ? realGeography : undefined} regionSalesData={realGeographyRegions.length > 0 ? realGeographyRegions : undefined} />
+            </div>
           </div>
 
           {/* Módulo 7: Timeline de Gestión */}
-          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300 print-module">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">07</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Bitácora de Gestión</h3>
@@ -672,7 +691,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           </div>
 
           {/* Módulo 8: Roadmap & Next Steps */}
-          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-400">
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-400 print-module">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">08</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Roadmap & Próximos Pasos</h3>
@@ -687,7 +706,9 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           </div>
 
           {/* GLOSARIO */}
-          <ReportGlossaryV2 />
+          <div className="print-module">
+            <ReportGlossaryV2 />
+          </div>
         </div>
 
         {/* Footer */}

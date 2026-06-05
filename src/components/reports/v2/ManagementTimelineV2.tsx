@@ -87,7 +87,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
       
       {/* DESKTOP VIEW (Serpentine Timeline) */}
       {viewMode === 'serpentine' && (
-      <div className="hidden lg:block print:block relative w-full overflow-hidden mb-8" style={{ height: `${totalHeight}px` }}>
+      <div className="hidden lg:block print:hidden relative w-full overflow-hidden mb-8" style={{ height: `${totalHeight}px` }}>
         
         {/* The Serpentine Path */}
         <svg 
@@ -152,33 +152,33 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
       </div>
       )}
 
-      {/* MOBILE / TABLET VIEW (Vertical Alternating Timeline) */}
-      <div className={cn("relative pb-16 sm:pb-32 mt-4", viewMode === 'masonry' ? 'block' : 'block lg:hidden print:hidden')}>
+      {/* MOBILE / TABLET VIEW / PRINT VIEW (Vertical Alternating Timeline) */}
+      <div className={cn("relative pb-16 sm:pb-32 mt-4 print:pb-4 print:block", viewMode === 'masonry' ? 'block' : 'block lg:hidden')}>
         {/* Center Line for alternating timeline */}
-        <div className="absolute left-[24px] sm:left-1/2 sm:-translate-x-1/2 top-0 bottom-0 w-1 bg-[#94a3b8] opacity-70 rounded-full" />
+        <div className="absolute left-[24px] sm:left-1/2 print:left-[24px] sm:-translate-x-1/2 print:translate-x-0 top-0 bottom-0 w-1 bg-[#94a3b8] opacity-70 rounded-full" />
 
-        <div className="space-y-4 sm:-space-y-16 relative pt-2">
+        <div className="space-y-4 sm:-space-y-16 print:space-y-4 relative pt-2">
             {logs.map((log, index) => {
               const isEven = index % 2 === 0;
               return (
-                <div key={log.id} className={`relative flex flex-col sm:flex-row items-start sm:items-center w-full animate-in fade-in slide-in-from-bottom-4 duration-500 ${isEven ? 'sm:justify-start' : 'sm:justify-end'}`} style={{ animationDelay: `${index * 50}ms` }}>
+                <div key={log.id} className={`relative flex flex-col sm:flex-row print:flex-col items-start sm:items-center print:items-start w-full animate-in fade-in slide-in-from-bottom-4 duration-500 print:break-inside-avoid ${isEven ? 'sm:justify-start' : 'sm:justify-end'} print:justify-start`} style={{ animationDelay: `${index * 50}ms` }}>
                   
                   {/* Node Dot Mobile/Tablet */}
-                  <div className="absolute left-[16px] sm:left-1/2 sm:-translate-x-1/2 top-4 sm:top-1/2 sm:-translate-y-1/2 z-20 w-5 h-5 bg-[#3b82f6] rounded-full border-[4px] border-white shadow-md flex items-center justify-center">
+                  <div className="absolute left-[16px] sm:left-1/2 print:left-[16px] sm:-translate-x-1/2 print:translate-x-0 top-4 sm:top-1/2 print:top-4 sm:-translate-y-1/2 print:translate-y-0 z-20 w-5 h-5 bg-[#3b82f6] rounded-full border-[4px] border-white shadow-md flex items-center justify-center">
                      <div className="w-1.5 h-1.5 bg-blue-100 rounded-full animate-pulse" />
                   </div>
 
                   {/* Card wrapper */}
-                  <div className={`w-full sm:w-[50%] pl-[48px] sm:pl-0 ${isEven ? 'sm:pr-6' : 'sm:pl-6'}`}>
-                     <div className="bg-white text-center border border-slate-200 rounded-xl p-3 relative shadow-sm hover:border-blue-400 transition-all cursor-default">
+                  <div className={`w-full sm:w-[50%] print:w-full pl-[48px] print:pl-[48px] sm:pl-0 ${isEven ? 'sm:pr-6 print:pr-0' : 'sm:pl-6 print:pl-[48px]'}`}>
+                     <div className="bg-white text-center sm:text-center print:text-left border border-slate-200 rounded-xl p-3 relative shadow-sm hover:border-blue-400 transition-all cursor-default">
                         
                         {/* Mobile arrow (left) */}
-                        <div className={`absolute top-[18px] -left-[6px] w-3 h-3 bg-white border-b border-l border-slate-200 transform rotate-45 sm:hidden`} />
+                        <div className={`absolute top-[18px] -left-[6px] w-3 h-3 bg-white border-b border-l border-slate-200 transform rotate-45 sm:hidden print:block`} />
                         
                         {/* Tablet arrow (alternating) */}
-                        <div className={`hidden sm:block absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-slate-200 transform rotate-45 ${isEven ? '-right-[6px] border-t border-r' : '-left-[6px] border-b border-l'}`} />
+                        <div className={`hidden sm:block print:hidden absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-slate-200 transform rotate-45 ${isEven ? '-right-[6px] border-t border-r' : '-left-[6px] border-b border-l'}`} />
 
-                        <div className="flex items-center justify-center mb-1 pb-1">
+                        <div className="flex items-center justify-center print:justify-start mb-1 pb-1">
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-tight">{log.date}</span>
                         </div>
                         <p className="text-[10px] text-slate-600 leading-tight font-medium">{log.description}</p>

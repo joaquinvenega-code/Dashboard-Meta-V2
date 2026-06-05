@@ -57,7 +57,7 @@ export const RoadmapSectionV2: React.FC<RoadmapSectionV2Props> = ({
   isEditing
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:block print:space-y-6">
         <RoadmapCard
           icon={Lightbulb}
           title="Aprendizajes del Mes"

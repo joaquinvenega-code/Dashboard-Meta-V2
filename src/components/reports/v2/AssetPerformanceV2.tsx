@@ -64,7 +64,7 @@ export const AssetPerformanceV2: React.FC<AssetPerformanceV2Props> = ({ assets }
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
         {sortedAssets.map((ad, index) => (
-          <div key={ad.id} className="relative group flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-blue-300 transition-all shadow-sm">
+          <div key={ad.id} className="relative group flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-blue-300 transition-all shadow-sm print:break-inside-avoid">
             <div className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full bg-slate-900/90 text-white flex items-center justify-center text-[10px] font-black border border-white/20">
               #{index + 1}
             </div>

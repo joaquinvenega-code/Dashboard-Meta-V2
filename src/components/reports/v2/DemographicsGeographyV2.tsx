@@ -63,9 +63,9 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
         </div>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start print:block print:space-y-8">
         {/* Gráfico de Barras (Demografía) */}
-        <div className="h-[360px] flex flex-col">
+        <div className="h-[360px] print:h-[280px] flex flex-col">
           <div className="flex items-center gap-4 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100 self-start mb-4">
             <div className="flex items-center gap-1.5 font-mono">
               <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm" />
@@ -114,7 +114,7 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
         </div>
 
         {/* Gráfico de Torta (Facturación) */}
-        <div className="h-[360px] bg-slate-50 border border-slate-100 rounded-2xl p-6 flex flex-col">
+        <div className="h-[360px] print:h-[280px] bg-slate-50 border border-slate-100 rounded-2xl p-6 flex flex-col">
            <div className="mb-4 text-center">
              <h5 className="text-xs font-black text-slate-800 uppercase tracking-wider">Facturación por Edad</h5>
              <p className="text-[10px] text-slate-500 font-medium mt-1">Distribución global de ingresos</p>
