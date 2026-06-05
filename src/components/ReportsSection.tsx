@@ -400,17 +400,6 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
   // Sustituimos metrics mockeados por los de realMetrics
   const metrics = { ...realMetrics };
 
-  const prevMonthMetrics = useMemo(() => {
-    // Simulación del mes anterior (puedes conectarlo a datos históricos reales si existen)
-    const factor = 0.82 + (Math.random() * 0.3);
-    return {
-      spend: metrics.spend * factor,
-      purchases: Math.floor(metrics.purchases * factor),
-      roas: metrics.roas * (0.85 + Math.random() * 0.25),
-      revenue: metrics.revenue * factor
-    };
-  }, [metrics]);
-
   // Real daily data is fetched in useEffect, so we don't mock it here
   const dailyPerformanceData = realDailyData.length > 0 ? realDailyData : [];
   const mockAssets = realTopAds.length > 0 ? realTopAds : [];
@@ -569,7 +558,6 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
             <ExecutiveSummaryV2 
               metrics={metrics}
-              prevMonthMetrics={prevMonthMetrics}
               narrative={reportTexts.narrative}
               onNarrativeChange={(val) => updateReportText('narrative', val)}
               isEditing={isEditing}
