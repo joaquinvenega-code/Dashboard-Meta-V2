@@ -32,14 +32,14 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({ data }) =>
         </div>
       </div>
 
-      <div className="flex-1 p-4 min-h-[300px] print:min-h-[220px] print:h-[220px] flex items-center justify-center">
+      <div className="flex-1 p-4 min-h-[300px] print:min-h-[280px] print:h-[280px] flex items-center justify-center">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={data}
               isAnimationActive={false}
               cx="50%"
-              cy="50%"
+              cy="45%"
               innerRadius={65}
               outerRadius={100}
               paddingAngle={4}

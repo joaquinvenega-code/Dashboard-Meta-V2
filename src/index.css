@@ -80,6 +80,10 @@
 
   /* Specific color preserves */
   .bg-blue-600 { background-color: #2563eb !important; color: #fff !important; }
+  .bg-blue-300 { background-color: #93c5fd !important; }
+  .bg-blue-500 { background-color: #3b82f6 !important; color: #fff !important; }
+  .bg-blue-700 { background-color: #1d4ed8 !important; color: #fff !important; }
+  .bg-blue-900 { background-color: #1e3a8a !important; color: #fff !important; }
   .bg-green-50 { background-color: #f0fdf4 !important; }
   .bg-blue-50 { background-color: #eff6ff !important; }
   .bg-neutral-50 { background-color: #fafafa !important; }
