@@ -25,7 +25,6 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
   }
 
   const itemsPerRow = 2;
-  const rowHeight = 120; 
 
   const getXPercent = (index: number) => {
      const rowIndex = Math.floor(index / itemsPerRow);
@@ -37,7 +36,15 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
   
   const getYPos = (index: number) => {
      const rowIndex = Math.floor(index / itemsPerRow);
-     return (rowIndex * rowHeight) + (rowHeight / 2);
+     const blockIndex = Math.floor(rowIndex / 2); 
+     const isSecondInBlock = rowIndex % 2 === 1;
+     
+     let y = 140; 
+     y += blockIndex * (60 + 200); 
+     if (isSecondInBlock) {
+        y += 60;
+     }
+     return y;
   };
 
   const drawPathStr = () => {
@@ -60,8 +67,8 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
     return d;
   };
 
-  const totalRows = Math.ceil(logs.length / itemsPerRow);
-  const totalHeight = totalRows * rowHeight;
+  const lastY = logs.length > 0 ? getYPos(logs.length - 1) : 0;
+  const totalHeight = lastY + 160;
 
   return (
     <div className="w-full relative">
@@ -91,9 +98,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
            const xPos = getXPercent(index);
            const yPos = getYPos(index);
            const rowIndex = Math.floor(index / itemsPerRow);
-           const isEvenRow = rowIndex % 2 === 0;
-           const visualColIndex = isEvenRow ? (index % itemsPerRow) : (itemsPerRow - 1 - (index % itemsPerRow));
-           const cardTop = visualColIndex === 0;
+           const cardTop = rowIndex % 2 === 0;
 
            return (
              <div 
@@ -117,7 +122,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
                     {/* Directional Arrow pointing to node */}
                     <div className={`absolute left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white border-r border-b border-slate-200 transform rotate-45 transition-colors ${cardTop ? '-bottom-[7px] rotate-[45deg]' : '-top-[7px] rotate-[-135deg] border-t border-l border-r-0 border-b-0'} group-hover:border-blue-400`} />
                     
-                    <div className="max-h-[140px] overflow-y-auto px-1 scrollbar-thin scrollbar-thumb-slate-200">
+                    <div className="px-1">
                       <p className="text-[10px] text-slate-600 font-medium leading-tight">
                          {log.description}
                       </p>
