@@ -8,6 +8,7 @@ interface AdAsset {
   id: string;
   name: string;
   thumbnail: string;
+  originalThumbnailUrl?: string;
   roas: number;
   purchases: number;
   revenue: number;
@@ -89,7 +90,7 @@ export const AssetPerformanceV2: React.FC<AssetPerformanceV2Props> = ({ assets }
                 }}
                 style={{ 
                   WebkitFontSmoothing: 'antialiased',
-                  imageRendering: 'high-quality',
+                  imageRendering: 'crisp-edges',
                   transform: 'translateZ(0)'
                 }}
               />

@@ -636,7 +636,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-275">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">06</div>
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Mapa de Ventas Global</h3>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Mapa de Ventas</h3>
             </div>
             <GlobalSalesMap currency={metrics.currency} salesData={realGeography.length > 0 ? realGeography : undefined} regionSalesData={realGeographyRegions.length > 0 ? realGeographyRegions : undefined} />
           </div>

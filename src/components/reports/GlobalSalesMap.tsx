@@ -442,21 +442,9 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
     <div id="global-sales-map-root" className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm flex flex-col gap-6 select-none relative animate-in fade-in duration-500">
       
       {/* HEADER SECTION */}
-      <div className="flex flex-col space-y-1 mb-2">
-        <div className="flex items-center gap-2">
-          <Globe id="icon-map-title" className="w-4 h-4 text-slate-900 animate-pulse" />
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-mono">
-            Distribución Geográfica
-          </span>
-        </div>
-        <h4 id="map-header-title" className="text-lg font-black uppercase text-slate-900 leading-tight">
-          {selectedCountry ? `Mapa de Ventas - ${COUNTRY_NAME_MAP[selectedCountry.toUpperCase()] || selectedCountry}` : 'Mapa de Ventas Global'}
-        </h4>
-        <p className="text-xs text-slate-500 font-medium">
-          {selectedCountry 
-            ? `Viendo desglose detallado de provincias / estados para ${COUNTRY_NAME_MAP[selectedCountry.toUpperCase()] || selectedCountry}.`
-            : 'Desglose de conversiones BOFU y facturación total integrada con soporte interactivo de Drill-down.'
-          }
+      <div className="mb-2">
+        <p className="text-sm text-slate-500 font-medium leading-relaxed">
+          Mapa de calor interactivo que refleja el volumen de ventas y facturación por zonas geográficas.
         </p>
       </div>
 
@@ -583,8 +571,8 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                 <stop offset="0%" stopColor="rgba(255, 0, 0, 1)" />
                 <stop offset="15%" stopColor="rgba(255, 100, 0, 0.85)" />
                 <stop offset="35%" stopColor="rgba(255, 200, 0, 0.45)" />
-                <stop offset="55%" stopColor="rgba(0, 255, 0, 0.2)" />
-                <stop offset="75%" stopColor="rgba(0, 150, 255, 0.1)" />
+                <stop offset="60%" stopColor="rgba(0, 255, 0, 0.6)" />
+                <stop offset="85%" stopColor="rgba(0, 150, 255, 0.4)" />
                 <stop offset="100%" stopColor="rgba(0, 0, 255, 0)" />
               </radialGradient>
             </defs>
@@ -737,36 +725,36 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
       </div>
 
       {/* RIGHT SIDEBAR: METRICS + LIST */}
-      <div className="w-full lg:w-[40%] flex flex-col md:flex-row gap-4 max-h-[500px]">
+      <div className="w-full lg:w-[40%] flex flex-col md:flex-row gap-3 max-h-[500px]">
         
         {/* COL 1: METRICS & LEGEND */}
-        <div className="w-full md:w-[45%] flex flex-col gap-4">
+        <div className="w-full md:w-[45%] flex flex-col gap-3">
           {/* METRICS PANEL */}
-          <div id="map-summary-panel" className="flex flex-col gap-3 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 shadow-xs">
+          <div id="map-summary-panel" className="flex flex-col gap-2.5 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 shadow-xs">
             <div className="flex flex-col gap-0.5">
-              <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Zonas Activas</span>
-              <span className="text-sm font-black text-slate-900 font-mono">{summary.zonesCount} Provincias / Países</span>
+              <span className="text-[7.5px] font-black uppercase text-slate-400 tracking-wider font-mono">Zonas Activas</span>
+              <span className="text-xs font-black text-slate-900 font-mono">{summary.zonesCount} Provincias / Países</span>
             </div>
             <div className="w-full h-[1px] bg-slate-200" />
             <div className="flex flex-col gap-0.5">
-              <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Volumen Total BOFU</span>
-              <span className="text-sm font-black text-slate-900 font-mono">{summary.totalSales.toLocaleString('es-AR')} Conversiones</span>
+              <span className="text-[7.5px] font-black uppercase text-slate-400 tracking-wider font-mono">Volumen Total BOFU</span>
+              <span className="text-xs font-black text-slate-900 font-mono">{summary.totalSales.toLocaleString('es-AR')} Conversiones</span>
             </div>
             <div className="w-full h-[1px] bg-slate-200" />
             <div className="flex flex-col gap-0.5">
-              <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Facturación Consolidada</span>
-              <span className="text-sm font-black text-rose-600 font-mono">{formatValue(summary.totalRev)}</span>
+              <span className="text-[7.5px] font-black uppercase text-slate-400 tracking-wider font-mono">Facturación Consolidada</span>
+              <span className="text-xs font-black text-rose-600 font-mono">{formatValue(summary.totalRev)}</span>
             </div>
           </div>
 
           {/* MAP LEGEND */}
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 flex flex-col gap-2 shadow-xs">
-            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 font-mono">
+          <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex flex-col gap-2 shadow-xs">
+            <span className="text-[7.5px] font-black uppercase tracking-widest text-slate-400 font-mono">
               Actividad de Ventas
             </span>
-            <div className="flex flex-col gap-1.5 mt-1">
-              <div className="w-full h-2 rounded-full" style={{ background: 'linear-gradient(to right, rgb(255, 0, 0), rgb(255, 255, 0), rgb(0, 255, 0), rgba(0, 150, 255, 0.4))' }} />
-              <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-wider text-slate-500">
+            <div className="flex flex-col gap-1.5 mt-0.5">
+              <div className="w-full h-1.5 rounded-full" style={{ background: 'linear-gradient(to right, rgb(255, 0, 0), rgb(255, 255, 0), rgb(0, 255, 0), rgba(0, 150, 255, 0.8))' }} />
+              <div className="flex justify-between items-center text-[7.5px] font-black uppercase tracking-wider text-slate-500">
                 <span>Alta</span>
                 <span>Baja</span>
               </div>
@@ -775,27 +763,27 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
         </div>
 
         {/* COL 2: REGIONS LIST */}
-        <div className="w-full md:w-[55%] flex-1 min-h-[400px] bg-slate-50 border border-slate-100 rounded-2xl flex flex-col overflow-hidden shadow-xs">
-          <div className="px-4 py-3 border-b border-slate-200 bg-white shadow-sm z-10">
-            <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider font-mono">
+        <div className="w-full md:w-[55%] flex-1 min-h-[350px] bg-slate-50 border border-slate-100 rounded-xl flex flex-col overflow-hidden shadow-xs max-h-[500px]">
+          <div className="px-3 py-2 border-b border-slate-200 bg-white shadow-sm z-10 flex justify-between items-center">
+            <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">
               {selectedCountry ? 'Top Regiones' : 'Top Países'}
             </span>
           </div>
-          <div className="flex-1 overflow-y-auto p-1.5 flex flex-col">
+          <div className="flex-1 overflow-y-auto p-1.5 flex flex-col gap-0.5">
             {listData.length === 0 ? (
-              <div className="text-xs text-center text-slate-400 py-8 font-medium">No hay zonas activas</div>
+              <div className="text-[10px] text-center text-slate-400 py-6 font-medium">No hay zonas activas</div>
             ) : (
               listData.map((item, idx) => (
-                <div key={item.id} className="flex flex-col gap-0.5 px-2.5 py-1.5 border-b border-slate-100/50 hover:bg-white rounded-md transition-colors cursor-default group">
+                <div key={item.id} className="flex flex-col gap-0.5 px-2 py-1 border-b border-slate-100/50 hover:bg-white rounded transition-colors cursor-default group">
                   <div className="flex justify-between items-center">
-                    <span className="font-black text-[10px] text-slate-800 uppercase truncate pr-2 group-hover:text-blue-600 transition-colors">
+                    <span className="font-black text-[9px] text-slate-800 uppercase truncate pr-2 group-hover:text-blue-600 transition-colors">
                        {idx + 1}. {item.name}
                     </span>
-                    <span className="text-[9px] font-black font-mono text-slate-500 bg-slate-100 px-1 py-0.5 rounded">
+                    <span className="text-[8.5px] font-black font-mono text-slate-500 bg-slate-200/50 px-1 py-0.5 rounded leading-none">
                       {item.salesVolume}
                     </span>
                   </div>
-                  <span className="font-black text-rose-500 text-[10px] font-mono opacity-90 group-hover:opacity-100 transition-opacity">
+                  <span className="font-black text-rose-500 text-[9px] font-mono opacity-90 group-hover:opacity-100 transition-opacity">
                     {formatValue(item.totalRevenue)}
                   </span>
                 </div>
@@ -806,15 +794,6 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
       </div>
 
     </div>
-
-    {/* METADATA BAR FOOTER */}
-      <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-400 text-[10px] font-mono">
-        <div className="flex items-center gap-1.5 font-sans font-medium">
-          <Info className="w-3.5 h-3.5 text-blue-500" />
-          <span>Fronteras y divisiones geográficas autoadaptables con renderizado vectorial optimizado.</span>
-        </div>
-        <span className="uppercase text-slate-350 tracking-widest font-bold">ORION GLOBAL GEOGRAPHY INSIGHTS</span>
-      </div>
-    </div>
+  </div>
   );
 };
