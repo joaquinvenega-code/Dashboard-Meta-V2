@@ -123,7 +123,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
            const colIndex = index % itemsPerRow;
            const isEvenRow = rowIndex % 2 === 0;
            const visualColIndex = isEvenRow ? colIndex : (itemsPerRow - 1 - colIndex);
-           const cardTop = visualColIndex === 0;
+           const cardTop = rowIndex % 2 === 0;
 
            return (
              <div 
@@ -161,11 +161,11 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
       )}
 
       {/* MOBILE / TABLET VIEW (Vertical Alternating Timeline) */}
-      <div className={cn("relative pb-8 mt-4", viewMode === 'masonry' ? 'block' : 'block lg:hidden')}>
+      <div className={cn("relative pb-4 mt-4", viewMode === 'masonry' ? 'block' : 'block lg:hidden')}>
         {/* Center Line for alternating timeline */}
         <div className="absolute left-[24px] sm:left-1/2 sm:-translate-x-1/2 top-0 bottom-0 w-1 bg-[#94a3b8] opacity-70 rounded-full" />
 
-        <div className="space-y-6 sm:space-y-8 relative">
+        <div className="space-y-4 sm:-space-y-10 relative pt-2">
             {logs.map((log, index) => {
               const isEven = index % 2 === 0;
               return (
@@ -177,11 +177,11 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
                   </div>
 
                   {/* Card wrapper */}
-                  <div className={`w-full sm:w-[50%] pl-[56px] sm:pl-0 ${isEven ? 'sm:pr-6' : 'sm:pl-6'}`}>
+                  <div className={`w-full sm:w-[50%] pl-[48px] sm:pl-0 ${isEven ? 'sm:pr-6' : 'sm:pl-6'}`}>
                      <div className="bg-white text-center border border-slate-200 rounded-xl p-3 relative shadow-sm hover:border-blue-400 transition-all cursor-default">
                         
                         {/* Mobile arrow (left) */}
-                        <div className={`absolute top-4 -left-[6px] w-3 h-3 bg-white border-b border-l border-slate-200 transform rotate-45 sm:hidden`} />
+                        <div className={`absolute top-[18px] -left-[6px] w-3 h-3 bg-white border-b border-l border-slate-200 transform rotate-45 sm:hidden`} />
                         
                         {/* Tablet arrow (alternating) */}
                         <div className={`hidden sm:block absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-slate-200 transform rotate-45 ${isEven ? '-right-[6px] border-t border-r' : '-left-[6px] border-b border-l'}`} />
