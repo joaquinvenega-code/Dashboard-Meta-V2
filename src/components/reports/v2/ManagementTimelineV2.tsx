@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, CheckCircle2, Zap, Settings, AlertCircle, TrendingUp } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
 interface LogEntry {
@@ -13,16 +13,6 @@ interface ManagementTimelineV2Props {
   logs: LogEntry[];
 }
 
-const CategoryIcon = ({ category }: { category?: string }) => {
-  switch (category) {
-    case 'optimizacion': return <Zap className="w-3.5 h-3.5 text-amber-500" />;
-    case 'alerta': return <AlertCircle className="w-3.5 h-3.5 text-rose-500" />;
-    case 'estrategia': return <TrendingUp className="w-3.5 h-3.5 text-blue-500" />;
-    case 'creativo': return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />;
-    case 'config': return <Settings className="w-3.5 h-3.5 text-slate-500" />;
-    default: return <Clock className="w-3.5 h-3.5 text-slate-400" />;
-  }
-};
 
 export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs }) => {
   if (logs.length === 0) {
@@ -35,7 +25,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
   }
 
   const itemsPerRow = 2;
-  const rowHeight = 160; 
+  const rowHeight = 120; 
 
   const getXPercent = (index: number) => {
      const rowIndex = Math.floor(index / itemsPerRow);
@@ -100,13 +90,16 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
         {logs.map((log, index) => {
            const xPos = getXPercent(index);
            const yPos = getYPos(index);
-           const cardTop = index % 2 === 0;
+           const rowIndex = Math.floor(index / itemsPerRow);
+           const isEvenRow = rowIndex % 2 === 0;
+           const visualColIndex = isEvenRow ? (index % itemsPerRow) : (itemsPerRow - 1 - (index % itemsPerRow));
+           const cardTop = visualColIndex === 0;
 
            return (
              <div 
                key={log.id} 
                className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500 will-change-transform"
-               style={{ left: `${xPos}%`, top: `${yPos}px`, width: `${92 / itemsPerRow}%`, animationDelay: `${index * 50}ms` }}
+               style={{ left: `${xPos}%`, top: `${yPos}px`, width: `${96 / itemsPerRow}%`, animationDelay: `${index * 50}ms` }}
              >
                {/* Node Dot */}
                <div className="relative z-20 w-5 h-5 bg-[#3b82f6] rounded-full border-[4px] border-white shadow flex items-center justify-center">
@@ -124,7 +117,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
                     {/* Directional Arrow pointing to node */}
                     <div className={`absolute left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white border-r border-b border-slate-200 transform rotate-45 transition-colors ${cardTop ? '-bottom-[7px] rotate-[45deg]' : '-top-[7px] rotate-[-135deg] border-t border-l border-r-0 border-b-0'} group-hover:border-blue-400`} />
                     
-                    <div className="max-h-[100px] overflow-y-auto px-1 scrollbar-thin scrollbar-thumb-slate-200">
+                    <div className="max-h-[140px] overflow-y-auto px-1 scrollbar-thin scrollbar-thumb-slate-200">
                       <p className="text-[10px] text-slate-600 font-medium leading-tight">
                          {log.description}
                       </p>
