@@ -725,7 +725,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
       </div>
 
       {/* RIGHT SIDEBAR: METRICS + LIST */}
-      <div className="w-full lg:w-[40%] flex flex-col md:flex-row gap-3 max-h-[500px]">
+      <div className="w-full lg:w-[40%] flex flex-col md:flex-row gap-3 max-h-[500px] print:max-h-none">
         
         {/* COL 1: METRICS & LEGEND */}
         <div className="w-full md:w-[45%] flex flex-col gap-3">
@@ -763,13 +763,13 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
         </div>
 
         {/* COL 2: REGIONS LIST */}
-        <div className="w-full md:w-[55%] flex-1 min-h-[350px] bg-slate-50 border border-slate-100 rounded-xl flex flex-col overflow-hidden shadow-xs max-h-[500px]">
+        <div className="w-full md:w-[55%] flex-1 min-h-[350px] bg-slate-50 border border-slate-100 rounded-xl flex flex-col overflow-hidden print:overflow-visible shadow-xs max-h-[500px] print:max-h-none">
           <div className="px-3 py-2 border-b border-slate-200 bg-white shadow-sm z-10 flex justify-between items-center">
             <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">
               {selectedCountry ? 'Top Regiones' : 'Top Países'}
             </span>
           </div>
-          <div className="flex-1 overflow-y-auto p-1.5 flex flex-col gap-0.5">
+          <div className="flex-1 overflow-y-auto print:overflow-visible p-1.5 flex flex-col gap-0.5">
             {listData.length === 0 ? (
               <div className="text-[10px] text-center text-slate-400 py-6 font-medium">No hay zonas activas</div>
             ) : (

@@ -66,7 +66,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
 
   return (
     <div className="w-full relative">
-      <div className="flex justify-end mb-6">
+      <div className="flex justify-end mb-6 print:hidden">
          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
             <button 
                onClick={() => setViewMode('masonry')}
@@ -87,7 +87,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
       
       {/* DESKTOP VIEW (Serpentine Timeline) */}
       {viewMode === 'serpentine' && (
-      <div className="hidden lg:block relative w-full overflow-hidden mb-8" style={{ height: `${totalHeight}px` }}>
+      <div className="hidden lg:block print:block relative w-full overflow-hidden mb-8" style={{ height: `${totalHeight}px` }}>
         
         {/* The Serpentine Path */}
         <svg 
@@ -153,7 +153,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
       )}
 
       {/* MOBILE / TABLET VIEW (Vertical Alternating Timeline) */}
-      <div className={cn("relative pb-4 mt-4", viewMode === 'masonry' ? 'block' : 'block lg:hidden')}>
+      <div className={cn("relative pb-16 sm:pb-32 mt-4", viewMode === 'masonry' ? 'block' : 'block lg:hidden print:hidden')}>
         {/* Center Line for alternating timeline */}
         <div className="absolute left-[24px] sm:left-1/2 sm:-translate-x-1/2 top-0 bottom-0 w-1 bg-[#94a3b8] opacity-70 rounded-full" />
 
