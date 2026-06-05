@@ -26,6 +26,7 @@ async function startServer() {
 
   // --- API ROUTES ---
   app.use('/orion', orionModulesRouter);
+  app.use('/api', orionModulesRouter);
 
   // --- API ENGINE V18 (LEGACY COMPATIBILITY) ---
   app.all('/v18-engine', async (req, res) => {

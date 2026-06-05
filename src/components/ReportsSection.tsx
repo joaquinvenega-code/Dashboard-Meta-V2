@@ -111,26 +111,45 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
     setIsReportGenerated(false);
   }, [selectedAccountId, reportMonth]);
 
-  // Cargar Bitácora Real de Orion
+  // Cargar Bitácora Real de Orion (y local)
   useEffect(() => {
     async function fetchBitacora() {
       if (!selectedAccountId || !isReportGenerated) return;
       setLoadingBitacora(true);
+      
+      const localLogs = notes
+        .filter(n => n.accountId === selectedAccountId)
+        .map(n => ({
+          id: n.id,
+          date: format(parseISO(n.timestamp), 'dd/MM'),
+          description: n.text,
+          category: n.category === 'action' ? 'optimizacion' : (n.category === 'observation' ? 'estrategia' : 'testing') as any
+        }));
+
+      let apiLogs = [];
       try {
         const res = await fetch(`/api/bitacora/${selectedAccountId}`);
         const result = await res.json();
         if (result.success) {
-          // Filtrado básico por mes (aquí podrías filtrar más preciso por fechas)
-          setBitacora(result.data.slice(-10)); 
+          apiLogs = result.data;
         }
       } catch (err) {
-        console.error("Error bitácora:", err);
+        console.error("Error bitácora backend:", err);
       } finally {
+        const allLogs = [...localLogs, ...apiLogs];
+        const seen = new Set();
+        const finalLogs = allLogs.filter(log => {
+           if (seen.has(log.description)) return false;
+           seen.add(log.description);
+           return true;
+        });
+        // Filtrado básico por mes (aquí podrías filtrar más preciso por fechas)
+        setBitacora(finalLogs.slice(-10)); 
         setLoadingBitacora(false);
       }
     }
     fetchBitacora();
-  }, [selectedAccountId, reportMonth, isReportGenerated]);
+  }, [selectedAccountId, reportMonth, isReportGenerated, notes]);
 
   const selectedAccount = accounts.find(a => a.id === selectedAccountId);
 
