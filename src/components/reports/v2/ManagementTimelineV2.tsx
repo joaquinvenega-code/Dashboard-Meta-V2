@@ -1,5 +1,5 @@
-import React from 'react';
-import { Clock } from 'lucide-react';
+import React, { useState } from 'react';
+import { Clock, LayoutTemplate, Waypoints } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
 interface LogEntry {
@@ -15,6 +15,8 @@ interface ManagementTimelineV2Props {
 
 
 export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs }) => {
+  const [viewMode, setViewMode] = useState<'serpentine' | 'masonry'>('masonry');
+
   if (logs.length === 0) {
     return (
       <div className="flex flex-col items-center py-10 text-slate-400 opacity-50">
@@ -39,7 +41,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
      const blockIndex = Math.floor(rowIndex / 2); 
      const isSecondInBlock = rowIndex % 2 === 1;
      
-     let y = 140; 
+     let y = 180; 
      y += blockIndex * (60 + 200); 
      if (isSecondInBlock) {
         y += 60;
@@ -68,12 +70,31 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
   };
 
   const lastY = logs.length > 0 ? getYPos(logs.length - 1) : 0;
-  const totalHeight = lastY + 160;
+  const totalHeight = lastY + 200;
 
   return (
     <div className="w-full relative">
+      <div className="flex justify-end mb-6">
+         <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+            <button 
+               onClick={() => setViewMode('masonry')}
+               className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all", viewMode === 'masonry' ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600")}
+            >
+               <LayoutTemplate className="w-3.5 h-3.5" />
+               Flexible
+            </button>
+            <button 
+               onClick={() => setViewMode('serpentine')}
+               className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all", viewMode === 'serpentine' ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600")}
+            >
+               <Waypoints className="w-3.5 h-3.5" />
+               Camino
+            </button>
+         </div>
+      </div>
       
       {/* DESKTOP VIEW (Serpentine Timeline) */}
+      {viewMode === 'serpentine' && (
       <div className="hidden lg:block relative w-full overflow-hidden mb-8" style={{ height: `${totalHeight}px` }}>
         
         {/* The Serpentine Path */}
@@ -98,7 +119,11 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
            const xPos = getXPercent(index);
            const yPos = getYPos(index);
            const rowIndex = Math.floor(index / itemsPerRow);
-           const cardTop = rowIndex % 2 === 0;
+           
+           const colIndex = index % itemsPerRow;
+           const isEvenRow = rowIndex % 2 === 0;
+           const visualColIndex = isEvenRow ? colIndex : (itemsPerRow - 1 - colIndex);
+           const cardTop = visualColIndex === 0;
 
            return (
              <div 
@@ -112,12 +137,12 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
                </div>
 
                {/* Date Label */}
-               <div className={`absolute ${cardTop ? 'top-[16px]' : '-top-[28px]'} font-black text-slate-900 text-[10px] tracking-widest bg-white/95 px-1.5 py-0.5 rounded backdrop-blur-sm z-30 shadow-sm border border-slate-100`}>
+               <div className={`absolute ${cardTop ? 'bottom-[34px]' : 'top-[34px]'} left-1/2 -translate-x-1/2 font-black text-slate-900 text-[10px] tracking-widest bg-white/95 px-1.5 py-0.5 rounded backdrop-blur-sm z-30 shadow-sm border border-slate-100`}>
                  {log.date}
                </div>
 
                {/* Card Container */}
-               <div className={`absolute ${cardTop ? 'bottom-[28px]' : 'top-[28px]'} left-1/2 -translate-x-1/2 w-full px-1 z-10 hover:z-50`}>
+               <div className={`absolute ${cardTop ? 'bottom-[50px]' : 'top-[50px]'} left-1/2 -translate-x-1/2 w-full px-1 z-10 hover:z-50`}>
                  <div className="bg-white border text-center border-slate-200 hover:border-blue-400 rounded-xl p-2.5 shadow-sm hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] transition-all cursor-default relative">
                     {/* Directional Arrow pointing to node */}
                     <div className={`absolute left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white border-r border-b border-slate-200 transform rotate-45 transition-colors ${cardTop ? '-bottom-[7px] rotate-[45deg]' : '-top-[7px] rotate-[-135deg] border-t border-l border-r-0 border-b-0'} group-hover:border-blue-400`} />
@@ -133,9 +158,10 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
            );
         })}
       </div>
+      )}
 
       {/* MOBILE / TABLET VIEW (Vertical Alternating Timeline) */}
-      <div className="block lg:hidden relative pb-8 mt-4">
+      <div className={cn("relative pb-8 mt-4", viewMode === 'masonry' ? 'block' : 'block lg:hidden')}>
         {/* Center Line for alternating timeline */}
         <div className="absolute left-[24px] sm:left-1/2 sm:-translate-x-1/2 top-0 bottom-0 w-1 bg-[#94a3b8] opacity-70 rounded-full" />
 

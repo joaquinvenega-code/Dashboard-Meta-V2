@@ -118,7 +118,8 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
       setLoadingBitacora(true);
       
       const localLogs = notes
-        .filter(n => n.accountId === selectedAccountId)
+        .filter(n => n.accountId === selectedAccountId && n.timestamp.startsWith(reportMonth))
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
         .map(n => ({
           id: n.id,
           date: format(parseISO(n.timestamp), 'dd/MM'),
@@ -143,8 +144,9 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
            seen.add(log.description);
            return true;
         });
-        // Filtrado básico por mes (aquí podrías filtrar más preciso por fechas)
-        setBitacora(finalLogs.slice(-10)); 
+        
+        // Remove .slice(-10) to display the correct filtered logs
+        setBitacora(finalLogs); 
         setLoadingBitacora(false);
       }
     }

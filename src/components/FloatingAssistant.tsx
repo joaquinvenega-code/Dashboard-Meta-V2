@@ -737,11 +737,12 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
             await executeWithTimeout(saveLogToFirestore(targetClient.id, noteText, parsed.date), 1800);
             
             // Instantly update local react state
+            const parsedDateObj = parsed.date ? new Date(parsed.date + "T12:00:00Z") : new Date();
             const newLocalNote: AccountNote = {
               id: generatedNoteId,
               accountId: targetClient.id,
               text: noteText,
-              timestamp: new Date().toISOString(),
+              timestamp: parsedDateObj.toISOString(),
               category: 'observation',
               tags: ['Voz']
             };
