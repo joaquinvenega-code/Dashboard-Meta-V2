@@ -413,56 +413,63 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
     };
   }, [salesData, regionSalesData]);
 
+  const listData = useMemo(() => {
+    if (selectedCountry) {
+      return regionSalesData
+        .filter(r => r.salesVolume > 0 && r.regionId.startsWith(selectedCountry))
+        .sort((a,b) => b.totalRevenue - a.totalRevenue)
+        .map(r => ({
+          id: r.regionId,
+          name: r.regionName,
+          salesVolume: r.salesVolume,
+          totalRevenue: r.totalRevenue
+        }));
+    } else {
+      return salesData
+        .filter(s => s.salesVolume > 0)
+        .sort((a,b) => b.totalRevenue - a.totalRevenue)
+        .map(s => ({
+          id: s.countryId,
+          name: COUNTRY_NAME_MAP[s.countryId.toUpperCase()] || s.countryId,
+          salesVolume: s.salesVolume,
+          totalRevenue: s.totalRevenue
+        }));
+    }
+  }, [selectedCountry, salesData, regionSalesData]);
+
   return (
     <div id="global-sales-map-root" className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm flex flex-col gap-6 select-none relative animate-in fade-in duration-500">
       
       {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Globe id="icon-map-title" className="w-4 h-4 text-slate-900 animate-pulse" />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-mono">
-              Distribución Geográfica
-            </span>
-          </div>
-          <h4 id="map-header-title" className="text-lg font-black uppercase text-slate-900 leading-tight">
-            {selectedCountry ? `Mapa de Ventas - ${COUNTRY_NAME_MAP[selectedCountry.toUpperCase()] || selectedCountry}` : 'Mapa de Ventas Global'}
-          </h4>
-          <p className="text-xs text-slate-500 font-medium">
-            {selectedCountry 
-              ? `Viendo desglose detallado de provincias / estados para ${COUNTRY_NAME_MAP[selectedCountry.toUpperCase()] || selectedCountry}.`
-              : 'Desglose de conversiones BOFU y facturación total integrada con soporte interactivo de Drill-down.'
-            }
-          </p>
+      <div className="flex flex-col space-y-1 mb-2">
+        <div className="flex items-center gap-2">
+          <Globe id="icon-map-title" className="w-4 h-4 text-slate-900 animate-pulse" />
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-mono">
+            Distribución Geográfica
+          </span>
         </div>
-
-        {/* METRICS PANEL */}
-        <div id="map-summary-panel" className="flex flex-wrap items-center gap-6 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 shadow-xs">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Zonas Activas</span>
-            <span className="text-xs font-black text-slate-900 font-mono">{summary.zonesCount} Provincias / Países</span>
-          </div>
-          <div className="w-[1px] h-6 bg-slate-200" />
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Volumen Total BOFU</span>
-            <span className="text-xs font-black text-slate-900 font-mono">{summary.totalSales.toLocaleString('es-AR')} Conversiones</span>
-          </div>
-          <div className="w-[1px] h-6 bg-slate-200" />
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Facturación Consolidada</span>
-            <span className="text-xs font-black text-rose-600 font-mono">{formatValue(summary.totalRev)}</span>
-          </div>
-        </div>
+        <h4 id="map-header-title" className="text-lg font-black uppercase text-slate-900 leading-tight">
+          {selectedCountry ? `Mapa de Ventas - ${COUNTRY_NAME_MAP[selectedCountry.toUpperCase()] || selectedCountry}` : 'Mapa de Ventas Global'}
+        </h4>
+        <p className="text-xs text-slate-500 font-medium">
+          {selectedCountry 
+            ? `Viendo desglose detallado de provincias / estados para ${COUNTRY_NAME_MAP[selectedCountry.toUpperCase()] || selectedCountry}.`
+            : 'Desglose de conversiones BOFU y facturación total integrada con soporte interactivo de Drill-down.'
+          }
+        </p>
       </div>
 
-      {/* INTERACTIVE SVG MAP CONTAINER */}
-      <div 
-        ref={containerRef}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => setHoveredElement(null)}
-        className="relative bg-[#070b13] rounded-2xl border border-slate-950 p-2 overflow-hidden flex items-center justify-center w-full shadow-inner"
-        style={{ minHeight: '420px' }}
-      >
+      {/* CONTENT SECTION */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        
+        {/* INTERACTIVE SVG MAP CONTAINER */}
+        <div 
+          ref={containerRef}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setHoveredElement(null)}
+          className="relative bg-[#070b13] rounded-2xl border border-slate-950 p-2 overflow-hidden flex items-center justify-center w-full lg:w-[70%] shadow-inner"
+          style={{ minHeight: '420px' }}
+        >
         
         {/* RETORNO FLOATING BUTTON */}
         <AnimatePresence>
@@ -717,7 +724,60 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* METADATA BAR FOOTER */}
+      {/* RIGHT SIDEBAR: METRICS + LIST */}
+      <div className="w-full lg:w-[30%] flex flex-col gap-4">
+        {/* METRICS PANEL */}
+        <div id="map-summary-panel" className="flex flex-col gap-3 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 shadow-xs">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Zonas Activas</span>
+            <span className="text-sm font-black text-slate-900 font-mono">{summary.zonesCount} Provincias / Países</span>
+          </div>
+          <div className="w-full h-[1px] bg-slate-200" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Volumen Total BOFU</span>
+            <span className="text-sm font-black text-slate-900 font-mono">{summary.totalSales.toLocaleString('es-AR')} Conversiones</span>
+          </div>
+          <div className="w-full h-[1px] bg-slate-200" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">Facturación Consolidada</span>
+            <span className="text-sm font-black text-rose-600 font-mono">{formatValue(summary.totalRev)}</span>
+          </div>
+        </div>
+
+        {/* REGIONS LIST */}
+        <div className="flex-1 min-h-0 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col overflow-hidden shadow-xs">
+          <div className="px-4 py-3 border-b border-slate-200 bg-white">
+            <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider font-mono">
+              {selectedCountry ? 'Top Regiones' : 'Top Países'}
+            </span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1 max-h-[350px]">
+            {listData.length === 0 ? (
+              <div className="text-xs text-center text-slate-400 py-8 font-medium">No hay zonas activas</div>
+            ) : (
+              listData.map((item, idx) => (
+                <div key={item.id} className="flex flex-col gap-1 px-3 py-2 border-b last:border-0 border-slate-100 hover:bg-white rounded-lg transition-colors cursor-default">
+                  <div className="flex justify-between items-center">
+                    <span className="font-black text-xs text-slate-900 uppercase truncate pr-2">
+                       {idx + 1}. {item.name}
+                    </span>
+                    <span className="text-[10px] font-black font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                      {item.salesVolume}
+                    </span>
+                  </div>
+                  <span className="font-black text-rose-500 text-xs font-mono">
+                    {formatValue(item.totalRevenue)}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    {/* METADATA BAR FOOTER */}
       <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-400 text-[10px] font-mono">
         <div className="flex items-center gap-1.5 font-sans font-medium">
           <Info className="w-3.5 h-3.5 text-blue-500" />
