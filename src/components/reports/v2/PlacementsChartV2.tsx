@@ -32,14 +32,14 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({ data }) =>
         </div>
       </div>
 
-      <div className="flex-1 p-4 min-h-[300px] print:min-h-[360px] print:h-[360px] flex items-center justify-center">
+      <div className="flex-1 p-4 min-h-[300px] print:min-h-[220px] print:h-[220px] flex items-center justify-center">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={data}
               isAnimationActive={false}
               cx="50%"
-              cy="45%"
+              cy="50%"
               innerRadius={65}
               outerRadius={100}
               paddingAngle={4}
@@ -78,26 +78,21 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({ data }) =>
                 fontWeight: 700
               }}
             />
-            <Legend 
-              verticalAlign="bottom" 
-              height={70}
-              content={({ payload }) => (
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 pb-6 px-4">
-                  {payload?.map((entry: any, index: number) => (
-                    <div key={`legend-${index}`} className="flex items-center gap-2">
-                      <svg className="w-2 h-2 shrink-0" viewBox="0 0 8 8">
-                        <circle cx="4" cy="4" r="4" fill={entry.color} />
-                      </svg>
-                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight truncate">
-                        {entry.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            />
           </PieChart>
         </ResponsiveContainer>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 pb-6 px-4">
+        {data.map((entry, index) => (
+          <div key={`legend-${index}`} className="flex items-center gap-2">
+            <svg className="w-2 h-2 shrink-0" viewBox="0 0 8 8">
+              <circle cx="4" cy="4" r="4" fill={entry.color} />
+            </svg>
+            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight truncate">
+              {entry.name}
+            </span>
+          </div>
+        ))}
       </div>
 
       <div className="bg-slate-50 px-6 py-3 border-t border-slate-100">

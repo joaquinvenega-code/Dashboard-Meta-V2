@@ -587,7 +587,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           month={reportMonth} 
         />
 
-        <div className="space-y-16 mt-12 print:space-y-6 print:mt-6">
+        <div className="space-y-16 mt-12 print:space-y-8 print:mt-4">
           {/* Módulo 1: Resumen Ejecutivo */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 print-module">
             <ExecutiveSummaryV2 
@@ -599,9 +599,9 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           </div>
 
           {/* Módulo 2 & 3: Funnel & Placements (GRID) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 print:grid-cols-2 gap-8 items-stretch animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+          <div className="grid grid-cols-1 lg:grid-cols-2 print:grid-cols-2 gap-8 print:gap-4 items-stretch animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
             {/* Funnel Module */}
-            <div className="flex flex-col gap-4 print-module">
+            <div className="flex flex-col gap-4 print:gap-2 print-module">
               <div className="flex items-center gap-3 shrink-0 h-8">
                 <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">02</div>
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Análisis del Funnel</h3>

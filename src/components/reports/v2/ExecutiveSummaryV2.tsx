@@ -9,8 +9,8 @@ interface KPIProps {
 
 const KPICard = ({ label, value }: KPIProps) => {
   return (
-    <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl">
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+    <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl print:p-3">
+      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 print:text-[8px]">{label}</p>
       <div className="flex items-end justify-between">
         <h4 className="text-2xl lg:text-3xl font-black text-slate-900 truncate print:text-lg print:-tracking-wide print:overflow-visible print:whitespace-normal">{value}</h4>
       </div>
@@ -37,13 +37,13 @@ export const ExecutiveSummaryV2: React.FC<ExecutiveSummaryV2Props> = ({
   isEditing
 }) => {
   return (
-    <section className="space-y-6">
-      <div className="flex items-center gap-3 mb-2">
+    <section className="space-y-6 print:space-y-3">
+      <div className="flex items-center gap-3 mb-2 print:mb-0">
         <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">01</div>
         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Resumen Ejecutivo</h3>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 print:space-y-2">
         <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
           <Info className="w-4 h-4" />
           Status General y Análisis Narrativo
