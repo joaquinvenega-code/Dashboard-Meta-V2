@@ -542,9 +542,9 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
               <radialGradient id="heatGradient" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="rgba(255, 0, 0, 1)" />
                 <stop offset="15%" stopColor="rgba(255, 165, 0, 0.85)" />
-                <stop offset="35%" stopColor="rgba(255, 255, 0, 0.5)" />
-                <stop offset="60%" stopColor="rgba(0, 255, 0, 0.2)" />
-                <stop offset="80%" stopColor="rgba(0, 150, 255, 0.05)" />
+                <stop offset="40%" stopColor="rgba(255, 255, 0, 0.55)" />
+                <stop offset="65%" stopColor="rgba(0, 255, 0, 0.25)" />
+                <stop offset="85%" stopColor="rgba(0, 150, 255, 0.1)" />
                 <stop offset="100%" stopColor="rgba(0, 0, 255, 0)" />
               </radialGradient>
             </defs>
@@ -577,8 +577,8 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
 
                 // Scale heat radius based on sales volume relative to the max regional sales
                 const intensity = Math.min(1, sale.salesVolume / maxRegionSalesVolume);
-                // Adjust radius bounds for a balanced blooming effect
-                const radius = 22 + (110 * Math.pow(intensity, 0.42));
+                // Adjust radius bounds to be a bit larger again
+                const radius = 28 + (125 * Math.pow(intensity, 0.45));
 
                 return (
                   <circle

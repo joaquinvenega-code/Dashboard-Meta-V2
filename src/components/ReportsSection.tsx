@@ -255,11 +255,17 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
         const countrySalesMap: Record<string, { spend: number, purchases: number, revenue: number }> = {};
         const regionSalesMap: Record<string, { spend: number, purchases: number, revenue: number, country: string }> = {};
 
+        let totalGeoSpend = 0;
+        let totalGeoPurchases = 0;
+
         geoData.forEach((d: any) => {
           const cId = mapAlpha2ToAlpha3(d.country) || 'USA';
           const spend = parseFloat(d.spend) || 0;
           const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase') || 0;
           const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase') || 0;
+          
+          totalGeoSpend += spend;
+          totalGeoPurchases += purchases;
 
           if (!countrySalesMap[cId]) countrySalesMap[cId] = { spend: 0, purchases: 0, revenue: 0 };
           countrySalesMap[cId].spend += spend;
@@ -276,6 +282,20 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
             regionSalesMap[key].revenue += revenue;
           }
         });
+
+        // Fallback for Geography missing conversions due to iOS 14 / tracking limits
+        if (totalGeoPurchases === 0 && sumPurchases > 0 && totalGeoSpend > 0) {
+           Object.values(countrySalesMap).forEach(c => {
+              const share = c.spend / totalGeoSpend;
+              c.purchases = Math.round(share * sumPurchases);
+              c.revenue = share * sumRevenue;
+           });
+           Object.values(regionSalesMap).forEach(r => {
+              const share = r.spend / totalGeoSpend;
+              r.purchases = Math.round(share * sumPurchases);
+              r.revenue = share * sumRevenue;
+           });
+        }
 
         const mappedGeo = Object.keys(countrySalesMap).map(cId => ({
           countryId: cId,
