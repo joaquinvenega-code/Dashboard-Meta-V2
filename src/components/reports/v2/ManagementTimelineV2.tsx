@@ -35,7 +35,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
   }
 
   const itemsPerRow = 3;
-  const rowHeight = 260; 
+  const rowHeight = 360; 
 
   const getXPercent = (index: number) => {
      const rowIndex = Math.floor(index / itemsPerRow);
@@ -52,19 +52,19 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
 
   const drawPathStr = () => {
     if (logs.length <= 1) return '';
-    let d = `M ${getXPercent(0)}% ${getYPos(0)}`;
+    let d = `M ${getXPercent(0) * 10} ${getYPos(0)}`;
     for (let i = 0; i < logs.length - 1; i++) {
-        const x1 = getXPercent(i);
+        const x1 = getXPercent(i) * 10;
         const y1 = getYPos(i);
-        const x2 = getXPercent(i+1);
+        const x2 = getXPercent(i+1) * 10;
         const y2 = getYPos(i+1);
         
         if (y1 === y2) {
-           d += ` L ${x2}% ${y2}`;
+           d += ` L ${x2} ${y2}`;
         } else {
-           const isRightSide = x1 > 50; 
-           const curveOffset = isRightSide ? 10 : -10; 
-           d += ` C ${x1 + curveOffset}% ${y1}, ${x2 + curveOffset}% ${y2}, ${x2}% ${y2}`;
+           const isRightSide = x1 > 500; 
+           const curveOffset = isRightSide ? 140 : -140; 
+           d += ` C ${x1 + curveOffset} ${y1}, ${x2 + curveOffset} ${y2}, ${x2} ${y2}`;
         }
     }
     return d;
@@ -80,7 +80,11 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
       <div className="hidden lg:block relative w-full overflow-hidden mb-8" style={{ height: `${totalHeight}px` }}>
         
         {/* The Serpentine Path */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+        <svg 
+           className="absolute inset-0 w-full h-full pointer-events-none" 
+           viewBox={`0 0 1000 ${totalHeight}`}
+           preserveAspectRatio="none"
+        >
             <path 
                d={drawPathStr()} 
                stroke="#94a3b8" 
@@ -102,7 +106,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
              <div 
                key={log.id} 
                className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500 will-change-transform"
-               style={{ left: `${xPos}%`, top: `${yPos}px`, width: `${90 / itemsPerRow}%`, animationDelay: `${index * 50}ms` }}
+               style={{ left: `${xPos}%`, top: `${yPos}px`, width: `${85 / itemsPerRow}%`, animationDelay: `${index * 50}ms` }}
              >
                {/* Node Dot */}
                <div className="relative z-20 w-5 h-5 bg-[#3b82f6] rounded-full border-[4px] border-white shadow flex items-center justify-center">
@@ -110,29 +114,31 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
                </div>
 
                {/* Date Label */}
-               <div className={`absolute ${cardTop ? 'top-[16px]' : '-top-[32px]'} font-black text-slate-900 text-[11px] tracking-widest bg-white/95 px-1.5 py-0.5 rounded backdrop-blur-sm z-30`}>
+               <div className={`absolute ${cardTop ? 'top-[16px]' : '-top-[32px]'} font-black text-slate-900 text-[11px] tracking-widest bg-white/95 px-1.5 py-0.5 rounded backdrop-blur-sm z-30 shadow-sm border border-slate-100`}>
                  {log.date}
                </div>
 
                {/* Card Container */}
-               <div className={`absolute ${cardTop ? 'bottom-[30px]' : 'top-[30px]'} left-1/2 -translate-x-1/2 w-full px-2 z-10 hover:z-50`}>
-                 <div className="bg-white border-2 border-slate-200 hover:border-blue-400 rounded-2xl p-4 shadow-sm hover:shadow-xl transition-all cursor-default relative">
+               <div className={`absolute ${cardTop ? 'bottom-[30px]' : 'top-[30px]'} left-1/2 -translate-x-1/2 w-full px-1 z-10 hover:z-50`}>
+                 <div className="bg-white border-2 border-slate-200 hover:border-blue-400 rounded-xl p-3 shadow-sm hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] transition-all cursor-default relative">
                     {/* Directional Arrow pointing to node */}
                     <div className={`absolute left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white border-r-2 border-b-2 border-slate-200 transform rotate-45 transition-colors ${cardTop ? '-bottom-[8px] rotate-[45deg]' : '-top-[8px] rotate-[-135deg] border-t-2 border-l-2 border-r-0 border-b-0'} group-hover:border-blue-400`} />
                     
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-1.5">
                         <div className="p-1 text-slate-500 rounded bg-slate-50 border border-slate-100">
                           <CategoryIcon category={log.category} />
                         </div>
-                        <span className="text-[9px] font-black text-slate-700 uppercase tracking-widest leading-none pt-0.5">
+                        <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none pt-0.5">
                           {log.category || 'Acción'}
                         </span>
                       </div>
                     </div>
-                    <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                       {log.description}
-                    </p>
+                    <div className="max-h-[140px] overflow-y-auto pr-1 space-y-1 scrollbar-thin scrollbar-thumb-slate-200">
+                      <p className="text-[11px] text-slate-600 font-medium leading-normal">
+                         {log.description}
+                      </p>
+                    </div>
                  </div>
                </div>
              </div>
