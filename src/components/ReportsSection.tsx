@@ -57,6 +57,7 @@ function ReportPage({ children, className }: { children: React.ReactNode, classN
 export function ReportsSection({ accounts, visibleAccountIds, settings, notes, setDateRange }: ReportsSectionProps) {
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [reportMonth, setReportMonth] = useState<string>(format(subMonths(new Date(), 1), 'yyyy-MM'));
+  const [isReportGenerated, setIsReportGenerated] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
   const [bitacora, setBitacora] = useState<any[]>([]);
   const [loadingBitacora, setLoadingBitacora] = useState(false);
@@ -72,22 +73,31 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
   const [loadingRealData, setLoadingRealData] = useState(false);
 
   // Estados para campos editables persistentes localmente
-  const [reportTexts, setReportTexts] = useState<Record<string, any>>(() => {
-    const saved = localStorage.getItem(`report_texts_${selectedAccountId}_${reportMonth}`);
-    return saved ? JSON.parse(saved) : {
-      narrative: '',
-      learnings: '',
-      actionPlan: '',
-      clientRequests: ''
-    };
+  const [reportTexts, setReportTexts] = useState<Record<string, any>>({
+    narrative: '',
+    learnings: '',
+    actionPlan: '',
+    clientRequests: ''
   });
 
-  // Guardar cambios en localStorage
+  // Cargar datos guardados cuando cambia la cuenta o el mes
   useEffect(() => {
-    if (selectedAccountId) {
-      localStorage.setItem(`report_texts_${selectedAccountId}_${reportMonth}`, JSON.stringify(reportTexts));
+    if (!selectedAccountId) return;
+    const saved = localStorage.getItem(`report_texts_${selectedAccountId}_${reportMonth}`);
+    if (saved) {
+      setReportTexts(JSON.parse(saved));
+    } else {
+      setReportTexts({ narrative: '', learnings: '', actionPlan: '', clientRequests: '' });
     }
-  }, [reportTexts, selectedAccountId, reportMonth]);
+  }, [selectedAccountId, reportMonth]);
+
+  const updateReportText = (field: string, val: string) => {
+    setReportTexts(prev => {
+      const next = { ...prev, [field]: val };
+      localStorage.setItem(`report_texts_${selectedAccountId}_${reportMonth}`, JSON.stringify(next));
+      return next;
+    });
+  };
 
   // Sincronizar cuenta seleccionada
   useEffect(() => {
@@ -96,10 +106,15 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
     }
   }, [visibleAccountIds, selectedAccountId]);
 
+  // Reseteamos el estado de generación si cambia la cuenta o el mes
+  useEffect(() => {
+    setIsReportGenerated(false);
+  }, [selectedAccountId, reportMonth]);
+
   // Cargar Bitácora Real de Orion
   useEffect(() => {
     async function fetchBitacora() {
-      if (!selectedAccountId) return;
+      if (!selectedAccountId || !isReportGenerated) return;
       setLoadingBitacora(true);
       try {
         const res = await fetch(`/api/bitacora/${selectedAccountId}`);
@@ -115,13 +130,13 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
       }
     }
     fetchBitacora();
-  }, [selectedAccountId, reportMonth]);
+  }, [selectedAccountId, reportMonth, isReportGenerated]);
 
   const selectedAccount = accounts.find(a => a.id === selectedAccountId);
 
   // Cargar data real de Facebook API
   useEffect(() => {
-    if (!selectedAccountId) return;
+    if (!selectedAccountId || !isReportGenerated) return;
     async function loadData() {
       setLoadingRealData(true);
       try {
@@ -371,7 +386,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
       }
     }
     loadData();
-  }, [selectedAccountId, reportMonth, selectedAccount?.currency]);
+  }, [selectedAccountId, reportMonth, isReportGenerated, selectedAccount?.currency]);
   
   function mapAlpha2ToAlpha3(code: string) {
     const map: Record<string,string> = {
@@ -426,36 +441,77 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
     );
   }
 
-  return (
-    <div className="space-y-6 pb-20 animate-in fade-in duration-700">
-      {/* TOOLBAR */}
-      <div className="bg-[#0a0a0a] rounded-lg border border-white/5 p-4 flex flex-wrap items-center justify-between gap-4 print:hidden sticky top-4 z-[110] backdrop-blur-md bg-opacity-90 shadow-2xl">
-        <div className="flex items-end gap-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-[7px] font-black text-blue-500 uppercase tracking-widest">Cuenta Activa</label>
+  if (!isReportGenerated) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 bg-[#0a0a0a] rounded-xl border border-white/5">
+        <FileText className="w-16 h-16 mb-6 text-blue-500/50" />
+        <h2 className="text-xl font-black text-white uppercase tracking-widest mb-8">Generador de Informes</h2>
+        
+        <div className="flex flex-col gap-6 w-full max-w-sm">
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Cuenta Activa</label>
             <select 
               value={selectedAccountId}
               onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-[10px] font-black text-white uppercase tracking-widest outline-none focus:border-blue-500/50"
+              className="bg-[#111] border border-white/10 rounded px-4 py-3 text-sm font-black text-white uppercase tracking-widest outline-none focus:border-blue-500/50"
             >
+              <option value="" disabled>Selecciona una cuenta</option>
               {accounts.filter(a => visibleAccountIds.includes(a.id)).map(acc => (
                 <option key={acc.id} value={acc.id} className="bg-[#111]">{settings[acc.id]?.customName || acc.name}</option>
               ))}
             </select>
           </div>
           
-          <div className="flex flex-col gap-1">
-            <label className="text-[7px] font-black text-blue-500 uppercase tracking-widest">Período</label>
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Período</label>
             <select 
               value={reportMonth}
               onChange={(e) => setReportMonth(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-[10px] font-black text-white uppercase tracking-widest outline-none focus:border-blue-500/50"
+              className="bg-[#111] border border-white/10 rounded px-4 py-3 text-sm font-black text-white uppercase tracking-widest outline-none focus:border-blue-500/50"
             >
               {monthOptions.map(opt => (
                 <option key={opt.value} value={opt.value} className="bg-[#111]">{opt.label}</option>
               ))}
             </select>
           </div>
+
+          <button
+            onClick={() => setIsReportGenerated(true)}
+            className="mt-4 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-widest py-4 px-6 rounded-md transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+          >
+            <BarChart3 className="w-4 h-4" />
+            Generar Informe
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 pb-20 animate-in fade-in duration-700">
+      {/* TOOLBAR */}
+      <div className="bg-[#0a0a0a] rounded-lg border border-white/5 p-4 flex flex-wrap items-center justify-between gap-4 print:hidden sticky top-4 z-[110] backdrop-blur-md bg-opacity-90 shadow-2xl">
+        <div className="flex items-end gap-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-[7px] font-black text-blue-500 uppercase tracking-widest">Cuenta Activa</span>
+            <div className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-[10px] font-black text-white uppercase tracking-widest">
+              {settings[selectedAccountId]?.customName || selectedAccount.name}
+            </div>
+          </div>
+          
+          <div className="flex flex-col gap-1">
+            <span className="text-[7px] font-black text-blue-500 uppercase tracking-widest">Período</span>
+             <div className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-[10px] font-black text-white uppercase tracking-widest">
+              {monthOptions.find(o => o.value === reportMonth)?.label || reportMonth}
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsReportGenerated(false)}
+            className="ml-2 px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest border border-white/10 hover:bg-white/5 text-slate-400 transition-all"
+          >
+            Cambiar
+          </button>
 
           {(loadingRealData || loadingBitacora) && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-md text-blue-400">
@@ -515,7 +571,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               metrics={metrics}
               prevMonthMetrics={prevMonthMetrics}
               narrative={reportTexts.narrative}
-              onNarrativeChange={(val) => setReportTexts(prev => ({ ...prev, narrative: val }))}
+              onNarrativeChange={(val) => updateReportText('narrative', val)}
               isEditing={isEditing}
             />
           </div>
@@ -616,7 +672,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               learnings={reportTexts.learnings}
               actionPlan={reportTexts.actionPlan}
               clientRequests={reportTexts.clientRequests}
-              onUpdate={(field, val) => setReportTexts(prev => ({ ...prev, [field]: val }))}
+              onUpdate={updateReportText}
               isEditing={isEditing}
             />
           </div>
