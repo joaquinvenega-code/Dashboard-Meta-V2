@@ -27,6 +27,7 @@ interface FloatingAssistantProps {
   settings: Record<string, any>;
   isSyncingGlobal?: boolean;
   onTriggerSync?: () => Promise<void>;
+  isGeneratingReport?: boolean;
 }
 
 interface ChatMessage {
@@ -238,7 +239,8 @@ export default function FloatingAssistant({
   onDeleteOfflineSale,
   settings,
   isSyncingGlobal = false,
-  onTriggerSync
+  onTriggerSync,
+  isGeneratingReport = false
 }: FloatingAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);

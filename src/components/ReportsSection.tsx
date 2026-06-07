@@ -131,7 +131,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           id: n.id,
           date: format(parseISO(n.timestamp), 'dd/MM'),
           description: n.text,
-          category: n.category === 'action' ? 'optimizacion' : (n.category === 'observation' ? 'estrategia' : 'testing') as any
+          category: n.category === 'change' ? 'optimizacion' : (n.category === 'observation' ? 'estrategia' : 'testing') as any
         }));
 
       let apiLogs = [];
