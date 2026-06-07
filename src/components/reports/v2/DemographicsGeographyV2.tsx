@@ -37,12 +37,20 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
   currency = 'ARS'
 }) => {
 
-  const pieData = demoData.map(d => ({
-    name: d.age,
-    value: d.rawValue || 0
-  })).filter(d => d.value > 0);
+  const totalMale = demoData.reduce((acc, curr) => acc + (curr.male || 0), 0);
+  const totalFemale = demoData.reduce((acc, curr) => acc + (curr.female || 0), 0);
 
-  const colors = ['#3b82f6', '#f472b6', '#10b981', '#f59e0b', '#6366f1', '#8b5cf6'];
+  const pieData = [
+    { name: 'Mujeres', value: totalFemale, color: '#f472b6' },
+    { name: 'Hombres', value: totalMale, color: '#3b82f6' }
+  ].filter(d => d.value > 0);
+
+  const barData = demoData.map(d => ({
+    age: d.age,
+    rawValue: d.rawValue || 0
+  }));
+
+  const colors = pieData.map(p => p.color);
 
   return (
     <div className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm h-full flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-8 duration-705">
@@ -58,27 +66,17 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
             Perfil Demográfico y Facturación
           </h4>
           <p className="text-xs text-slate-500 font-medium">
-            Proporción de conversiones y facturación por rangos de edad segmentados por género.
+            Proporción de conversiones y facturación general por segmentación.
           </p>
         </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 print:grid-cols-2 gap-8 items-start">
-        {/* Gráfico de Barras (Demografía) */}
-        <div className="h-[360px] print:h-[280px] flex flex-col">
-          <div className="flex items-center gap-4 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100 self-start mb-4">
-            <div className="flex items-center gap-1.5 font-mono">
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm" />
-              <span className="text-[9px] font-black text-slate-650 uppercase tracking-wider">Hombres</span>
-            </div>
-            <div className="flex items-center gap-1.5 font-mono">
-              <div className="w-2.5 h-2.5 rounded-full bg-pink-400 shadow-sm" />
-              <span className="text-[9px] font-black text-slate-650 uppercase tracking-wider">Mujeres</span>
-            </div>
-          </div>
+        {/* Gráfico de Barras (Facturación por Edad) */}
+        <div className="h-[360px] print:h-[280px] flex flex-col pt-6">
           <div className="flex-1 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={demoData} margin={{ top: 20, right: 30, left: -20, bottom: 5 }}>
+              <BarChart data={barData} margin={{ top: 20, right: 30, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#f1f5f9" />
                 <XAxis 
                   dataKey="age" 
@@ -91,7 +89,11 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
                   axisLine={false} 
                   tickLine={false}
                   tick={{ fontSize: 10, fontWeight: 750, fill: '#cbd5e1' }}
-                  tickFormatter={(val) => `${val}%`}
+                  tickFormatter={(val) => {
+                     if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+                     if (val >= 1000) return `${(val / 1000).toFixed(0)}k`;
+                     return val;
+                  }}
                 />
                 <RechartsTooltip 
                   cursor={{ fill: '#f8fafc' }}
@@ -104,20 +106,19 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
                     padding: '16px',
                     backgroundColor: '#ffffff'
                   }}
-                  formatter={(val: number) => [`${val}%`, '']}
+                  formatter={(val: number) => [formatCurrency(val, currency), 'Facturación']}
                 />
-                <Bar dataKey="male" fill="#3b82f6" stackId="a" radius={[0, 0, 0, 0]} barSize={32} label={<BarLabel />} />
-                <Bar dataKey="female" fill="#f472b6" stackId="a" radius={[6, 6, 0, 0]} barSize={32} label={<BarLabel />} />
+                <Bar dataKey="rawValue" fill="#10b981" radius={[6, 6, 0, 0]} barSize={32} label={<BarLabel isCurrency currency={currency} />} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Gráfico de Torta (Facturación) */}
+        {/* Gráfico de Torta (Género) */}
         <div className="h-[360px] print:h-[280px] bg-slate-50 border border-slate-100 rounded-2xl p-6 flex flex-col">
            <div className="mb-4 text-center">
-             <h5 className="text-xs font-black text-slate-800 uppercase tracking-wider">Facturación por Edad</h5>
-             <p className="text-[10px] text-slate-500 font-medium mt-1">Distribución global de ingresos</p>
+             <h5 className="text-xs font-black text-slate-800 uppercase tracking-wider">Género de Compradores</h5>
+             <p className="text-[10px] text-slate-500 font-medium mt-1">Distribución estimada por género</p>
            </div>
            <div className="flex-1 w-full">
              <ResponsiveContainer width="100%" height="100%">
@@ -131,8 +132,6 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
                   paddingAngle={2}
                   dataKey="value"
                   label={({ cx, cy, midAngle, innerRadius, outerRadius, value, index, percent }) => {
-                    // Si el porcentaje es muy chico (< 3%), no mostramos leader-line para no colisionar. 
-                    // El usuario puede verlo en el tooltip.
                     if (percent < 0.03) return null;
                     
                     const RADIAN = Math.PI / 180;
@@ -158,7 +157,7 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
                           fontSize={10}
                           fontWeight={800}
                         >
-                          {formatCurrency(value, currency)}
+                          {`${(percent * 100).toFixed(1)}%`}
                         </text>
                       </g>
                     );
@@ -170,7 +169,7 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
                   ))}
                 </Pie>
                 <RechartsTooltip 
-                  formatter={(value: number) => formatCurrency(value, currency)}
+                  formatter={(value: number) => [`${value.toFixed(1)}%`, 'Proporción']}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '11px', fontWeight: 'bold' }}
                 />
               </PieChart>
@@ -194,8 +193,8 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
           <Sparkles className="w-3.5 h-3.5 text-blue-500" />
           <span>Datos analizados y actualizados según el período de campaña seleccionado.</span>
         </div>
-        <span className="uppercase text-slate-350 tracking-widest font-bold">META AUDIENCE DATA INSIGHTS</span>
       </div>
     </div>
   );
 };
+
