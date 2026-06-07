@@ -41,6 +41,7 @@ interface ReportsSectionProps {
   settings: Record<string, AccountSettings>;
   notes: AccountNote[];
   setDateRange?: (range: { since: string; until: string }) => void;
+  onGeneratingChange?: (generating: boolean) => void;
 }
 
 function ReportPage({ children, className }: { children: React.ReactNode, className?: string }) {
@@ -54,7 +55,7 @@ function ReportPage({ children, className }: { children: React.ReactNode, classN
   );
 }
 
-export function ReportsSection({ accounts, visibleAccountIds, settings, notes, setDateRange }: ReportsSectionProps) {
+export function ReportsSection({ accounts, visibleAccountIds, settings, notes, setDateRange, onGeneratingChange }: ReportsSectionProps) {
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [reportMonth, setReportMonth] = useState<string>(format(subMonths(new Date(), 1), 'yyyy-MM'));
   const [isReportGenerated, setIsReportGenerated] = useState(false);
@@ -81,6 +82,12 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
   });
 
   // Cargar datos guardados cuando cambia la cuenta o el mes
+  useEffect(() => {
+    if (onGeneratingChange) {
+      onGeneratingChange(loadingRealData || loadingBitacora);
+    }
+  }, [loadingRealData, loadingBitacora, onGeneratingChange]);
+
   useEffect(() => {
     if (!selectedAccountId) return;
     const saved = localStorage.getItem(`report_texts_${selectedAccountId}_${reportMonth}`);
@@ -570,7 +577,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
       {/* REPORT SURFACE */}
       <div className={cn(
         "max-w-5xl mx-auto bg-white shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] p-16 md:p-24 text-black print:shadow-none print:p-0 print:max-w-none transition-all duration-500 relative",
-        (loadingRealData || loadingBitacora) ? "opacity-60 pointer-events-none overflow-hidden" : "opacity-100"
+        (loadingRealData || loadingBitacora) ? "animate-pulse ring-8 ring-blue-500/30 shadow-[0_0_60px_rgba(59,130,246,0.4)] opacity-95 pointer-events-none overflow-hidden" : "opacity-100"
       )}>
         {(loadingRealData || loadingBitacora) && (
           <div className="absolute inset-0 z-50 bg-white/20 backdrop-blur-[2px] flex items-center justify-center print:hidden">

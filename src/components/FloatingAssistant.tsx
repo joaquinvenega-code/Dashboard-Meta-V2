@@ -1505,7 +1505,8 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
               opacity: { repeat: Infinity, duration: 0.5, ease: "easeInOut" }
             }}
             className={`absolute inset-0 border-2 rounded-full border-dashed ${
-              currentOrionState === 'success'
+              isGeneratingReport ? 'border-blue-400/80 shadow-[0_0_12px_rgba(59,130,246,0.4)]'
+              : currentOrionState === 'success'
                 ? 'border-emerald-400/80 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
                 : currentOrionState === 'listening' 
                   ? 'border-amber-400/70 border-spacing-2' 
@@ -1518,17 +1519,19 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
             animate={{ rotate: -360 }}
             transition={{ repeat: Infinity, duration: currentOrionState === 'thinking' ? 1.1 : 14, ease: "linear" }}
             className={`absolute inset-2 border border-dotted rounded-full transition-colors ${
-              currentOrionState === 'success' ? 'border-emerald-400/60' : 'border-amber-400/50'
+              isGeneratingReport ? 'border-blue-400/60'
+              : currentOrionState === 'success' ? 'border-emerald-400/60' : 'border-amber-400/50'
             }`}
             style={{ transform: "rotateX(45deg) rotateY(15deg)" }}
           />
 
-          {/* Diagonal Volumetric Ring 3 (Interlocking Sphere Orbit) */}
+          {/* Diagonal Volumetric Ring 3 (Interlocking SphereOrbit) */}
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ repeat: Infinity, duration: currentOrionState === 'thinking' ? 1.3 : 18, ease: "linear" }}
             className={`absolute inset-4 border rounded-full transition-colors ${
-              currentOrionState === 'success' ? 'border-emerald-300/50' : 'border-amber-300/40'
+              isGeneratingReport ? 'border-blue-300/50'
+              : currentOrionState === 'success' ? 'border-emerald-300/50' : 'border-amber-300/40'
             }`}
             style={{ transform: "rotateX(-30deg) rotateY(45deg)" }}
           />
@@ -1538,7 +1541,8 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
             animate={{ rotate: -360 }}
             transition={{ repeat: Infinity, duration: currentOrionState === 'thinking' ? 0.9 : 11, ease: "linear" }}
             className={`absolute inset-6 border rounded-full transition-colors ${
-              currentOrionState === 'success' ? 'border-emerald-400/45' : 'border-amber-400/35'
+              isGeneratingReport ? 'border-blue-400/45'
+              : currentOrionState === 'success' ? 'border-emerald-400/45' : 'border-amber-400/35'
             }`}
             style={{ transform: "rotateX(60deg) rotateY(-40deg)" }}
           />
@@ -1548,13 +1552,16 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
             animate={{ rotate: 360 }}
             transition={{ repeat: Infinity, duration: currentOrionState === 'thinking' ? 0.4 : 5, ease: "linear" }}
             className={`absolute inset-8 border border-r-transparent border-b-transparent border-l-transparent rounded-full ${
-              currentOrionState === 'success' ? 'border-t-emerald-400/90' : 'border-t-amber-300/75'
+              isGeneratingReport ? 'border-t-blue-400/90'
+              : currentOrionState === 'success' ? 'border-t-emerald-400/90' : 'border-t-amber-300/75'
             }`}
           />
 
           {/* Core Mechanism container - No logos, pure organic plasma fluid dynamics */}
           <div className={`absolute inset-7 rounded-full flex items-center justify-center transition-all duration-500 overflow-hidden ${
-            currentOrionState === 'success'
+            isGeneratingReport
+              ? 'bg-gradient-to-br from-blue-600 via-blue-950 to-black border-2 border-blue-400 shadow-[inset_0_0_22px_rgba(59,130,246,0.8)]'
+              : currentOrionState === 'success'
               ? 'bg-gradient-to-br from-emerald-600 via-emerald-950 to-black border-2 border-emerald-400 shadow-[inset_0_0_22px_rgba(16,185,129,0.8)]'
               : currentOrionState === 'listening'
                 ? 'bg-gradient-to-br from-amber-500/95 via-amber-950 to-black border-2 border-amber-300 shadow-[inset_0_0_22px_rgba(245,158,11,0.8)]'
@@ -1593,9 +1600,13 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
               />
             </div>
 
-            {/* Reactive centerpiece core sphere (Pure golden/emerald nucleus, no SVG Icons) */}
+            {/* Reactive centerpiece core sphere (Pure golden/emerald/blue nucleus, no SVG Icons) */}
             <motion.div
-              animate={currentOrionState === 'success' ? {
+              animate={isGeneratingReport ? {
+                scale: [1, 1.35, 1],
+                backgroundColor: ["#3b82f6", "#60a5fa", "#3b82f6"],
+                boxShadow: ["0 0 25px 8px rgba(59,130,246,0.85)", "0 0 35px 12px rgba(96,165,250,0.95)", "0 0 25px 8px rgba(59,130,246,0.85)"]
+              } : currentOrionState === 'success' ? {
                 scale: [1, 1.4, 0.95],
                 backgroundColor: ["#10b981", "#34d399", "#10b981"],
                 boxShadow: ["0 0 25px 8px rgba(16,185,129,0.95)", "0 0 35px 14px rgba(52,211,153,0.99)", "0 0 25px 8px rgba(16,185,129,0.95)"]
@@ -1616,7 +1627,7 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
                 backgroundColor: ["#d97706", "#f59e0b", "#d97706"],
                 boxShadow: ["0 0 15px 3px rgba(245,158,11,0.7)", "0 0 25px 8px rgba(245,158,11,0.85)", "0 0 15px 3px rgba(245,158,11,0.7)"]
               }}
-              transition={{ repeat: Infinity, duration: currentOrionState === 'listening' ? 0.8 : currentOrionState === 'thinking' ? 1.3 : isSpeaking ? 0.95 : 3.2, ease: "easeInOut" }}
+              transition={{ repeat: Infinity, duration: isGeneratingReport ? 1.5 : currentOrionState === 'listening' ? 0.8 : currentOrionState === 'thinking' ? 1.3 : isSpeaking ? 0.95 : 3.2, ease: "easeInOut" }}
               className="w-7 h-7 rounded-full flex items-center justify-center relative z-10"
             >
               {currentOrionState === 'listening' ? (

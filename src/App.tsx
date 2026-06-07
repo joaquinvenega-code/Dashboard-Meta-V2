@@ -207,6 +207,7 @@ export default function App() {
   }, [notes]);
   
   const [reportAccount, setReportAccount] = useState<AdAccount | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [showColSelectors, setShowColSelectors] = useState(false);
   const [accountSelectionSearch, setAccountSelectionSearch] = useState('');
   const [notifications, setNotifications] = useState<InAppNotification[]>(() => {
@@ -1389,6 +1390,7 @@ export default function App() {
                     settings={settings} 
                     notes={notes} 
                     setDateRange={setDateRange}
+                    onGeneratingChange={setIsGeneratingReport}
                   />
                 </div>
               )}
@@ -1857,6 +1859,7 @@ export default function App() {
         settings={settings}
         isSyncingGlobal={loading}
         onTriggerSync={loadData}
+        isGeneratingReport={isGeneratingReport}
       />
       <AnimatePresence>
         {configEntity && (
