@@ -160,6 +160,15 @@ export default function App() {
     }
   });
 
+  const [isOrionEnabled, setIsOrionEnabled] = useState(() => {
+    const saved = localStorage.getItem('is_orion_enabled');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('is_orion_enabled', isOrionEnabled.toString());
+  }, [isOrionEnabled]);
+
   const [orionSettings, setOrionSettings] = useState<{voiceType: string, capabilities: {notes: boolean, offlineSales: boolean, analyze: boolean}}>(() => {
     try {
       const saved = localStorage.getItem('cr_orion_settings');
@@ -823,6 +832,8 @@ export default function App() {
         onRefresh={loadData}
         loading={loading}
         lastSync={lastSync}
+        isOrionEnabled={isOrionEnabled}
+        onOrionToggle={setIsOrionEnabled}
       />
       
       <main className="flex-1 min-w-0 p-10 overflow-y-auto">
@@ -1845,22 +1856,24 @@ export default function App() {
       )}
 
       {/* Config Modal */}
-      <FloatingAssistant
-        accounts={accounts}
-        accountGroups={accountGroups}
-        notes={notes}
-        orionSettings={orionSettings}
-        onAddNote={(note) => setNotes([...notes, note])}
-        onUpdateNote={(updatedNote) => setNotes(prev => prev.map(n => n.id === updatedNote.id ? updatedNote : n))}
-        onDeleteNote={(noteId) => setNotes(prev => prev.filter(n => n.id !== noteId))}
-        onAddOfflineSale={handleAddOfflineSaleLog}
-        onUpdateOfflineSale={handleUpdateOfflineSaleLog}
-        onDeleteOfflineSale={handleDeleteOfflineSaleLog}
-        settings={settings}
-        isSyncingGlobal={loading}
-        onTriggerSync={loadData}
-        isGeneratingReport={isGeneratingReport}
-      />
+      {isOrionEnabled && (
+        <FloatingAssistant
+          accounts={accounts}
+          accountGroups={accountGroups}
+          notes={notes}
+          orionSettings={orionSettings}
+          onAddNote={(note) => setNotes([...notes, note])}
+          onUpdateNote={(updatedNote) => setNotes(prev => prev.map(n => n.id === updatedNote.id ? updatedNote : n))}
+          onDeleteNote={(noteId) => setNotes(prev => prev.filter(n => n.id !== noteId))}
+          onAddOfflineSale={handleAddOfflineSaleLog}
+          onUpdateOfflineSale={handleUpdateOfflineSaleLog}
+          onDeleteOfflineSale={handleDeleteOfflineSaleLog}
+          settings={settings}
+          isSyncingGlobal={loading}
+          onTriggerSync={loadData}
+          isGeneratingReport={isGeneratingReport}
+        />
+      )}
       <AnimatePresence>
         {configEntity && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">

@@ -24,9 +24,11 @@ interface SidebarProps {
   onRefresh: () => void;
   loading?: boolean;
   lastSync: string | null;
+  isOrionEnabled?: boolean;
+  onOrionToggle?: (enabled: boolean) => void;
 }
 
-export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, loading, lastSync }: SidebarProps) {
+export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, loading, lastSync, isOrionEnabled = true, onOrionToggle }: SidebarProps) {
   const [isConfigOpen, setIsConfigOpen] = useState(false);
 
   // Auto-expand if a sub-item is active
@@ -54,13 +56,35 @@ export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, l
 
   return (
     <aside className="w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col h-screen sticky top-0 shrink-0 print:hidden">
-      <div className="p-6 flex items-center gap-3">
-        <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center shrink-0 border border-white/5">
-          <BarChart3 className="w-6 h-6 text-blue-500" />
+      <div className="p-6 flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center shrink-0 border border-white/5">
+            <BarChart3 className="w-6 h-6 text-blue-500" />
+          </div>
+          <div>
+            <div className="font-black text-sm leading-tight tracking-tighter text-white">Orion Metrics</div>
+            <div className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest leading-none mt-1">Meta Ads Dashboard</div>
+          </div>
         </div>
-        <div>
-          <div className="font-black text-sm leading-tight tracking-tighter text-white">Orion Metrics</div>
-          <div className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest leading-none mt-1">Meta Ads Dashboard</div>
+
+        {/* Toggle Assistant */}
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <Bot className={cn("w-3.5 h-3.5", isOrionEnabled ? "text-blue-500" : "text-neutral-600")} />
+            <span className="text-xs font-bold text-neutral-400">Asistente Orión</span>
+          </div>
+          <button 
+            onClick={() => onOrionToggle && onOrionToggle(!isOrionEnabled)}
+            className={cn(
+              "w-8 h-4 rounded-full relative transition-colors duration-300",
+              isOrionEnabled ? "bg-blue-600" : "bg-neutral-800"
+            )}
+          >
+            <div className={cn(
+              "absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-300",
+              isOrionEnabled && "transform translate-x-4"
+            )} />
+          </button>
         </div>
       </div>
 
