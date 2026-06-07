@@ -38,7 +38,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
   
   const getYPos = (index: number) => {
      const rowIndex = Math.floor(index / itemsPerRow);
-     return 80 + (rowIndex * 130);
+     return 60 + (rowIndex * 90);
   };
 
   const drawPathStr = () => {
@@ -54,7 +54,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
            d += ` L ${x2} ${y2}`;
         } else {
            const isRightSide = x1 > 500; 
-           const curveOffset = isRightSide ? 150 : -150; 
+           const curveOffset = isRightSide ? 120 : -120; 
            d += ` C ${x1 + curveOffset} ${y1}, ${x2 + curveOffset} ${y2}, ${x2} ${y2}`;
         }
     }
@@ -62,7 +62,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
   };
 
   const lastY = logs.length > 0 ? getYPos(logs.length - 1) : 0;
-  const totalHeight = lastY + 140;
+  const totalHeight = lastY + 120;
 
   return (
     <div className="w-full relative">
