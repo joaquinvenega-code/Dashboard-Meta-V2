@@ -151,23 +151,12 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
                         />
                         <text 
                           x={x + (x > cx ? 6 : -6)} 
-                          y={y - 8} 
+                          y={y} 
                           textAnchor={textAnchor} 
                           dominantBaseline="central"
                           fill="#334155"
                           fontSize={10}
                           fontWeight={800}
-                        >
-                          {pieData[index].name}
-                        </text>
-                        <text 
-                          x={x + (x > cx ? 6 : -6)} 
-                          y={y + 6} 
-                          textAnchor={textAnchor} 
-                          dominantBaseline="central"
-                          fill="#64748b"
-                          fontSize={9}
-                          fontWeight={600}
                         >
                           {formatCurrency(value, currency)}
                         </text>
@@ -186,6 +175,16 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
                 />
               </PieChart>
              </ResponsiveContainer>
+           </div>
+           
+           {/* Leyenda del gráfico de torta */}
+           <div className="mt-4 pt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+             {pieData.map((entry, index) => (
+               <div key={`legend-${index}`} className="flex items-center gap-1.5">
+                 <div className="w-2.5 h-2.5 rounded-[3px]" style={{ backgroundColor: colors[index % colors.length] }} />
+                 <span className="text-[10px] font-bold text-slate-600">{entry.name}</span>
+               </div>
+             ))}
            </div>
         </div>
       </div>
