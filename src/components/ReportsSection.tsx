@@ -672,7 +672,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-250 print-module">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">05</div>
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Demografía de Audiencia</h3>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Perfil Demográfico y Facturación</h3>
             </div>
             <DemographicsGeographyV2 demoData={realDemographics} currency={metrics.currency} />
           </div>

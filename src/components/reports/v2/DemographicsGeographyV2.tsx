@@ -187,13 +187,6 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
            </div>
         </div>
       </div>
-
-      <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-400 text-[10px] font-mono">
-        <div className="flex items-center gap-1.5 font-sans font-medium">
-          <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-          <span>Datos analizados y actualizados según el período de campaña seleccionado.</span>
-        </div>
-      </div>
     </div>
   );
 };
