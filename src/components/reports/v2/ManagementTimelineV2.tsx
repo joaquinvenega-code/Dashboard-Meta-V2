@@ -38,7 +38,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
   
   const getYPos = (index: number) => {
      const rowIndex = Math.floor(index / itemsPerRow);
-     return 60 + (rowIndex * 90);
+     return 140 + (rowIndex * 110);
   };
 
   const drawPathStr = () => {
@@ -54,7 +54,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
            d += ` L ${x2} ${y2}`;
         } else {
            const isRightSide = x1 > 500; 
-           const curveOffset = isRightSide ? 120 : -120; 
+           const curveOffset = isRightSide ? 220 : -220; 
            d += ` C ${x1 + curveOffset} ${y1}, ${x2 + curveOffset} ${y2}, ${x2} ${y2}`;
         }
     }
@@ -62,7 +62,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
   };
 
   const lastY = logs.length > 0 ? getYPos(logs.length - 1) : 0;
-  const totalHeight = lastY + 120;
+  const totalHeight = lastY + 50;
 
   return (
     <div className="w-full relative">
@@ -115,13 +115,13 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
            const colIndex = index % itemsPerRow;
            const isEvenRow = rowIndex % 2 === 0;
            const visualColIndex = isEvenRow ? colIndex : (itemsPerRow - 1 - colIndex);
-           const cardTop = visualColIndex === 0;
+           const cardTop = true;
 
            return (
              <div 
                key={log.id} 
                className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500 will-change-transform"
-               style={{ left: `${xPos}%`, top: `${yPos}px`, width: `${96 / itemsPerRow}%`, animationDelay: `${index * 50}ms` }}
+               style={{ left: `${xPos}%`, top: `${yPos}px`, width: `42%`, animationDelay: `${index * 50}ms` }}
              >
                {/* Node Dot */}
                <div className="relative z-20 w-5 h-5 bg-[#3b82f6] rounded-full border-[4px] border-white shadow flex items-center justify-center">
@@ -157,7 +157,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
         {/* Center Line for alternating timeline */}
         <div className="absolute left-[24px] sm:left-1/2 print:left-[24px] sm:-translate-x-1/2 print:translate-x-0 top-0 bottom-0 w-1 bg-[#94a3b8] opacity-70 rounded-full" />
 
-        <div className="space-y-4 sm:-space-y-6 print:space-y-4 relative pt-2">
+        <div className="space-y-4 sm:-space-y-2 print:space-y-4 relative pt-2">
             {logs.map((log, index) => {
               const isEven = index % 2 === 0;
               return (
