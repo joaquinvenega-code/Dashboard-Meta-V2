@@ -157,7 +157,7 @@ export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs
         {/* Center Line for alternating timeline */}
         <div className="absolute left-[24px] sm:left-1/2 print:left-[24px] sm:-translate-x-1/2 print:translate-x-0 top-0 bottom-0 w-1 bg-[#94a3b8] opacity-70 rounded-full" />
 
-        <div className="space-y-4 sm:-space-y-16 print:space-y-4 relative pt-2">
+        <div className="space-y-4 sm:-space-y-4 print:space-y-4 relative pt-2">
             {logs.map((log, index) => {
               const isEven = index % 2 === 0;
               return (
