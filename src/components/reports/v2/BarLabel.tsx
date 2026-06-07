@@ -28,27 +28,33 @@ export const BarLabel = (props: any) => {
 
   // Si la barra es pequeña, sacamos el número con una pequeña flecha indicadora
   const lineY = y + height / 2;
-  const labelX = isMale ? x - 25 : x + width + 25;
   const isTooSmall = height < 2; // Si es casi invisible, ocultamos el texto para no saturar
 
   if (isTooSmall) return null;
 
+  // Reducimos las distancias horizontales para evitar superposición con barras adyacentes
+  const offsetX = 14;
+  const labelX = isMale ? x - offsetX : x + width + offsetX;
+  
+  // Desplazamos hacia ARRIBA (y disminuye) para evitar colisionar con el eje X abajo
+  const textY = lineY - 14;
+
   return (
     <g>
       <path 
-        d={`M ${isMale ? x : x + width} ${lineY} L ${isMale ? x - 8 : x + width + 8} ${lineY} L ${isMale ? x - 12 : x + width + 12} ${isMale ? lineY + 6 : lineY - 6}`} 
+        d={`M ${isMale ? x : x + width} ${lineY} L ${isMale ? x - 6 : x + width + 6} ${lineY} L ${isMale ? x - 10 : x + width + 10} ${textY}`} 
         stroke={color} 
         strokeWidth={1.5} 
         fill="none" 
       />
       <text 
-        x={labelX} 
-        y={isMale ? lineY + 6 : lineY - 6} 
+        x={isMale ? x - 12 : x + width + 12} 
+        y={textY} 
         fill={color} 
-        textAnchor="middle" 
+        textAnchor={isMale ? 'end' : 'start'} 
         dominantBaseline="central"
-        fontSize={9}
-        fontWeight={800}
+        fontSize={10}
+        fontWeight={900}
       >
         {displayValue}%
       </text>
