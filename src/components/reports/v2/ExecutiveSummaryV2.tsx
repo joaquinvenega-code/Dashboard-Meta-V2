@@ -12,7 +12,7 @@ const KPICard = ({ label, value }: KPIProps) => {
     <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl print:p-3">
       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 print:text-[8px]">{label}</p>
       <div className="flex items-end justify-between">
-        <h4 className="text-2xl lg:text-3xl font-black text-slate-900 truncate print:text-lg print:-tracking-wide print:overflow-visible print:whitespace-normal">{value}</h4>
+        <h4 className="text-xl xl:text-2xl font-black text-slate-900 tracking-tighter break-words print:text-lg print:tracking-normal print:overflow-visible print:whitespace-normal">{value}</h4>
       </div>
     </div>
   );
