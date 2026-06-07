@@ -76,7 +76,7 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
         <div className="h-[360px] print:h-[280px] flex flex-col pt-6">
           <div className="flex-1 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} margin={{ top: 20, right: 30, left: -20, bottom: 5 }}>
+              <BarChart data={barData} margin={{ top: 35, right: 30, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#f1f5f9" />
                 <XAxis 
                   dataKey="age" 
@@ -132,7 +132,7 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
                   paddingAngle={2}
                   dataKey="value"
                   label={({ cx, cy, midAngle, innerRadius, outerRadius, value, index, percent }) => {
-                    if (percent < 0.03) return null;
+                    if (percent < 0.01) return null;
                     
                     const RADIAN = Math.PI / 180;
                     const radius = outerRadius * 1.35;

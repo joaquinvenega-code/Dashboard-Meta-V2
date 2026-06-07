@@ -20,24 +20,7 @@ export const BarLabel = (props: any) => {
     displayValueStr = `${Math.round(Number(value))}%`;
   }
 
-  // Si la barra es lo suficientemente alta, renderizamos adentro
-  if (height >= 18) {
-    return (
-      <text 
-        x={x + width / 2} 
-        y={y + 10} 
-        fill="#ffffff" 
-        textAnchor="middle" 
-        dominantBaseline="central"
-        fontSize={10}
-        fontWeight={800}
-      >
-        {displayValueStr}
-      </text>
-    );
-  }
-
-  // Si la barra es pequeña, ponemos el número arriba
+  // Siempre renderizamos el número arriba de la barra para mejor legibilidad
   return (
     <text 
       x={x + width / 2} 
