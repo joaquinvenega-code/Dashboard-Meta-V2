@@ -230,12 +230,9 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
         setRealDailyData(formattedDaily);
 
         const formattedTopAds = topAds.map(ad => ({
-          id: ad.id,
-          name: ad.name,
+          ...ad,
           thumbnail: ad.thumbnail || 'https://via.placeholder.com/400',
-          spend: ad.spend,
-          purchases: ad.purchases,
-          revenue: ad.revenue,
+          originalThumbnailUrl: ad.originalThumbnailUrl || ad.thumbnail || 'https://via.placeholder.com/400',
           roas: ad.spend > 0 ? ad.revenue / ad.spend : 0
         }));
         setRealTopAds(formattedTopAds);

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Users, Sparkles } from 'lucide-react';
 import { 
   BarChart, 
   Bar, 
@@ -54,23 +53,6 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
 
   return (
     <div className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm h-full flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-8 duration-705">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-slate-900" />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-mono">
-              Distribución de Audiencia
-            </span>
-          </div>
-          <h4 className="text-lg font-black uppercase text-slate-900 leading-tight">
-            Perfil Demográfico y Facturación
-          </h4>
-          <p className="text-xs text-slate-500 font-medium">
-            Proporción de conversiones y facturación general por segmentación.
-          </p>
-        </div>
-      </div>
-      
       <div className="grid grid-cols-1 lg:grid-cols-2 print:grid-cols-2 gap-8 items-start">
         {/* Gráfico de Barras (Facturación por Edad) */}
         <div className="h-[360px] print:h-[280px] flex flex-col pt-6">
