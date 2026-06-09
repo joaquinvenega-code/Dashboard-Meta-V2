@@ -1,13 +1,13 @@
-import React from 'react';
-import { 
-  PieChart, 
-  Pie, 
-  Cell, 
-  ResponsiveContainer, 
-  Tooltip, 
-  Legend 
-} from 'recharts';
-import { Share2, MousePointer2 } from 'lucide-react';
+import React from "react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
+import { Share2, MousePointer2 } from "lucide-react";
 
 interface PlacementsChartV2Props {
   data: {
@@ -17,7 +17,9 @@ interface PlacementsChartV2Props {
   }[];
 }
 
-export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({ data }) => {
+export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
+  data,
+}) => {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm h-full flex flex-col">
       <div className="px-6 py-5 border-b border-slate-50 flex items-center justify-between">
@@ -26,61 +28,77 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({ data }) =>
             <Share2 className="w-4 h-4 text-blue-600" />
           </div>
           <div>
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Distribución</h3>
-            <p className="text-xs font-bold text-slate-900">Ubicaciones de Compra</p>
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">
+              Distribución
+            </h3>
+            <p className="text-xs font-bold text-slate-900">
+              Ubicaciones de Compra
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col justify-center py-4">
-        <div className="flex justify-center items-center w-full min-h-[200px]">
-          <ResponsiveContainer width="100%" height={240}>
+      <div className="flex-1 flex flex-col justify-start pt-6 pb-2">
+        <div className="flex justify-center items-center w-full h-[220px] print:h-[180px]">
+          <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-            <Pie
-              data={data}
-              isAnimationActive={false}
-              cx="50%"
-              cy="50%"
-              innerRadius={55}
-              outerRadius={85}
-              paddingAngle={4}
-              dataKey="value"
-              label={({ cx, cy, midAngle, innerRadius, outerRadius, value, name }) => {
-                const RADIAN = Math.PI / 180;
-                const radius = 20 + outerRadius;
-                const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                return (
-                  <text 
-                    x={x} 
-                    y={y} 
-                    fill="#64748b" 
-                    textAnchor={x > cx ? 'start' : 'end'} 
-                    dominantBaseline="central"
-                    className="text-[10px] font-black"
-                  >
-                    {`${value}%`}
-                  </text>
-                );
-              }}
-              labelLine={{ stroke: '#cbd5e1', strokeWidth: 1 }}
-            >
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-              ))}
-            </Pie>
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: '#fff', 
-                border: '1px solid #f1f5f9', 
-                borderRadius: '12px',
-                boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-                fontSize: '10px',
-                fontWeight: 700
-              }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
+              <Pie
+                data={data}
+                isAnimationActive={false}
+                cx="50%"
+                cy="40%"
+                innerRadius={50}
+                outerRadius={80}
+                paddingAngle={4}
+                dataKey="value"
+                label={({
+                  cx,
+                  cy,
+                  midAngle,
+                  innerRadius,
+                  outerRadius,
+                  value,
+                  name,
+                }) => {
+                  const RADIAN = Math.PI / 180;
+                  const radius = 15 + outerRadius;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  return (
+                    <text
+                      x={x}
+                      y={y}
+                      fill="#64748b"
+                      textAnchor={x > cx ? "start" : "end"}
+                      dominantBaseline="central"
+                      className="text-[10px] font-black"
+                    >
+                      {`${value}%`}
+                    </text>
+                  );
+                }}
+                labelLine={{ stroke: "#cbd5e1", strokeWidth: 1 }}
+              >
+                {data.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={entry.color}
+                    stroke="none"
+                  />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#fff",
+                  border: "1px solid #f1f5f9",
+                  borderRadius: "12px",
+                  boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
         </div>
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 px-4 mt-4">
