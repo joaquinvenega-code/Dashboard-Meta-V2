@@ -38,17 +38,17 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col justify-start pt-6 pb-2">
-        <div className="flex justify-center items-center w-full h-[220px] print:h-[180px]">
+      <div className="flex-1 flex flex-col justify-start pt-6 print:pt-2 pb-2">
+        <div className="flex justify-center items-center w-full h-[220px] print:h-[150px] print:-mt-8">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={data}
                 isAnimationActive={false}
                 cx="50%"
-                cy="40%"
-                innerRadius={50}
-                outerRadius={80}
+                cy="30%"
+                innerRadius={35}
+                outerRadius={65}
                 paddingAngle={4}
                 dataKey="value"
                 label={({
@@ -61,7 +61,7 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
                   name,
                 }) => {
                   const RADIAN = Math.PI / 180;
-                  const radius = 15 + outerRadius;
+                  const radius = 10 + outerRadius;
                   const x = cx + radius * Math.cos(-midAngle * RADIAN);
                   const y = cy + radius * Math.sin(-midAngle * RADIAN);
                   return (
