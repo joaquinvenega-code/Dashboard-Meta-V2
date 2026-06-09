@@ -38,17 +38,17 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col justify-start pt-6 print:pt-2 pb-2">
-        <div className="flex justify-center items-center w-full h-[220px] print:h-[150px] print:-mt-8">
+      <div className="flex-1 flex flex-col p-6 print:p-4 justify-between min-h-[360px] print:min-h-[300px]">
+        <div className="flex-1 w-full flex items-center justify-center relative min-h-[240px]">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={data}
                 isAnimationActive={false}
                 cx="50%"
-                cy="30%"
-                innerRadius={35}
-                outerRadius={65}
+                cy="50%"
+                innerRadius={65}
+                outerRadius={100}
                 paddingAngle={4}
                 dataKey="value"
                 label={({
@@ -61,7 +61,7 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
                   name,
                 }) => {
                   const RADIAN = Math.PI / 180;
-                  const radius = 10 + outerRadius;
+                  const radius = 25 + outerRadius;
                   const x = cx + radius * Math.cos(-midAngle * RADIAN);
                   const y = cy + radius * Math.sin(-midAngle * RADIAN);
                   return (
@@ -101,13 +101,13 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
           </ResponsiveContainer>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 px-4 mt-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 mt-8 print:mt-4">
           {data.map((entry, index) => (
             <div key={`legend-${index}`} className="flex items-center gap-2">
               <svg className="w-2 h-2 shrink-0" viewBox="0 0 8 8">
                 <circle cx="4" cy="4" r="4" fill={entry.color} />
               </svg>
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight truncate">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight truncate">
                 {entry.name}
               </span>
             </div>
