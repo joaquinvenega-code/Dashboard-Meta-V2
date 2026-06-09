@@ -32,9 +32,10 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({ data }) =>
         </div>
       </div>
 
-      <div className="flex-1 p-4 flex items-center justify-center min-h-[200px] print:min-h-[220px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
+      <div className="flex-1 flex flex-col justify-center py-4">
+        <div className="flex justify-center items-center w-full min-h-[200px]">
+          <ResponsiveContainer width="100%" height={240}>
+            <PieChart>
             <Pie
               data={data}
               isAnimationActive={false}
@@ -80,19 +81,20 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({ data }) =>
             />
           </PieChart>
         </ResponsiveContainer>
-      </div>
+        </div>
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 pb-6 px-4">
-        {data.map((entry, index) => (
-          <div key={`legend-${index}`} className="flex items-center gap-2">
-            <svg className="w-2 h-2 shrink-0" viewBox="0 0 8 8">
-              <circle cx="4" cy="4" r="4" fill={entry.color} />
-            </svg>
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight truncate">
-              {entry.name}
-            </span>
-          </div>
-        ))}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 px-4 mt-4">
+          {data.map((entry, index) => (
+            <div key={`legend-${index}`} className="flex items-center gap-2">
+              <svg className="w-2 h-2 shrink-0" viewBox="0 0 8 8">
+                <circle cx="4" cy="4" r="4" fill={entry.color} />
+              </svg>
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight truncate">
+                {entry.name}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 mt-auto">
