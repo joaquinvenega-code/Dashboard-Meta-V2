@@ -38,8 +38,8 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col p-6 print:p-4 justify-between min-h-[360px] print:min-h-[300px]">
-        <div className="flex-1 w-full flex items-center justify-center relative min-h-[240px]">
+      <div className="p-6 print:p-4 flex flex-col justify-between flex-1">
+        <div className="w-full h-[260px] print:h-[200px] flex items-center justify-center py-2 print:py-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -101,7 +101,7 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
           </ResponsiveContainer>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 mt-8 print:mt-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 mt-4 print:mt-2">
           {data.map((entry, index) => (
             <div key={`legend-${index}`} className="flex items-center gap-2">
               <svg className="w-2 h-2 shrink-0" viewBox="0 0 8 8">
