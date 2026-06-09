@@ -606,9 +606,11 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     }}
                   />
                 ) : null}
-                <div className={`ad-placeholder absolute inset-0 z-0 flex flex-col items-center justify-center bg-[#050505] text-neutral-600 gap-3 ${ad.thumbnail ? 'hidden' : ''}`}>
-                  <ImageOff className="w-8 h-8 print:text-neutral-400" strokeWidth={1} />
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#444] print:text-neutral-500">Sin miniatura</span>
+                <div className={`ad-placeholder absolute inset-0 z-0 flex flex-col items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400 gap-2 ${ad.thumbnail ? 'hidden' : ''}`}>
+                  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
+                    <ImageOff className="w-4 h-4 text-slate-400" strokeWidth={2} />
+                  </div>
+                  <span className="text-[8px] uppercase font-black tracking-widest text-slate-400">Sin Previsualización</span>
                 </div>
              </div>
           </div>
