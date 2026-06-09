@@ -29,23 +29,17 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm h-full flex flex-col">
       <div className="px-8 py-6 border-b border-slate-50 flex items-center justify-between">
         <div>
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Análisis de Tendencia</h3>
-          <p className="text-sm font-bold text-slate-900">Facturación & Compras</p>
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Métricas Consolidadas</h3>
+          <p className="text-sm font-bold text-slate-900">Histórico Diario del Mes</p>
         </div>
         <div className="flex items-center gap-6">
-          <div className="flex flex-col items-end">
-            <div className="flex items-center gap-1.5 mb-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Facturación</span>
-            </div>
-            <p className="text-xs font-black text-slate-900 leading-none">ARS Total</p>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-blue-600" />
+            <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none">Facturado (ARS)</span>
           </div>
-          <div className="flex flex-col items-end">
-            <div className="flex items-center gap-1.5 mb-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Compras</span>
-            </div>
-            <p className="text-xs font-black text-slate-900 leading-none">Unidades</p>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-sky-400" />
+            <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none">Transacciones</span>
           </div>
         </div>
       </div>
@@ -55,8 +49,8 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
           <ComposedChart data={data} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
             <defs>
               <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.08}/>
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                <stop offset="5%" stopColor="#2563eb" stopOpacity={0.08}/>
+                <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#f1f5f9" />
@@ -79,7 +73,7 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
               orientation="right"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 9, fontWeight: 700, fill: '#10b981' }}
+              tick={{ fontSize: 9, fontWeight: 700, fill: '#38bdf8' }}
               dx={10}
             />
             <Tooltip 
@@ -96,7 +90,7 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
               cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }}
               formatter={(value: any, name: string) => [
                 name === 'revenue' ? formatCurrency(value, currency) : value, 
-                name === 'revenue' ? 'Facturación' : 'Compras'
+                name === 'revenue' ? 'Facturado (ARS)' : 'Transacciones'
               ]}
               labelStyle={{ color: '#94a3b8', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '9px' }}
             />
@@ -105,7 +99,7 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
               type="monotone" 
               dataKey="revenue" 
               name="revenue"
-              stroke="#3b82f6" 
+              stroke="#2563eb" 
               strokeWidth={2.5}
               fillOpacity={1} 
               fill="url(#colorRevenue)" 
@@ -115,10 +109,10 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
               type="monotone" 
               dataKey="purchases" 
               name="purchases"
-              stroke="#10b981" 
+              stroke="#38bdf8" 
               strokeWidth={2.5}
               dot={false}
-              activeDot={{ r: 4, strokeWidth: 0, fill: '#10b981' }}
+              activeDot={{ r: 4, strokeWidth: 0, fill: '#38bdf8' }}
             />
           </ComposedChart>
         </ResponsiveContainer>
