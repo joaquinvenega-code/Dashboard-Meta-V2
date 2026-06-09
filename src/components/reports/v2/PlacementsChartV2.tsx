@@ -59,17 +59,16 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
                   outerRadius,
                   value,
                   name,
+                  x,
+                  y,
+                  textAnchor,
                 }) => {
-                  const RADIAN = Math.PI / 180;
-                  const radius = 15 + outerRadius;
-                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
                   return (
                     <text
                       x={x}
                       y={y}
                       fill="#64748b"
-                      textAnchor={x > cx ? "start" : "end"}
+                      textAnchor={textAnchor}
                       dominantBaseline="central"
                       className="text-[10px] font-black"
                     >
@@ -121,17 +120,16 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
                 outerRadius,
                 value,
                 name,
+                x,
+                y,
+                textAnchor,
               }) => {
-                const RADIAN = Math.PI / 180;
-                const radius = 15 + outerRadius;
-                const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                const y = cy + radius * Math.sin(-midAngle * RADIAN);
                 return (
                   <text
                     x={x}
                     y={y}
                     fill="#64748b"
-                    textAnchor={x > cx ? "start" : "end"}
+                    textAnchor={textAnchor}
                     dominantBaseline="central"
                     className="text-[10px] font-black"
                   >
