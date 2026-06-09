@@ -111,6 +111,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
       const countryId = activeCountries[0].countryId.toUpperCase();
       if (DRILLDOWN_SUPPORTED_COUNTRIES.includes(countryId)) {
         setSelectedCountry(countryId);
+        setMapZoom(2);
       }
     }
   }, [salesData]);
@@ -501,6 +502,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
               onClick={() => {
                 setSelectedCountry(null);
                 setHoveredElement(null);
+                setMapZoom(1);
               }}
               className="absolute top-4 left-4 z-40 flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-700/60 hover:bg-slate-800 text-white text-[10px] sm:text-xs font-black uppercase rounded-xl shadow-lg transition-all active:scale-95 text-center"
             >
@@ -550,6 +552,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                       if (canDrillDown) {
                         setSelectedCountry(id);
                         setHoveredElement(null);
+                        setMapZoom(2);
                       }
                     }}
                     onMouseEnter={() => {
