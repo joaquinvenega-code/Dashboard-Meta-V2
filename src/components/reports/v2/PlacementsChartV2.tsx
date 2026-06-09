@@ -101,15 +101,15 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
         </div>
 
         {/* PRINT ONLY FIXED LAYOUT CHART */}
-        <div className="hidden print:flex w-full h-[180px] justify-center items-center">
-          <PieChart width={280} height={180}>
+        <div className="hidden print:flex w-full h-[220px] justify-center items-center mt-4">
+          <PieChart width={340} height={220}>
             <Pie
               data={data}
               isAnimationActive={false}
               cx="50%"
               cy="50%"
-              innerRadius={40}
-              outerRadius={65}
+              innerRadius={55}
+              outerRadius={85}
               paddingAngle={4}
               dataKey="value"
               label={({
@@ -150,7 +150,7 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
           </PieChart>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 mt-4 print:mt-1">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 mt-4 print:mt-4">
           {data.map((entry, index) => (
             <div key={`legend-${index}`} className="flex items-center gap-2">
               <svg className="w-2 h-2 shrink-0" viewBox="0 0 8 8">
