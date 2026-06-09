@@ -39,14 +39,14 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-sky-400" />
-            <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none">Transacciones</span>
+            <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none">Ventas</span>
           </div>
         </div>
       </div>
 
       <div className="flex-1 p-8 min-h-[320px]">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
+          <ComposedChart data={data} margin={{ top: 10, right: 0, left: -5, bottom: 0 }}>
             <defs>
               <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#2563eb" stopOpacity={0.08}/>
@@ -90,7 +90,7 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
               cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }}
               formatter={(value: any, name: string) => [
                 name === 'revenue' ? formatCurrency(value, currency) : value, 
-                name === 'revenue' ? 'Facturado (ARS)' : 'Transacciones'
+                name === 'revenue' ? 'Facturado (ARS)' : 'Ventas'
               ]}
               labelStyle={{ color: '#94a3b8', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '9px' }}
             />
