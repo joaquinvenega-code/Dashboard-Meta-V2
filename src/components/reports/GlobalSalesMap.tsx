@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Globe, DollarSign, TrendingUp, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import worldCountries from '../../assets/data/world_countries.json';
@@ -104,6 +104,16 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [mapZoom, setMapZoom] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const activeCountries = salesData.filter(s => s.salesVolume > 0);
+    if (activeCountries.length === 1) {
+      const countryId = activeCountries[0].countryId.toUpperCase();
+      if (DRILLDOWN_SUPPORTED_COUNTRIES.includes(countryId)) {
+        setSelectedCountry(countryId);
+      }
+    }
+  }, [salesData]);
 
   // Index country sales data by countryId for fast O(1) checks
   const salesMap = useMemo(() => {
@@ -675,7 +685,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
               className="bg-white/95 backdrop-blur-md text-slate-900 rounded-2xl border border-slate-200/80 p-4 shadow-xl min-w-[210px] flex flex-col gap-2.5 font-sans"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 font-mono">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">
                   {hoveredElement.type === 'region' ? `Provincia/Región (${hoveredElement.id})` : `País (${hoveredElement.id})`}
                 </span>
                 <div className={`w-2 h-2 rounded-full ${hoveredElement.active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
@@ -692,7 +702,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                       <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
                       Conversiones BOFU:
                     </span>
-                    <strong className="font-bold text-slate-900 font-mono text-xs">
+                    <strong className="font-bold text-slate-900 text-xs">
                       {hoveredElement.salesVolume.toLocaleString('es-AR')}
                     </strong>
                   </div>
@@ -701,20 +711,20 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                       <DollarSign className="w-3.5 h-3.5 text-slate-400" />
                       Facturación Total:
                     </span>
-                    <strong className="font-black text-rose-600 font-mono text-xs">
+                    <strong className="font-black text-emerald-600 tracking-tight text-xs">
                       {formatValue(hoveredElement.totalRevenue)}
                     </strong>
                   </div>
                 </div>
               ) : (
-                <span className="text-[9px] font-bold uppercase text-slate-400 tracking-wider font-mono">
+                <span className="text-[9px] font-bold uppercase text-slate-400 tracking-wider">
                   Sin Conversiones
                 </span>
               )}
 
               {hoveredElement.canDrillDown && (
                 <div className="border-t border-slate-100 pt-1.5 mt-1">
-                  <span className="text-[8px] font-black text-blue-600 uppercase tracking-wider font-mono flex items-center gap-1 animate-pulse">
+                  <span className="text-[8px] font-black text-blue-600 uppercase tracking-wider flex items-center gap-1 animate-pulse">
                      Haz click para ver regiones
                   </span>
                 </div>
@@ -732,24 +742,24 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
           {/* METRICS PANEL */}
           <div id="map-summary-panel" className="flex flex-col gap-2.5 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 shadow-xs">
             <div className="flex flex-col gap-0.5">
-              <span className="text-[7.5px] font-black uppercase text-slate-400 tracking-wider font-mono">Zonas Activas</span>
-              <span className="text-xs font-black text-slate-900 font-mono">{summary.zonesCount} Provincias / Países</span>
+              <span className="text-[7.5px] font-black uppercase text-slate-400 tracking-wider">Zonas Activas</span>
+              <span className="text-xs font-black text-slate-900">{summary.zonesCount} Provincias / Países</span>
             </div>
             <div className="w-full h-[1px] bg-slate-200" />
             <div className="flex flex-col gap-0.5">
-              <span className="text-[7.5px] font-black uppercase text-slate-400 tracking-wider font-mono">Volumen Total BOFU</span>
-              <span className="text-xs font-black text-slate-900 font-mono">{summary.totalSales.toLocaleString('es-AR')} Conversiones</span>
+              <span className="text-[7.5px] font-black uppercase text-slate-400 tracking-wider">Volumen Total BOFU</span>
+              <span className="text-xs font-black text-slate-900">{summary.totalSales.toLocaleString('es-AR')} Conversiones</span>
             </div>
             <div className="w-full h-[1px] bg-slate-200" />
             <div className="flex flex-col gap-0.5">
-              <span className="text-[7.5px] font-black uppercase text-slate-400 tracking-wider font-mono">Facturación Consolidada</span>
-              <span className="text-xs font-black text-rose-600 font-mono">{formatValue(summary.totalRev)}</span>
+              <span className="text-[7.5px] font-black uppercase text-slate-400 tracking-wider">Facturación Consolidada</span>
+              <span className="text-xs font-black text-emerald-600">{formatValue(summary.totalRev)}</span>
             </div>
           </div>
 
           {/* MAP LEGEND */}
           <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex flex-col gap-2 shadow-xs">
-            <span className="text-[7.5px] font-black uppercase tracking-widest text-slate-400 font-mono">
+            <span className="text-[7.5px] font-black uppercase tracking-widest text-slate-400">
               Actividad de Ventas
             </span>
             <div className="flex flex-col gap-1.5 mt-0.5">
@@ -765,7 +775,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
         {/* COL 2: REGIONS LIST */}
         <div className="w-full md:w-[55%] flex-1 min-h-[350px] bg-slate-50 border border-slate-100 rounded-xl flex flex-col overflow-hidden print:overflow-visible shadow-xs max-h-[500px] print:max-h-none">
           <div className="px-3 py-2 border-b border-slate-200 bg-white shadow-sm z-10 flex justify-between items-center">
-            <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider font-mono">
+            <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">
               {selectedCountry ? 'Top Regiones' : 'Top Países'}
             </span>
           </div>
@@ -779,11 +789,11 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                     <span className="font-black text-[9px] text-slate-800 uppercase truncate pr-2 group-hover:text-blue-600 transition-colors">
                        {idx + 1}. {item.name}
                     </span>
-                    <span className="text-[8.5px] font-black font-mono text-slate-500 bg-slate-200/50 px-1 py-0.5 rounded leading-none">
+                    <span className="text-[8.5px] font-black text-slate-500 bg-slate-200/50 px-1 py-0.5 rounded leading-none">
                       {item.salesVolume}
                     </span>
                   </div>
-                  <span className="font-black text-rose-500 text-[9px] font-mono opacity-90 group-hover:opacity-100 transition-opacity">
+                  <span className="font-black text-emerald-600 text-[9.5px] tracking-tight opacity-90 group-hover:opacity-100 transition-opacity">
                     {formatValue(item.totalRevenue)}
                   </span>
                 </div>
