@@ -32,7 +32,7 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({ data }) =>
         </div>
       </div>
 
-      <div className="flex-1 p-4 min-h-[300px] print:min-h-[280px] flex items-center justify-center">
+      <div className="p-4 h-[300px] print:h-[280px] flex items-center justify-center">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -95,7 +95,7 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({ data }) =>
         ))}
       </div>
 
-      <div className="bg-slate-50 px-6 py-3 border-t border-slate-100">
+      <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 mt-auto">
         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-center">
           Basado en conversiones atribuidas en los últimos 30 días
         </p>

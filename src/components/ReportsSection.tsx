@@ -632,7 +632,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
                 <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">02B</div>
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Distribución de Ubicaciones</h3>
               </div>
-              <div className="flex-1 flex flex-col min-h-[460px]">
+              <div className="flex-1 flex flex-col min-h-[460px] print:min-h-0">
                 <PlacementsChartV2 
                   data={realPlacements.length > 0 ? realPlacements : [
                     { name: 'Instagram Stories', value: 45, color: '#3b82f6' },
