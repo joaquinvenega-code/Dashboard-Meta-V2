@@ -1226,7 +1226,14 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
   };
 
   return (
-    <div id="orion-assistant-root" className="fixed bottom-6 right-6 z-[250] font-sans text-neutral-200 selection:bg-amber-500/20 print:hidden">
+    <motion.div 
+      drag
+      dragConstraints={typeof window !== "undefined" ? { left: -window.innerWidth + 100, right: 0, top: -window.innerHeight + 100, bottom: 0 } : false}
+      dragElastic={0.15}
+      dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
+      id="orion-assistant-root" 
+      className="fixed bottom-6 right-6 z-[250] font-sans text-neutral-200 selection:bg-amber-500/20 print:hidden cursor-grab active:cursor-grabbing"
+    >
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -1658,6 +1665,6 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
           </div>
         </button>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
