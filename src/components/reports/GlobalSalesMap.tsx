@@ -650,22 +650,21 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                   <filter id="metaball">
                     <feGaussianBlur
                       in="SourceGraphic"
-                      stdDeviation="6"
+                      stdDeviation="7"
                       result="blur"
                     />
                     <feColorMatrix
                       in="blur"
                       mode="matrix"
-                      values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -7"
+                      values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 12 -3"
                       result="goo"
                     />
-                    <feComposite in="SourceGraphic" in2="goo" operator="atop" />
                   </filter>
                   <radialGradient id="heatGradient" cx="50%" cy="50%" r="50%">
                     <stop offset="0%" stopColor="rgba(255, 0, 0, 1)" />
-                    <stop offset="40%" stopColor="rgba(255, 90, 0, 0.95)" />
-                    <stop offset="70%" stopColor="rgba(255, 220, 0, 0.85)" />
-                    <stop offset="85%" stopColor="rgba(0, 240, 80, 0.6)" />
+                    <stop offset="10%" stopColor="rgba(255, 120, 0, 0.95)" />
+                    <stop offset="25%" stopColor="rgba(250, 220, 0, 0.8)" />
+                    <stop offset="55%" stopColor="rgba(0, 220, 80, 0.45)" />
                     <stop offset="100%" stopColor="rgba(0, 100, 255, 0)" />
                   </radialGradient>
                 </defs>
@@ -706,8 +705,8 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                     );
                     // Cap the maximum radius to avoid visual clutter from large outliers
                     const radius = Math.min(
-                      36,
-                      8 + 28 * Math.pow(intensity, 0.45),
+                      48,
+                      15 + 35 * Math.pow(intensity, 0.45),
                     );
 
                     return (
