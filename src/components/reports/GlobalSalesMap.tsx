@@ -706,8 +706,8 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                     );
                     // Cap the maximum radius to avoid visual clutter from large outliers
                     const radius = Math.min(
-                      58,
-                      16 + 42 * Math.pow(intensity, 0.45),
+                      42,
+                      10 + 32 * Math.pow(intensity, 0.45),
                     );
 
                     return (
