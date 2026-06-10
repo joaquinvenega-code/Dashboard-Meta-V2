@@ -334,6 +334,18 @@ export default function FloatingAssistant({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isDraggingRef = useRef(false);
+  const dragStartTime = useRef<number>(0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [chatPosition, setChatPosition] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>('bottom-right');
+
+  useEffect(() => {
+    if (isOpen && rootRef.current) {
+      const rect = rootRef.current.getBoundingClientRect();
+      const isTop = rect.top < window.innerHeight / 2;
+      const isLeft = rect.left < window.innerWidth / 2;
+      setChatPosition(`${isTop ? 'top' : 'bottom'}-${isLeft ? 'left' : 'right'}` as any);
+    }
+  }, [isOpen]);
 
   // Orion State Machine Active State Selection
   let currentOrionState: 'standby' | 'listening' | 'thinking' | 'success' = 'standby';
@@ -1304,8 +1316,15 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
     speakAsOrion(systemResponse);
   };
 
+  let posClass = "bottom-full mb-4 right-0"; // Default (bottom-right)
+  if (chatPosition === "top-left") posClass = "top-[105%] left-0 origin-top-left";
+  else if (chatPosition === "top-right") posClass = "top-[105%] right-0 origin-top-right";
+  else if (chatPosition === "bottom-left") posClass = "bottom-[105%] left-0 origin-bottom-left";
+  else posClass = "bottom-[105%] right-0 origin-bottom-right";
+
   return (
     <motion.div 
+      ref={rootRef}
       initial={{ scale: 2.5, opacity: 0, filter: "blur(15px) brightness(3)" }}
       animate={{ scale: 1, opacity: 1, filter: "blur(0px) brightness(1)" }}
       exit={{ scale: [1, 1.5, 0], opacity: [1, 1, 0], filter: ["blur(0px) brightness(1)", "blur(10px) brightness(4)", "blur(20px) brightness(0)"] }}
@@ -1329,11 +1348,11 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, scale: 0.95, y: chatPosition.startsWith('top') ? -20 : 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            exit={{ opacity: 0, scale: 0.95, y: chatPosition.startsWith('top') ? -20 : 20 }}
             transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-            className="absolute bottom-20 right-0 w-[350px] h-[510px] bg-neutral-950/95 backdrop-blur-xl border border-white/[0.08] rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden"
+            className={`absolute ${posClass} w-[350px] h-[510px] bg-neutral-950/95 backdrop-blur-xl border border-white/[0.08] rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden`}
           >
             {/* Minimalist Muted Header */}
             <div className="p-4 bg-neutral-900/30 border-b border-white/[0.06] flex items-center justify-between">
@@ -1574,8 +1593,10 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
 
         <button
           type="button"
+          onPointerDown={() => dragStartTime.current = Date.now()}
           onClick={() => {
             if (isDraggingRef.current) return;
+            if (Date.now() - dragStartTime.current > 200) return; // Prevent open if drag/hold
             if (!isOpen) {
               synth.playChirp();
             } else {
