@@ -656,15 +656,15 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                     <feColorMatrix
                       in="blur"
                       mode="matrix"
-                      values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 12 -3"
+                      values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 16 -4"
                       result="goo"
                     />
                   </filter>
                   <radialGradient id="heatGradient" cx="50%" cy="50%" r="50%">
                     <stop offset="0%" stopColor="rgba(255, 0, 0, 1)" />
-                    <stop offset="20%" stopColor="rgba(255, 60, 0, 1)" />
-                    <stop offset="45%" stopColor="rgba(250, 200, 0, 0.9)" />
-                    <stop offset="70%" stopColor="rgba(0, 230, 80, 0.7)" />
+                    <stop offset="30%" stopColor="rgba(255, 80, 0, 1)" />
+                    <stop offset="55%" stopColor="rgba(250, 210, 0, 1)" />
+                    <stop offset="80%" stopColor="rgba(0, 240, 50, 0.85)" />
                     <stop offset="100%" stopColor="rgba(0, 50, 255, 0)" />
                   </radialGradient>
                 </defs>
