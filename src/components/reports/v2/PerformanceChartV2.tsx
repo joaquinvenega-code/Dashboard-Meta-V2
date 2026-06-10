@@ -44,9 +44,9 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
         </div>
       </div>
 
-      <div className="flex-1 p-8 min-h-[320px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+      <div className="flex-1 w-full min-h-[350px] p-8">
+        <ResponsiveContainer width="100%" height="100%" minHeight={350}>
+          <ComposedChart data={data} margin={{ top: 10, right: 35, left: 15, bottom: 5 }}>
             <defs>
               <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#2563eb" stopOpacity={0.08}/>

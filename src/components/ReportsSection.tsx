@@ -651,7 +651,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">03</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Facturación y Ventas</h3>
             </div>
-            <div className="min-h-[480px]">
+            <div className="h-[500px] w-full">
               <PerformanceChartV2 data={dailyPerformanceData} currency={metrics.currency} />
             </div>
           </div>
