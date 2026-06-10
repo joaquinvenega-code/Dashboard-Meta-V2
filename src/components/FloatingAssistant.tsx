@@ -585,14 +585,24 @@ export default function FloatingAssistant({
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       const hours = new Date().getHours();
-      let greeting = 'Buenas noches';
-      if (hours >= 5 && hours < 12) {
-        greeting = 'Buenos días';
+      let timeGreeting = 'Buenas noches';
+      if (hours >= 6 && hours < 12) {
+        timeGreeting = 'Buenos días';
       } else if (hours >= 12 && hours < 21) {
-        greeting = 'Buenas tardes';
+        timeGreeting = 'Buenas tardes';
       }
       
-      const welcomeText = `${greeting}, señor. Orión activo. ¿En qué cuenta o registro le asisto hoy?`;
+      const greetings = [
+        `${timeGreeting}. Sistemas de análisis en línea. ¿En qué cuenta o registro le asisto hoy?`,
+        `${timeGreeting}. Listo para procesar sus directivas. ¿Hacia dónde dirigimos la atención?`,
+        `${timeGreeting}. Protocolos operando con normalidad. ¿Qué métricas evaluamos hoy?`,
+        `${timeGreeting}. Núcleo analítico desplegado, a su entera disposición.`,
+        `${timeGreeting}. Interfaces de control a la escucha. ¿En qué le puedo facilitar la gestión?`,
+        `${timeGreeting}. Preparado para maximizar el rendimiento. ¿Por dónde empezamos?`,
+        `${timeGreeting}. En línea y procesando. ¿Hay alguna actualización estratégica que reportar?`
+      ];
+      
+      const welcomeText = greetings[Math.floor(Math.random() * greetings.length)];
       
       const timer = setTimeout(() => {
         addMessage('assistant', welcomeText);
