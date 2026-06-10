@@ -263,6 +263,7 @@ export default function FloatingAssistant({
   const silenceTimeoutRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isDraggingRef = useRef(false);
 
   // Orion State Machine Active State Selection
   let currentOrionState: 'standby' | 'listening' | 'thinking' | 'success' = 'standby';
@@ -1231,6 +1232,15 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
       dragConstraints={typeof window !== "undefined" ? { left: -window.innerWidth + 100, right: 0, top: -window.innerHeight + 100, bottom: 0 } : false}
       dragElastic={0.15}
       dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
+      whileDrag={{ scale: 1.05, opacity: 0.9 }}
+      onDragStart={() => {
+        isDraggingRef.current = true;
+      }}
+      onDragEnd={() => {
+        setTimeout(() => {
+          isDraggingRef.current = false;
+        }, 150);
+      }}
       id="orion-assistant-root" 
       className="fixed bottom-6 right-6 z-[250] font-sans text-neutral-200 selection:bg-amber-500/20 print:hidden cursor-grab active:cursor-grabbing"
     >
@@ -1483,6 +1493,7 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
         <button
           type="button"
           onClick={() => {
+            if (isDraggingRef.current) return;
             if (!isOpen) {
               synth.playChirp();
             } else {
