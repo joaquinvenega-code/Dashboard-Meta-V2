@@ -662,10 +662,10 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                   </filter>
                   <radialGradient id="heatGradient" cx="50%" cy="50%" r="50%">
                     <stop offset="0%" stopColor="rgba(255, 0, 0, 1)" />
-                    <stop offset="10%" stopColor="rgba(255, 120, 0, 0.95)" />
-                    <stop offset="25%" stopColor="rgba(250, 220, 0, 0.8)" />
-                    <stop offset="55%" stopColor="rgba(0, 220, 80, 0.45)" />
-                    <stop offset="100%" stopColor="rgba(0, 100, 255, 0)" />
+                    <stop offset="25%" stopColor="rgba(255, 60, 0, 1)" />
+                    <stop offset="50%" stopColor="rgba(250, 200, 0, 0.9)" />
+                    <stop offset="75%" stopColor="rgba(0, 220, 80, 0.5)" />
+                    <stop offset="100%" stopColor="rgba(0, 50, 255, 0)" />
                   </radialGradient>
                 </defs>
                 <rect width="1000" height="550" fill="transparent" />
