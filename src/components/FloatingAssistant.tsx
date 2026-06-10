@@ -1228,6 +1228,10 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
 
   return (
     <motion.div 
+      initial={{ scale: 2.5, opacity: 0, filter: "blur(15px) brightness(3)" }}
+      animate={{ scale: 1, opacity: 1, filter: "blur(0px) brightness(1)" }}
+      exit={{ scale: [1, 1.5, 0], opacity: [1, 1, 0], filter: ["blur(0px) brightness(1)", "blur(10px) brightness(4)", "blur(20px) brightness(0)"] }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
       drag
       dragConstraints={typeof window !== "undefined" ? { left: -window.innerWidth + 100, right: 0, top: -window.innerHeight + 100, bottom: 0 } : false}
       dragElastic={0.15}

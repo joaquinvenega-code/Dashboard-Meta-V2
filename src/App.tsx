@@ -1856,24 +1856,26 @@ export default function App() {
       )}
 
       {/* Config Modal */}
-      {isOrionEnabled && (
-        <FloatingAssistant
-          accounts={accounts}
-          accountGroups={accountGroups}
-          notes={notes}
-          orionSettings={orionSettings}
-          onAddNote={(note) => setNotes([...notes, note])}
-          onUpdateNote={(updatedNote) => setNotes(prev => prev.map(n => n.id === updatedNote.id ? updatedNote : n))}
-          onDeleteNote={(noteId) => setNotes(prev => prev.filter(n => n.id !== noteId))}
-          onAddOfflineSale={handleAddOfflineSaleLog}
-          onUpdateOfflineSale={handleUpdateOfflineSaleLog}
-          onDeleteOfflineSale={handleDeleteOfflineSaleLog}
-          settings={settings}
-          isSyncingGlobal={loading}
-          onTriggerSync={loadData}
-          isGeneratingReport={isGeneratingReport}
-        />
-      )}
+      <AnimatePresence>
+        {isOrionEnabled && (
+          <FloatingAssistant
+            accounts={accounts}
+            accountGroups={accountGroups}
+            notes={notes}
+            orionSettings={orionSettings}
+            onAddNote={(note) => setNotes([...notes, note])}
+            onUpdateNote={(updatedNote) => setNotes(prev => prev.map(n => n.id === updatedNote.id ? updatedNote : n))}
+            onDeleteNote={(noteId) => setNotes(prev => prev.filter(n => n.id !== noteId))}
+            onAddOfflineSale={handleAddOfflineSaleLog}
+            onUpdateOfflineSale={handleUpdateOfflineSaleLog}
+            onDeleteOfflineSale={handleDeleteOfflineSaleLog}
+            settings={settings}
+            isSyncingGlobal={loading}
+            onTriggerSync={loadData}
+            isGeneratingReport={isGeneratingReport}
+          />
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {configEntity && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
