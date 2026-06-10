@@ -662,9 +662,9 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                   </filter>
                   <radialGradient id="heatGradient" cx="50%" cy="50%" r="50%">
                     <stop offset="0%" stopColor="rgba(255, 0, 0, 1)" />
-                    <stop offset="25%" stopColor="rgba(255, 60, 0, 1)" />
-                    <stop offset="50%" stopColor="rgba(250, 200, 0, 0.9)" />
-                    <stop offset="75%" stopColor="rgba(0, 220, 80, 0.5)" />
+                    <stop offset="20%" stopColor="rgba(255, 60, 0, 1)" />
+                    <stop offset="45%" stopColor="rgba(250, 200, 0, 0.9)" />
+                    <stop offset="70%" stopColor="rgba(0, 230, 80, 0.7)" />
                     <stop offset="100%" stopColor="rgba(0, 50, 255, 0)" />
                   </radialGradient>
                 </defs>
@@ -705,8 +705,8 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                     );
                     // Cap the maximum radius to avoid visual clutter from large outliers
                     const radius = Math.min(
-                      48,
-                      15 + 35 * Math.pow(intensity, 0.45),
+                      40,
+                      12 + 28 * Math.pow(intensity, 0.45),
                     );
 
                     return (
