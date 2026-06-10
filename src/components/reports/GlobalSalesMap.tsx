@@ -650,23 +650,23 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                   <filter id="metaball">
                     <feGaussianBlur
                       in="SourceGraphic"
-                      stdDeviation="8"
+                      stdDeviation="5"
                       result="blur"
                     />
                     <feColorMatrix
                       in="blur"
                       mode="matrix"
-                      values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8"
+                      values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -6"
                       result="goo"
                     />
+                    <feComposite in="SourceGraphic" in2="goo" operator="atop" />
                   </filter>
                   <radialGradient id="heatGradient" cx="50%" cy="50%" r="50%">
                     <stop offset="0%" stopColor="rgba(255, 0, 0, 1)" />
-                    <stop offset="15%" stopColor="rgba(255, 100, 0, 0.85)" />
-                    <stop offset="35%" stopColor="rgba(255, 200, 0, 0.45)" />
-                    <stop offset="60%" stopColor="rgba(0, 255, 0, 0.6)" />
-                    <stop offset="85%" stopColor="rgba(0, 150, 255, 0.4)" />
-                    <stop offset="100%" stopColor="rgba(0, 0, 255, 0)" />
+                    <stop offset="25%" stopColor="rgba(255, 80, 0, 0.95)" />
+                    <stop offset="50%" stopColor="rgba(255, 210, 0, 0.85)" />
+                    <stop offset="75%" stopColor="rgba(0, 230, 80, 0.6)" />
+                    <stop offset="100%" stopColor="rgba(0, 150, 255, 0)" />
                   </radialGradient>
                 </defs>
                 <rect width="1000" height="550" fill="transparent" />
@@ -706,8 +706,8 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                     );
                     // Cap the maximum radius to avoid visual clutter from large outliers
                     const radius = Math.min(
-                      42,
-                      12 + 30 * Math.pow(intensity, 0.5),
+                      85,
+                      22 + 65 * Math.pow(intensity, 0.45),
                     );
 
                     return (
