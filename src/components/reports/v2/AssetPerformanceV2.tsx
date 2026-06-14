@@ -9,6 +9,7 @@ interface AdAsset {
   name: string;
   thumbnail: string;
   originalThumbnailUrl?: string;
+  previewUrl?: string;
   roas: number;
   purchases: number;
   revenue: number;
@@ -123,11 +124,21 @@ export const AssetPerformanceV2: React.FC<AssetPerformanceV2Props> = ({ assets }
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-100">
+              <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Facturación</span>
                   <span className="text-[9px] font-black text-slate-900">{formatCurrency(ad.revenue, 'ARS')}</span>
                 </div>
+                {ad.previewUrl && (
+                  <a 
+                    href={ad.previewUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[8px] font-black uppercase tracking-widest py-2 rounded flex items-center justify-center transition-colors print:hidden"
+                  >
+                    Compartir Anuncio
+                  </a>
+                )}
               </div>
             </div>
           </div>
