@@ -44,9 +44,9 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
         </div>
       </div>
 
-      <div className="flex-1 w-full min-h-[350px] p-8 print:w-[96%] print:transform print:scale-[0.98] print:origin-left">
-        <ResponsiveContainer width="100%" height="100%" minHeight={350}>
-          <ComposedChart data={data} margin={{ top: 10, right: 35, left: 15, bottom: 5 }}>
+      <div className="flex-1 w-full min-h-[350px] p-8 print:p-6">
+        <ResponsiveContainer width="99%" height="100%" minHeight={350}>
+          <ComposedChart data={data} margin={{ top: 10, right: 55, left: 25, bottom: 5 }}>
             <defs>
               <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#2563eb" stopOpacity={0.08}/>
@@ -67,7 +67,7 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
               tickLine={false}
               tick={{ fontSize: 9, fontWeight: 700, fill: '#64748b' }}
               tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}
-              label={{ value: 'Facturación', angle: -90, position: 'insideLeft', offset: -10, style: { fontSize: 9, fontWeight: 900, fill: '#94a3b8', textAnchor: 'middle' } }}
+              label={{ value: 'Facturación', angle: -90, position: 'insideLeft', offset: -20, style: { fontSize: 9, fontWeight: 900, fill: '#94a3b8', textAnchor: 'middle' } }}
             />
             <YAxis 
               yAxisId="right"
@@ -76,7 +76,7 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
               tickLine={false}
               tick={{ fontSize: 9, fontWeight: 700, fill: '#38bdf8' }}
               dx={10}
-              label={{ value: 'Ventas', angle: 90, position: 'insideRight', offset: -10, style: { fontSize: 9, fontWeight: 900, fill: '#94a3b8', textAnchor: 'middle' } }}
+              label={{ value: 'Ventas', angle: 90, position: 'insideRight', offset: -50, style: { fontSize: 9, fontWeight: 900, fill: '#94a3b8', textAnchor: 'middle' } }}
             />
             <Tooltip 
               contentStyle={{ 
