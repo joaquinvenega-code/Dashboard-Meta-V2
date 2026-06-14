@@ -136,7 +136,7 @@ export const AssetPerformanceV2: React.FC<AssetPerformanceV2Props> = ({ assets }
                     rel="noopener noreferrer"
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[8px] font-black uppercase tracking-widest py-2 rounded flex items-center justify-center transition-colors print:hidden"
                   >
-                    Compartir Anuncio
+                    Ver Anuncio
                   </a>
                 )}
               </div>
