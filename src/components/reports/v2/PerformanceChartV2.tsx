@@ -117,12 +117,6 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-
-      <div className="bg-slate-50/50 px-8 py-4 border-t border-slate-50 flex items-center justify-between">
-        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
-          Cálculo proyectado basado en media móvil de 7 días
-        </p>
-      </div>
     </div>
   );
 };
