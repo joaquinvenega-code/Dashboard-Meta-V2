@@ -44,7 +44,7 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
         </div>
       </div>
 
-      <div className="flex-1 w-full min-h-[350px] p-8">
+      <div className="flex-1 w-full min-h-[350px] p-8 print:w-[96%] print:transform print:scale-[0.98] print:origin-left">
         <ResponsiveContainer width="100%" height="100%" minHeight={350}>
           <ComposedChart data={data} margin={{ top: 10, right: 35, left: 15, bottom: 5 }}>
             <defs>
