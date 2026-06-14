@@ -227,17 +227,37 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
   const countryPaths = useMemo(() => {
     if (!selectedCountry) return [];
 
-    let geoJSON: any = null;
-    if (selectedCountry === "USA") geoJSON = regionsUSA;
-    else if (selectedCountry === "ARG") geoJSON = regionsARG;
-    else if (selectedCountry === "BRA") geoJSON = regionsBRA;
-    else if (selectedCountry === "ESP") geoJSON = regionsESP;
+    let features: any[] = [];
+    if (selectedCountry === "USA") features = regionsUSA.features;
+    else if (selectedCountry === "ARG") {
+      features = [...regionsARG.features];
+      // Inject CABA geometry if missing, to plot it on the heatmap
+      if (!features.some((f) => f.id === "AR-C" || f.properties?.name === "Ciudad Autónoma de Buenos Aires")) {
+        features.push({
+          id: "AR-C",
+          properties: { name: "Ciudad Autónoma de Buenos Aires" },
+          geometry: {
+            type: "Polygon",
+            coordinates: [
+              [
+                [-58.38, -34.60],
+                [-58.40, -34.60],
+                [-58.40, -34.62],
+                [-58.38, -34.62],
+                [-58.38, -34.60],
+              ],
+            ],
+          },
+        });
+      }
+    } else if (selectedCountry === "BRA") features = regionsBRA.features;
+    else if (selectedCountry === "ESP") features = regionsESP.features;
 
-    if (!geoJSON || !geoJSON.features) return [];
+    if (!features || features.length === 0) return [];
 
     // Extract all lat/lng points to compute bounds
     const rawPoints: [number, number][] = [];
-    geoJSON.features.forEach((feat: any) => {
+    features.forEach((feat: any) => {
       const geom = feat.geometry;
       if (!geom) return;
       const { type, coordinates } = geom;
@@ -310,7 +330,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
     };
 
     // Compile dynamic SVG path data
-    return geoJSON.features.map((feature: any) => {
+    return features.map((feature: any) => {
       const geometry = feature.geometry;
       if (!geometry) return { ...feature, pathData: "" };
 
@@ -650,7 +670,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                   <filter id="metaball">
                     <feGaussianBlur
                       in="SourceGraphic"
-                      stdDeviation="4"
+                      stdDeviation="2"
                       result="blur"
                     />
                     <feColorMatrix
@@ -662,10 +682,13 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                   </filter>
                   <radialGradient id="heatGradient" cx="50%" cy="50%" r="50%">
                     <stop offset="0%" stopColor="rgba(255, 0, 0, 1)" />
-                    <stop offset="45%" stopColor="rgba(255, 0, 0, 1)" />
-                    <stop offset="55%" stopColor="rgba(255, 120, 0, 1)" />
-                    <stop offset="70%" stopColor="rgba(250, 220, 0, 1)" />
-                    <stop offset="85%" stopColor="rgba(0, 240, 50, 0.95)" />
+                    <stop offset="25%" stopColor="rgba(255, 0, 0, 1)" />
+                    <stop offset="30%" stopColor="rgba(255, 130, 0, 1)" />
+                    <stop offset="50%" stopColor="rgba(255, 130, 0, 1)" />
+                    <stop offset="55%" stopColor="rgba(250, 220, 0, 1)" />
+                    <stop offset="75%" stopColor="rgba(250, 220, 0, 1)" />
+                    <stop offset="80%" stopColor="rgba(0, 240, 50, 0.95)" />
+                    <stop offset="95%" stopColor="rgba(0, 240, 50, 0.95)" />
                     <stop offset="100%" stopColor="rgba(0, 50, 255, 0)" />
                   </radialGradient>
                 </defs>
