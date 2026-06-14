@@ -105,36 +105,36 @@ export const AssetPerformanceV2: React.FC<AssetPerformanceV2Props> = ({ assets }
             </div>
 
             <div className="p-2 space-y-2 flex-1">
-              <h4 className="text-[9px] font-bold text-slate-800 line-clamp-1 uppercase tracking-tight">{ad.name}</h4>
+              <h4 className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">{ad.name}</h4>
               
               <div className="grid grid-cols-2 gap-1.5">
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1">
                     <Target className="w-2 h-2 text-blue-500" />
-                    <span className="text-[7px] font-black text-slate-400 uppercase">ROAS</span>
+                    <span className="text-[9px] font-black text-slate-400 uppercase">ROAS</span>
                   </div>
-                  <p className="text-[10px] font-black text-slate-900">{ad.roas.toFixed(2)}x</p>
+                  <p className="text-xs font-black text-slate-900">{ad.roas.toFixed(2)}x</p>
                 </div>
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1">
                     <ShoppingBag className="w-2 h-2 text-emerald-500" />
-                    <span className="text-[7px] font-black text-slate-400 uppercase">Ventas</span>
+                    <span className="text-[9px] font-black text-slate-400 uppercase">Ventas</span>
                   </div>
-                  <p className="text-[10px] font-black text-slate-900">{ad.purchases}</p>
+                  <p className="text-xs font-black text-slate-900">{ad.purchases}</p>
                 </div>
               </div>
 
               <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Facturación</span>
-                  <span className="text-[9px] font-black text-slate-900">{formatCurrency(ad.revenue, 'ARS')}</span>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Facturación</span>
+                  <span className="text-xs font-black text-slate-900">{formatCurrency(ad.revenue, 'ARS')}</span>
                 </div>
                 {ad.previewUrl && (
                   <a 
                     href={ad.previewUrl} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[8px] font-black uppercase tracking-widest py-2 rounded flex items-center justify-center transition-colors print:hidden"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest py-2 rounded flex items-center justify-center transition-colors print:hidden"
                   >
                     Ver Anuncio
                   </a>
