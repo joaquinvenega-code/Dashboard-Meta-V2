@@ -104,27 +104,29 @@ export const AssetPerformanceV2: React.FC<AssetPerformanceV2Props> = ({ assets }
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none" />
             </div>
 
-            <div className="p-2 space-y-2 flex-1">
-              <h4 className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">{ad.name}</h4>
-              
-              <div className="grid grid-cols-2 gap-1.5">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-1">
-                    <Target className="w-2 h-2 text-blue-500" />
-                    <span className="text-[9px] font-black text-slate-400 uppercase">ROAS</span>
+            <div className="p-2 flex flex-col flex-1">
+              <div className="flex-1 flex flex-col">
+                <h4 className="text-[10px] font-bold text-slate-800 uppercase tracking-tight mb-2">{ad.name}</h4>
+                
+                <div className="grid grid-cols-2 gap-1.5 mt-auto pb-2">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-1">
+                      <Target className="w-2 h-2 text-blue-500" />
+                      <span className="text-[9px] font-black text-slate-400 uppercase">ROAS</span>
+                    </div>
+                    <p className="text-xs font-black text-slate-900">{ad.roas.toFixed(2)}x</p>
                   </div>
-                  <p className="text-xs font-black text-slate-900">{ad.roas.toFixed(2)}x</p>
-                </div>
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-1">
-                    <ShoppingBag className="w-2 h-2 text-emerald-500" />
-                    <span className="text-[9px] font-black text-slate-400 uppercase">Ventas</span>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-1">
+                      <ShoppingBag className="w-2 h-2 text-emerald-500" />
+                      <span className="text-[9px] font-black text-slate-400 uppercase">Ventas</span>
+                    </div>
+                    <p className="text-xs font-black text-slate-900">{ad.purchases}</p>
                   </div>
-                  <p className="text-xs font-black text-slate-900">{ad.purchases}</p>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+              <div className="pt-2 border-t border-slate-100 flex flex-col gap-2 shrink-0">
                 <div className="flex items-center justify-between">
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Facturación</span>
                   <span className="text-xs font-black text-slate-900">{formatCurrency(ad.revenue, 'ARS')}</span>
