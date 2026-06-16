@@ -1381,7 +1381,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                       <LayoutGrid className="w-8 h-8 opacity-10" />
                       <span className="text-[9px] font-black uppercase tracking-widest">No metrics available</span>
                     </div>
-                 ) : ads.map((ad, idx) => (
+                 ) : [...ads].sort((a,b) => ((b as any)[sortBy] || 0) - ((a as any)[sortBy] || 0)).slice(0, topN).map((ad, idx) => (
                    <AdCard key={ad.id} ad={ad} rank={idx + 1} />
                  ))}
                </div>
