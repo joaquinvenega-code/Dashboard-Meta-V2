@@ -573,7 +573,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     ];
 
     return (
-      <div className="bg-[#111] rounded-xl border border-white/5 p-4 hover:bg-[#131313] transition-all shadow-xl group/card relative overflow-hidden ad-card-print print:bg-white print:border-neutral-100 print:shadow-none print:break-inside-avoid print:p-1.5 print:px-6 print:mb-0 print:border-b">
+      <div className="bg-[#111] rounded-xl border border-white/5 p-4 hover:bg-[#131313] transition-all shadow-xl group/card relative overflow-hidden ad-card-print print:bg-white print:border-neutral-100 print:shadow-none print:break-inside-avoid">
          <div className="hidden print:block absolute top-1 right-2 text-[8px] font-black text-neutral-400 uppercase tracking-tighter">RANK #{rank}</div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 items-center print:flex print:gap-4 print:items-center">
           <div className="md:col-span-1 xl:col-span-2 print:shrink-0">
@@ -975,6 +975,16 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
         {/* Dashboard Area */}
         {selectedAccount ? (
           <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar animate-in fade-in slide-in-from-right-4 duration-500 print:overflow-visible print:pr-0 print:space-y-8">
+            {/* Running Header & Footer for PDF Print */}
+            <div className="print-running-header">
+              <span>{settings[selectedAccount.id]?.customName || selectedAccount.name} — Reporte de Rendimiento</span>
+              <span>{format(new Date(), "dd/MM/yyyy", { locale: es })}</span>
+            </div>
+            <div className="print-running-footer">
+              <span>© {new Date().getFullYear()} Meta Ads Performance Suite</span>
+              <span className="italic">Documento Confidencial para Uso Exclusivo del Cliente</span>
+            </div>
+
             <div className="hidden print:flex flex-col gap-4 border-b border-neutral-200 pb-3 mb-3 text-black print:pt-0 print:-mt-4">
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-5">

@@ -98,10 +98,63 @@
   .ad-card-print {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
-    margin-bottom: 0.25rem !important;
-    border: 1px solid #eee !important;
-    border-radius: 12px !important;
+    margin-top: 1rem !important;
+    margin-bottom: 1rem !important;
+    border: 1px solid #eaeaea !important;
+    border-radius: 16px !important;
     background: #fff !important;
+    padding: 1.25rem !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02) !important;
+  }
+
+  /* Running Header & Footer */
+  .print-running-header {
+    display: none !important;
+  }
+  .print-running-footer {
+    display: none !important;
+  }
+
+  @media print {
+    margin: 3.2cm 1.5cm 2.2cm 1.5cm;
+    
+    .print-running-header {
+      display: flex !important;
+      position: fixed;
+      top: -2.2cm;
+      left: 0;
+      right: 0;
+      height: 1cm;
+      border-bottom: 1px solid #f1f5f9 !important;
+      padding-bottom: 4px;
+      color: #64748b !important;
+      font-size: 8px !important;
+      font-weight: 800 !important;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .print-running-footer {
+      display: flex !important;
+      position: fixed;
+      bottom: -1.6cm;
+      left: 0;
+      right: 0;
+      height: 1cm;
+      border-top: 1px solid #f1f5f9 !important;
+      padding-top: 4px;
+      color: #94a3b8 !important;
+      font-size: 7px !important;
+      font-weight: 800 !important;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: none;
+    }
   }
 
   /* Chart reduction for print */
