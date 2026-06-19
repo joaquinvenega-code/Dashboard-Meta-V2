@@ -57,9 +57,15 @@
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
 
+/* Hide running header and footer on interactive dashboard */
+.print-running-header,
+.print-running-footer {
+  display: none !important;
+}
+
 @media print {
   @page {
-    margin: 3.5cm 1.5cm 2.5cm 1.5cm;
+    margin: 3.2cm 1.5cm 2.2cm 1.5cm;
     size: A4 portrait;
   }
 
@@ -107,54 +113,43 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.02) !important;
   }
 
-  /* Running Header & Footer */
+  /* Header and footer visible only on printed sheets */
   .print-running-header {
-    display: none !important;
+    display: flex !important;
+    position: fixed;
+    top: -2.2cm;
+    left: 0;
+    right: 0;
+    height: 1cm;
+    border-bottom: 1px solid #f1f5f9 !important;
+    padding-bottom: 4px;
+    color: #64748b !important;
+    font-size: 8px !important;
+    font-weight: 800 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: none;
   }
+
   .print-running-footer {
-    display: none !important;
-  }
-
-  @media print {
-    margin: 3.2cm 1.5cm 2.2cm 1.5cm;
-    
-    .print-running-header {
-      display: flex !important;
-      position: fixed;
-      top: -2.2cm;
-      left: 0;
-      right: 0;
-      height: 1cm;
-      border-bottom: 1px solid #f1f5f9 !important;
-      padding-bottom: 4px;
-      color: #64748b !important;
-      font-size: 8px !important;
-      font-weight: 800 !important;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      align-items: center;
-      justify-content: space-between;
-      pointer-events: none;
-    }
-
-    .print-running-footer {
-      display: flex !important;
-      position: fixed;
-      bottom: -1.6cm;
-      left: 0;
-      right: 0;
-      height: 1cm;
-      border-top: 1px solid #f1f5f9 !important;
-      padding-top: 4px;
-      color: #94a3b8 !important;
-      font-size: 7px !important;
-      font-weight: 800 !important;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      align-items: center;
-      justify-content: space-between;
-      pointer-events: none;
-    }
+    display: flex !important;
+    position: fixed;
+    bottom: -1.6cm;
+    left: 0;
+    right: 0;
+    height: 1cm;
+    border-top: 1px solid #f1f5f9 !important;
+    padding-top: 4px;
+    color: #94a3b8 !important;
+    font-size: 7px !important;
+    font-weight: 800 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: none;
   }
 
   /* Chart reduction for print */
