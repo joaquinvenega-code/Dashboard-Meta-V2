@@ -646,7 +646,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           </div>
 
           {/* Módulo 4: Performance Chart (Full Width / Stacked) */}
-          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150 print-module">
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150 print-module print:pt-16">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">03</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Facturación y Ventas</h3>

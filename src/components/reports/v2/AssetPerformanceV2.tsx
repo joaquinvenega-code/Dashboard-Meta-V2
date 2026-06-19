@@ -126,10 +126,10 @@ export const AssetPerformanceV2: React.FC<AssetPerformanceV2Props> = ({ assets }
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-100 flex flex-col gap-2 shrink-0">
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Facturación</span>
-                  <span className="text-xs font-black text-slate-900">{formatCurrency(ad.revenue, 'ARS')}</span>
+              <div className="pt-2 border-t border-slate-100 flex flex-col gap-1.5 shrink-0">
+                <div className="flex flex-col text-left">
+                  <span className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-tighter leading-tight print:text-[7.5px]">Facturación</span>
+                  <span className="text-[11px] sm:text-xs font-black text-slate-900 leading-none mt-0.5 print:text-[9.5px]">{formatCurrency(ad.revenue, 'ARS')}</span>
                 </div>
                 {ad.previewUrl && (
                   <a 
