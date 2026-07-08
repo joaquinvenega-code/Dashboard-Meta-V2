@@ -24,6 +24,7 @@ interface GlobalSalesMapProps {
   salesData?: CountrySales[];
   regionSalesData?: RegionSales[];
   currency?: string;
+  mode?: 'ecommerce' | 'messaging';
 }
 
 // Low-resolution default country sales data as fallback
@@ -98,6 +99,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
   salesData = DEFAULT_SALES_DATA,
   regionSalesData = DEFAULT_REGION_SALES_DATA,
   currency = "USD",
+  mode = 'ecommerce',
 }) => {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [hoveredElement, setHoveredElement] = useState<any | null>(null);
@@ -513,8 +515,10 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
       {/* HEADER SECTION */}
       <div className="mb-2">
         <p className="text-sm text-slate-500 font-medium leading-relaxed">
-          Mapa de calor interactivo que refleja el volumen de ventas y
-          facturación por zonas geográficas.
+          {mode === 'ecommerce' 
+            ? "Mapa de calor interactivo que refleja el volumen de ventas y facturación por zonas geográficas."
+            : "Mapa de calor interactivo que refleja el origen geográfico de las conversaciones de mensajería iniciadas y el gasto asignado."
+          }
         </p>
       </div>
 
@@ -722,10 +726,12 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                     const sale = getRegionSale(feature);
                     if (!sale || sale.salesVolume === 0) return null;
 
-                    // Scale heat radius based on total revenue relative to the max regional revenue
+                    // Scale heat radius based on messages (for messaging) or revenue (for ecommerce) relative to the max
+                    const divisor = mode === 'ecommerce' ? maxRegionRevenue : maxRegionSalesVolume;
+                    const val = mode === 'ecommerce' ? sale.totalRevenue : sale.salesVolume;
                     const intensity = Math.min(
                       1,
-                      sale.totalRevenue / maxRegionRevenue,
+                      val / divisor,
                     );
                     // Cap the maximum radius to avoid visual clutter from large outliers
                     const radius = Math.min(
@@ -822,7 +828,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                     <div className="flex justify-between items-center text-[10px] font-medium text-slate-600">
                       <span className="flex items-center gap-1">
                         <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
-                        Conversiones BOFU:
+                        {mode === 'ecommerce' ? "Conversiones BOFU:" : "Mensajes Recibidos:"}
                       </span>
                       <strong className="font-bold text-slate-900 text-xs">
                         {hoveredElement.salesVolume.toLocaleString("es-AR")}
@@ -831,7 +837,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                     <div className="flex justify-between items-center text-[10px] font-medium text-slate-600">
                       <span className="flex items-center gap-1">
                         <DollarSign className="w-3.5 h-3.5 text-slate-400" />
-                        Facturación Total:
+                        {mode === 'ecommerce' ? "Facturación Total:" : "Inversión Estimada:"}
                       </span>
                       <strong className="font-black text-emerald-600 tracking-tight text-xs">
                         {formatValue(hoveredElement.totalRevenue)}
@@ -840,7 +846,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                   </div>
                 ) : (
                   <span className="text-[9px] font-bold uppercase text-slate-400 tracking-wider">
-                    Sin Conversiones
+                    {mode === 'ecommerce' ? "Sin Conversiones" : "Sin Mensajes"}
                   </span>
                 )}
 
@@ -876,16 +882,16 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
               <div className="w-full h-[1px] bg-slate-200" />
               <div className="flex flex-col gap-0.5">
                 <span className="text-[7.5px] font-black uppercase text-slate-400 tracking-wider">
-                  Volumen Total BOFU
+                  {mode === 'ecommerce' ? "Volumen Total BOFU" : "Mensajes Totales"}
                 </span>
                 <span className="text-xs font-black text-slate-900">
-                  {summary.totalSales.toLocaleString("es-AR")} Conversiones
+                  {summary.totalSales.toLocaleString("es-AR")} {mode === 'ecommerce' ? "Conversiones" : "Mensajes"}
                 </span>
               </div>
               <div className="w-full h-[1px] bg-slate-200" />
               <div className="flex flex-col gap-0.5">
                 <span className="text-[7.5px] font-black uppercase text-slate-400 tracking-wider">
-                  Facturación Consolidada
+                  {mode === 'ecommerce' ? "Facturación Consolidada" : "Inversión Consolidada"}
                 </span>
                 <span className="text-xs font-black text-emerald-600">
                   {formatValue(summary.totalRev)}
@@ -896,7 +902,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
             {/* MAP LEGEND */}
             <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex flex-col gap-2 shadow-xs">
               <span className="text-[7.5px] font-black uppercase tracking-widest text-slate-400">
-                Actividad de Ventas
+                {mode === 'ecommerce' ? "Actividad de Ventas" : "Densidad de Mensajes"}
               </span>
               <div className="flex flex-col gap-1.5 mt-0.5">
                 <div

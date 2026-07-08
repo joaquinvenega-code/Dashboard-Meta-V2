@@ -76,6 +76,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
     viewContent: 0, 
     messages: 0,
     costPerMessage: 0,
+    ctr: 0,
     currency: 'ARS' 
   });
   const [realDailyData, setRealDailyData] = useState<any[]>([]);
@@ -242,6 +243,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           viewContent: sumViewContent,
           messages: sumMessages,
           costPerMessage: sumMessages > 0 ? sumSpend / sumMessages : 0,
+          ctr: sumImpressions > 0 ? (sumClicks / sumImpressions) * 100 : 0,
           currency: baseCurrency
         });
 
@@ -312,34 +314,39 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
            { age: '55+', male: 4, female: 6, rawValue: 1200 },
         ]);
 
-        const countrySalesMap: Record<string, { spend: number, purchases: number, revenue: number }> = {};
-        const regionSalesMap: Record<string, { spend: number, purchases: number, revenue: number, country: string }> = {};
+        const countrySalesMap: Record<string, { spend: number, purchases: number, revenue: number, messages: number }> = {};
+        const regionSalesMap: Record<string, { spend: number, purchases: number, revenue: number, messages: number, country: string }> = {};
 
         let totalGeoSpend = 0;
         let totalGeoPurchases = 0;
+        let totalGeoMessages = 0;
 
         geoData.forEach((d: any) => {
           const cId = mapAlpha2ToAlpha3(d.country) || 'USA';
           const spend = parseFloat(d.spend) || 0;
           const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase') || 0;
           const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase') || 0;
+          const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') || getAction(d.actions, 'onsite_conversion.total_messaging_connection') || 0;
           
           totalGeoSpend += spend;
           totalGeoPurchases += purchases;
+          totalGeoMessages += messages;
 
-          if (!countrySalesMap[cId]) countrySalesMap[cId] = { spend: 0, purchases: 0, revenue: 0 };
+          if (!countrySalesMap[cId]) countrySalesMap[cId] = { spend: 0, purchases: 0, revenue: 0, messages: 0 };
           countrySalesMap[cId].spend += spend;
           countrySalesMap[cId].purchases += purchases;
           countrySalesMap[cId].revenue += revenue;
+          countrySalesMap[cId].messages += messages;
 
           if (d.region) {
             // Keep original region name
             const rName = String(d.region);
             const key = `${cId}_${rName}`;
-            if (!regionSalesMap[key]) regionSalesMap[key] = { spend: 0, purchases: 0, revenue: 0, country: cId };
+            if (!regionSalesMap[key]) regionSalesMap[key] = { spend: 0, purchases: 0, revenue: 0, messages: 0, country: cId };
             regionSalesMap[key].spend += spend;
             regionSalesMap[key].purchases += purchases;
             regionSalesMap[key].revenue += revenue;
+            regionSalesMap[key].messages += messages;
           }
         });
 
@@ -357,17 +364,33 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
            });
         }
 
+        // Fallback for Geography missing messages due to privacy / iOS 14
+        if (totalGeoMessages === 0 && sumMessages > 0 && totalGeoSpend > 0) {
+           Object.values(countrySalesMap).forEach(c => {
+              const share = c.spend / totalGeoSpend;
+              c.messages = Math.round(share * sumMessages);
+           });
+           Object.values(regionSalesMap).forEach(r => {
+              const share = r.spend / totalGeoSpend;
+              r.messages = Math.round(share * sumMessages);
+           });
+        }
+
         const mappedGeo = Object.keys(countrySalesMap).map(cId => ({
           countryId: cId,
-          salesVolume: countrySalesMap[cId].purchases,
-          totalRevenue: countrySalesMap[cId].revenue
+          spend: countrySalesMap[cId].spend,
+          purchases: countrySalesMap[cId].purchases,
+          revenue: countrySalesMap[cId].revenue,
+          messages: countrySalesMap[cId].messages
         }));
 
         const mappedRegions = Object.keys(regionSalesMap).map(key => ({
-          regionId: key, // Will pass it as regionName in the component mapping maybe
+          regionId: key,
           regionName: key.split('_')[1],
-          salesVolume: regionSalesMap[key].purchases,
-          totalRevenue: regionSalesMap[key].revenue
+          spend: regionSalesMap[key].spend,
+          purchases: regionSalesMap[key].purchases,
+          revenue: regionSalesMap[key].revenue,
+          messages: regionSalesMap[key].messages
         }));
 
         setRealGeography(mappedGeo);
@@ -444,6 +467,27 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
 
   // Sustituimos metrics mockeados por los de realMetrics
   const metrics = { ...realMetrics };
+
+  const geoDataForMap = useMemo(() => {
+    if (realGeography.length === 0) return undefined;
+    const isMsg = reportType === 'messaging';
+    return realGeography.map(g => ({
+      countryId: g.countryId,
+      salesVolume: isMsg ? (g.messages || 0) : (g.purchases || 0),
+      totalRevenue: isMsg ? (g.spend || 0) : (g.revenue || 0)
+    }));
+  }, [realGeography, reportType]);
+
+  const regionGeoDataForMap = useMemo(() => {
+    if (realGeographyRegions.length === 0) return undefined;
+    const isMsg = reportType === 'messaging';
+    return realGeographyRegions.map(r => ({
+      regionId: r.regionId,
+      regionName: r.regionName,
+      salesVolume: isMsg ? (r.messages || 0) : (r.purchases || 0),
+      totalRevenue: isMsg ? (r.spend || 0) : (r.revenue || 0)
+    }));
+  }, [realGeographyRegions, reportType]);
 
   // Real daily data is fetched in useEffect, so we don't mock it here
   const dailyPerformanceData = realDailyData.length > 0 ? realDailyData : [];
@@ -744,14 +788,21 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
             <DemographicsGeographyV2 demoData={realDemographics} currency={metrics.currency} />
           </div>
 
-          {/* Módulo 6: Mapa de Ventas Global */}
+          {/* Módulo 6: Mapa de Ventas/Mensajes Global */}
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-275 print-module">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">06</div>
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Mapa de Ventas</h3>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">
+                {reportType === 'ecommerce' ? 'Mapa de Ventas' : 'Mapa de Mensajes'}
+              </h3>
             </div>
             <div className="print:min-h-0 min-h-[500px]">
-              <GlobalSalesMap currency={metrics.currency} salesData={realGeography.length > 0 ? realGeography : undefined} regionSalesData={realGeographyRegions.length > 0 ? realGeographyRegions : undefined} />
+              <GlobalSalesMap 
+                currency={metrics.currency} 
+                salesData={geoDataForMap} 
+                regionSalesData={regionGeoDataForMap} 
+                mode={reportType}
+              />
             </div>
           </div>
 

@@ -53,12 +53,23 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
 
   return (
     <div className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm h-full flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-8 duration-705">
+      <div className="border-b border-slate-100 pb-4">
+        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Análisis de Distribución</h4>
+        <p className="text-xs text-slate-500 font-medium leading-relaxed">
+          Este módulo muestra detalladamente la distribución del <strong>gasto publicitario (inversión)</strong> según el rango de edad y el género de la audiencia impactada. Permite entender de manera transparente en qué segmentos demográficos se está destinando el presupuesto publicitario.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 print:grid-cols-2 gap-8 items-start">
-        {/* Gráfico de Barras (Facturación por Edad) */}
+        {/* Gráfico de Barras (Inversión por Edad) */}
         <div className="h-[360px] print:h-[280px] flex flex-col pt-6">
+          <div className="mb-4 text-center">
+            <h5 className="text-xs font-black text-slate-800 uppercase tracking-wider">Inversión Publicitaria por Rango de Edad</h5>
+            <p className="text-[10px] text-slate-500 font-medium mt-1">Presupuesto consumido por grupo de edad</p>
+          </div>
           <div className="flex-1 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} margin={{ top: 35, right: 30, left: -20, bottom: 5 }}>
+              <BarChart data={barData} margin={{ top: 15, right: 30, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#f1f5f9" />
                 <XAxis 
                   dataKey="age" 
@@ -88,7 +99,7 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
                     padding: '16px',
                     backgroundColor: '#ffffff'
                   }}
-                  formatter={(val: number) => [formatCurrency(val, currency), 'Facturación']}
+                  formatter={(val: number) => [formatCurrency(val, currency), 'Inversión']}
                 />
                 <Bar dataKey="rawValue" fill="#10b981" radius={[6, 6, 0, 0]} barSize={32} label={<BarLabel isCurrency currency={currency} />} />
               </BarChart>
@@ -99,8 +110,8 @@ export const DemographicsGeographyV2: React.FC<DemographicsGeographyV2Props> = (
         {/* Gráfico de Torta (Género) */}
         <div className="h-[360px] print:h-[280px] bg-slate-50 border border-slate-100 rounded-2xl p-6 flex flex-col">
            <div className="mb-4 text-center">
-             <h5 className="text-xs font-black text-slate-800 uppercase tracking-wider">Género de Compradores</h5>
-             <p className="text-[10px] text-slate-500 font-medium mt-1">Distribución estimada por género</p>
+             <h5 className="text-xs font-black text-slate-800 uppercase tracking-wider">Inversión Publicitaria por Género</h5>
+             <p className="text-[10px] text-slate-500 font-medium mt-1">Porcentaje del gasto publicitario total asignado por género</p>
            </div>
            <div className="flex-1 w-full">
              <ResponsiveContainer width="100%" height="100%">
