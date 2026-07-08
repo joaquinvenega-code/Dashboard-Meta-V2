@@ -58,13 +58,26 @@ function ReportPage({ children, className }: { children: React.ReactNode, classN
 export function ReportsSection({ accounts, visibleAccountIds, settings, notes, setDateRange, onGeneratingChange }: ReportsSectionProps) {
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [reportMonth, setReportMonth] = useState<string>(format(subMonths(new Date(), 1), 'yyyy-MM'));
+  const [reportType, setReportType] = useState<'ecommerce' | 'messaging'>('ecommerce');
   const [isReportGenerated, setIsReportGenerated] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
   const [bitacora, setBitacora] = useState<any[]>([]);
   const [loadingBitacora, setLoadingBitacora] = useState(false);
 
   // Estados reales
-  const [realMetrics, setRealMetrics] = useState({ spend: 0, purchases: 0, roas: 0, revenue: 0, impressions: 0, clicks: 0, atc: 0, viewContent: 0, currency: 'ARS' });
+  const [realMetrics, setRealMetrics] = useState({ 
+    spend: 0, 
+    purchases: 0, 
+    roas: 0, 
+    revenue: 0, 
+    impressions: 0, 
+    clicks: 0, 
+    atc: 0, 
+    viewContent: 0, 
+    messages: 0,
+    costPerMessage: 0,
+    currency: 'ARS' 
+  });
   const [realDailyData, setRealDailyData] = useState<any[]>([]);
   const [realTopAds, setRealTopAds] = useState<any[]>([]);
   const [realDemographics, setRealDemographics] = useState<any[]>([]);
@@ -90,18 +103,18 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
 
   useEffect(() => {
     if (!selectedAccountId) return;
-    const saved = localStorage.getItem(`report_texts_${selectedAccountId}_${reportMonth}`);
+    const saved = localStorage.getItem(`report_texts_${selectedAccountId}_${reportMonth}_${reportType}`);
     if (saved) {
       setReportTexts(JSON.parse(saved));
     } else {
       setReportTexts({ narrative: '', learnings: '', actionPlan: '', clientRequests: '' });
     }
-  }, [selectedAccountId, reportMonth]);
+  }, [selectedAccountId, reportMonth, reportType]);
 
   const updateReportText = (field: string, val: string) => {
     setReportTexts(prev => {
       const next = { ...prev, [field]: val };
-      localStorage.setItem(`report_texts_${selectedAccountId}_${reportMonth}`, JSON.stringify(next));
+      localStorage.setItem(`report_texts_${selectedAccountId}_${reportMonth}_${reportType}`, JSON.stringify(next));
       return next;
     });
   };
@@ -195,6 +208,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
         let sumClicks = 0;
         let sumAtc = 0;
         let sumViewContent = 0;
+        let sumMessages = 0;
 
         let formattedDaily = daily.map(d => {
           sumSpend += d.spend || 0;
@@ -204,11 +218,13 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           sumClicks += d.clicks || 0;
           sumAtc += d.atc || 0;
           sumViewContent += d.viewContent || 0;
+          sumMessages += d.messages || 0;
           return {
             date: format(parseISO(d.date), 'dd/MM'),
             revenue: d.revenue,
             purchases: d.purchases,
-            spend: d.spend
+            messages: d.messages || 0,
+            spend: d.spend || 0
           };
         });
 
@@ -224,6 +240,8 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           clicks: sumClicks,
           atc: sumAtc,
           viewContent: sumViewContent,
+          messages: sumMessages,
+          costPerMessage: sumMessages > 0 ? sumSpend / sumMessages : 0,
           currency: baseCurrency
         });
 
@@ -233,7 +251,9 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           ...ad,
           thumbnail: ad.thumbnail || 'https://via.placeholder.com/400',
           originalThumbnailUrl: ad.originalThumbnailUrl || ad.thumbnail || 'https://via.placeholder.com/400',
-          roas: ad.spend > 0 ? ad.revenue / ad.spend : 0
+          roas: ad.spend > 0 ? ad.revenue / ad.spend : 0,
+          messages: ad.messages || 0,
+          ctr: ad.ctr || 0
         }));
         setRealTopAds(formattedTopAds);
 
@@ -489,9 +509,44 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
             </select>
           </div>
 
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Paquete de Informe</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setReportType('ecommerce')}
+                className={cn(
+                  "py-3 px-2 rounded text-[10px] font-black uppercase tracking-wider border transition-all text-center",
+                  reportType === 'ecommerce'
+                    ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20"
+                    : "bg-[#111] border-white/10 text-slate-400 hover:text-white"
+                )}
+              >
+                Solo E-commerce
+              </button>
+              <button
+                type="button"
+                onClick={() => setReportType('messaging')}
+                className={cn(
+                  "py-3 px-2 rounded text-[10px] font-black uppercase tracking-wider border transition-all text-center",
+                  reportType === 'messaging'
+                    ? "bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+                    : "bg-[#111] border-white/10 text-slate-400 hover:text-white"
+                )}
+              >
+                Solo Mensajería
+              </button>
+            </div>
+          </div>
+
           <button
             onClick={() => setIsReportGenerated(true)}
-            className="mt-4 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-widest py-4 px-6 rounded-md transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+            className={cn(
+              "mt-4 text-white font-black text-xs uppercase tracking-widest py-4 px-6 rounded-md transition-all shadow-lg flex items-center justify-center gap-2",
+              reportType === 'ecommerce' 
+                ? "bg-blue-600 hover:bg-blue-500 shadow-blue-500/20" 
+                : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20"
+            )}
           >
             <BarChart3 className="w-4 h-4" />
             Generar Informe
@@ -530,6 +585,18 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
             <span className="text-[7px] font-black text-blue-500 uppercase tracking-widest">Período</span>
              <div className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-[10px] font-black text-white uppercase tracking-widest">
               {monthOptions.find(o => o.value === reportMonth)?.label || reportMonth}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <span className="text-[7px] font-black text-blue-500 uppercase tracking-widest">Paquete</span>
+            <div className={cn(
+              "border rounded px-3 py-1.5 text-[10px] font-black uppercase tracking-widest",
+              reportType === 'ecommerce' 
+                ? "border-blue-500/20 bg-blue-500/10 text-blue-400"
+                : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+            )}>
+              {reportType === 'ecommerce' ? '🛒 Solo E-commerce' : '💬 Solo Mensajería'}
             </div>
           </div>
 
@@ -599,6 +666,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               narrative={reportTexts.narrative}
               onNarrativeChange={(val) => updateReportText('narrative', val)}
               isEditing={isEditing}
+              mode={reportType}
             />
           </div>
 
@@ -615,12 +683,12 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
                   spend={metrics.spend}
                   ctr={metrics.clicks > 0 ? (metrics.clicks / (metrics.impressions || 1) * 100) : 0}
                   purchases={metrics.purchases}
-                  messages={0}
+                  messages={metrics.messages}
                   atc={metrics.atc}
                   viewContent={metrics.viewContent}
                   impressions={metrics.impressions}
                   clicks={metrics.clicks}
-                  tracking="ecommerce"
+                  tracking={reportType}
                 />
               </div>
             </div>
@@ -649,10 +717,12 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150 print-module print:pt-16">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">03</div>
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Facturación y Ventas</h3>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">
+                {reportType === 'ecommerce' ? 'Facturación y Ventas' : 'Mensajes e Inversión Diaria'}
+              </h3>
             </div>
             <div className="h-[500px] w-full">
-              <PerformanceChartV2 data={dailyPerformanceData} currency={metrics.currency} />
+              <PerformanceChartV2 data={dailyPerformanceData} currency={metrics.currency} mode={reportType} />
             </div>
           </div>
 
@@ -662,7 +732,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">04</div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Anuncios Ganadores</h3>
             </div>
-            <AssetPerformanceV2 assets={mockAssets} />
+            <AssetPerformanceV2 assets={mockAssets} mode={reportType} />
           </div>
 
           {/* Módulo 5: Demographics */}

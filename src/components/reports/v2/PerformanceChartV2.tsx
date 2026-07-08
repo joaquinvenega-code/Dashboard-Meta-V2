@@ -20,11 +20,14 @@ interface PerformanceChartV2Props {
     date: string;
     revenue: number;
     purchases: number;
+    messages?: number;
+    spend?: number;
   }[];
   currency: string;
+  mode?: 'ecommerce' | 'messaging';
 }
 
-export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, currency }) => {
+export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, currency, mode = 'ecommerce' }) => {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm h-full flex flex-col">
       <div className="px-8 py-6 border-b border-slate-50 flex items-center justify-between">
@@ -33,14 +36,29 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
           <p className="text-sm font-bold text-slate-900">Histórico Diario del Mes</p>
         </div>
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-blue-600" />
-            <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none">Facturado (ARS)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-sky-400" />
-            <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none">Ventas</span>
-          </div>
+          {mode === 'ecommerce' ? (
+            <>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-blue-600" />
+                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none">Facturado (ARS)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-sky-400" />
+                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none">Ventas</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none">Mensajes Iniciados</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-blue-600" />
+                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none">Inversión (ARS)</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -51,6 +69,10 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
               <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#2563eb" stopOpacity={0.08}/>
                 <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+              </linearGradient>
+              <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.08}/>
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#f1f5f9" />
@@ -66,17 +88,30 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 9, fontWeight: 700, fill: '#64748b' }}
-              tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}
-              label={{ value: 'Facturación', angle: -90, position: 'insideLeft', offset: -20, style: { fontSize: 9, fontWeight: 900, fill: '#94a3b8', textAnchor: 'middle' } }}
+              tickFormatter={(value) => mode === 'ecommerce' ? `$${(value/1000).toFixed(0)}k` : `${value}`}
+              label={{ 
+                value: mode === 'ecommerce' ? 'Facturación' : 'Mensajes Iniciados', 
+                angle: -90, 
+                position: 'insideLeft', 
+                offset: -20, 
+                style: { fontSize: 9, fontWeight: 900, fill: '#94a3b8', textAnchor: 'middle' } 
+              }}
             />
             <YAxis 
               yAxisId="right"
               orientation="right"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 9, fontWeight: 700, fill: '#38bdf8' }}
+              tick={{ fontSize: 9, fontWeight: 700, fill: mode === 'ecommerce' ? '#38bdf8' : '#2563eb' }}
+              tickFormatter={(value) => mode === 'ecommerce' ? `${value}` : `$${(value/1000).toFixed(0)}k`}
               dx={10}
-              label={{ value: 'Ventas', angle: 90, position: 'insideRight', offset: -50, style: { fontSize: 9, fontWeight: 900, fill: '#94a3b8', textAnchor: 'middle' } }}
+              label={{ 
+                value: mode === 'ecommerce' ? 'Ventas' : 'Inversión', 
+                angle: 90, 
+                position: 'insideRight', 
+                offset: -50, 
+                style: { fontSize: 9, fontWeight: 900, fill: '#94a3b8', textAnchor: 'middle' } 
+              }}
             />
             <Tooltip 
               contentStyle={{ 
@@ -90,32 +125,68 @@ export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, cu
                 backdropFilter: 'blur(8px)'
               }}
               cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }}
-              formatter={(value: any, name: string) => [
-                name === 'revenue' ? formatCurrency(value, currency) : value, 
-                name === 'revenue' ? 'Facturado (ARS)' : 'Ventas'
-              ]}
+              formatter={(value: any, name: string) => {
+                if (mode === 'ecommerce') {
+                  return [
+                    name === 'revenue' ? formatCurrency(value, currency) : value, 
+                    name === 'revenue' ? 'Facturado (ARS)' : 'Ventas'
+                  ];
+                } else {
+                  return [
+                    name === 'messages' ? `${value} mensajes` : formatCurrency(value, currency), 
+                    name === 'messages' ? 'Mensajes Iniciados' : 'Inversión'
+                  ];
+                }
+              }}
               labelStyle={{ color: '#94a3b8', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '9px' }}
             />
-            <Area 
-              yAxisId="left"
-              type="monotone" 
-              dataKey="revenue" 
-              name="revenue"
-              stroke="#2563eb" 
-              strokeWidth={2.5}
-              fillOpacity={1} 
-              fill="url(#colorRevenue)" 
-            />
-            <Line 
-              yAxisId="right"
-              type="monotone" 
-              dataKey="purchases" 
-              name="purchases"
-              stroke="#38bdf8" 
-              strokeWidth={2.5}
-              dot={false}
-              activeDot={{ r: 4, strokeWidth: 0, fill: '#38bdf8' }}
-            />
+            {mode === 'ecommerce' ? (
+              <>
+                <Area 
+                  yAxisId="left"
+                  type="monotone" 
+                  dataKey="revenue" 
+                  name="revenue"
+                  stroke="#2563eb" 
+                  strokeWidth={2.5}
+                  fillOpacity={1} 
+                  fill="url(#colorRevenue)" 
+                />
+                <Line 
+                  yAxisId="right"
+                  type="monotone" 
+                  dataKey="purchases" 
+                  name="purchases"
+                  stroke="#38bdf8" 
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0, fill: '#38bdf8' }}
+                />
+              </>
+            ) : (
+              <>
+                <Area 
+                  yAxisId="left"
+                  type="monotone" 
+                  dataKey="messages" 
+                  name="messages"
+                  stroke="#10b981" 
+                  strokeWidth={2.5}
+                  fillOpacity={1} 
+                  fill="url(#colorMessages)" 
+                />
+                <Line 
+                  yAxisId="right"
+                  type="monotone" 
+                  dataKey="spend" 
+                  name="spend"
+                  stroke="#2563eb" 
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0, fill: '#2563eb' }}
+                />
+              </>
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       </div>

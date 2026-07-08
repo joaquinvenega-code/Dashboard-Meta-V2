@@ -24,17 +24,23 @@ interface ExecutiveSummaryV2Props {
     purchases: number;
     roas: number;
     revenue: number;
+    messages?: number;
+    costPerMessage?: number;
+    clicks?: number;
+    ctr?: number;
   };
   narrative: string;
   onNarrativeChange: (value: string) => void;
   isEditing: boolean;
+  mode?: 'ecommerce' | 'messaging';
 }
 
 export const ExecutiveSummaryV2: React.FC<ExecutiveSummaryV2Props> = ({ 
   metrics, 
   narrative, 
   onNarrativeChange,
-  isEditing
+  isEditing,
+  mode = 'ecommerce'
 }) => {
   return (
     <section className="space-y-6 print:space-y-3">
@@ -63,22 +69,45 @@ export const ExecutiveSummaryV2: React.FC<ExecutiveSummaryV2Props> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 print:grid-cols-4 gap-4">
-        <KPICard 
-          label="Inversión" 
-          value={formatCurrency(metrics.spend, 'ARS')} 
-        />
-        <KPICard 
-          label="Conversiones" 
-          value={metrics.purchases.toString()} 
-        />
-        <KPICard 
-          label="ROAS Promedio" 
-          value={`${metrics.roas.toFixed(2)}x`} 
-        />
-        <KPICard 
-          label="Facturación Total" 
-          value={formatCurrency(metrics.revenue, 'ARS')} 
-        />
+        {mode === 'ecommerce' ? (
+          <>
+            <KPICard 
+              label="Inversión" 
+              value={formatCurrency(metrics.spend, 'ARS')} 
+            />
+            <KPICard 
+              label="Conversiones" 
+              value={metrics.purchases.toString()} 
+            />
+            <KPICard 
+              label="ROAS Promedio" 
+              value={`${metrics.roas.toFixed(2)}x`} 
+            />
+            <KPICard 
+              label="Facturación Total" 
+              value={formatCurrency(metrics.revenue, 'ARS')} 
+            />
+          </>
+        ) : (
+          <>
+            <KPICard 
+              label="Inversión" 
+              value={formatCurrency(metrics.spend, 'ARS')} 
+            />
+            <KPICard 
+              label="Mensajes Iniciados" 
+              value={(metrics.messages || 0).toString()} 
+            />
+            <KPICard 
+              label="Costo por Mensaje (CPA)" 
+              value={metrics.costPerMessage && metrics.costPerMessage > 0 ? formatCurrency(metrics.costPerMessage, 'ARS') : '$0,00'} 
+            />
+            <KPICard 
+              label="CTR Promedio" 
+              value={`${(metrics.ctr || 0).toFixed(2)}%`} 
+            />
+          </>
+        )}
       </div>
     </section>
   );

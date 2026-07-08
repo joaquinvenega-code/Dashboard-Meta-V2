@@ -685,6 +685,7 @@ export async function fetchAccountDailyPerformance(accountId: string, since: str
     const impressions = parseInt(d.impressions) || 0;
     const atc = getAction(d.actions, 'add_to_cart') || getAction(d.actions, 'offsite_conversion.fb_pixel_add_to_cart');
     const viewContent = getAction(d.actions, 'view_content') || getAction(d.actions, 'offsite_conversion.fb_pixel_view_content');
+    const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') || getAction(d.actions, 'onsite_conversion.total_messaging_connection') || 0;
 
     return {
       date: d.date_start, // usually "YYYY-MM-DD"
@@ -694,7 +695,8 @@ export async function fetchAccountDailyPerformance(accountId: string, since: str
       clicks,
       impressions,
       atc,
-      viewContent
+      viewContent,
+      messages
     };
   }).sort((a: any, b: any) => a.date.localeCompare(b.date));
 }

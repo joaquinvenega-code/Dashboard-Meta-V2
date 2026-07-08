@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Trophy, ChevronDown, Star, Target, DollarSign, ShoppingBag, ImageOff } from 'lucide-react';
 import { cn, formatCurrency } from '../../../lib/utils';
 
-type SortCriteria = 'roas' | 'purchases' | 'revenue';
+type SortCriteria = 'roas' | 'purchases' | 'revenue' | 'messages' | 'spend' | 'ctr';
 
 interface AdAsset {
   id: string;
@@ -14,26 +14,49 @@ interface AdAsset {
   purchases: number;
   revenue: number;
   spend: number;
+  messages?: number;
+  ctr?: number;
 }
 
 interface AssetPerformanceV2Props {
   assets: AdAsset[];
+  mode?: 'ecommerce' | 'messaging';
 }
 
-export const AssetPerformanceV2: React.FC<AssetPerformanceV2Props> = ({ assets }) => {
+export const AssetPerformanceV2: React.FC<AssetPerformanceV2Props> = ({ assets, mode = 'ecommerce' }) => {
   const [sortBy, setSortBy] = useState<SortCriteria>('roas');
+
+  // Sync default sorting when mode changes
+  useEffect(() => {
+    if (mode === 'messaging') {
+      setSortBy('messages');
+    } else {
+      setSortBy('roas');
+    }
+  }, [mode]);
 
   const sortedAssets = useMemo(() => {
     return [...assets]
-      .sort((a, b) => b[sortBy] - a[sortBy])
+      .sort((a, b) => {
+        const valA = a[sortBy] !== undefined ? (a[sortBy] as number) : 0;
+        const valB = b[sortBy] !== undefined ? (b[sortBy] as number) : 0;
+        return valB - valA;
+      })
       .slice(0, 5);
   }, [assets, sortBy]);
 
   const criteriaLabels = {
     roas: 'Mayor ROAS',
-    purchases: 'Más Conversiones',
-    revenue: 'Mayor Facturación'
+    purchases: 'Más Ventas',
+    revenue: 'Mayor Facturación',
+    messages: 'Más Mensajes',
+    spend: 'Mayor Inversión',
+    ctr: 'Mayor CTR'
   };
+
+  const activeCriteria = mode === 'ecommerce' 
+    ? ['roas', 'purchases', 'revenue'] as SortCriteria[]
+    : ['messages', 'spend', 'ctr'] as SortCriteria[];
 
   return (
     <div className="space-y-6">
@@ -42,11 +65,11 @@ export const AssetPerformanceV2: React.FC<AssetPerformanceV2Props> = ({ assets }
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Priorizar por:</span>
           <div className="relative group">
             <button className="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-200 transition-all">
-              {criteriaLabels[sortBy]}
+              {criteriaLabels[sortBy] || 'Seleccionar'}
               <ChevronDown className="w-3 h-3 opacity-50" />
             </button>
             <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
-              {(Object.keys(criteriaLabels) as SortCriteria[]).map((key) => (
+              {activeCriteria.map((key) => (
                 <button
                   key={key}
                   onClick={() => setSortBy(key)}
@@ -106,30 +129,38 @@ export const AssetPerformanceV2: React.FC<AssetPerformanceV2Props> = ({ assets }
 
             <div className="p-2 flex flex-col flex-1">
               <div className="flex-1 flex flex-col">
-                <h4 className="text-[10px] font-bold text-slate-800 uppercase tracking-tight mb-2">{ad.name}</h4>
+                <h4 className="text-[10px] font-bold text-slate-800 uppercase tracking-tight mb-2 line-clamp-2 min-h-[30px]">{ad.name}</h4>
                 
                 <div className="grid grid-cols-2 gap-1.5 mt-auto pb-2">
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-1">
                       <Target className="w-2 h-2 text-blue-500" />
-                      <span className="text-[9px] font-black text-slate-400 uppercase">ROAS</span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase">{mode === 'ecommerce' ? 'ROAS' : 'CPA'}</span>
                     </div>
-                    <p className="text-xs font-black text-slate-900">{ad.roas.toFixed(2)}x</p>
+                    <p className="text-xs font-black text-slate-900">
+                      {mode === 'ecommerce' 
+                        ? `${ad.roas.toFixed(2)}x` 
+                        : (ad.messages && ad.messages > 0 ? formatCurrency(ad.spend / ad.messages, 'ARS') : '$0,00')}
+                    </p>
                   </div>
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-1">
                       <ShoppingBag className="w-2 h-2 text-emerald-500" />
-                      <span className="text-[9px] font-black text-slate-400 uppercase">Ventas</span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase">{mode === 'ecommerce' ? 'Ventas' : 'Mensajes'}</span>
                     </div>
-                    <p className="text-xs font-black text-slate-900">{ad.purchases}</p>
+                    <p className="text-xs font-black text-slate-900">{mode === 'ecommerce' ? ad.purchases : (ad.messages || 0)}</p>
                   </div>
                 </div>
               </div>
 
               <div className="pt-2 border-t border-slate-100 flex flex-col gap-1.5 shrink-0">
                 <div className="flex flex-col text-left">
-                  <span className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-tighter leading-tight print:text-[7.5px]">Facturación</span>
-                  <span className="text-[11px] sm:text-xs font-black text-slate-900 leading-none mt-0.5 print:text-[9.5px]">{formatCurrency(ad.revenue, 'ARS')}</span>
+                  <span className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-tighter leading-tight print:text-[7.5px]">
+                    {mode === 'ecommerce' ? 'Facturación' : 'Inversión'}
+                  </span>
+                  <span className="text-[11px] sm:text-xs font-black text-slate-900 leading-none mt-0.5 print:text-[9.5px]">
+                    {formatCurrency(mode === 'ecommerce' ? ad.revenue : ad.spend, 'ARS')}
+                  </span>
                 </div>
                 {ad.previewUrl && (
                   <a 
