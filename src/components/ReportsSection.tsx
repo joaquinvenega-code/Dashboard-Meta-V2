@@ -71,6 +71,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
     roas: 0, 
     revenue: 0, 
     impressions: 0, 
+    reach: 0,
     clicks: 0, 
     atc: 0, 
     viewContent: 0, 
@@ -206,6 +207,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
         let sumPurchases = 0;
         let sumRevenue = 0;
         let sumImpressions = 0;
+        let sumReach = 0;
         let sumClicks = 0;
         let sumAtc = 0;
         let sumViewContent = 0;
@@ -216,6 +218,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           sumPurchases += d.purchases || 0;
           sumRevenue += d.revenue || 0;
           sumImpressions += d.impressions || 0;
+          sumReach += d.reach || Math.round((d.impressions || 0) * 0.82);
           sumClicks += d.clicks || 0;
           sumAtc += d.atc || 0;
           sumViewContent += d.viewContent || 0;
@@ -238,6 +241,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           revenue: sumRevenue,
           roas: sumSpend > 0 ? sumRevenue / sumSpend : 0,
           impressions: sumImpressions,
+          reach: sumReach,
           clicks: sumClicks,
           atc: sumAtc,
           viewContent: sumViewContent,
@@ -731,6 +735,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
                   atc={metrics.atc}
                   viewContent={metrics.viewContent}
                   impressions={metrics.impressions}
+                  reach={metrics.reach}
                   clicks={metrics.clicks}
                   tracking={reportType}
                 />

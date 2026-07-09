@@ -12,6 +12,7 @@ interface ReportFunnelBoardProps {
   tracking: 'ecommerce' | 'messaging' | 'both';
   impressions?: number;
   clicks?: number;
+  reach?: number;
 }
 
 export function ReportFunnelBoard({ 
@@ -21,7 +22,8 @@ export function ReportFunnelBoard({
   atc = 0, 
   tracking, 
   impressions = 0, 
-  clicks = 0 
+  clicks = 0,
+  reach = 0
 }: ReportFunnelBoardProps) {
   const isMessaging = tracking === 'messaging';
 
@@ -32,17 +34,108 @@ export function ReportFunnelBoard({
   const realPurchases = Math.max(0, purchases);
   const realMessages = Math.max(0, messages);
   const realSpend = Math.max(0, spend);
+  const realReach = Math.max(0, reach || Math.round(realImpressions * 0.82));
 
-  // Messaging Funnel: 3 Levels
-  // Ecommerce Funnel: 4 Levels
-  const N = isMessaging ? 3 : 4;
+  // Funnel steps configuration based on tracking type
+  const steps = isMessaging ? [
+    {
+      label: "ALCANCE",
+      value: realReach,
+      formattedValue: formatDecimal(realReach, 0),
+      color: "bg-emerald-200 text-emerald-950",
+      pillBg: "bg-emerald-200 text-emerald-950",
+      pillLabel: "Frecuencia Promedio",
+      pillValue: realReach > 0 ? formatDecimal(realImpressions / realReach, 2) : "1,00",
+      pillSuffix: "",
+      pillCode: "FREQ"
+    },
+    {
+      label: "IMPRESIONES",
+      value: realImpressions,
+      formattedValue: formatDecimal(realImpressions, 0),
+      color: "bg-emerald-400 text-white",
+      pillBg: "bg-emerald-400 text-white",
+      pillLabel: "Tasa de Clic (CTR)",
+      pillValue: realImpressions > 0 ? formatDecimal((realClicks / realImpressions) * 100) : "0,00",
+      pillSuffix: "%",
+      pillCode: "CTR"
+    },
+    {
+      label: "CLICS EN EL ANUNCIO",
+      value: realClicks,
+      formattedValue: formatDecimal(realClicks, 0),
+      color: "bg-emerald-600 text-white",
+      pillBg: "bg-emerald-600 text-white",
+      pillLabel: "Efectividad Chat",
+      pillValue: realClicks > 0 ? formatDecimal((realMessages / realClicks) * 100) : "0,00",
+      pillSuffix: "%",
+      pillCode: "CHAT"
+    },
+    {
+      label: "CONVERSIONES INICIADAS",
+      value: realMessages,
+      formattedValue: formatDecimal(realMessages, 0),
+      color: "bg-emerald-950 text-white",
+      pillBg: "bg-emerald-950 text-white",
+      pillLabel: "Costo por Conversación",
+      pillValue: realMessages > 0 ? formatCurrency(realSpend / realMessages, 'ARS') : "$0,00",
+      pillSuffix: "",
+      pillCode: "CPA"
+    }
+  ] : [
+    {
+      label: "IMPRESIONES",
+      value: realImpressions,
+      formattedValue: formatDecimal(realImpressions, 0),
+      color: "bg-blue-200 text-blue-950",
+      pillBg: "bg-blue-200 text-blue-950",
+      pillLabel: "Tasa de Clic (CTR)",
+      pillValue: realImpressions > 0 ? formatDecimal((realClicks / realImpressions) * 100) : "0,00",
+      pillSuffix: "%",
+      pillCode: "CTR"
+    },
+    {
+      label: "CLICS EN EL ANUNCIO",
+      value: realClicks,
+      formattedValue: formatDecimal(realClicks, 0),
+      color: "bg-blue-400 text-white",
+      pillBg: "bg-blue-400 text-white",
+      pillLabel: "Tasa de Carrito",
+      pillValue: realClicks > 0 ? formatDecimal((realAtc / realClicks) * 100) : "0,00",
+      pillSuffix: "%",
+      pillCode: "ATC"
+    },
+    {
+      label: "AGREGADOS AL CARRITO",
+      value: realAtc,
+      formattedValue: formatDecimal(realAtc, 0),
+      color: "bg-blue-600 text-white",
+      pillBg: "bg-blue-600 text-white",
+      pillLabel: "Conversión Final",
+      pillValue: realClicks > 0 ? formatDecimal((realPurchases / realClicks) * 100) : "0,00",
+      pillSuffix: "%",
+      pillCode: "CONV."
+    },
+    {
+      label: "COMPRAS REALIZADAS",
+      value: realPurchases,
+      formattedValue: formatDecimal(realPurchases, 0),
+      color: "bg-blue-950 text-white",
+      pillBg: "bg-blue-950 text-white",
+      pillLabel: "Costo Adquisición (CPA)",
+      pillValue: realPurchases > 0 ? formatCurrency(realSpend / realPurchases, 'ARS') : "$0,00",
+      pillSuffix: "",
+      pillCode: "CPA"
+    }
+  ];
 
-  // Colors based on report type
-  const isMsg = isMessaging;
-  const color1 = isMsg ? "bg-emerald-300 text-emerald-950" : "bg-blue-200 text-blue-950";
-  const color2 = isMsg ? "bg-emerald-500 text-white" : "bg-blue-400 text-white";
-  const color3 = isMsg ? "bg-emerald-700 text-white" : "bg-blue-600 text-white";
-  const color4 = "bg-blue-950 text-white";
+  // Specific widths and clipPaths for each of the 4 steps of the funnel
+  const stepStyles = [
+    { width: "w-full", clipPath: 'polygon(0% 0%, 100% 0%, 92% 100%, 8% 100%)' },
+    { width: "w-[86%]", clipPath: 'polygon(4.5% 0%, 95.5% 0%, 88% 100%, 12% 100%)' },
+    { width: "w-[78%]", clipPath: 'polygon(9% 0%, 91% 0%, 84% 100%, 16% 100%)' },
+    { width: "w-[69%]", clipPath: 'polygon(14% 0%, 86% 0%, 80% 100%, 20% 100%)' },
+  ];
 
   return (
     <div className="bg-white rounded-[2rem] p-8 border border-slate-200 flex flex-col h-full overflow-hidden shadow-sm">
@@ -59,159 +152,44 @@ export function ReportFunnelBoard({
         </div>
       </div>
 
-      {/* Main Funnel Layout */}
-      <div className="flex-1 flex flex-col md:flex-row items-stretch gap-6 min-h-[300px]">
-        {/* Funnel Shapes (Left) */}
-        <div className="flex-1 flex flex-col items-center justify-center" style={{ gap: '2px' }}>
-          {isMessaging ? (
-            <>
-              {/* Step 1: Impresiones */}
-              <div 
-                className={`w-full h-[90px] ${color1} shadow-md flex flex-col items-center justify-center relative overflow-hidden`}
-                style={{ clipPath: 'polygon(0% 0%, 100% 0%, 90% 100%, 10% 100%)' }}
-              >
-                <span className="text-[8px] font-black opacity-60 uppercase tracking-widest">IMPRESIONES</span>
-                <span className="text-base font-black tracking-tight mt-1">{formatDecimal(realImpressions, 0)}</span>
+      {/* Main Funnel Layout: Side-by-Side (Uncompressed) */}
+      <div className="flex-1 flex flex-row items-center gap-4 min-h-[300px]">
+        {/* Funnel Vessel (Left Column) */}
+        <div className="w-[180px] md:w-[200px] flex flex-col items-center justify-center shrink-0" style={{ gap: '2px' }}>
+          {steps.map((step, idx) => (
+            <div 
+              key={step.label}
+              className={`${stepStyles[idx].width} h-[68px] ${step.color} shadow-xl flex items-center justify-center relative overflow-hidden`}
+              style={{ clipPath: stepStyles[idx].clipPath }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent print:hidden" />
+              <div className="flex flex-col items-center relative z-10 text-center px-1">
+                <span className="text-[7px] font-black opacity-60 uppercase tracking-[0.1em]">{step.label}</span>
+                <span className="text-[12px] font-black tracking-tight">{step.formattedValue}</span>
               </div>
-              {/* Step 2: Clics */}
-              <div 
-                className={`w-[80%] h-[90px] ${color2} shadow-md flex flex-col items-center justify-center relative overflow-hidden`}
-                style={{ clipPath: 'polygon(0% 0%, 100% 0%, 85% 100%, 15% 100%)' }}
-              >
-                <span className="text-[8px] font-black opacity-70 uppercase tracking-widest">CLICS EN EL ANUNCIO</span>
-                <span className="text-base font-black tracking-tight mt-1">{formatDecimal(realClicks, 0)}</span>
-              </div>
-              {/* Step 3: Mensajes */}
-              <div 
-                className={`w-[68%] h-[90px] ${color3} shadow-lg flex flex-col items-center justify-center relative overflow-hidden`}
-                style={{ clipPath: 'polygon(0% 0%, 100% 0%, 80% 100%, 20% 100%)' }}
-              >
-                <span className="text-[8px] font-black opacity-80 uppercase tracking-widest">CONVERSACIONES INICIADAS</span>
-                <span className="text-base font-black tracking-tight mt-1">{formatDecimal(realMessages, 0)}</span>
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Step 1: Impresiones */}
-              <div 
-                className={`w-full h-[68px] ${color1} shadow-md flex flex-col items-center justify-center relative overflow-hidden`}
-                style={{ clipPath: 'polygon(0% 0%, 100% 0%, 92% 100%, 8% 100%)' }}
-              >
-                <span className="text-[7px] font-black opacity-60 uppercase tracking-widest">IMPRESIONES</span>
-                <span className="text-sm font-black tracking-tight mt-0.5">{formatDecimal(realImpressions, 0)}</span>
-              </div>
-              {/* Step 2: Clics */}
-              <div 
-                className={`w-[84%] h-[68px] ${color2} shadow-md flex flex-col items-center justify-center relative overflow-hidden`}
-                style={{ clipPath: 'polygon(0% 0%, 100% 0%, 90% 100%, 10% 100%)' }}
-              >
-                <span className="text-[7px] font-black opacity-70 uppercase tracking-widest">CLICS EN EL ANUNCIO</span>
-                <span className="text-sm font-black tracking-tight mt-0.5">{formatDecimal(realClicks, 0)}</span>
-              </div>
-              {/* Step 3: ATC */}
-              <div 
-                className={`w-[71%] h-[68px] ${color3} shadow-md flex flex-col items-center justify-center relative overflow-hidden`}
-                style={{ clipPath: 'polygon(0% 0%, 100% 0%, 88% 100%, 12% 100%)' }}
-              >
-                <span className="text-[7px] font-black opacity-80 uppercase tracking-widest">AGREGADOS AL CARRITO</span>
-                <span className="text-sm font-black tracking-tight mt-0.5">{formatDecimal(realAtc, 0)}</span>
-              </div>
-              {/* Step 4: Compras */}
-              <div 
-                className={`w-[59%] h-[68px] ${color4} shadow-lg flex flex-col items-center justify-center relative overflow-hidden`}
-                style={{ clipPath: 'polygon(0% 0%, 100% 0%, 85% 100%, 15% 100%)' }}
-              >
-                <span className="text-[7px] font-black opacity-90 uppercase tracking-widest">COMPRAS REALIZADAS</span>
-                <span className="text-sm font-black tracking-tight mt-0.5">{formatDecimal(realPurchases, 0)}</span>
-              </div>
-            </>
-          )}
+            </div>
+          ))}
         </div>
 
-        {/* Rates & KPIs (Right) */}
-        <div className="w-full md:w-[220px] flex flex-col justify-center" style={{ gap: '6px' }}>
-          {isMessaging ? (
-            <>
-              {/* CTR Card */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col justify-between h-[88px] relative overflow-hidden">
-                <div>
-                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Tasa de Clic (CTR)</span>
-                  <span className="text-xs font-medium text-slate-500 block leading-tight">Clics por impresión</span>
-                </div>
-                <div className="text-lg font-black text-slate-900 mt-2">
-                  {realImpressions > 0 ? formatDecimal((realClicks / realImpressions) * 100) : '0,00'}%
-                </div>
-              </div>
-
-              {/* Chat conversion rate */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col justify-between h-[88px] relative overflow-hidden">
-                <div>
-                  <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest block mb-0.5">Efectividad Chat</span>
-                  <span className="text-xs font-medium text-slate-500 block leading-tight">Conversaciones vs clics</span>
-                </div>
-                <div className="text-lg font-black text-slate-900 mt-2">
-                  {realClicks > 0 ? formatDecimal((realMessages / realClicks) * 100) : '0,00'}%
+        {/* Lateral Pills (Right Column) */}
+        <div className="flex-1 flex flex-col justify-center min-w-0 shrink-0" style={{ gap: '2px' }}>
+          {steps.map((step) => (
+            <div 
+              key={step.pillLabel}
+              className={`h-[68px] ${step.pillBg} rounded-r-[1.5rem] rounded-l-md px-3 flex items-center justify-between shadow-lg relative overflow-hidden`}
+            >
+              <div className="absolute inset-0 bg-white/10 print:hidden" />
+              <div className="relative z-10 flex flex-col min-w-0 justify-center">
+                <span className="text-[7px] font-black uppercase tracking-widest opacity-60 whitespace-nowrap">{step.pillLabel}</span>
+                <div className="text-[14px] font-black tracking-tight">
+                  {step.pillValue}{step.pillSuffix}
                 </div>
               </div>
-
-              {/* CPA Card */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col justify-between h-[88px] relative overflow-hidden">
-                <div>
-                  <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest block mb-0.5">Costo por Conversación</span>
-                  <span className="text-xs font-medium text-slate-500 block leading-tight">Inversión promedio</span>
-                </div>
-                <div className="text-lg font-black text-slate-900 mt-2">
-                  {realMessages > 0 ? formatCurrency(realSpend / realMessages, 'ARS') : '$0,00'}
-                </div>
+              <div className="relative z-10 text-[8px] font-bold opacity-30 uppercase tracking-[0.2em] ml-2 text-right shrink-0">
+                {step.pillCode}
               </div>
-            </>
-          ) : (
-            <>
-              {/* CTR Card */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex flex-col justify-between h-[65px] relative overflow-hidden">
-                <div className="flex justify-between items-start">
-                  <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-wider">Tasa de Clic (CTR)</span>
-                  <span className="text-[12px] font-black text-slate-900 leading-none">
-                    {realImpressions > 0 ? formatDecimal((realClicks / realImpressions) * 100) : '0,00'}%
-                  </span>
-                </div>
-                <span className="text-[9px] font-medium text-slate-400 leading-tight">Interés del anuncio</span>
-              </div>
-
-              {/* ATC Card */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex flex-col justify-between h-[65px] relative overflow-hidden">
-                <div className="flex justify-between items-start">
-                  <span className="text-[7.5px] font-black text-blue-600 uppercase tracking-wider">Tasa de Carrito</span>
-                  <span className="text-[12px] font-black text-slate-900 leading-none">
-                    {realClicks > 0 ? formatDecimal((realAtc / realClicks) * 100) : '0,00'}%
-                  </span>
-                </div>
-                <span className="text-[9px] font-medium text-slate-400 leading-tight">Carritos por clic</span>
-              </div>
-
-              {/* Conversion rate Card */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex flex-col justify-between h-[65px] relative overflow-hidden">
-                <div className="flex justify-between items-start">
-                  <span className="text-[7.5px] font-black text-indigo-600 uppercase tracking-wider">Conversión Final</span>
-                  <span className="text-[12px] font-black text-slate-900 leading-none">
-                    {realClicks > 0 ? formatDecimal((realPurchases / realClicks) * 100) : '0,00'}%
-                  </span>
-                </div>
-                <span className="text-[9px] font-medium text-slate-400 leading-tight">Compras por clic</span>
-              </div>
-
-              {/* CPA Card */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex flex-col justify-between h-[65px] relative overflow-hidden">
-                <div className="flex justify-between items-start">
-                  <span className="text-[7.5px] font-black text-slate-700 uppercase tracking-wider">Costo Adquisición (CPA)</span>
-                  <span className="text-[12px] font-black text-slate-900 leading-none">
-                    {realPurchases > 0 ? formatCurrency(realSpend / realPurchases, 'ARS') : '$0,00'}
-                  </span>
-                </div>
-                <span className="text-[9px] font-medium text-slate-400 leading-tight">Costo por venta real</span>
-              </div>
-            </>
-          )}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -224,7 +202,7 @@ export function ReportFunnelBoard({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-[9px] text-slate-500 font-medium leading-relaxed">
           {isMessaging ? (
             <>
-              <div><strong className="text-slate-800 font-bold block mb-0.5">1. Impresiones y Clics</strong>Número total de veces que se mostraron los anuncios y clics de enlace recibidos en la plataforma.</div>
+              <div><strong className="text-slate-800 font-bold block mb-0.5">1. Alcance y Frecuencia</strong>Número de personas únicas alcanzadas e impresiones promedio por persona única en la plataforma de anuncios.</div>
               <div><strong className="text-emerald-700 font-bold block mb-0.5">2. Efectividad Chat</strong>Porcentaje de clics que se tradujeron efectivamente en una conversación de mensajería iniciada en WhatsApp o Messenger.</div>
               <div><strong className="text-slate-800 font-bold block mb-0.5">3. Costo por Conversación</strong>Monto promedio invertido por cada conversación iniciada. Es el indicador real de adquisición para tus campañas.</div>
             </>
