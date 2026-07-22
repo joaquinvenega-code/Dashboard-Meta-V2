@@ -28,145 +28,414 @@ interface SidebarProps {
   onOrionToggle?: (enabled: boolean) => void;
 }
 
-export function Sidebar({ activePage, onPageChange, user, onLogout, onRefresh, loading, lastSync, isOrionEnabled = true, onOrionToggle }: SidebarProps) {
+export function Sidebar({ 
+  activePage, 
+  onPageChange, 
+  user, 
+  onLogout, 
+  onRefresh, 
+  loading, 
+  lastSync, 
+  isOrionEnabled = true, 
+  onOrionToggle 
+}: SidebarProps) {
+  const [isHovered, setIsHovered] = useState(false);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
 
-  // Auto-expand if a sub-item is active
+  // Auto-open config section when a sub-item is active
   useEffect(() => {
     if (['accounts', 'alerts', 'user_settings', 'orion_settings'].includes(activePage)) {
       setIsConfigOpen(true);
     }
   }, [activePage]);
 
-  const NavItem = ({ id, icon: Icon, label, className }: { id: string, icon: any, label: string, className?: string }) => (
-    <button
-      onClick={() => onPageChange(id)}
-      className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold tracking-tight transition-all w-full text-left",
-        activePage === id 
-          ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
-          : "text-neutral-500 hover:text-neutral-100 hover:bg-white/5",
-        className
-      )}
-    >
-      <Icon className={cn("w-4 h-4 shrink-0", activePage === id ? "opacity-100" : "opacity-50")} />
-      {label}
-    </button>
-  );
+  const navItems = [
+    { id: 'overview', label: 'Vista general', icon: LayoutDashboard },
+    { id: 'detail', label: 'Detalle de cuentas', icon: BarChart3 },
+    { id: 'strategy', label: 'Estrategia', icon: Network },
+    { id: 'reports', label: 'Informes', icon: FileText },
+  ];
+
+  const configItems = [
+    { id: 'user_settings', label: 'Perfil de Usuario', icon: User },
+    { id: 'orion_settings', label: 'Asistente Orión', icon: Bot },
+    { id: 'accounts', label: 'Cuentas Visibles', icon: Settings2 },
+    { id: 'alerts', label: 'Centro de Alertas', icon: Bell },
+  ];
+
+  const isConfigActive = ['accounts', 'alerts', 'user_settings', 'orion_settings'].includes(activePage);
 
   return (
-    <aside className="w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col h-screen sticky top-0 shrink-0 print:hidden">
-      <div className="p-6 flex flex-col gap-4">
+    <aside 
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={cn(
+        "bg-[#0a0a0a] border-r border-white/5 flex flex-col h-screen sticky top-0 shrink-0 z-50 print:hidden transition-all duration-300 ease-in-out select-none shadow-2xl",
+        isHovered ? "w-64" : "w-[80px]"
+      )}
+    >
+      {/* HEADER / LOGO */}
+      <div className="p-4 flex flex-col gap-4 border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center shrink-0 border border-white/5">
-            <BarChart3 className="w-6 h-6 text-blue-500" />
-          </div>
-          <div>
-            <div className="font-black text-sm leading-tight tracking-tighter text-white">Orion Metrics</div>
-            <div className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest leading-none mt-1">Meta Ads Dashboard</div>
-          </div>
-        </div>
-
-        {/* Toggle Assistant */}
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <Bot className={cn("w-3.5 h-3.5", isOrionEnabled ? "text-blue-500" : "text-neutral-600")} />
-            <span className="text-xs font-bold text-neutral-400">Asistente Orión</span>
-          </div>
-          <button 
-            onClick={() => onOrionToggle && onOrionToggle(!isOrionEnabled)}
-            className={cn(
-              "w-8 h-4 rounded-full relative transition-colors duration-300",
-              isOrionEnabled ? "bg-blue-600" : "bg-neutral-800"
-            )}
+          {/* Circular Logo Icon */}
+          <motion.div 
+            whileHover={{ scale: 1.08, rotate: 5 }}
+            whileTap={{ scale: 0.95 }}
+            className="w-11 h-11 rounded-full bg-gradient-to-tr from-blue-600/20 to-blue-400/10 border border-blue-500/30 flex items-center justify-center shrink-0 shadow-lg shadow-blue-600/10 cursor-pointer"
           >
-            <div className={cn(
-              "absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-300",
-              isOrionEnabled && "transform translate-x-4"
-            )} />
-          </button>
-        </div>
-      </div>
+            <BarChart3 className="w-5 h-5 text-blue-500" />
+          </motion.div>
 
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        <div className="text-[10px] font-black text-neutral-700 uppercase tracking-[0.2em] px-3 mb-3 mt-4">Vistas</div>
-        <NavItem id="overview" icon={LayoutDashboard} label="Vista general" />
-        <NavItem id="detail" icon={BarChart3} label="Detalle de cuentas" />
-        <NavItem id="strategy" icon={Network} label="Estrategia" />
-        <NavItem id="reports" icon={FileText} label="Informes" />
-
-        <div className="text-[10px] font-black text-neutral-700 uppercase tracking-[0.2em] px-3 mb-3 mt-8">Sistema</div>
-        
-        <div className="space-y-1">
-          <button
-            onClick={() => setIsConfigOpen(!isConfigOpen)}
-            className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-bold tracking-tight transition-all w-full text-left text-neutral-500 hover:text-neutral-100 hover:bg-white/5"
-          >
-            <div className="flex items-center gap-3">
-              <Settings className="w-4 h-4 shrink-0 opacity-50" />
-              Configuración
-            </div>
-            <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform", isConfigOpen ? "rotate-180" : "rotate-0")} />
-          </button>
-          
           <AnimatePresence>
-            {isConfigOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
+            {isHovered && (
+              <motion.div 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden whitespace-nowrap min-w-0 flex-1"
               >
-                <div className="pl-4 pr-2 space-y-1 mt-1 border-l-2 border-white/5 ml-4">
-                  <NavItem id="user_settings" icon={User} label="Perfil de Usuario" className="py-2 text-xs" />
-                  <NavItem id="orion_settings" icon={Bot} label="Asistente Orión" className="py-2 text-xs" />
-                  <NavItem id="accounts" icon={Settings2} label="Cuentas Visibles" className="py-2 text-xs" />
-                  <NavItem id="alerts" icon={Bell} label="Centro de Alertas" className="py-2 text-xs" />
-                </div>
+                <div className="font-black text-sm tracking-tighter text-white truncate">Orion Metrics</div>
+                <div className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest leading-none mt-0.5">Meta Ads Dashboard</div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
+
+        {/* ORION ASSISTANT TOGGLE */}
+        <div className={cn(
+          "flex items-center justify-between rounded-full bg-white/[0.03] border border-white/5 p-1 transition-all",
+          !isHovered && "justify-center border-none bg-transparent p-0"
+        )}>
+          {isHovered ? (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center gap-2 pl-2"
+            >
+              <div className={cn("w-2 h-2 rounded-full", isOrionEnabled ? "bg-blue-500 animate-pulse" : "bg-neutral-600")} />
+              <span className="text-xs font-bold text-neutral-300">Asistente Orión</span>
+            </motion.div>
+          ) : null}
+
+          <button 
+            onClick={() => onOrionToggle && onOrionToggle(!isOrionEnabled)}
+            title={isOrionEnabled ? "Desactivar Asistente Orión" : "Activar Asistente Orión"}
+            className={cn(
+              "relative transition-all duration-300 shrink-0",
+              isHovered 
+                ? "w-8 h-4 rounded-full bg-neutral-800 p-0.5" 
+                : "w-11 h-11 rounded-full bg-white/5 border border-white/5 hover:bg-white/10 flex items-center justify-center text-neutral-400 hover:text-white"
+            )}
+          >
+            {isHovered ? (
+              <div className={cn(
+                "w-3 h-3 rounded-full bg-white transition-transform duration-300",
+                isOrionEnabled ? "bg-blue-500 translate-x-4" : "translate-x-0"
+              )} />
+            ) : (
+              <Bot className={cn("w-5 h-5 transition-colors", isOrionEnabled ? "text-blue-400" : "text-neutral-500")} />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* NAVIGATION SECTIONS */}
+      <nav className="flex-1 p-3 space-y-6 overflow-y-auto custom-scrollbar">
+        {/* VISTAS SECTION */}
+        <div>
+          {isHovered && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em] px-3 mb-2"
+            >
+              Vistas
+            </motion.div>
+          )}
+
+          <div className="space-y-2">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activePage === item.id;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => onPageChange(item.id)}
+                  className={cn(
+                    "relative flex items-center gap-3.5 p-1.5 rounded-full transition-all group w-full text-left outline-none cursor-pointer",
+                    isActive ? "bg-blue-600/10 text-white" : "text-neutral-400 hover:text-white hover:bg-white/5"
+                  )}
+                >
+                  {/* CIRCULAR ICON BUTTON */}
+                  <motion.div
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.92 }}
+                    className={cn(
+                      "w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 shadow-md",
+                      isActive 
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-600/40 ring-2 ring-blue-500/50" 
+                        : "bg-white/5 text-neutral-400 group-hover:bg-white/10 group-hover:text-white border border-white/5"
+                    )}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </motion.div>
+
+                  {/* LABEL (shown on hover) */}
+                  <AnimatePresence>
+                    {isHovered && (
+                      <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.15 }}
+                        className={cn(
+                          "text-xs font-bold tracking-tight whitespace-nowrap overflow-hidden pr-2",
+                          isActive ? "text-blue-400 font-extrabold" : "text-neutral-300"
+                        )}
+                      >
+                        {item.label}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+
+                  {/* TOOLTIP WHEN COLLAPSED */}
+                  {!isHovered && (
+                    <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#181818] text-white text-xs font-bold rounded-xl shadow-xl border border-white/10 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 transform translate-x-1 group-hover:translate-x-0">
+                      {item.label}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* SYSTEM / CONFIGURATION SECTION */}
+        <div>
+          {isHovered && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-[9px] font-black text-neutral-600 uppercase tracking-[0.2em] px-3 mb-2"
+            >
+              Sistema
+            </motion.div>
+          )}
+
+          <div className="space-y-2">
+            {/* CONFIGURATION TOGGLE BUTTON */}
+            <button
+              onClick={() => setIsConfigOpen(!isConfigOpen)}
+              className={cn(
+                "relative flex items-center gap-3.5 p-1.5 rounded-full transition-all group w-full text-left outline-none cursor-pointer",
+                isConfigActive ? "bg-blue-600/10 text-white" : "text-neutral-400 hover:text-white hover:bg-white/5"
+              )}
+            >
+              <motion.div
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.92 }}
+                className={cn(
+                  "w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 shadow-md",
+                  isConfigActive
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/40 ring-2 ring-blue-500/50"
+                    : "bg-white/5 text-neutral-400 group-hover:bg-white/10 group-hover:text-white border border-white/5"
+                )}
+              >
+                <Settings className="w-5 h-5" />
+              </motion.div>
+
+              <AnimatePresence>
+                {isHovered && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="flex items-center justify-between flex-1 pr-2 overflow-hidden"
+                  >
+                    <span className={cn(
+                      "text-xs font-bold tracking-tight whitespace-nowrap",
+                      isConfigActive ? "text-blue-400 font-extrabold" : "text-neutral-300"
+                    )}>
+                      Configuración
+                    </span>
+                    <ChevronDown className={cn("w-4 h-4 text-neutral-500 transition-transform duration-300", isConfigOpen && "rotate-180")} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {!isHovered && (
+                <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#181818] text-white text-xs font-bold rounded-xl shadow-xl border border-white/10 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50">
+                  Configuración
+                </div>
+              )}
+            </button>
+
+            {/* CONFIGURATION SUB-ITEMS */}
+            <AnimatePresence>
+              {(isConfigOpen || !isHovered) && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className={cn(
+                    "space-y-2 overflow-hidden",
+                    isHovered ? "pl-4 pt-1" : "pt-1"
+                  )}
+                >
+                  {configItems.map((sub, idx) => {
+                    const SubIcon = sub.icon;
+                    const isSubActive = activePage === sub.id;
+
+                    return (
+                      <button
+                        key={sub.id}
+                        onClick={() => onPageChange(sub.id)}
+                        className={cn(
+                          "relative flex items-center gap-3 p-1 rounded-full transition-all group w-full text-left outline-none cursor-pointer",
+                          isSubActive ? "text-blue-400" : "text-neutral-400 hover:text-white"
+                        )}
+                      >
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: idx * 0.04 }}
+                          whileHover={{ scale: 1.15 }}
+                          whileTap={{ scale: 0.92 }}
+                          className={cn(
+                            "w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 shadow-sm",
+                            isSubActive
+                              ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-2 ring-blue-400/50"
+                              : "bg-white/[0.04] text-neutral-400 group-hover:bg-white/10 group-hover:text-white border border-white/5"
+                          )}
+                        >
+                          <SubIcon className="w-4 h-4" />
+                        </motion.div>
+
+                        <AnimatePresence>
+                          {isHovered && (
+                            <motion.span
+                              initial={{ opacity: 0, x: -8 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -8 }}
+                              className={cn(
+                                "text-[11px] font-bold tracking-tight whitespace-nowrap truncate",
+                                isSubActive ? "text-blue-400 font-black" : "text-neutral-400 group-hover:text-neutral-200"
+                              )}
+                            >
+                              {sub.label}
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
+
+                        {!isHovered && (
+                          <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#181818] text-white text-xs font-bold rounded-xl shadow-xl border border-white/10 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50">
+                            {sub.label}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       </nav>
 
-      <div className="p-4 border-t border-white/5 space-y-4">
-        <div className="bg-[#111] rounded-2xl p-3 border border-white/5 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-blue-600 overflow-hidden flex items-center justify-center text-white text-xs font-black shadow-inner">
+      {/* FOOTER SECTION */}
+      <div className="p-3 border-t border-white/5 space-y-3 bg-[#080808]">
+        {/* USER PROFILE CARD */}
+        <div className={cn(
+          "bg-[#111] border border-white/5 rounded-full p-1.5 flex items-center gap-3 transition-all",
+          !isHovered && "justify-center border-none bg-transparent p-0"
+        )}>
+          <motion.div 
+            whileHover={{ scale: 1.08 }}
+            className="w-11 h-11 rounded-full bg-blue-600 overflow-hidden flex items-center justify-center text-white text-xs font-black shadow-inner shrink-0 ring-2 ring-blue-500/20"
+          >
             {user?.picture?.data?.url ? (
               <img src={user.picture.data.url} alt="" className="w-full h-full object-cover" />
             ) : (
               (user?.name || 'U')[0].toUpperCase()
             )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-black truncate text-neutral-100">{user?.name || 'Usuario'}</div>
-            {lastSync && (
-              <div className="text-[9px] font-bold text-neutral-600 mt-0.5 uppercase tracking-wider">
-                Sync: {lastSync}
-              </div>
+          </motion.div>
+
+          <AnimatePresence>
+            {isHovered && (
+              <motion.div 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="flex-1 min-w-0 pr-2 overflow-hidden"
+              >
+                <div className="text-xs font-black truncate text-neutral-100">{user?.name || 'Usuario'}</div>
+                {lastSync && (
+                  <div className="text-[8px] font-bold text-neutral-600 mt-0.5 uppercase tracking-wider truncate">
+                    Sync: {lastSync}
+                  </div>
+                )}
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </div>
-        
-        <div className="grid grid-cols-1 gap-2">
+
+        {/* SYNC & LOGOUT CIRCULAR BUTTONS */}
+        <div className="flex items-center gap-2">
+          {/* SYNC BUTTON */}
           <button 
             onClick={onRefresh}
             disabled={loading}
-            className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-[11px] font-bold text-neutral-400 hover:text-neutral-100 hover:bg-white/5 transition-all disabled:opacity-50"
+            title="Sincronizar Meta Ads"
+            className={cn(
+              "relative flex items-center justify-center transition-all duration-200 outline-none group cursor-pointer",
+              isHovered 
+                ? "flex-1 py-2 px-3 bg-white/5 hover:bg-white/10 rounded-full text-neutral-300 text-xs font-bold gap-2 border border-white/5" 
+                : "w-11 h-11 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-neutral-400 hover:text-white mx-auto"
+            )}
           >
-            <RefreshCcw className={cn("w-3 h-3", loading && "animate-spin")} />
-            {loading ? 'Sincronizando...' : 'Sincronizar'}
+            <RefreshCcw className={cn("w-4 h-4 shrink-0", loading && "animate-spin text-blue-400")} />
+            {isHovered && (
+              <span className="text-[11px] font-bold truncate">
+                {loading ? 'Sincronizando...' : 'Sincronizar'}
+              </span>
+            )}
+            {!isHovered && (
+              <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#181818] text-white text-xs font-bold rounded-xl shadow-xl border border-white/10 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50">
+                Sincronizar
+              </div>
+            )}
           </button>
-          
+
+          {/* LOGOUT BUTTON */}
           <button 
             onClick={onLogout}
-            className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-[11px] font-bold text-red-500 hover:text-red-400 hover:bg-red-500/5 transition-all"
+            title="Cerrar sesión"
+            className={cn(
+              "relative flex items-center justify-center transition-all duration-200 outline-none group cursor-pointer",
+              isHovered 
+                ? "py-2 px-3 bg-red-500/10 hover:bg-red-500/20 rounded-full text-red-400 text-xs font-bold gap-2 border border-red-500/20" 
+                : "w-11 h-11 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 mx-auto"
+            )}
           >
-            <LogOut className="w-3 h-3" />
-            Cerrar sesión
+            <LogOut className="w-4 h-4 shrink-0" />
+            {isHovered && (
+              <span className="text-[11px] font-bold truncate">
+                Salir
+              </span>
+            )}
+            {!isHovered && (
+              <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#181818] text-white text-xs font-bold rounded-xl shadow-xl border border-white/10 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50">
+                Cerrar sesión
+              </div>
+            )}
           </button>
         </div>
       </div>
     </aside>
   );
 }
+
