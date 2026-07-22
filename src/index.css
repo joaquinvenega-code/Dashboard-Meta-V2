@@ -167,3 +167,74 @@
     gap: 0.5rem !important;
   }
 }
+
+/* Report Dark Mode styling overrides */
+.report-dark {
+  background-color: #0d0f17 !important;
+  color: #f1f5f9 !important;
+}
+
+.report-dark .bg-white,
+.report-dark .bg-slate-50,
+.report-dark .bg-neutral-50,
+.report-dark .bg-neutral-100\/50,
+.report-dark .bg-slate-100,
+.report-dark .bg-slate-50\/50,
+.report-dark .bg-slate-100\/50 {
+  background-color: #151824 !important;
+}
+
+.report-dark .border-slate-100,
+.report-dark .border-slate-200,
+.report-dark .border-slate-300,
+.report-dark .border-neutral-100,
+.report-dark .border-neutral-200,
+.report-dark .border-slate-50 {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.report-dark .text-slate-900,
+.report-dark .text-neutral-900,
+.report-dark .text-slate-800,
+.report-dark .text-neutral-800 {
+  color: #f8fafc !important;
+}
+
+.report-dark .text-slate-700,
+.report-dark .text-slate-600,
+.report-dark .text-neutral-700,
+.report-dark .text-neutral-600 {
+  color: #cbd5e1 !important;
+}
+
+.report-dark .text-slate-500,
+.report-dark .text-slate-400,
+.report-dark .text-neutral-500,
+.report-dark .text-neutral-400 {
+  color: #94a3b8 !important;
+}
+
+.report-dark .bg-slate-900 {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.report-dark textarea,
+.report-dark input,
+.report-dark select {
+  background-color: #1e2230 !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.report-dark .recharts-cartesian-grid-horizontal line,
+.report-dark .recharts-cartesian-grid-vertical line {
+  stroke: rgba(255, 255, 255, 0.06) !important;
+}
+
+.report-dark .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: #1e2230 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+}
+

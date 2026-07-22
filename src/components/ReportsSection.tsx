@@ -15,7 +15,9 @@ import {
   BarChart3,
   X,
   CheckCircle2,
-  Loader2
+  Loader2,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { cn, formatCurrency, formatDecimal } from '../lib/utils';
 import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns';
@@ -59,6 +61,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [reportMonth, setReportMonth] = useState<string>(format(subMonths(new Date(), 1), 'yyyy-MM'));
   const [reportType, setReportType] = useState<'ecommerce' | 'messaging'>('ecommerce');
+  const [reportTheme, setReportTheme] = useState<'light' | 'dark'>('light');
   const [isReportGenerated, setIsReportGenerated] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
   const [bitacora, setBitacora] = useState<any[]>([]);
@@ -587,10 +590,42 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
             </div>
           </div>
 
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Estilo Visual</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setReportTheme('light')}
+                className={cn(
+                  "py-2.5 px-3 rounded text-[10px] font-black uppercase tracking-wider border transition-all flex items-center justify-center gap-2",
+                  reportTheme === 'light'
+                    ? "bg-white border-white text-slate-900 shadow-md"
+                    : "bg-[#111] border-white/10 text-slate-400 hover:text-white"
+                )}
+              >
+                <Sun className="w-3.5 h-3.5 text-amber-500" />
+                Modo Claro
+              </button>
+              <button
+                type="button"
+                onClick={() => setReportTheme('dark')}
+                className={cn(
+                  "py-2.5 px-3 rounded text-[10px] font-black uppercase tracking-wider border transition-all flex items-center justify-center gap-2",
+                  reportTheme === 'dark'
+                    ? "bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-500/20"
+                    : "bg-[#111] border-white/10 text-slate-400 hover:text-white"
+                )}
+              >
+                <Moon className="w-3.5 h-3.5 text-blue-300" />
+                Modo Oscuro
+              </button>
+            </div>
+          </div>
+
           <button
             onClick={() => setIsReportGenerated(true)}
             className={cn(
-              "mt-4 text-white font-black text-xs uppercase tracking-widest py-4 px-6 rounded-md transition-all shadow-lg flex items-center justify-center gap-2",
+              "mt-4 text-white font-black text-xs uppercase tracking-widest py-4 px-6 rounded-md transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer",
               reportType === 'ecommerce' 
                 ? "bg-blue-600 hover:bg-blue-500 shadow-blue-500/20" 
                 : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20"
@@ -650,7 +685,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
 
           <button
             onClick={() => setIsReportGenerated(false)}
-            className="ml-2 px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest border border-white/10 hover:bg-white/5 text-slate-400 transition-all"
+            className="ml-1 px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest border border-white/10 hover:bg-white/5 text-slate-400 transition-all cursor-pointer"
           >
             Cambiar
           </button>
@@ -664,10 +699,42 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Theme Selector Toggle */}
+          <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-md p-1">
+            <button
+              type="button"
+              onClick={() => setReportTheme('light')}
+              title="Ver informe en Modo Claro"
+              className={cn(
+                "px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer",
+                reportTheme === 'light'
+                  ? "bg-white text-slate-900 shadow"
+                  : "text-slate-400 hover:text-white"
+              )}
+            >
+              <Sun className="w-3 h-3 text-amber-500" />
+              Claro
+            </button>
+            <button
+              type="button"
+              onClick={() => setReportTheme('dark')}
+              title="Ver informe en Modo Oscuro"
+              className={cn(
+                "px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer",
+                reportTheme === 'dark'
+                  ? "bg-blue-600 text-white shadow shadow-blue-500/30"
+                  : "text-slate-400 hover:text-white"
+              )}
+            >
+              <Moon className="w-3 h-3 text-blue-300" />
+              Oscuro
+            </button>
+          </div>
+
           <button 
             onClick={() => setIsEditing(!isEditing)}
             className={cn(
-              "px-4 py-2 rounded-md text-[9px] font-black uppercase tracking-[0.2em] transition-all border",
+              "px-4 py-2 rounded-md text-[9px] font-black uppercase tracking-[0.2em] transition-all border cursor-pointer",
               isEditing 
                 ? "bg-amber-600 border-amber-500 text-white shadow-lg shadow-amber-600/20" 
                 : "bg-white/5 border-white/10 text-neutral-400 hover:bg-white/10"
@@ -678,7 +745,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           
           <button 
             onClick={handlePrint}
-            className="flex items-center gap-2 px-6 py-2 bg-white text-black rounded-md text-[9px] font-black uppercase tracking-[0.2em] hover:bg-neutral-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+            className="flex items-center gap-2 px-5 py-2 bg-white text-black rounded-md text-[9px] font-black uppercase tracking-[0.2em] hover:bg-neutral-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] cursor-pointer"
           >
             <Printer className="w-4 h-4" />
             Exportar / Imprimir
@@ -688,7 +755,10 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
 
       {/* REPORT SURFACE */}
       <div className={cn(
-        "max-w-5xl mx-auto bg-white shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] p-16 md:p-24 text-black print:shadow-none print:p-0 print:max-w-none transition-all duration-500 relative",
+        "max-w-5xl mx-auto p-16 md:p-24 transition-all duration-500 relative print:shadow-none print:p-0 print:max-w-none rounded-2xl",
+        reportTheme === 'dark'
+          ? "report-dark bg-[#0d0f17] text-slate-100 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)] border border-white/10"
+          : "report-light bg-white text-black shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)]",
         (loadingRealData || loadingBitacora) ? "animate-pulse ring-8 ring-blue-500/30 shadow-[0_0_60px_rgba(59,130,246,0.4)] opacity-95 pointer-events-none overflow-hidden" : "opacity-100"
       )}>
         {(loadingRealData || loadingBitacora) && (
