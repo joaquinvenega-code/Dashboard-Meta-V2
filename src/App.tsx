@@ -97,8 +97,8 @@ const matchId = (id1: any, id2: any) => {
 
 export default function App() {
   const [isInitialized, setIsInitialized] = useState(false);
-  const [appId, setAppId] = useState(localStorage.getItem('cr_appid') || '');
-  const [isLogged, setIsLogged] = useState(false);
+  const [appId, setAppId] = useState(() => localStorage.getItem('cr_appid') || '');
+  const [isLogged, setIsLogged] = useState(() => localStorage.getItem('cr_is_logged') === 'true');
   const [user, setUser] = useState<any>(null);
   const [accounts, setAccounts] = useState<AdAccount[]>([]);
   const [loading, setLoading] = useState(false);
@@ -380,14 +380,23 @@ export default function App() {
   }, [activePage, accounts, visibleAccountIds, structure, loadingStructure]);
 
   useEffect(() => {
-    if (appId) {
-      initFacebookSdk(appId).then(() => {
+    if (appId && appId.trim()) {
+      const cleanAppId = appId.trim();
+      localStorage.setItem('cr_appid', cleanAppId);
+      initFacebookSdk(cleanAppId).then(() => {
         setIsInitialized(true);
         getFacebookLoginStatus().then((res) => {
-          if (res.status === 'connected') {
+          if (res.status === 'connected' || localStorage.getItem('cr_is_logged') === 'true') {
+            handleLoginSuccess();
+          }
+        }).catch(() => {
+          if (localStorage.getItem('cr_is_logged') === 'true') {
             handleLoginSuccess();
           }
         });
+      }).catch(err => {
+        console.error("Meta SDK init error:", err);
+        setIsInitialized(true);
       });
     } else {
       setIsInitialized(true);
@@ -396,13 +405,18 @@ export default function App() {
 
   const handleLoginSuccess = async () => {
     setIsLogged(true);
+    localStorage.setItem('cr_is_logged', 'true');
     setLoading(true);
     try {
       const profile = await getUserProfile();
       setUser(profile);
       await loadData();
     } catch (err: any) {
-      setError(err.message);
+      console.error("Login success error:", err);
+      // If session expired, reset logged state but keep saved Meta App ID
+      localStorage.removeItem('cr_is_logged');
+      setIsLogged(false);
+      setError(err?.message || 'La sesión con Meta Ads expiró. Haz clic en "Ingresar con Facebook" para reconectar.');
     } finally {
       setLoading(false);
     }
@@ -468,22 +482,32 @@ export default function App() {
   }, [dateRange, isLogged]);
 
   const onLogin = async () => {
-    if (!appId) {
+    if (!appId || !appId.trim()) {
       setError('Por favor, ingresa un App ID válido');
       return;
     }
-    localStorage.setItem('cr_appid', appId);
+    const cleanAppId = appId.trim();
+    setAppId(cleanAppId);
+    localStorage.setItem('cr_appid', cleanAppId);
+    setError(null);
+    setLoading(true);
     try {
+      await initFacebookSdk(cleanAppId);
       await loginWithFacebook();
-      handleLoginSuccess();
+      await handleLoginSuccess();
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Error al conectar con Facebook');
+    } finally {
+      setLoading(false);
     }
   };
 
   const onLogout = () => {
-    localStorage.removeItem('cr_appid');
-    window.location.reload();
+    localStorage.removeItem('cr_is_logged');
+    setIsLogged(false);
+    setUser(null);
+    setAccounts([]);
+    // Do NOT remove cr_appid so the user never has to re-type their Meta App ID!
   };
 
   const updateSetting = (id: string, field: keyof AccountSettings, value: any) => {
@@ -708,7 +732,15 @@ export default function App() {
               <input 
                 type="text" 
                 value={appId}
-                onChange={(e) => setAppId(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setAppId(val);
+                  if (val.trim()) {
+                    localStorage.setItem('cr_appid', val.trim());
+                  } else {
+                    localStorage.removeItem('cr_appid');
+                  }
+                }}
                 placeholder="ID de tu app..."
                 className="w-full px-5 py-4 bg-neutral-900 border border-white/5 rounded-2xl outline-none focus:ring-2 focus:ring-blue-600 font-bold transition-all text-neutral-200 placeholder:text-neutral-700"
               />
@@ -1501,6 +1533,26 @@ export default function App() {
                     </div>
 
                     <div className="space-y-6">
+                      <div>
+                        <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Meta App ID (Guardado Permanente)</label>
+                        <input
+                          type="text"
+                          value={appId}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setAppId(val);
+                            if (val.trim()) {
+                              localStorage.setItem('cr_appid', val.trim());
+                            } else {
+                              localStorage.removeItem('cr_appid');
+                            }
+                          }}
+                          placeholder="ID de tu App de Meta..."
+                          className="w-full bg-black/40 border border-white/5 rounded-xl py-3 px-4 text-sm text-white placeholder-neutral-700 outline-none focus:border-blue-600/50 transition-all font-bold shadow-inner"
+                        />
+                        <p className="text-[10px] text-neutral-500 mt-1 font-medium">Este App ID se almacena localmente y se conservará automáticamente cada vez que recargues la página.</p>
+                      </div>
+
                       <div>
                         <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Nombre de la Agencia o Profesional</label>
                         <input
