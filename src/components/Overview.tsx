@@ -85,7 +85,7 @@ export function Overview({ accounts, settings, dateRange, clientCategories, load
     ...clientCategories.map(cat => ({ id: cat.id, label: cat.name }))
   ];
 
-  if (loading || (totalSpendGlobal === 0 && totalRevenueGlobal === 0)) {
+  if (loading) {
     return <RocketLoader />;
   }
 

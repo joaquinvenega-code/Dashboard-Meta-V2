@@ -83,7 +83,14 @@ async function fetchAllPages(url: string, params: any): Promise<any[]> {
     const response: any = await new Promise((resolve, reject) => {
       window.FB.api(nextUrl, 'GET', nextParams, (res: any) => {
         if (!res) reject(new Error('No response from Meta API'));
-        if (res.error) reject(new Error(res.error.message || JSON.stringify(res.error)));
+        if (res.error) {
+          const rawMessage = res.error.message || JSON.stringify(res.error);
+          if (rawMessage.toLowerCase().includes('unexpected error') || res.error.code === 1 || res.error.code === 2 || res.error.code === 190) {
+            reject(new Error('La sesión con Meta Ads ha expirado o la API de Facebook ha devuelto una respuesta inesperada. Por favor reconecta tu cuenta de Facebook.'));
+          } else {
+            reject(new Error(rawMessage));
+          }
+        }
         resolve(res);
       });
     });

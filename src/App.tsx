@@ -1043,8 +1043,94 @@ export default function App() {
             )}
           </div>
 
-          {loading || overviewEntities.length === 0 ? (
+          {loading ? (
             <RocketLoader />
+          ) : error && overviewEntities.length === 0 ? (
+            <div className="bg-[#111] border border-red-500/20 rounded-[2.5rem] p-10 text-center my-8 max-w-xl mx-auto shadow-2xl animate-in fade-in duration-500">
+              <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mx-auto text-red-500 mb-6">
+                <AlertCircle className="w-8 h-8" />
+              </div>
+              <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2">Error de Sincronización con Meta Ads</h3>
+              <p className="text-xs font-medium text-neutral-300 leading-relaxed mb-4">
+                {error}
+              </p>
+              <p className="text-[11px] text-neutral-500 mb-6 leading-relaxed">
+                Esto ocurre habitualmente cuando la sesión de Facebook expira o la API de Meta requiere renovar la autorización de acceso.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  onClick={async () => {
+                    setError(null);
+                    setLoading(true);
+                    try {
+                      await loginWithFacebook();
+                      handleLoginSuccess();
+                    } catch (err: any) {
+                      setError(err.message || 'Error al conectar con Facebook');
+                      setLoading(false);
+                    }
+                  }}
+                  className="w-full sm:w-auto px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 active:scale-95 cursor-pointer"
+                >
+                  <Facebook className="w-4 h-4 fill-current" />
+                  Reconectar Meta Ads
+                </button>
+                <button
+                  onClick={() => {
+                    setError(null);
+                    loadData();
+                  }}
+                  className="w-full sm:w-auto px-6 py-3.5 bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-black rounded-xl border border-white/10 uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                >
+                  <RefreshCcw className="w-4 h-4" />
+                  Reintentar Sincronización
+                </button>
+              </div>
+            </div>
+          ) : overviewEntities.length === 0 ? (
+            <div className="bg-[#111] border border-white/5 rounded-[2.5rem] p-10 text-center my-8 max-w-xl mx-auto shadow-2xl animate-in fade-in duration-500">
+              <div className="w-16 h-16 bg-blue-600/10 border border-blue-600/20 rounded-2xl flex items-center justify-center mx-auto text-blue-500 mb-6">
+                <Facebook className="w-8 h-8 opacity-80" />
+              </div>
+              <h3 className="text-lg font-black text-white uppercase tracking-wider mb-2">No hay cuentas publicitarias visibles</h3>
+              <p className="text-xs font-medium text-neutral-400 leading-relaxed mb-6">
+                {accounts.length === 0 
+                  ? "No se encontraron cuentas publicitarias vinculadas a tu perfil de Meta Ads."
+                  : `Se detectaron ${accounts.length} cuentas de Meta Ads, pero ninguna está seleccionada en 'Cuentas Visibles'.`}
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                {accounts.length > 0 ? (
+                  <button
+                    onClick={() => {
+                      const allIds = accounts.map(a => a.id);
+                      setVisibleAccountIds(allIds);
+                      localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
+                    }}
+                    className="w-full sm:w-auto px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 active:scale-95 cursor-pointer"
+                  >
+                    Mostrar todas las cuentas ({accounts.length})
+                  </button>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      setError(null);
+                      setLoading(true);
+                      try {
+                        await loginWithFacebook();
+                        handleLoginSuccess();
+                      } catch (err: any) {
+                        setError(err.message || 'Error al conectar con Facebook');
+                        setLoading(false);
+                      }
+                    }}
+                    className="w-full sm:w-auto px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 active:scale-95 cursor-pointer"
+                  >
+                    <Facebook className="w-4 h-4 fill-current" />
+                    Reconectar con Facebook
+                  </button>
+                )}
+              </div>
+            </div>
           ) : (
             <>
               {activePage === 'overview' && (
