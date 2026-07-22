@@ -21,8 +21,8 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
   data,
 }) => {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm h-full flex flex-col">
-      <div className="px-6 py-5 border-b border-slate-50 flex items-center justify-between">
+    <div className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm h-full flex flex-col">
+      <div className="px-8 py-6 border-b border-slate-50 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
             <Share2 className="w-4 h-4 text-blue-600" />
@@ -38,8 +38,8 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
         </div>
       </div>
 
-      <div className="p-6 print:p-4 flex flex-col justify-between flex-1">
-        <div className="w-full h-[260px] print:hidden flex items-center justify-center py-2">
+      <div className="p-8 print:p-4 flex flex-col justify-between flex-1">
+        <div className="w-full h-[320px] print:hidden flex items-center justify-center py-1">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -47,8 +47,8 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
                 isAnimationActive={false}
                 cx="50%"
                 cy="50%"
-                innerRadius={55}
-                outerRadius={85}
+                innerRadius={70}
+                outerRadius={112}
                 paddingAngle={4}
                 dataKey="value"
                 label={({
@@ -70,13 +70,13 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
                       fill="#64748b"
                       textAnchor={textAnchor}
                       dominantBaseline="central"
-                      className="text-[10px] font-black"
+                      className="text-[11px] font-black"
                     >
                       {`${value}%`}
                     </text>
                   );
                 }}
-                labelLine={{ stroke: "#cbd5e1", strokeWidth: 1 }}
+                labelLine={{ stroke: "#cbd5e1", strokeWidth: 1.5 }}
               >
                 {data.map((entry, index) => (
                   <Cell
@@ -92,7 +92,7 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
                   border: "1px solid #f1f5f9",
                   borderRadius: "12px",
                   boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
-                  fontSize: "10px",
+                  fontSize: "11px",
                   fontWeight: 700,
                 }}
               />
@@ -101,15 +101,15 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
         </div>
 
         {/* PRINT ONLY FIXED LAYOUT CHART */}
-        <div className="hidden print:flex w-full h-[220px] justify-center items-center mt-4">
-          <PieChart width={340} height={220}>
+        <div className="hidden print:flex w-full h-[260px] justify-center items-center mt-2">
+          <PieChart width={380} height={260}>
             <Pie
               data={data}
               isAnimationActive={false}
               cx="50%"
               cy="50%"
-              innerRadius={55}
-              outerRadius={85}
+              innerRadius={70}
+              outerRadius={112}
               paddingAngle={4}
               dataKey="value"
               label={({
@@ -131,13 +131,13 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
                     fill="#64748b"
                     textAnchor={textAnchor}
                     dominantBaseline="central"
-                    className="text-[10px] font-black"
+                    className="text-[11px] font-black"
                   >
                     {`${value}%`}
                   </text>
                 );
               }}
-              labelLine={{ stroke: "#cbd5e1", strokeWidth: 1 }}
+              labelLine={{ stroke: "#cbd5e1", strokeWidth: 1.5 }}
             >
               {data.map((entry, index) => (
                 <Cell
@@ -150,10 +150,10 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
           </PieChart>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 mt-4 print:mt-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-2 mt-4 print:mt-2">
           {data.map((entry, index) => (
             <div key={`legend-${index}`} className="flex items-center gap-2">
-              <svg className="w-2 h-2 shrink-0" viewBox="0 0 8 8">
+              <svg className="w-2.5 h-2.5 shrink-0" viewBox="0 0 8 8">
                 <circle cx="4" cy="4" r="4" fill={entry.color} />
               </svg>
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight truncate">
@@ -164,7 +164,7 @@ export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
         </div>
       </div>
 
-      <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 mt-auto">
+      <div className="bg-slate-50 px-8 py-3 border-t border-slate-100 mt-auto">
         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-center">
           Basado en conversiones atribuidas en los últimos 30 días
         </p>
