@@ -139,7 +139,7 @@ export const RocketLoader = () => (
   </div>
 );
 import { cn, calculateEffectiveBalance } from '../lib/utils';
-import { startOfMonth, endOfMonth, differenceInDays, addDays, subDays } from 'date-fns';
+import { startOfMonth, endOfMonth, differenceInDays, addDays, subDays, isSameMonth, isSameYear } from 'date-fns';
 import { OfflineSalesManager } from './OfflineSalesManager';
 import { 
   AreaChart, 
@@ -1241,6 +1241,153 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     );
   };
 
+  const MonthBitacoraTimeline: React.FC<{
+    accountId: string;
+    notes: AccountNote[];
+    observations?: string;
+    accountName?: string;
+  }> = ({ accountId, notes, observations, accountName }) => {
+    const now = new Date();
+    const currentMonthYearTitle = format(now, "MMMM 'de' yyyy", { locale: es }).toUpperCase();
+    const currentMonthShort = format(now, "MMMM yyyy", { locale: es });
+
+    const currentMonthNotes = React.useMemo(() => {
+      return notes.filter(n => {
+        if (n.accountId !== accountId) return false;
+        try {
+          const d = parseISO(n.timestamp);
+          return isSameMonth(d, now) && isSameYear(d, now);
+        } catch {
+          return false;
+        }
+      }).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    }, [notes, accountId, now]);
+
+    const hasNotes = currentMonthNotes.length > 0;
+    const hasObs = Boolean(observations && observations.trim().length > 0);
+
+    return (
+      <div className="space-y-4 print:break-inside-avoid print:my-4">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-white/10 pb-3 print:border-neutral-200">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-500 flex items-center justify-center shrink-0 print:bg-blue-50 print:border-blue-200 print:text-blue-600">
+              <History className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-xs font-black text-white uppercase tracking-widest print:text-neutral-900 print:text-sm">
+                  Bitácora Estratégica del Mes en Curso
+                </h3>
+                <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-blue-500/10 text-blue-400 border border-blue-500/20 print:bg-blue-100 print:text-blue-800 print:border-blue-300">
+                  {currentMonthYearTitle}
+                </span>
+              </div>
+              <p className="text-[9px] font-bold text-neutral-500 uppercase tracking-wider print:text-neutral-600 print:text-[8px] mt-0.5">
+                Historial de hitos, experimentos y notas operativas del cliente ({accountName})
+              </p>
+            </div>
+          </div>
+
+          <div className="hidden print:flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-[8px] font-black uppercase tracking-widest border border-neutral-200">
+            <Calendar className="w-3 h-3 text-blue-600" />
+            <span>Mes Activo: {currentMonthShort}</span>
+          </div>
+        </div>
+
+        {/* Timeline container */}
+        <div className="bg-[#111] rounded-2xl border border-white/5 p-5 print:bg-white print:border-neutral-200 print:p-4 print:rounded-xl relative">
+          {!hasNotes && !hasObs ? (
+            <div className="py-6 text-center">
+              <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest print:text-neutral-600">
+                Sin observaciones ni hitos registrados en la bitácora para el mes en curso ({currentMonthShort})
+              </p>
+            </div>
+          ) : (
+            <div className="relative pl-6 sm:pl-8 space-y-5 before:absolute before:left-2.5 sm:before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gradient-to-b before:from-blue-500 before:via-purple-500 before:to-blue-500/20 print:before:bg-blue-300">
+              {/* General observations block if present */}
+              {hasObs && (
+                <div className="relative group">
+                  <div className="absolute -left-6 sm:-left-8 top-0.5 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[9px] font-black shadow-md border-2 border-[#111] print:border-white print:bg-blue-600">
+                    ★
+                  </div>
+                  
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 print:bg-neutral-50 print:border-neutral-200 print:shadow-sm">
+                    <div className="flex items-center justify-between mb-1.5 border-b border-white/5 pb-1 print:border-neutral-200">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-blue-400 print:text-blue-700 flex items-center gap-1.5">
+                        <FileText className="w-3 h-3" /> Observaciones y Hoja de Ruta
+                      </span>
+                      <span className="text-[8px] font-bold text-neutral-500 uppercase tracking-wider print:text-neutral-500">
+                        Resumen del Mes ({currentMonthShort})
+                      </span>
+                    </div>
+                    <p className="text-xs text-neutral-300 leading-relaxed font-medium whitespace-pre-wrap print:text-neutral-800 print:text-[10px]">
+                      {observations}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Individual logged notes for current month */}
+              {currentMonthNotes.map((note, index) => {
+                let noteDate = now;
+                try {
+                  noteDate = parseISO(note.timestamp);
+                } catch {
+                  noteDate = now;
+                }
+                const formattedDateStr = format(noteDate, "dd 'de' MMMM", { locale: es });
+                const formattedTimeStr = format(noteDate, "HH:mm");
+
+                let categoryBadge = "bg-blue-500/10 text-blue-400 border-blue-500/20 print:bg-blue-50 print:text-blue-700 print:border-blue-200";
+                let categoryLabel = "Optimización";
+
+                if (note.category === 'change') {
+                  categoryBadge = "bg-purple-500/10 text-purple-400 border-purple-500/20 print:bg-purple-50 print:text-purple-700 print:border-purple-200";
+                  categoryLabel = "Ajuste de Pauta";
+                } else if (note.category === 'meeting') {
+                  categoryBadge = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 print:bg-emerald-50 print:text-emerald-700 print:border-emerald-200";
+                  categoryLabel = "Reunión";
+                } else if (note.category === 'urgent') {
+                  categoryBadge = "bg-red-500/10 text-red-400 border-red-500/20 print:bg-red-50 print:text-red-700 print:border-red-200";
+                  categoryLabel = "Aviso Clave";
+                }
+
+                return (
+                  <div key={note.id || index} className="relative group">
+                    <div className="absolute -left-6 sm:-left-8 top-1 w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[8px] font-black shadow-[0_0_8px_rgba(59,130,246,0.5)] border-2 border-[#111] print:border-white print:bg-blue-500 print:shadow-none">
+                      {index + 1}
+                    </div>
+
+                    <div className="bg-black/40 border border-white/5 rounded-xl p-3.5 hover:border-white/10 transition-all print:bg-neutral-50 print:border-neutral-200 print:shadow-sm">
+                      <div className="flex items-center justify-between mb-1.5 border-b border-white/5 pb-1 print:border-neutral-200">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black text-white tracking-wider uppercase print:text-neutral-900">
+                            {formattedDateStr}
+                          </span>
+                          <span className="text-[8px] font-bold text-neutral-500 uppercase print:text-neutral-400">
+                            {formattedTimeStr} hs
+                          </span>
+                        </div>
+                        <span className={cn("px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border", categoryBadge)}>
+                          {categoryLabel}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-neutral-300 leading-relaxed font-medium whitespace-pre-wrap print:text-neutral-800 print:text-[10px]">
+                        {note.text}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
       {/* Top Toolbar */}
@@ -1895,6 +2042,16 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                    <AdCard key={ad.id} ad={ad} rank={idx + 1} />
                  ))}
                </div>
+            </div>
+
+            {/* Bitácora Ilustrada del Mes en Curso */}
+            <div className="mt-8 pt-6 border-t border-white/5 print:border-neutral-200 print:mt-6 print:pt-4 print:break-inside-avoid">
+              <MonthBitacoraTimeline 
+                accountId={selectedId}
+                notes={notes}
+                observations={observations}
+                accountName={settings[selectedAccount.id]?.customName || selectedAccount.name}
+              />
             </div>
 
             {/* Print Only Footer */}
