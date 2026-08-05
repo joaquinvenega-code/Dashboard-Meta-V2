@@ -169,6 +169,7 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
   dateRange,
   loading = false,
 }) => {
+  const isMessaging = settings?.tracking === 'messaging';
   const currency = settings?.currency || account.currency || 'ARS';
 
   // Active metric tab toggle: 'messages' | 'leads' | 'purchases'
@@ -178,8 +179,15 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
     if (settings?.tracking === 'ecommerce') return 'purchases';
     if (account.leads && account.leads > 0) return 'leads';
     if (account.messagesReal || account.messages) return 'messages';
-    return 'purchases';
+    return isMessaging ? 'messages' : 'purchases';
   });
+
+  // Ensure messaging client doesn't stay on purchases
+  React.useEffect(() => {
+    if (isMessaging && activeMetric === 'purchases') {
+      setActiveMetric('messages');
+    }
+  }, [isMessaging, activeMetric]);
 
   // Selected overlay toggles
   const [showCostOverlay, setShowCostOverlay] = useState<boolean>(true);
@@ -343,32 +351,32 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
   };
 
   return (
-    <div className="bg-[#111] rounded-2xl border border-white/5 p-4 shadow-2xl relative overflow-hidden group print:bg-white print:border-neutral-200 print:shadow-none mb-4">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4 border-b border-white/5 pb-3">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+    <div className="bg-[#111] rounded-2xl border border-white/5 p-4 print:p-2.5 shadow-2xl relative overflow-hidden group print:bg-white print:border-neutral-200 print:shadow-none mb-4 print:mb-2">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4 print:mb-2 border-b border-white/5 print:border-neutral-200 pb-3 print:pb-1 text-white print:text-black">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 print:gap-2">
           <div className={cn(
-            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border shadow-lg",
+            "w-10 h-10 print:w-7 print:h-7 rounded-xl flex items-center justify-center shrink-0 border shadow-lg",
             metricMeta.badgeStyle
           )}>
             {metricMeta.icon}
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h4 className="text-xs font-black text-white uppercase tracking-wider print:text-black">
+              <h4 className="text-xs print:text-[10px] font-black uppercase tracking-wider text-white print:text-black">
                 {metricMeta.label} a lo largo del tiempo
               </h4>
-              <span className={cn("px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border", metricMeta.badgeStyle)}>
+              <span className={cn("px-2 py-0.5 rounded text-[8px] print:text-[7px] font-black uppercase tracking-widest border", metricMeta.badgeStyle)}>
                 {settings?.tracking === 'leads' ? 'Clientes Potenciales' : settings?.tracking === 'messaging' ? 'Mensajería' : settings?.tracking === 'all' ? 'Multicanal' : 'Ventas Web'}
               </span>
             </div>
-            <p className="text-[9px] text-neutral-500 font-medium mt-0.5">
+            <p className="text-[9px] print:text-[7.5px] text-neutral-500 font-medium mt-0.5 print:mt-0">
               Evolución diaria por cliente ({dateRange.since} al {dateRange.until})
             </p>
           </div>
         </div>
 
         {/* Metric Selector Pills */}
-        <div className="flex items-center gap-1.5 bg-black/60 p-1 rounded-xl border border-white/10 self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 bg-black/60 p-1 rounded-xl border border-white/10 self-start sm:self-auto print:hidden">
           <button
             onClick={() => setActiveMetric('messages')}
             className={cn(
@@ -397,56 +405,58 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
             <span>Leads ({totalLeadsAcc})</span>
           </button>
 
-          <button
-            onClick={() => setActiveMetric('purchases')}
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all",
-              activeMetric === 'purchases'
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
-                : "text-neutral-400 hover:text-white hover:bg-white/5"
-            )}
-            title="Ver gráfico de Compras Web"
-          >
-            <ShoppingCart className="w-3.5 h-3.5" />
-            <span>Ventas ({totalPurchasesAcc})</span>
-          </button>
+          {!isMessaging && (
+            <button
+              onClick={() => setActiveMetric('purchases')}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all",
+                activeMetric === 'purchases'
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                  : "text-neutral-400 hover:text-white hover:bg-white/5"
+              )}
+              title="Ver gráfico de Compras Web"
+            >
+              <ShoppingCart className="w-3.5 h-3.5" />
+              <span>Ventas ({totalPurchasesAcc})</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Summary metric badges row */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-4 bg-black/40 p-2.5 rounded-xl border border-white/5">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-center">
-            <div className="text-[7px] font-black text-purple-300 uppercase tracking-widest">Total Mensajes</div>
-            <div className="text-xs font-black text-purple-400">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4 print:mb-2 bg-black/40 print:bg-neutral-50 p-2.5 print:p-1.5 rounded-xl border border-white/5 print:border-neutral-200">
+        <div className="flex flex-wrap items-center gap-3 print:gap-2">
+          <div className="px-2.5 py-1 print:px-2 print:py-0.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-center">
+            <div className="text-[7px] print:text-[6.5px] font-black text-purple-300 print:text-purple-700 uppercase tracking-widest">Total Mensajes</div>
+            <div className="text-xs print:text-[10px] font-black text-purple-400 print:text-purple-800">
               {totalMessagesAcc.toLocaleString('es-AR')}
-              <span className="text-[8px] text-purple-300/70 ml-1 font-bold">
+              <span className="text-[8px] print:text-[7px] text-purple-300/70 print:text-purple-600 ml-1 font-bold">
                 ({totalMessagesAcc > 0 ? formatCurrency(totalSpendAcc / totalMessagesAcc, currency) : '—'}/msg)
               </span>
             </div>
           </div>
 
-          <div className="px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
-            <div className="text-[7px] font-black text-amber-300 uppercase tracking-widest">Clientes Potenciales</div>
-            <div className="text-xs font-black text-amber-400">
+          <div className="px-2.5 py-1 print:px-2 print:py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
+            <div className="text-[7px] print:text-[6.5px] font-black text-amber-300 print:text-amber-700 uppercase tracking-widest">Clientes Potenciales</div>
+            <div className="text-xs print:text-[10px] font-black text-amber-400 print:text-amber-800">
               {totalLeadsAcc.toLocaleString('es-AR')}
-              <span className="text-[8px] text-amber-300/70 ml-1 font-bold">
+              <span className="text-[8px] print:text-[7px] text-amber-300/70 print:text-amber-600 ml-1 font-bold">
                 ({totalLeadsAcc > 0 ? formatCurrency(totalSpendAcc / totalLeadsAcc, currency) : '—'}/lead)
               </span>
             </div>
           </div>
 
-          <div className="px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-center">
-            <div className="text-[7px] font-black text-blue-300 uppercase tracking-widest">Promedio Diario ({metricMeta.shortLabel})</div>
-            <div className="text-xs font-black text-white">
+          <div className="px-2.5 py-1 print:px-2 print:py-0.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-center">
+            <div className="text-[7px] print:text-[6.5px] font-black text-blue-300 print:text-blue-700 uppercase tracking-widest">Promedio Diario ({metricMeta.shortLabel})</div>
+            <div className="text-xs print:text-[10px] font-black text-white print:text-neutral-900">
               {avgDaily} /día
             </div>
           </div>
 
           {peakDay && peakDay.primaryValue > 0 && (
-            <div className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-center hidden sm:block">
-              <div className="text-[7px] font-black text-emerald-300 uppercase tracking-widest">Día Pico ({peakDay.formattedDate})</div>
-              <div className="text-xs font-black text-emerald-400">
+            <div className="px-2.5 py-1 print:px-2 print:py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-center hidden sm:block">
+              <div className="text-[7px] print:text-[6.5px] font-black text-emerald-300 print:text-emerald-700 uppercase tracking-widest">Día Pico ({peakDay.formattedDate})</div>
+              <div className="text-xs print:text-[10px] font-black text-emerald-400 print:text-emerald-800">
                 {peakDay.primaryValue.toLocaleString('es-AR')} {metricMeta.shortLabel.toLowerCase()}
               </div>
             </div>
@@ -456,7 +466,7 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
         <button
           onClick={() => setShowCostOverlay(!showCostOverlay)}
           className={cn(
-            "px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-wider border transition-all",
+            "px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-wider border transition-all print:hidden",
             showCostOverlay 
               ? "bg-white/10 text-white border-white/20" 
               : "bg-black/20 text-neutral-500 border-white/5 hover:text-neutral-300"
@@ -467,7 +477,7 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
       </div>
 
       {/* Responsive Chart */}
-      <div className="h-44 w-full relative">
+      <div className="h-44 print:h-28 w-full relative">
         {loading ? (
           <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-neutral-500">
             <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
@@ -1275,23 +1285,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
               <History className="w-4 h-4" />
             </div>
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-xs font-black text-white uppercase tracking-widest print:text-neutral-900 print:text-sm">
-                  Bitácora Estratégica del Mes en Curso
-                </h3>
-                <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-blue-500/10 text-blue-400 border border-blue-500/20 print:bg-blue-100 print:text-blue-800 print:border-blue-300">
-                  {currentMonthYearTitle}
-                </span>
-              </div>
-              <p className="text-[9px] font-bold text-neutral-500 uppercase tracking-wider print:text-neutral-600 print:text-[8px] mt-0.5">
-                Historial de hitos, experimentos y notas operativas del cliente ({accountName})
-              </p>
+              <h3 className="text-xs font-black text-white uppercase tracking-widest print:text-neutral-900 print:text-sm">
+                Bitácora de cambios y acciones
+              </h3>
             </div>
-          </div>
-
-          <div className="hidden print:flex items-center gap-1.5 px-3 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-[8px] font-black uppercase tracking-widest border border-neutral-200">
-            <Calendar className="w-3 h-3 text-blue-600" />
-            <span>Mes Activo: {currentMonthShort}</span>
           </div>
         </div>
 
