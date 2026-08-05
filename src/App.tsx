@@ -2105,9 +2105,11 @@ export default function App() {
                         defaultValue={overviewSettings[configEntity.id]?.tracking || 'ecommerce'}
                         className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
                       >
-                        <option value="ecommerce">Solo E-commerce</option>
+                        <option value="ecommerce">Solo E-commerce (Ventas Web)</option>
                         <option value="messaging">Solo Mensajes</option>
-                        <option value="both">Ambos (Ecom + Msg)</option>
+                        <option value="leads">Solo Clientes Potenciales (Leads)</option>
+                        <option value="both">E-commerce + Mensajes</option>
+                        <option value="all">Todos (Ventas + Mensajes + Leads)</option>
                       </select>
                     </div>
                   </div>

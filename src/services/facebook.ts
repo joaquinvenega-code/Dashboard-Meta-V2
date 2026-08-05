@@ -171,6 +171,7 @@ export async function fetchInsights(accountId: string, since: string, until: str
   const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase');
   const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase');
   const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') || getAction(d.actions, 'onsite_conversion.total_messaging_connection');
+  const leads = getAction(d.actions, 'lead') || getAction(d.actions, 'offsite_conversion.fb_pixel_lead') || getAction(d.actions, 'onsite_conversion.lead_grouped') || getAction(d.actions, 'leadgen_grouped');
 
   // Fetch real messaging data if needed
   const msgData = await fetchMessagingCampaignInsights(accountId, since, until);
@@ -188,6 +189,8 @@ export async function fetchInsights(accountId: string, since: string, until: str
     costPerPurchase: purchases > 0 ? spend / purchases : 0,
     messages,
     costPerMessage: messages > 0 ? spend / messages : 0,
+    leads,
+    costPerLead: leads > 0 ? spend / leads : 0,
     ...msgData,
   };
 }
@@ -287,6 +290,8 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase');
       const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') ||
                        getAction(d.actions, 'onsite_conversion.total_messaging_connection');
+      const leads = getAction(d.actions, 'lead') || getAction(d.actions, 'offsite_conversion.fb_pixel_lead') || getAction(d.actions, 'onsite_conversion.lead_grouped') || getAction(d.actions, 'leadgen_grouped');
+      const costPerLead = leads > 0 ? spend / leads : 0;
       const roas = spend > 0 ? revenue / spend : 0;
       return {
         id: d.ad_id,
@@ -296,6 +301,8 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         purchases,
         revenue,
         messages,
+        leads,
+        costPerLead,
         ctr: parseFloat(d.ctr) || 0,
         roas,
         thumbnail: null,
@@ -659,11 +666,12 @@ export async function fetchDailySeries(accountId: string, since: string, until: 
       const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase');
       const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') ||
                        getAction(d.actions, 'onsite_conversion.total_messaging_connection');
+      const leads = getAction(d.actions, 'lead') || getAction(d.actions, 'offsite_conversion.fb_pixel_lead') || getAction(d.actions, 'onsite_conversion.lead_grouped') || getAction(d.actions, 'leadgen_grouped') || 0;
       const clicks = parseInt(d.clicks) || 0;
       const roas = spend > 0 ? revenue / spend : 0;
       const adId = d.ad_id;
       if (!byAd[adId]) byAd[adId] = [];
-      byAd[adId].push({ date: d.date_start, spend, purchases, revenue, messages, clicks, roas });
+      byAd[adId].push({ date: d.date_start, spend, purchases, revenue, messages, leads, costPerLead: leads > 0 ? spend / leads : 0, clicks, roas });
     });
     Object.keys(byAd).forEach((k) => byAd[k].sort((a, b) => a.date.localeCompare(b.date)));
   }
@@ -693,6 +701,7 @@ export async function fetchAccountDailyPerformance(accountId: string, since: str
     const atc = getAction(d.actions, 'add_to_cart') || getAction(d.actions, 'offsite_conversion.fb_pixel_add_to_cart');
     const viewContent = getAction(d.actions, 'view_content') || getAction(d.actions, 'offsite_conversion.fb_pixel_view_content');
     const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') || getAction(d.actions, 'onsite_conversion.total_messaging_connection') || 0;
+    const leads = getAction(d.actions, 'lead') || getAction(d.actions, 'offsite_conversion.fb_pixel_lead') || getAction(d.actions, 'onsite_conversion.lead_grouped') || getAction(d.actions, 'leadgen_grouped') || 0;
 
     return {
       date: d.date_start, // usually "YYYY-MM-DD"
@@ -703,7 +712,9 @@ export async function fetchAccountDailyPerformance(accountId: string, since: str
       impressions,
       atc,
       viewContent,
-      messages
+      messages,
+      leads,
+      costPerLead: leads > 0 ? spend / leads : 0
     };
   }).sort((a: any, b: any) => a.date.localeCompare(b.date));
 }

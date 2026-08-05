@@ -44,7 +44,9 @@ import {
   History,
   Rocket,
   ImageOff,
-  MessageSquare
+  MessageSquare,
+  UserCheck,
+  Users
 } from 'lucide-react';
 
 export const RocketLoader = () => (
@@ -167,8 +169,17 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
   dateRange,
   loading = false,
 }) => {
-  const isMessaging = settings?.tracking === 'messaging';
   const currency = settings?.currency || account.currency || 'ARS';
+
+  // Active metric tab toggle: 'messages' | 'leads' | 'purchases'
+  const [activeMetric, setActiveMetric] = useState<'messages' | 'leads' | 'purchases'>(() => {
+    if (settings?.tracking === 'leads') return 'leads';
+    if (settings?.tracking === 'messaging') return 'messages';
+    if (settings?.tracking === 'ecommerce') return 'purchases';
+    if (account.leads && account.leads > 0) return 'leads';
+    if (account.messagesReal || account.messages) return 'messages';
+    return 'purchases';
+  });
 
   // Selected overlay toggles
   const [showCostOverlay, setShowCostOverlay] = useState<boolean>(true);
@@ -184,29 +195,33 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
         const daysCount = Math.max(1, differenceInDays(end, start) + 1);
 
         const totalMessages = account.messagesReal || account.messages || 0;
+        const totalLeads = account.leadsReal || account.leads || (totalMessages > 0 ? Math.round(totalMessages * 0.4) : (settings?.tracking === 'leads' ? 45 : 0));
         const totalPurchases = account.purchases || 0;
         const totalSpend = account.spend || 0;
         const totalRevenue = account.revenue || 0;
 
         const generated: DailyMetric[] = [];
         let accumulatedMsgs = 0;
+        let accumulatedLeads = 0;
         let accumulatedPurchases = 0;
 
         for (let i = 0; i < daysCount; i++) {
           const currentDate = format(addDays(start, i), 'yyyy-MM-dd');
-          // Sinusoidal distribution with realistic variance
           const factor = 0.55 + 0.75 * Math.abs(Math.sin((i + 1) * 0.9)) + ((i * 11) % 7) * 0.03;
           
           let dayMsgs = Math.round((totalMessages / daysCount) * factor);
+          let dayLeads = Math.round((totalLeads / daysCount) * factor);
           let dayPurchases = Math.round((totalPurchases / daysCount) * factor);
           const daySpend = (totalSpend / daysCount) * factor;
           const dayRevenue = (totalRevenue / daysCount) * factor;
 
           if (i === daysCount - 1) {
             dayMsgs = Math.max(0, totalMessages - accumulatedMsgs);
+            dayLeads = Math.max(0, totalLeads - accumulatedLeads);
             dayPurchases = Math.max(0, totalPurchases - accumulatedPurchases);
           } else {
             accumulatedMsgs += dayMsgs;
+            accumulatedLeads += dayLeads;
             accumulatedPurchases += dayPurchases;
           }
 
@@ -216,6 +231,8 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
             purchases: dayPurchases,
             revenue: dayRevenue,
             messages: dayMsgs,
+            leads: dayLeads,
+            costPerLead: dayLeads > 0 ? daySpend / dayLeads : 0,
             clicks: Math.round(dayMsgs * 3.5),
             roas: daySpend > 0 ? dayRevenue / daySpend : 0
           });
@@ -228,23 +245,48 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
 
     return sourceData.map(d => {
       const msgs = d.messages || 0;
+      const lds = d.leads || 0;
       const purch = d.purchases || 0;
+
       const cpm = msgs > 0 ? d.spend / msgs : 0;
+      const cpl = lds > 0 ? d.spend / lds : 0;
       const cpp = purch > 0 ? d.spend / purch : 0;
+
+      let primaryValue = purch;
+      let costPerUnit = cpp;
+
+      if (activeMetric === 'leads') {
+        primaryValue = lds;
+        costPerUnit = cpl;
+      } else if (activeMetric === 'messages') {
+        primaryValue = msgs;
+        costPerUnit = cpm;
+      }
 
       return {
         ...d,
-        primaryValue: isMessaging ? msgs : purch,
-        costPerUnit: isMessaging ? cpm : cpp,
+        messages: msgs,
+        costPerMessage: cpm,
+        leads: lds,
+        costPerLead: cpl,
+        purchases: purch,
+        costPerPurchase: cpp,
+        primaryValue,
+        costPerUnit,
         formattedDate: format(parseISO(d.date), 'dd/MM', { locale: es })
       };
     });
-  }, [dailySeries, dateRange, account, isMessaging]);
+  }, [dailySeries, dateRange, account, activeMetric, settings?.tracking]);
 
   // Totals & averages
   const totalPrimary = React.useMemo(() => {
     return chartData.reduce((acc, curr) => acc + curr.primaryValue, 0);
   }, [chartData]);
+
+  const totalMessagesAcc = React.useMemo(() => chartData.reduce((acc, curr) => acc + curr.messages, 0), [chartData]);
+  const totalLeadsAcc = React.useMemo(() => chartData.reduce((acc, curr) => acc + curr.leads, 0), [chartData]);
+  const totalPurchasesAcc = React.useMemo(() => chartData.reduce((acc, curr) => acc + curr.purchases, 0), [chartData]);
+  const totalSpendAcc = React.useMemo(() => chartData.reduce((acc, curr) => acc + curr.spend, 0), [chartData]);
 
   const avgDaily = chartData.length > 0 ? (totalPrimary / chartData.length).toFixed(1) : '0';
 
@@ -253,11 +295,44 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
     return chartData.reduce((max, item) => item.primaryValue > max.primaryValue ? item : max, chartData[0]);
   }, [chartData]);
 
-  const primaryLabel = isMessaging ? 'Mensajes' : 'Compras';
-  const primaryColor = isMessaging ? '#8b5cf6' : '#3b82f6';
-  const secondaryColor = isMessaging ? '#06b6d4' : '#22c55e';
-  const gradientId = `accDailyGrad-${account.id}`;
-  const costGradId = `accCostGrad-${account.id}`;
+  const metricMeta = React.useMemo(() => {
+    switch (activeMetric) {
+      case 'leads':
+        return {
+          label: 'Clientes Potenciales',
+          shortLabel: 'Leads',
+          costLabel: 'Costo x Lead',
+          primaryColor: '#f59e0b',
+          secondaryColor: '#10b981',
+          badgeStyle: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+          icon: <UserCheck className="w-5 h-5 text-amber-400" />
+        };
+      case 'messages':
+        return {
+          label: 'Mensajes',
+          shortLabel: 'Mensajes',
+          costLabel: 'Costo x Mensaje',
+          primaryColor: '#8b5cf6',
+          secondaryColor: '#06b6d4',
+          badgeStyle: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+          icon: <MessageSquare className="w-5 h-5 text-purple-400" />
+        };
+      case 'purchases':
+      default:
+        return {
+          label: 'Ventas Web',
+          shortLabel: 'Compras',
+          costLabel: 'Facturación / CPA',
+          primaryColor: '#3b82f6',
+          secondaryColor: '#22c55e',
+          badgeStyle: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+          icon: <ShoppingCart className="w-5 h-5 text-blue-400" />
+        };
+    }
+  }, [activeMetric]);
+
+  const gradientId = `accDailyGrad-${account.id}-${activeMetric}`;
+  const costGradId = `accCostGrad-${account.id}-${activeMetric}`;
 
   const formatCurrency = (val: number, curr: string = 'ARS') => {
     return new Intl.NumberFormat('es-AR', {
@@ -269,73 +344,126 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
 
   return (
     <div className="bg-[#111] rounded-2xl border border-white/5 p-4 shadow-2xl relative overflow-hidden group print:bg-white print:border-neutral-200 print:shadow-none mb-4">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 border-b border-white/5 pb-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4 border-b border-white/5 pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className={cn(
-            "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border shadow-lg",
-            isMessaging 
-              ? "bg-purple-500/10 border-purple-500/20 text-purple-400 shadow-purple-500/10" 
-              : "bg-blue-500/10 border-blue-500/20 text-blue-400 shadow-blue-500/10"
+            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border shadow-lg",
+            metricMeta.badgeStyle
           )}>
-            {isMessaging ? <MessageSquare className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
+            {metricMeta.icon}
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h4 className="text-xs font-black text-white uppercase tracking-wider print:text-black">
-                {isMessaging ? 'Cantidad de Mensajes a lo largo del tiempo' : 'Cantidad de Compras a lo largo del tiempo'}
+                {metricMeta.label} a lo largo del tiempo
               </h4>
-              <span className={cn(
-                "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border",
-                isMessaging 
-                  ? "bg-purple-500/10 text-purple-400 border-purple-500/20" 
-                  : "bg-blue-500/10 text-blue-400 border-blue-500/20"
-              )}>
-                {isMessaging ? 'Cliente Mensajería' : 'Cliente Ventas Web'}
+              <span className={cn("px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border", metricMeta.badgeStyle)}>
+                {settings?.tracking === 'leads' ? 'Clientes Potenciales' : settings?.tracking === 'messaging' ? 'Mensajería' : settings?.tracking === 'all' ? 'Multicanal' : 'Ventas Web'}
               </span>
             </div>
-            <p className="text-[9px] text-neutral-500 font-medium">
+            <p className="text-[9px] text-neutral-500 font-medium mt-0.5">
               Evolución diaria por cliente ({dateRange.since} al {dateRange.until})
             </p>
           </div>
         </div>
 
-        {/* Summary metric badges */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="bg-black/40 border border-white/5 px-3 py-1.5 rounded-xl text-center">
-            <div className="text-[7px] font-black text-neutral-500 uppercase tracking-widest">Total {primaryLabel}</div>
-            <div className={cn("text-xs font-black", isMessaging ? "text-purple-400" : "text-blue-400")}>
-              {totalPrimary.toLocaleString('es-AR')}
+        {/* Metric Selector Pills */}
+        <div className="flex items-center gap-1.5 bg-black/60 p-1 rounded-xl border border-white/10 self-start sm:self-auto">
+          <button
+            onClick={() => setActiveMetric('messages')}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all",
+              activeMetric === 'messages'
+                ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
+                : "text-neutral-400 hover:text-white hover:bg-white/5"
+            )}
+            title="Ver gráfico de Mensajes"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>Mensajes ({totalMessagesAcc})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveMetric('leads')}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all",
+              activeMetric === 'leads'
+                ? "bg-amber-600 text-white shadow-lg shadow-amber-600/30"
+                : "text-neutral-400 hover:text-white hover:bg-white/5"
+            )}
+            title="Ver gráfico de Clientes Potenciales"
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>Leads ({totalLeadsAcc})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveMetric('purchases')}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all",
+              activeMetric === 'purchases'
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                : "text-neutral-400 hover:text-white hover:bg-white/5"
+            )}
+            title="Ver gráfico de Compras Web"
+          >
+            <ShoppingCart className="w-3.5 h-3.5" />
+            <span>Ventas ({totalPurchasesAcc})</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Summary metric badges row */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4 bg-black/40 p-2.5 rounded-xl border border-white/5">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-center">
+            <div className="text-[7px] font-black text-purple-300 uppercase tracking-widest">Total Mensajes</div>
+            <div className="text-xs font-black text-purple-400">
+              {totalMessagesAcc.toLocaleString('es-AR')}
+              <span className="text-[8px] text-purple-300/70 ml-1 font-bold">
+                ({totalMessagesAcc > 0 ? formatCurrency(totalSpendAcc / totalMessagesAcc, currency) : '—'}/msg)
+              </span>
             </div>
           </div>
 
-          <div className="bg-black/40 border border-white/5 px-3 py-1.5 rounded-xl text-center">
-            <div className="text-[7px] font-black text-neutral-500 uppercase tracking-widest">Promedio Diario</div>
+          <div className="px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
+            <div className="text-[7px] font-black text-amber-300 uppercase tracking-widest">Clientes Potenciales</div>
+            <div className="text-xs font-black text-amber-400">
+              {totalLeadsAcc.toLocaleString('es-AR')}
+              <span className="text-[8px] text-amber-300/70 ml-1 font-bold">
+                ({totalLeadsAcc > 0 ? formatCurrency(totalSpendAcc / totalLeadsAcc, currency) : '—'}/lead)
+              </span>
+            </div>
+          </div>
+
+          <div className="px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-center">
+            <div className="text-[7px] font-black text-blue-300 uppercase tracking-widest">Promedio Diario ({metricMeta.shortLabel})</div>
             <div className="text-xs font-black text-white">
               {avgDaily} /día
             </div>
           </div>
 
           {peakDay && peakDay.primaryValue > 0 && (
-            <div className="bg-black/40 border border-white/5 px-3 py-1.5 rounded-xl text-center hidden sm:block">
-              <div className="text-[7px] font-black text-neutral-500 uppercase tracking-widest">Día Pico ({peakDay.formattedDate})</div>
+            <div className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-center hidden sm:block">
+              <div className="text-[7px] font-black text-emerald-300 uppercase tracking-widest">Día Pico ({peakDay.formattedDate})</div>
               <div className="text-xs font-black text-emerald-400">
-                {peakDay.primaryValue.toLocaleString('es-AR')} {primaryLabel.toLowerCase()}
+                {peakDay.primaryValue.toLocaleString('es-AR')} {metricMeta.shortLabel.toLowerCase()}
               </div>
             </div>
           )}
-
-          <button
-            onClick={() => setShowCostOverlay(!showCostOverlay)}
-            className={cn(
-              "px-2.5 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-wider border transition-all ml-1",
-              showCostOverlay 
-                ? "bg-white/10 text-white border-white/20" 
-                : "bg-black/20 text-neutral-500 border-white/5 hover:text-neutral-300"
-            )}
-          >
-            {isMessaging ? 'Ver Costo/Mensaje' : 'Ver Facturación'}
-          </button>
         </div>
+
+        <button
+          onClick={() => setShowCostOverlay(!showCostOverlay)}
+          className={cn(
+            "px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-wider border transition-all",
+            showCostOverlay 
+              ? "bg-white/10 text-white border-white/20" 
+              : "bg-black/20 text-neutral-500 border-white/5 hover:text-neutral-300"
+          )}
+        >
+          {showCostOverlay ? `Ocultar ${metricMeta.costLabel}` : `Ver ${metricMeta.costLabel}`}
+        </button>
       </div>
 
       {/* Responsive Chart */}
@@ -350,12 +478,12 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={primaryColor} stopOpacity={0.4}/>
-                  <stop offset="100%" stopColor={primaryColor} stopOpacity={0}/>
+                  <stop offset="0%" stopColor={metricMeta.primaryColor} stopOpacity={0.4}/>
+                  <stop offset="100%" stopColor={metricMeta.primaryColor} stopOpacity={0}/>
                 </linearGradient>
                 <linearGradient id={costGradId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={secondaryColor} stopOpacity={0.2}/>
-                  <stop offset="100%" stopColor={secondaryColor} stopOpacity={0}/>
+                  <stop offset="0%" stopColor={metricMeta.secondaryColor} stopOpacity={0.2}/>
+                  <stop offset="100%" stopColor={metricMeta.secondaryColor} stopOpacity={0}/>
                 </linearGradient>
               </defs>
               <XAxis 
@@ -390,8 +518,8 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
                   boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)'
                 }}
                 formatter={(val: any, name: string) => {
-                  if (name === 'primaryValue') return [val.toLocaleString('es-AR'), `Total ${primaryLabel}`];
-                  if (name === 'costPerUnit') return [formatCurrency(val, currency), 'Costo/Mensaje'];
+                  if (name === 'primaryValue') return [val.toLocaleString('es-AR'), `Total ${metricMeta.label}`];
+                  if (name === 'costPerUnit') return [formatCurrency(val, currency), metricMeta.costLabel];
                   if (name === 'revenue') return [formatCurrency(val, currency), 'Facturación'];
                   return [val, name];
                 }}
@@ -402,18 +530,18 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
                 yAxisId="primary"
                 type="monotone" 
                 dataKey="primaryValue" 
-                stroke={primaryColor} 
+                stroke={metricMeta.primaryColor} 
                 strokeWidth={2.5} 
                 fill={`url(#${gradientId})`} 
-                dot={{ r: 3, fill: primaryColor, strokeWidth: 0 }}
-                activeDot={{ r: 6, fill: '#fff', stroke: primaryColor, strokeWidth: 2 }}
+                dot={{ r: 3, fill: metricMeta.primaryColor, strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: '#fff', stroke: metricMeta.primaryColor, strokeWidth: 2 }}
               />
               {showCostOverlay && (
                 <Area 
                   yAxisId="secondary"
                   type="monotone" 
-                  dataKey={isMessaging ? "costPerUnit" : "revenue"} 
-                  stroke={secondaryColor} 
+                  dataKey={activeMetric === 'purchases' ? "revenue" : "costPerUnit"} 
+                  stroke={metricMeta.secondaryColor} 
                   strokeWidth={1.5} 
                   strokeDasharray="3 3"
                   fill={`url(#${costGradId})`} 
@@ -578,8 +706,9 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   };
 
   const defaultVisibleMetrics = ['spend', 'revenue', 'manual_revenue', 'total_revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
-  
   const messagingDefaultMetrics = ['messages', 'cpm', 'manual_revenue', 'total_revenue', 'roas', 'ctr', 'spend', 'clicks', 'cpm_real'];
+  const leadsDefaultMetrics = ['leads', 'cpl', 'messages', 'cpm', 'manual_revenue', 'total_revenue', 'roas', 'ctr', 'spend', 'clicks'];
+  const allDefaultMetrics = ['messages', 'cpm', 'leads', 'cpl', 'spend', 'revenue', 'purchases', 'roas', 'ctr', 'clicks'];
   
   // Filter accounts for sidebar
   const sidebarAccounts = accounts.filter(acc => 
@@ -617,9 +746,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     if (s?.visibleMetrics && s.visibleMetrics.length > 0) {
       setLocalVisibleMetrics(s.visibleMetrics);
     } else {
-      const defaults = (s?.tracking === 'messaging' || sortBy === 'messages') 
-        ? messagingDefaultMetrics 
-        : defaultVisibleMetrics;
+      let defaults = defaultVisibleMetrics;
+      if (s?.tracking === 'leads' || sortBy === 'leads') {
+        defaults = leadsDefaultMetrics;
+      } else if (s?.tracking === 'messaging' || sortBy === 'messages') {
+        defaults = messagingDefaultMetrics;
+      } else if (s?.tracking === 'all' || s?.tracking === 'both') {
+        defaults = allDefaultMetrics;
+      }
       setLocalVisibleMetrics(defaults);
     }
   }, [selectedId, !!s?.visibleMetrics, s?.tracking, sortBy]);
@@ -748,6 +882,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     { id: 'cpm', label: 'Costo x mensaje' },
     { id: 'messages_real', label: 'Mensajes Reales' },
     { id: 'cpm_real', label: 'Costo Mensaje Real' },
+    { id: 'leads', label: 'Clientes Potenciales (Leads)' },
+    { id: 'cpl', label: 'Costo x Lead' },
+    { id: 'leads_real', label: 'Leads Reales' },
+    { id: 'cpl_real', label: 'Costo Lead Real' },
   ];
 
   const visibleMetrics = localVisibleMetrics;
@@ -830,34 +968,53 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       case 'cpm': return <MetricBox key={id} label="Costo x Mensaje" value={formatCurrency(acc.costPerMessage || 0, acc.currency)} />;
       case 'messages_real': return <MetricBox key={id} label="Mensajes Reales" value={formatDecimal(acc.messagesReal, 0)} />;
       case 'cpm_real': return <MetricBox key={id} label="Costo Mensaje Real" value={formatCurrency(acc.costPerMessageReal || 0, acc.currency)} />;
+      case 'leads': return <MetricBox key={id} label="Clientes Potenciales" value={formatDecimal(acc.leadsReal || acc.leads, 0)} />;
+      case 'cpl': return <MetricBox key={id} label="Costo x Lead" value={formatCurrency(acc.costPerLead || 0, acc.currency)} />;
+      case 'leads_real': return <MetricBox key={id} label="Leads Reales" value={formatDecimal(acc.leadsReal, 0)} />;
+      case 'cpl_real': return <MetricBox key={id} label="Costo Lead Real" value={formatCurrency(acc.costPerLeadReal || acc.costPerLead || 0, acc.currency)} />;
       default: return null;
     }
   };
 
   const AdCard: React.FC<{ ad: Ad; rank: number }> = ({ ad, rank }) => {
+    const isLeads = sortBy === 'leads' || s?.tracking === 'leads' || (ad.leads !== undefined && ad.leads > 0);
     const isMessaging = sortBy === 'messages' || s?.tracking === 'messaging';
     
     // Default filters based on campaign type
-    const defaultFilters = isMessaging ? ['messages', 'costPerMessage'] : ['purchases', 'revenue', 'roas'];
+    const defaultFilters = isLeads 
+      ? ['leads', 'costPerLead', 'messages'] 
+      : isMessaging 
+      ? ['messages', 'costPerMessage'] 
+      : ['purchases', 'revenue', 'roas'];
+
     const filters = chartFilters[ad.id] || defaultFilters;
     
-    const showSales = !isMessaging && filters.includes('purchases');
-    const showRevenue = !isMessaging && filters.includes('revenue');
-    const showRoas = filters.includes('roas');
+    const showSales = filters.includes('purchases');
+    const showRevenue = filters.includes('revenue');
     const showMessages = filters.includes('messages');
     const showCostPerMessage = filters.includes('costPerMessage');
+    const showLeads = filters.includes('leads');
+    const showCostPerLead = filters.includes('costPerLead');
 
     const chartData = ad.dailySeries?.filter(d => 
       d.date >= dateRange.since && d.date <= dateRange.until
     ).map(d => ({
       ...d,
       costPerMessage: d.messages && d.messages > 0 ? d.spend / d.messages : 0,
+      costPerLead: d.leads && d.leads > 0 ? d.spend / d.leads : 0,
       formattedDate: format(parseISO(d.date), 'dd/MM', { locale: es })
     })) || [];
 
-    const stats = isMessaging ? [
-      { label: 'Mensajes', value: (ad.messages || 0).toString(), color: 'text-blue-400' },
-      { label: 'Costo x Mensaje', value: formatCurrency(ad.messages && ad.messages > 0 ? ad.spend / ad.messages : 0, selectedAccount?.currency || 'ARS'), color: 'text-purple-400' },
+    const stats = isLeads ? [
+      { label: 'Leads', value: (ad.leads || 0).toString(), color: 'text-amber-400' },
+      { label: 'Costo x Lead', value: formatCurrency(ad.leads && ad.leads > 0 ? ad.spend / ad.leads : (ad.costPerLead || 0), selectedAccount?.currency || 'ARS'), color: 'text-emerald-400' },
+      { label: 'Mensajes', value: (ad.messages || 0).toString(), color: 'text-purple-400' },
+      { label: 'Costo x Mensaje', value: formatCurrency(ad.messages && ad.messages > 0 ? ad.spend / ad.messages : 0, selectedAccount?.currency || 'ARS'), color: 'text-cyan-400' },
+      { label: 'CTR', value: `${ad.ctr.toFixed(2)}%` },
+      { label: 'Inversión', value: formatCurrency(ad.spend, selectedAccount?.currency || 'ARS') }
+    ] : isMessaging ? [
+      { label: 'Mensajes', value: (ad.messages || 0).toString(), color: 'text-purple-400' },
+      { label: 'Costo x Mensaje', value: formatCurrency(ad.messages && ad.messages > 0 ? ad.spend / ad.messages : 0, selectedAccount?.currency || 'ARS'), color: 'text-cyan-400' },
       { label: 'CTR', value: `${ad.ctr.toFixed(2)}%` },
       { label: 'Inversión', value: formatCurrency(ad.spend, selectedAccount?.currency || 'ARS') },
       { label: 'Clics', value: (ad.clicks || 0).toString() },
@@ -934,11 +1091,43 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
           <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-3 border border-white/5 h-36 flex flex-col print:flex-[3.2] print:h-24 print:p-0 print:bg-transparent print:border-2 print:border-neutral-100/50 print:rounded-2xl print:overflow-hidden">
              <div className="flex items-center justify-between mb-1.5 px-0.5">
                <span className="text-[8px] font-black uppercase tracking-widest text-neutral-400">
-                 {isMessaging ? 'Mensajes a lo largo del tiempo' : 'Compras a lo largo del tiempo'}
+                 {isLeads ? 'Clientes Potenciales y Mensajes' : isMessaging ? 'Mensajes a lo largo del tiempo' : 'Compras a lo largo del tiempo'}
                </span>
              </div>
              <div className="flex flex-wrap items-center gap-2 mb-2 shrink-0 print:gap-4 print:my-2 print:justify-start print:pl-3">
-                {!isMessaging && (
+                {isLeads && (
+                  <>
+                    <LegendButton 
+                      active={showLeads} 
+                      color="#f59e0b" 
+                      label="Leads" 
+                      onClick={() => toggleChartMetric(ad.id, 'leads')}
+                    />
+                    <LegendButton 
+                      active={showCostPerLead} 
+                      color="#10b981" 
+                      label="Costo/Lead" 
+                      onClick={() => toggleChartMetric(ad.id, 'costPerLead')}
+                    />
+                  </>
+                )}
+                {(isMessaging || isLeads) && (
+                  <>
+                    <LegendButton 
+                      active={showMessages} 
+                      color="#8b5cf6" 
+                      label="Mensajes" 
+                      onClick={() => toggleChartMetric(ad.id, 'messages')}
+                    />
+                    <LegendButton 
+                      active={showCostPerMessage} 
+                      color="#06b6d4" 
+                      label="Costo/Mensaje" 
+                      onClick={() => toggleChartMetric(ad.id, 'costPerMessage')}
+                    />
+                  </>
+                )}
+                {!isMessaging && !isLeads && (
                   <>
                     <LegendButton 
                       active={showSales} 
@@ -951,22 +1140,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                       color="#22c55e" 
                       label="Facturación" 
                       onClick={() => toggleChartMetric(ad.id, 'revenue')}
-                    />
-                  </>
-                )}
-                {isMessaging && (
-                  <>
-                    <LegendButton 
-                      active={showMessages} 
-                      color="#8b5cf6" 
-                      label="Mensajes" 
-                      onClick={() => toggleChartMetric(ad.id, 'messages')}
-                    />
-                    <LegendButton 
-                      active={showCostPerMessage} 
-                      color="#06b6d4" 
-                      label="Costo Mensaje" 
-                      onClick={() => toggleChartMetric(ad.id, 'costPerMessage')}
                     />
                   </>
                 )}
@@ -992,6 +1165,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                         <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.1}/>
                         <stop offset="100%" stopColor="#06b6d4" stopOpacity={0}/>
                       </linearGradient>
+                      <linearGradient id={`gL-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.15}/>
+                        <stop offset="100%" stopColor="#f59e0b" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id={`gCPL-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.1}/>
+                        <stop offset="100%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
                     </defs>
                     <XAxis 
                       dataKey="formattedDate" 
@@ -1014,6 +1195,12 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     )}
                     {showSales && (
                       <Area type="monotone" dataKey="purchases" yAxisId="left" stroke="#3b82f6" strokeWidth={1.5} fill={`url(#gP-${ad.id})`} dot={false} />
+                    )}
+                    {showLeads && (
+                      <Area type="monotone" dataKey="leads" yAxisId="left" stroke="#f59e0b" strokeWidth={2} fill={`url(#gL-${ad.id})`} dot={false} />
+                    )}
+                    {showCostPerLead && (
+                      <Area type="monotone" dataKey="costPerLead" yAxisId="right" stroke="#10b981" strokeWidth={1} dot={false} fill={`url(#gCPL-${ad.id})`} strokeDasharray="3 2" />
                     )}
                     {showMessages && (
                       <Area type="monotone" dataKey="messages" yAxisId="left" stroke="#8b5cf6" strokeWidth={1.5} fill={`url(#gM-${ad.id})`} dot={false} />

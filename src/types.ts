@@ -33,6 +33,10 @@ export interface AdAccount {
   costPerMessage?: number;
   messagesReal?: number;
   costPerMessageReal?: number;
+  leads?: number;
+  costPerLead?: number;
+  leadsReal?: number;
+  costPerLeadReal?: number;
   impressions?: number;
 }
 
@@ -47,7 +51,7 @@ export interface AccountSettings {
   objective: number;
   budget: number;
   currency: string;
-  tracking: 'ecommerce' | 'messaging' | 'both';
+  tracking: 'ecommerce' | 'messaging' | 'leads' | 'both' | 'all';
   customName?: string;
   customLogo?: string;
   observations?: string;
@@ -65,6 +69,8 @@ export interface Ad {
   purchases: number;
   revenue: number;
   messages?: number;
+  leads?: number;
+  costPerLead?: number;
   ctr: number;
   roas: number;
   thumbnail: string | null;
@@ -96,6 +102,8 @@ export interface DailyMetric {
   purchases: number;
   revenue: number;
   messages?: number;
+  leads?: number;
+  costPerLead?: number;
   roas: number;
 }
 
