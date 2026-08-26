@@ -21,6 +21,34 @@ const MESSAGING_OPTIMIZATION_GOALS = new Set([
   'LEAD_GENERATION'
 ]);
 
+let activeAccessToken: string | null = null;
+let isFacebookApiWrapped = false;
+
+export function setFacebookAccessToken(accessToken: string | null) {
+  activeAccessToken = accessToken;
+}
+
+function enableAccessTokenInjection() {
+  if (isFacebookApiWrapped || !window.FB?.api) return;
+
+  const originalApi = window.FB.api.bind(window.FB);
+  window.FB.api = (path: string, method: string, params: Record<string, any> = {}, callback: (response: any) => void) => {
+    const authenticatedParams = activeAccessToken
+      ? { ...params, access_token: activeAccessToken }
+      : params;
+    return originalApi(path, method, authenticatedParams, callback);
+  };
+  isFacebookApiWrapped = true;
+}
+
+export function validateFacebookAccessToken(accessToken: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    window.FB.api('/me', 'GET', { fields: 'id', access_token: accessToken }, (response: any) => {
+      resolve(Boolean(response?.id && !response?.error));
+    });
+  });
+}
+
 export function initFacebookSdk(appId: string): Promise<boolean> {
   return new Promise((resolve) => {
     if (window.FB) {
@@ -30,6 +58,7 @@ export function initFacebookSdk(appId: string): Promise<boolean> {
         xfbml: false,
         version: 'v19.0',
       });
+      enableAccessTokenInjection();
       resolve(true);
       return;
     }
@@ -45,6 +74,7 @@ export function initFacebookSdk(appId: string): Promise<boolean> {
         xfbml: false,
         version: 'v19.0',
       });
+      enableAccessTokenInjection();
       resolve(true);
     };
     document.head.appendChild(script);
@@ -66,11 +96,11 @@ export function loginWithFacebook(): Promise<any> {
   });
 }
 
-export function getFacebookLoginStatus(): Promise<any> {
+export function getFacebookLoginStatus(forceRefresh: boolean = false): Promise<any> {
   return new Promise((resolve) => {
     window.FB.getLoginStatus((response: any) => {
       resolve(response);
-    });
+    }, forceRefresh);
   });
 }
 

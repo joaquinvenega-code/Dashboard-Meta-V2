@@ -57,6 +57,11 @@
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
 
+.metric-card-heading {
+  padding-right: 18px;
+  padding-left: 18px;
+}
+
 /* Hide running header and footer on interactive dashboard */
 .print-running-header,
 .print-running-footer {
@@ -65,26 +70,56 @@
 
 @media print {
   @page {
-    margin: 3.2cm 1.5cm 2.2cm 1.5cm;
     size: A4 portrait;
+    margin: 1.55cm 1.25cm 1.45cm;
   }
 
-  /* Surgical print reset: Only target intended layout elements */
-  html, body, #root, main, [data-v-app], .flex-1 {
+  html,
+  body,
+  #root,
+  main,
+  [data-v-app] {
     background-color: #fff !important;
-    color: #000 !important;
+    color: #0f172a !important;
     height: auto !important;
+    min-height: 0 !important;
     overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Reset most elements to white bg, but allow exceptions */
-  div, section, article {
-    background-color: transparent;
+  body {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
-  /* Specific color preserves */
+  main:has(.account-detail-print-root),
+  main:has(.account-detail-print-root) > div {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .account-detail-print-root,
+  .account-detail-print-content {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #0f172a !important;
+  }
+
+  .account-detail-print-root * {
+    box-sizing: border-box;
+  }
+
   .bg-blue-600 { background-color: #2563eb !important; color: #fff !important; }
   .bg-blue-300 { background-color: #93c5fd !important; }
   .bg-blue-500 { background-color: #3b82f6 !important; color: #fff !important; }
@@ -100,72 +135,588 @@
   .text-success { color: #059669 !important; }
   .text-blue-600 { color: #2563eb !important; }
 
-  /* Compact AdCard for Print */
-  .ad-card-print {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-    margin-top: 1rem !important;
-    margin-bottom: 1rem !important;
-    border: 1px solid #eaeaea !important;
-    border-radius: 16px !important;
-    background: #fff !important;
-    padding: 1.25rem !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02) !important;
-  }
-
-  /* Header and footer visible only on printed sheets */
   .print-running-header {
-    display: flex !important;
-    position: fixed;
-    top: -2.2cm;
-    left: 0;
-    right: 0;
-    height: 1cm;
-    border-bottom: 1px solid #f1f5f9 !important;
-    padding-bottom: 4px;
-    color: #64748b !important;
-    font-size: 8px !important;
-    font-weight: 800 !important;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    align-items: center;
-    justify-content: space-between;
-    pointer-events: none;
+    display: none !important;
   }
 
   .print-running-footer {
+    display: none !important;
+  }
+
+  .report-print-cover {
     display: flex !important;
-    position: fixed;
-    bottom: -1.6cm;
-    left: 0;
-    right: 0;
-    height: 1cm;
-    border-top: 1px solid #f1f5f9 !important;
-    padding-top: 4px;
-    color: #94a3b8 !important;
-    font-size: 7px !important;
-    font-weight: 800 !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    margin: 0 0 25px !important;
+    padding: 10px 0 17px !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-print-title-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .report-print-client {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 22px;
+  }
+
+  .report-print-logo {
+    display: flex;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    background: #eff6ff !important;
+    color: #2563eb !important;
+  }
+
+  .report-print-client .report-print-logo {
+    position: relative;
+    top: 3px;
+  }
+
+  .report-print-logo img {
+    width: 100%;
+    height: 100%;
+    padding: 4px;
+    object-fit: contain;
+  }
+
+  .report-print-eyebrow {
+    margin: 0 0 6px;
+    color: #2563eb !important;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.11em;
+    line-height: 1.2;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+  }
+
+  .report-print-cover h1 {
+    max-width: 720px;
+    margin: 0;
+    color: #0f172a !important;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1.02;
+  }
+
+  .report-print-channel {
+    margin: 4px 0 0;
+    color: #2563eb !important;
+    font-size: 13px;
+    font-weight: 750;
+    letter-spacing: 0.03em;
+    line-height: 1.1;
+  }
+
+  .report-print-client > div:last-child {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .report-print-client span {
+    color: #94a3b8 !important;
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.09em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .report-print-account {
+    max-width: 620px;
+    margin: 3px 0 0;
+    overflow: hidden;
+    color: #334155 !important;
+    font-size: 15px;
+    font-weight: 750;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .report-print-meta {
+    display: grid;
+    grid-template-columns: 1.55fr 1fr 0.65fr 0.9fr;
+    gap: 18px;
+    margin-top: 22px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  .report-print-meta > div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .report-print-meta span {
+    color: #64748b !important;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .report-print-meta strong {
+    margin-top: 4px;
+    color: #0f172a !important;
+    font-size: 12px;
+    font-weight: 750;
+    line-height: 1.2;
+  }
+
+  .account-trend-print {
+    min-height: 224px !important;
+    margin: 0 0 24px !important;
+    padding: 10px 12px !important;
+    border: 1px solid #dbe3ee !important;
+    border-radius: 10px !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    overflow: hidden !important;
+  }
+
+  .account-trend-chart {
+    display: none !important;
+  }
+
+  .general-print-chart {
+    position: relative;
+    display: flex !important;
+    width: 100%;
+    height: 170px;
+    flex-direction: column;
+    margin-top: 5px;
+  }
+
+  .general-print-chart-legend {
+    position: absolute;
+    top: 0;
+    right: 12px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    color: #475569 !important;
+    font-size: 10.5px;
+    font-weight: 650;
+  }
+
+  .general-print-chart-legend span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .general-print-chart-legend i {
+    display: inline-block;
+    flex: 0 0 auto;
+  }
+
+  .general-print-primary-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #3b82f6 !important;
+  }
+
+  .general-print-secondary-line {
+    width: 16px;
+    border-top: 2px dashed #7dd3fc;
+  }
+
+  .general-print-chart svg {
+    display: block;
+    width: 100%;
+    height: 170px;
+    overflow: visible;
+  }
+
+  .account-trend-print h4 {
+    font-size: 14.5px !important;
+  }
+
+  .account-trend-print p,
+  .account-trend-print .recharts-legend-item-text,
+  .account-trend-print .recharts-cartesian-axis-tick-value {
+    font-size: 11px !important;
+  }
+
+  .print-section-title {
+    display: flex !important;
+    align-items: center !important;
+    gap: 9px !important;
+    padding-left: 0 !important;
+    border-left: 0 !important;
+    color: #0f172a !important;
+    font-size: 14px !important;
+    font-weight: 750 !important;
+    letter-spacing: 0 !important;
+    line-height: 1.2 !important;
+    text-transform: none !important;
+  }
+
+  .print-section-number {
+    display: inline-flex !important;
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #bfdbfe;
+    border-radius: 7px;
+    background: #eff6ff !important;
+    color: #2563eb !important;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+  }
+
+  .print-metrics-heading {
+    margin: 0 0 12px !important;
+  }
+
+  .print-metrics-grid {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    margin: 0 0 12px !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-metrics-grid > .metric-sortable {
+    min-height: 60px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  .print-metrics-grid > .metric-sortable > div > * {
+    min-height: 60px !important;
+    margin: 0 !important;
+    padding: 9px 10px !important;
+    border: 1px solid #dbe3ee !important;
+    border-radius: 9px !important;
+    background: #f8fafc !important;
+    box-shadow: none !important;
+  }
+
+  .print-metrics-grid > .metric-sortable > div > * > div:first-child div:first-child {
+    font-size: 9.5px !important;
+  }
+
+  .print-metrics-grid > .metric-sortable > div > * > div:last-child {
+    font-size: 17px !important;
+    line-height: 1.1 !important;
+  }
+
+  .metric-card-heading {
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .print-creatives-section {
+    margin-top: 16px !important;
+    padding-bottom: 0 !important;
+  }
+
+  .print-creatives-section > :first-child {
+    margin-bottom: 8px !important;
+    padding-bottom: 6px !important;
+    border-bottom: 1px solid #dbe3ee !important;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .print-creatives-section > :first-child > div {
+    gap: 10px !important;
+  }
+
+  .print-sort-criterion {
+    display: flex !important;
+    padding: 4px 9px !important;
+    border: 1px solid #dbeafe !important;
+    border-radius: 999px !important;
+    background: #eff6ff !important;
+    color: #1d4ed8 !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.03em !important;
+    text-transform: none !important;
+  }
+
+  .print-rank {
+    top: 10px !important;
+    right: 12px !important;
+    padding: 3px 7px !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 999px !important;
+    background: #fff !important;
+    color: #64748b !important;
+    font-size: 8.5px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.02em !important;
+    text-transform: none !important;
+  }
+
+  .ad-card-print {
+    display: block !important;
+    margin: 0 0 8px !important;
+    padding: 8px !important;
+    border: 1px solid #dbe3ee !important;
+    border-radius: 10px !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    overflow: hidden !important;
+  }
+
+  .ad-card-print-layout {
+    display: grid !important;
+    grid-template-areas:
+      "media info link"
+      "media chart chart" !important;
+    grid-template-columns: 190px minmax(0, 1fr) 82px !important;
+    align-items: start !important;
+    column-gap: 8px !important;
+    row-gap: 5px !important;
+  }
+
+  .ad-card-print-media,
+  .ad-card-print-info,
+  .ad-card-print-chart,
+  .ad-card-print-link {
+    grid-column: auto !important;
+    min-width: 0 !important;
+  }
+
+  .ad-card-print-media { grid-area: media !important; }
+  .ad-card-print-info { grid-area: info !important; }
+  .ad-card-print-chart { grid-area: chart !important; }
+  .ad-card-print-link { grid-area: link !important; }
+
+  .ad-card-print-media > div {
+    width: 190px !important;
+    height: 208px !important;
+    border-radius: 10px !important;
+    background: #0f172a !important;
+  }
+
+  .ad-card-print-media img {
+    object-fit: contain !important;
+    background: #0f172a !important;
+  }
+
+  .ad-card-print-info {
+    gap: 4px !important;
+  }
+
+  .ad-card-print-info > div:first-child > div {
+    font-size: 14px !important;
+    line-height: 1.25 !important;
+  }
+
+  .ad-card-print-info > div:last-child {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+    margin: 0 !important;
+  }
+
+  .ad-card-print-info > div:last-child > div {
+    min-width: 0 !important;
+    min-height: 29px !important;
+    padding: 3px 6px !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    background: #f8fafc !important;
+  }
+
+  .ad-card-print-info > div:last-child > div > div:first-child {
+    font-size: 9.5px !important;
+    letter-spacing: 0.03em !important;
+  }
+
+  .ad-card-print-info > div:last-child > div > div:last-child {
+    font-size: 12px !important;
+    line-height: 1.1 !important;
+  }
+
+  .ad-card-print-chart {
+    height: 76px !important;
+    align-self: end !important;
+    padding: 5px 8px !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    background: #f8fafc !important;
+    overflow: visible !important;
+  }
+
+  .creative-print-chart {
+    display: flex !important;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+    color: #0f172a !important;
+  }
+
+  .creative-print-chart-header {
+    display: flex;
     align-items: center;
     justify-content: space-between;
-    pointer-events: none;
+    gap: 12px;
+    margin-bottom: 3px;
   }
 
-  /* Chart reduction for print */
-  .recharts-responsive-container {
-    height: 80px !important;
+  .creative-print-chart-header > strong {
+    font-size: 10.5px;
+    font-weight: 750;
   }
 
-  /* Hide scrollbars & non-essential UI */
+  .creative-print-chart-legend {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 9.5px;
+    font-weight: 650;
+  }
+
+  .creative-print-chart-legend span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .creative-print-chart-legend i {
+    display: inline-block;
+    flex: 0 0 auto;
+  }
+
+  .creative-print-primary-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: #3b82f6 !important;
+  }
+
+  .creative-print-secondary-line {
+    width: 14px;
+    border-top: 2px dashed #7dd3fc;
+  }
+
+  .creative-print-chart svg {
+    display: block;
+    width: 100%;
+    height: 34px;
+    overflow: visible;
+  }
+
+  .creative-print-chart-dates {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2px;
+    color: #64748b !important;
+    font-size: 9px;
+    font-weight: 650;
+  }
+
+  .ad-card-print-link {
+    width: 82px !important;
+    align-self: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  .ad-card-print-link a {
+    display: flex !important;
+    width: 82px !important;
+    min-height: 56px;
+    align-items: center;
+    justify-content: center;
+    margin: 0 !important;
+    padding: 9px 7px !important;
+    border-radius: 7px !important;
+    background: #2563eb !important;
+    box-shadow: none !important;
+    color: #fff !important;
+    text-decoration: none !important;
+  }
+
+  .ad-card-print-link a span:first-child {
+    font-size: 9px !important;
+  }
+
+  .ad-card-print-link a span:last-child {
+    font-size: 8px !important;
+  }
+
+  .print-notes-section,
+  .print-timeline-section {
+    margin-top: 12px !important;
+    padding-top: 10px !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  .print-notes-section:has(.print-timeline-empty) {
+    display: none !important;
+  }
+
+  .report-print-endnote {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 20px !important;
+    padding-top: 9px !important;
+    border-top: 1px solid #e2e8f0 !important;
+    color: #94a3b8 !important;
+    font-size: 8.5px;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+  }
+
+  .print-timeline-section h3 {
+    color: #0f172a !important;
+    font-size: 11px !important;
+    font-weight: 750 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+  }
+
+  .print-timeline-section > :first-child {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
   ::-webkit-scrollbar { display: none !important; }
   .overflow-y-auto { overflow: visible !important; height: auto !important; }
-  
-  /* Ensure metrics grid doesn't waste space */
-  .print-metrics-grid {
-    margin-bottom: 2rem !important;
-    gap: 0.5rem !important;
-  }
 }
 
 /* Report Dark Mode styling overrides */

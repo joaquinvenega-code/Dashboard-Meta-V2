@@ -4,6 +4,8 @@ import {
   initFacebookSdk, 
   loginWithFacebook, 
   getFacebookLoginStatus, 
+  setFacebookAccessToken,
+  validateFacebookAccessToken,
   getUserProfile, 
   getAdAccounts, 
   fetchInsights,
@@ -76,15 +78,16 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 const COLUMN_DEFS: Record<string, { label: string; width: string }> = {
-  objetivo: { label: 'Objetivo', width: 'w-28' },
-  facturado: { label: 'Facturación', width: 'w-28' },
-  roas: { label: 'ROAS', width: 'w-20' },
-  mensajes: { label: 'Mensajes', width: 'w-24' },
-  progreso: { label: 'Progreso', width: 'w-32' },
-  invertido: { label: 'Invertido', width: 'w-28' },
-  presupuesto: { label: 'Presupuesto', width: 'w-28' },
-  prespct: { label: '% Presupuesto', width: 'w-32' },
-  estado: { label: 'Estado', width: 'w-32' }
+  objetivo: { label: 'Objetivo', width: 'w-28 min-w-28' },
+  facturado: { label: 'Facturación', width: 'w-28 min-w-28' },
+  saldo: { label: 'Saldo', width: 'w-28 min-w-28' },
+  roas: { label: 'ROAS', width: 'w-20 min-w-20' },
+  mensajes: { label: 'Resultado', width: 'w-24 min-w-24' },
+  progreso: { label: 'Progreso', width: 'w-32 min-w-32' },
+  invertido: { label: 'Inversión', width: 'w-28 min-w-28' },
+  presupuesto: { label: 'Presupuesto', width: 'w-28 min-w-28' },
+  prespct: { label: 'Uso del presupuesto', width: 'w-32 min-w-32' },
+  estado: { label: 'Estado', width: 'w-28 min-w-28' }
 };
 
 const matchId = (id1: any, id2: any) => {
@@ -95,20 +98,59 @@ const matchId = (id1: any, id2: any) => {
   return s1 === s2 && s1.length > 0;
 };
 
+const META_SESSION_KEY = 'cr_meta_session';
+
+type StoredMetaSession = {
+  accessToken: string;
+  expiresAt: number;
+};
+
+const readStoredMetaSession = (): StoredMetaSession | null => {
+  try {
+    const raw = sessionStorage.getItem(META_SESSION_KEY);
+    if (!raw) return null;
+    const stored = JSON.parse(raw) as StoredMetaSession;
+    if (!stored.accessToken || stored.expiresAt <= Date.now()) {
+      sessionStorage.removeItem(META_SESSION_KEY);
+      return null;
+    }
+    return stored;
+  } catch {
+    sessionStorage.removeItem(META_SESSION_KEY);
+    return null;
+  }
+};
+
+const storeMetaSession = (authResponse: any) => {
+  if (!authResponse?.accessToken) return;
+  const expiresInSeconds = Number(authResponse.expiresIn) || 3600;
+  const expiresAt = Date.now() + Math.max(60, expiresInSeconds - 60) * 1000;
+  sessionStorage.setItem(META_SESSION_KEY, JSON.stringify({
+    accessToken: authResponse.accessToken,
+    expiresAt,
+  } satisfies StoredMetaSession));
+  setFacebookAccessToken(authResponse.accessToken);
+};
+
+const clearMetaSession = () => {
+  sessionStorage.removeItem(META_SESSION_KEY);
+  setFacebookAccessToken(null);
+};
+
 export default function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [appId, setAppId] = useState(() => localStorage.getItem('cr_appid') || '');
-  const [isLogged, setIsLogged] = useState(() => localStorage.getItem('cr_is_logged') === 'true');
+  const [isLogged, setIsLogged] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [accounts, setAccounts] = useState<AdAccount[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activePage, setActivePage] = useState('overview');
   const [lastSync, setLastSync] = useState<string | null>(null);
-  const [calcError, setCalcError] = useState<string | null>(null);
+  const [overviewCategoryId, setOverviewCategoryId] = useState('all');
   
-  const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
-  const [colOrder, setColOrder] = useState<string[]>(['objetivo', 'facturado', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
+  const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'saldo', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
+  const [colOrder, setColOrder] = useState<string[]>(['objetivo', 'facturado', 'saldo', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -380,27 +422,54 @@ export default function App() {
   }, [activePage, accounts, visibleAccountIds, structure, loadingStructure]);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (appId && appId.trim()) {
       const cleanAppId = appId.trim();
       localStorage.setItem('cr_appid', cleanAppId);
-      initFacebookSdk(cleanAppId).then(() => {
-        setIsInitialized(true);
-        getFacebookLoginStatus().then((res) => {
-          if (res.status === 'connected' || localStorage.getItem('cr_is_logged') === 'true') {
-            handleLoginSuccess();
+      initFacebookSdk(cleanAppId).then(async () => {
+        const storedSession = readStoredMetaSession();
+        if (storedSession) {
+          setFacebookAccessToken(storedSession.accessToken);
+          const isStoredSessionValid = await validateFacebookAccessToken(storedSession.accessToken);
+          if (isStoredSessionValid) {
+            return {
+              status: 'connected',
+              authResponse: { accessToken: storedSession.accessToken },
+            };
           }
-        }).catch(() => {
-          if (localStorage.getItem('cr_is_logged') === 'true') {
-            handleLoginSuccess();
-          }
-        });
+          clearMetaSession();
+        }
+
+        return getFacebookLoginStatus(true);
+      }).then(async (res) => {
+        if (cancelled) return;
+
+        if (res?.status === 'connected' && res?.authResponse?.accessToken) {
+          storeMetaSession(res.authResponse);
+          await handleLoginSuccess();
+        } else {
+          clearMetaSession();
+          localStorage.removeItem('cr_is_logged');
+          setIsLogged(false);
+          setError(null);
+        }
       }).catch(err => {
+        if (cancelled) return;
         console.error("Meta SDK init error:", err);
-        setIsInitialized(true);
+        clearMetaSession();
+        localStorage.removeItem('cr_is_logged');
+        setIsLogged(false);
+      }).finally(() => {
+        if (!cancelled) setIsInitialized(true);
       });
     } else {
       setIsInitialized(true);
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [appId]);
 
   const handleLoginSuccess = async () => {
@@ -414,6 +483,7 @@ export default function App() {
     } catch (err: any) {
       console.error("Login success error:", err);
       // If session expired, reset logged state but keep saved Meta App ID
+      clearMetaSession();
       localStorage.removeItem('cr_is_logged');
       setIsLogged(false);
       setError(err?.message || 'La sesión con Meta Ads expiró. Haz clic en "Ingresar con Facebook" para reconectar.');
@@ -493,7 +563,8 @@ export default function App() {
     setLoading(true);
     try {
       await initFacebookSdk(cleanAppId);
-      await loginWithFacebook();
+      const authResponse = await loginWithFacebook();
+      storeMetaSession(authResponse);
       await handleLoginSuccess();
     } catch (err: any) {
       setError(err.message || 'Error al conectar con Facebook');
@@ -503,6 +574,7 @@ export default function App() {
   };
 
   const onLogout = () => {
+    clearMetaSession();
     localStorage.removeItem('cr_is_logged');
     setIsLogged(false);
     setUser(null);
@@ -700,13 +772,26 @@ export default function App() {
         }
       });
 
-      if (calcError) setCalcError(null);
       return { overviewEntities: entities, overviewSettings: virtualSettings };
     } catch (e: any) {
       console.error("Memo Error:", e);
       return { overviewEntities: [], overviewSettings: settings };
     }
   }, [accounts, accountGroups, visibleAccountIds, settings]);
+
+  const overviewFilteredEntities = React.useMemo(() => {
+    if (overviewCategoryId === 'all') return overviewEntities;
+    return overviewEntities.filter((account) => overviewSettings[account.id]?.categoryId === overviewCategoryId);
+  }, [overviewCategoryId, overviewEntities, overviewSettings]);
+
+  if (!isInitialized) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#050505] text-neutral-500">
+        <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+        <p className="text-xs font-medium">Restaurando sesión con Meta…</p>
+      </div>
+    );
+  }
 
   if (!isLogged) {
     return (
@@ -868,8 +953,11 @@ export default function App() {
         onOrionToggle={setIsOrionEnabled}
       />
       
-      <main className="flex-1 min-w-0 p-10 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-10">
+      <main className={cn(
+        "min-w-0 flex-1 overflow-y-auto",
+        ['overview', 'detail'].includes(activePage) ? "bg-[#0c1016] p-4 md:p-7" : "p-10"
+      )}>
+        <div className={cn("mx-auto max-w-7xl", ['overview', 'detail'].includes(activePage) ? "space-y-5" : "space-y-10")}>
           {error && (
             <div className="bg-danger/10 border border-danger/20 p-4 rounded-lg flex items-center gap-3 text-danger animate-in fade-in slide-in-from-top-2">
               <AlertCircle className="w-5 h-5 shrink-0" />
@@ -879,11 +967,19 @@ export default function App() {
           )}
 
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 print:hidden mb-4">
+          <div className={cn(
+            "flex flex-col justify-between gap-3 print:hidden md:flex-row md:items-center",
+            ['overview', 'detail'].includes(activePage) ? "mb-1" : "mb-4"
+          )}>
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-black tracking-widest text-white uppercase opacity-80 flex items-center gap-3">
+              <h2 className={cn(
+                "flex items-center gap-3 text-white",
+                ['overview', 'detail'].includes(activePage)
+                  ? "text-xl font-semibold tracking-[-0.025em]"
+                  : "text-xl font-black uppercase tracking-widest opacity-80"
+              )}>
                 {activePage === 'overview' ? 'Vista general' : 
-                 activePage === 'detail' ? 'Análisis individual de cuenta' : 
+                 activePage === 'detail' ? 'Detalle de cuentas' :
                  activePage === 'accounts' ? 'Cuentas visibles' : 
                  activePage === 'alerts' ? 'Centro de Alertas' :
                  activePage === 'reports' ? 'Informes Mensuales' :
@@ -894,6 +990,12 @@ export default function App() {
                   <div className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-600/20 rounded-full text-[8px] text-blue-500 uppercase tracking-widest">Planificación</div>
                 )}
               </h2>
+              {activePage === 'overview' && (
+                <p className="mt-1 text-xs text-neutral-500">Una lectura clara del rendimiento de todas tus cuentas.</p>
+              )}
+              {activePage === 'detail' && (
+                <p className="mt-1 text-xs text-neutral-500">Rendimiento, evolución y acciones de cada cliente.</p>
+              )}
             </div>
 
             <div className="flex items-center gap-4">
@@ -936,9 +1038,9 @@ export default function App() {
               <div className="relative">
                 <button 
                   onClick={() => setShowNotifications(!showNotifications)}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border ${notifications.some(n => !n.isRead) ? 'bg-blue-600/10 border-blue-600/20 text-blue-500' : 'bg-[#111] border-white/5 text-neutral-500 hover:text-white'}`}
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${notifications.some(n => !n.isRead) ? 'bg-blue-500/10 border-blue-400/20 text-blue-300' : 'bg-[#12161d] border-white/[0.07] text-neutral-500 hover:text-white'}`}
                 >
-                  <Bell className={`w-5 h-5 ${notifications.some(n => !n.isRead) ? 'animate-pulse' : ''}`} />
+                  <Bell className={`h-4 w-4 ${notifications.some(n => !n.isRead) ? 'animate-pulse' : ''}`} />
                   {notifications.filter(n => !n.isRead).length > 0 && (
                     <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full flex items-center justify-center text-[8px] font-black text-white border-2 border-[#0a0a0a]">
                       {notifications.filter(n => !n.isRead).length}
@@ -1000,8 +1102,8 @@ export default function App() {
             </div>
 
             {activePage === 'overview' && (
-              <div className="flex items-center gap-1.5 bg-[#111] border border-white/5 px-3.5 h-10 rounded-xl transition-all">
-                <Calendar className="w-3.5 h-3.5 text-neutral-400 ml-0.5" />
+              <div className="flex h-9 items-center gap-1.5 rounded-lg border border-white/[0.07] bg-[#12161d] px-3 transition-colors">
+                <Calendar className="ml-0.5 h-3.5 w-3.5 text-neutral-500" />
                 <select 
                   value={isCustomDate ? 'custom' : (
                     dateRange.since === todayStr && dateRange.until === todayStr ? 'today' : (
@@ -1036,14 +1138,14 @@ export default function App() {
                       }
                     }
                   }}
-                  className="bg-transparent text-[9px] font-black text-neutral-200 uppercase tracking-widest outline-none cursor-pointer border-none py-0.5 pr-1 focus:text-neutral-100"
+                  className="cursor-pointer border-none bg-transparent py-0.5 pr-1 text-xs font-medium text-neutral-300 outline-none focus:text-white"
                 >
-                  <option value="today" className="bg-[#121212] text-neutral-200 font-bold uppercase">Hoy</option>
-                  <option value="yesterday" className="bg-[#121212] text-neutral-200 font-bold uppercase">Ayer</option>
-                  <option value="this_month" className="bg-[#121212] text-neutral-200 font-bold uppercase">Este mes</option>
-                  <option value="last_7" className="bg-[#121212] text-neutral-200 font-bold uppercase">Últimos 7 días</option>
-                  <option value="last_30" className="bg-[#121212] text-neutral-200 font-bold uppercase">Últimos 30 días</option>
-                  <option value="custom" className="bg-[#121212] text-neutral-200 font-bold uppercase">Personalizado</option>
+                  <option value="today" className="bg-[#12161d] text-neutral-200">Hoy</option>
+                  <option value="yesterday" className="bg-[#12161d] text-neutral-200">Ayer</option>
+                  <option value="this_month" className="bg-[#12161d] text-neutral-200">Este mes</option>
+                  <option value="last_7" className="bg-[#12161d] text-neutral-200">Últimos 7 días</option>
+                  <option value="last_30" className="bg-[#12161d] text-neutral-200">Últimos 30 días</option>
+                  <option value="custom" className="bg-[#12161d] text-neutral-200">Personalizado</option>
                 </select>
 
                 {isCustomDate && (
@@ -1075,7 +1177,7 @@ export default function App() {
             )}
           </div>
 
-          {loading ? (
+          {loading && accounts.length === 0 ? (
             <RocketLoader />
           ) : error && overviewEntities.length === 0 ? (
             <div className="bg-[#111] border border-red-500/20 rounded-[2.5rem] p-10 text-center my-8 max-w-xl mx-auto shadow-2xl animate-in fade-in duration-500">
@@ -1166,18 +1268,36 @@ export default function App() {
           ) : (
             <>
               {activePage === 'overview' && (
-                <div className="space-y-10 animate-in fade-in duration-1000">
-                  <Overview accounts={overviewEntities} settings={overviewSettings} dateRange={dateRange} clientCategories={clientCategories} loading={loading} />
-                  
-                  <div className="flex justify-end">
+                <div className="space-y-4 animate-in fade-in duration-700">
+                  <Overview
+                    accounts={overviewFilteredEntities}
+                    settings={overviewSettings}
+                    dateRange={dateRange}
+                    clientCategories={clientCategories}
+                    filterCategoryId={overviewCategoryId}
+                    onFilterCategoryChange={setOverviewCategoryId}
+                    loading={loading}
+                  />
+
+                  <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#12161d]">
+                    <div className="flex flex-col gap-3 border-b border-white/[0.07] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold text-neutral-100">Rendimiento por cliente</h3>
+                        <p className="mt-0.5 text-[11px] text-neutral-500">
+                          {overviewFilteredEntities.length} {overviewFilteredEntities.length === 1 ? 'cuenta visible' : 'cuentas visibles'} en el período
+                        </p>
+                      </div>
                     <button 
                       onClick={() => setShowColSelectors(!showColSelectors)}
+                      aria-expanded={showColSelectors}
                       className={cn(
-                        "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
-                        showColSelectors ? "bg-white/10 border-white/20 text-white" : "bg-transparent border-white/5 text-neutral-600 hover:text-neutral-400"
+                        "flex h-8 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors",
+                        showColSelectors
+                          ? "border-blue-400/20 bg-blue-500/10 text-blue-300"
+                          : "border-white/[0.08] bg-white/[0.025] text-neutral-400 hover:bg-white/[0.05] hover:text-neutral-200"
                       )}
                     >
-                      <Settings className="w-3.5 h-3.5" />
+                      <Settings2 className="h-3.5 w-3.5" />
                       {showColSelectors ? 'Ocultar columnas' : 'Personalizar columnas'}
                     </button>
                   </div>
@@ -1188,25 +1308,24 @@ export default function App() {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
+                        className="overflow-hidden border-b border-white/[0.07]"
                       >
-                        <div className="flex flex-wrap items-center gap-3 py-4 border-y border-white/5">
-                          <span className="text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] mr-2">Visibilidad de columnas</span>
+                        <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+                          <span className="mr-1 text-[11px] font-medium text-neutral-500">Columnas visibles</span>
                           {Object.keys(COLUMN_DEFS).map(col => (
                             <button
+                              type="button"
                               key={col}
                               onClick={() => toggleCol(col)}
+                              aria-pressed={visibleCols.includes(col)}
                               className={cn(
-                                "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border",
+                                "rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors",
                                 visibleCols.includes(col) 
-                                  ? "bg-blue-600/10 border-blue-600/30 text-blue-500" 
-                                  : "bg-transparent border-white/5 text-neutral-600 grayscale opacity-50 hover:opacity-100"
+                                  ? "border-blue-400/20 bg-blue-500/10 text-blue-300"
+                                  : "border-white/[0.07] bg-transparent text-neutral-600 hover:text-neutral-400"
                               )}
                             >
-                              <div className="flex items-center gap-2">
-                                <div className={cn("w-1.5 h-1.5 rounded-full", visibleCols.includes(col) ? "bg-blue-500" : "bg-neutral-800")}></div>
-                                {COLUMN_DEFS[col].label}
-                              </div>
+                              {COLUMN_DEFS[col].label}
                             </button>
                           ))}
                         </div>
@@ -1214,9 +1333,12 @@ export default function App() {
                     )}
                   </AnimatePresence>
 
-                  <div className="bg-[#111] rounded-xl border border-white/5 overflow-hidden shadow-2xl">
+                  <div>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse table-fixed">
+                      <table
+                        className="w-full border-collapse text-left"
+                        style={{ minWidth: Math.max(720, 260 + visibleCols.length * 108) }}
+                      >
                         <thead>
                           <DndContext 
                             sensors={sensors}
@@ -1227,74 +1349,27 @@ export default function App() {
                               items={colOrder}
                               strategy={horizontalListSortingStrategy}
                             >
-                              <tr className="border-b border-white/5 bg-white/[0.01]">
-                                <th className="px-5 py-2 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] w-48">Cliente</th>
+                              <tr className="border-b border-white/[0.07] bg-black/10">
+                                <th className="w-52 min-w-52 px-4 py-3 text-[10px] font-medium text-neutral-500">Cliente</th>
                                 {colOrder.map((colId: string) => {
                                   if (!visibleCols.includes(colId)) return null;
                                   return <SortableHeader key={colId} id={colId} label={COLUMN_DEFS[colId].label} width={COLUMN_DEFS[colId].width} />;
                                 })}
-                                <th className="px-2 py-2 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] text-right w-16 pr-5"></th>
+                                <th className="w-12 min-w-12 px-3 py-3 text-right"></th>
                               </tr>
                             </SortableContext>
                           </DndContext>
                         </thead>
-                        <tbody className="divide-y divide-white/[0.02]">
-                          {overviewEntities.length === 0 ? (
+                        <tbody className="divide-y divide-white/[0.055]">
+                          {overviewFilteredEntities.length === 0 ? (
                             <tr>
-                              <td colSpan={10} className="px-8 py-20 text-center">
-                                <div className="flex flex-col items-center gap-4 text-neutral-600">
-                                  <Facebook className="w-12 h-12 opacity-10" />
-                                  <div className="space-y-1">
-                                    <p className="text-xs font-black uppercase tracking-[0.2em]">No hay datos para mostrar</p>
-                                    <p className="text-[10px] font-medium max-w-[250px] mx-auto leading-relaxed">
-                                      {accounts.length === 0 
-                                        ? "No se encontró ninguna cuenta vinculada. Asegúrate de tener permisos de Administrador o Anunciante en Meta Ads."
-                                        : visibleAccountIds.length === 0
-                                          ? "No has seleccionado cuentas en el panel de configuración."
-                                          : `Se detectaron ${accounts.length} cuentas en total, pero ninguna coincide con los filtros actuales.`}
-                                    </p>
-                                    <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/5 text-left">
-                                      <p className="text-[8px] font-black uppercase text-neutral-600 tracking-widest mb-1">Diagnóstico:</p>
-                                      <p className="text-[9px] text-neutral-400 font-bold">• Cuentas cargadas de Meta: {accounts.length}</p>
-                                      <p className="text-[9px] text-neutral-400 font-bold">• Cuentas seleccionadas: {visibleAccountIds.length}</p>
-                                      <p className="text-[9px] text-neutral-400 font-bold">• Entidades Dashboard: {overviewEntities.length}</p>
-                                      {accounts.length > 0 && (
-                                        <div className="mt-2 space-y-1">
-                                          <p className="text-[9px] text-neutral-500 font-medium break-all opacity-50">
-                                            Ref (Meta): {accounts[0].id}<br/>
-                                            Ref (Selección): {visibleAccountIds[0] || 'N/A'}
-                                          </p>
-                                          <p className="text-[9px] text-blue-500 font-bold uppercase tracking-widest mt-1">
-                                            ¿Hay coincidencias en total?: {accounts.some(a => visibleAccountIds.some(v => matchId(v, a.id) || matchId(v, a.account_id))) ? 'SÍ' : 'NO'}
-                                          </p>
-                                          {calcError && (
-                                            <p className="text-[9px] text-red-500 font-bold uppercase tracking-widest mt-1 bg-red-500/10 p-1 rounded">
-                                              ERROR MEMO: {calcError}
-                                            </p>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="flex flex-col gap-2 mt-6">
-                                      {accounts.length > 0 && (
-                                        <button 
-                                          onClick={() => {
-                                            const allIds = accounts.map(a => a.id);
-                                            setVisibleAccountIds(allIds);
-                                            localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
-                                          }}
-                                          className="bg-blue-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20"
-                                        >
-                                          Forzar aparición de todas las cuentas
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
+                              <td colSpan={visibleCols.length + 2} className="px-8 py-16 text-center">
+                                <p className="text-sm font-medium text-neutral-300">No hay cuentas en esta categoría</p>
+                                <p className="mt-1 text-xs text-neutral-600">Elegí otro segmento para continuar.</p>
                               </td>
                             </tr>
                           ) : (
-                            overviewEntities.map((acc) => {
+                            overviewFilteredEntities.map((acc) => {
                               const s = overviewSettings[acc.id] || { objective: 0, budget: 0, currency: acc.currency || 'ARS', tracking: 'ecommerce' };
                               let manualRevenue = 0;
                               if (s.offlineSalesLogByMonth) {
@@ -1317,8 +1392,15 @@ export default function App() {
                               const roas = acc.spend && acc.spend > 0 ? totalRevenue / acc.spend : 0;
                               const progress = s.objective > 0 ? Math.min(totalRevenue / s.objective, 1.2) : 0;
                               const budgetProgress = s.budget > 0 ? Math.min((acc.spend || 0) / s.budget, 1.2) : 0;
-                              
+                              const effectiveBalance = calculateEffectiveBalance(acc);
+                              const primaryResult = s.tracking === 'ecommerce'
+                                ? { label: 'Compras', value: acc.purchases || 0 }
+                                : s.tracking === 'leads'
+                                  ? { label: 'Leads', value: acc.leadsReal || acc.leads || 0 }
+                                  : { label: 'Mensajes', value: acc.messagesReal || acc.messages || 0 };
+
                               const getStatusInfo = () => {
+                                if (!s.objective) return { label: 'Sin objetivo', color: 'text-neutral-500', bg: 'bg-neutral-600' };
                                 const p = totalRevenue / (s.objective || 1);
                                 if (p >= 1) return { label: 'Objetivo', color: 'text-success', bg: 'bg-success' };
                                 if (p >= 0.7) return { label: 'Riesgo', color: 'text-warning', bg: 'bg-warning' };
@@ -1328,8 +1410,8 @@ export default function App() {
 
                               return (
                                 <React.Fragment key={acc.id}>
-                                  <tr className="hover:bg-white/[0.01] transition-colors group">
-                                    <td className="px-5 py-1.5">
+                                  <tr className="group transition-colors hover:bg-white/[0.025]">
+                                    <td className="px-4 py-3">
                                       <div className="flex items-center gap-2">
                                         <div className="relative group/name inline-block min-w-[100px]">
                                           {editingId === acc.id ? (
@@ -1353,7 +1435,7 @@ export default function App() {
                                                 if (e.key === 'Enter') e.currentTarget.blur();
                                                 if (e.key === 'Escape') setEditingId(null);
                                               }}
-                                              className="bg-neutral-800 border-none outline-none rounded px-2 py-1 text-[10px] font-bold text-white w-full"
+                                              className="w-full rounded-md border border-white/10 bg-neutral-800 px-2 py-1 text-xs font-medium text-white outline-none focus:border-blue-400/40"
                                             />
                                           ) : (
                                             <div 
@@ -1361,14 +1443,14 @@ export default function App() {
                                                 setEditingId(acc.id);
                                                 setEditValue(acc.name);
                                               }}
-                                              className="font-bold text-[11px] truncate max-w-[160px] text-neutral-300 group-hover:text-white transition-colors cursor-text select-none py-1"
+                                              className="max-w-[168px] cursor-text select-none truncate py-1 text-xs font-medium text-neutral-200 transition-colors group-hover:text-white"
                                               title="Doble clic para editar"
                                             >
                                               {acc.name}
                                             </div>
                                           )}
                                         </div>
-                                        <div className="px-1 py-0.5 bg-blue-600/5 border border-blue-600/10 rounded text-[7px] font-black text-blue-500/50 uppercase leading-none tracking-tighter">
+                                        <div className="rounded border border-white/[0.07] bg-white/[0.025] px-1.5 py-0.5 text-[8px] font-medium leading-none text-neutral-600">
                                           {s.currency}
                                         </div>
                                       </div>
@@ -1378,40 +1460,49 @@ export default function App() {
                                       if (!visibleCols.includes(colId)) return null;
 
                                       if (colId === 'objetivo') return (
-                                        <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-500">
+                                        <td key={colId} className="px-2 py-3 text-center text-[11px] font-medium text-neutral-500 tabular-nums">
                                           {s.objective ? formatCurrency(s.objective, s.currency) : '—'}
                                         </td>
                                       );
 
                                       if (colId === 'facturado') return (
-                                        <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-200">
+                                        <td key={colId} className="px-2 py-3 text-center text-[11px] font-medium text-neutral-200 tabular-nums">
                                           {formatCurrency(totalRevenue, s.currency)}
                                         </td>
                                       );
 
+                                      if (colId === 'saldo') return (
+                                        <td key={colId} className="px-2 py-3 text-center text-[11px] font-medium text-neutral-400 tabular-nums">
+                                          {effectiveBalance !== null ? formatCurrency(effectiveBalance, s.currency) : '—'}
+                                        </td>
+                                      );
+
                                       if (colId === 'roas') return (
-                                        <td key={colId} className="px-2 py-1.5 text-center">
-                                          <span className={cn("text-[10px] font-bold", status.color)}>
+                                        <td key={colId} className="px-2 py-3 text-center">
+                                          <span className="text-[11px] font-medium text-neutral-300 tabular-nums">
                                             ×{formatDecimal(roas)}
                                           </span>
                                         </td>
                                       );
 
                                       if (colId === 'mensajes') return (
-                                        <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-400">
-                                          {formatNumber(acc.messagesReal || acc.messages || 0)}
+                                        <td key={colId} className="px-2 py-3 text-center">
+                                          <span className="block text-[11px] font-medium text-neutral-300 tabular-nums">
+                                            {formatNumber(primaryResult.value)}
+                                          </span>
+                                          <span className="mt-0.5 block text-[9px] text-neutral-600">{primaryResult.label}</span>
                                         </td>
                                       );
 
                                       if (colId === 'progreso') return (
-                                        <td key={colId} className="px-2 py-1.5">
-                                          <div className="flex flex-col gap-1.5 justify-center">
-                                            <div className="flex justify-between items-center px-0.5">
-                                              <span className={cn("text-[9px] font-black tracking-tight", status.color)}>{Math.round(progress * 100)}%</span>
+                                        <td key={colId} className="px-2 py-3">
+                                          <div className="flex flex-col justify-center gap-1.5">
+                                            <div className="flex items-center justify-between px-0.5">
+                                              <span className="text-[10px] font-medium text-neutral-400 tabular-nums">{Math.round(progress * 100)}%</span>
                                             </div>
-                                            <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden border border-white/5 relative">
+                                            <div className="relative h-1 w-full overflow-hidden rounded-full bg-white/[0.07]">
                                               <div 
-                                                className={cn("h-full transition-all duration-1000 shadow-[0_0_8px_rgba(0,0,0,0.3)]", status.bg)} 
+                                                className={cn("h-full rounded-full transition-all duration-1000", status.bg)}
                                                 style={{ width: `${Math.min(progress * 100, 100)}%` }}
                                               ></div>
                                             </div>
@@ -1420,33 +1511,33 @@ export default function App() {
                                       );
 
                                       if (colId === 'invertido') return (
-                                        <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-bold text-neutral-400 tabular-nums">
+                                        <td key={colId} className="px-2 py-3 text-center text-[11px] font-medium text-neutral-300 tabular-nums">
                                           {formatCurrency(acc.spend || 0, s.currency)}
                                         </td>
                                       );
 
                                       if (colId === 'presupuesto') return (
-                                        <td key={colId} className="px-2 py-1.5 text-center text-[10px] font-medium text-neutral-500">
+                                        <td key={colId} className="px-2 py-3 text-center text-[11px] font-medium text-neutral-500 tabular-nums">
                                           {s.budget ? formatCurrency(s.budget, s.currency) : '—'}
                                         </td>
                                       );
 
                                       if (colId === 'prespct') return (
-                                        <td key={colId} className="px-2 py-1.5">
-                                          <div className="flex flex-col gap-1.5 justify-center">
-                                            <div className="flex justify-between items-center px-0.5">
-                                              <span className={cn("text-[9px] font-black tracking-tight", 
+                                        <td key={colId} className="px-2 py-3">
+                                          <div className="flex flex-col justify-center gap-1.5">
+                                            <div className="flex items-center justify-between px-0.5">
+                                              <span className={cn("text-[10px] font-medium tabular-nums",
                                                 budgetProgress > 1 ? "text-danger" : 
                                                 budgetProgress > 0.9 ? "text-warning" : 
-                                                "text-success/70"
+                                                "text-neutral-400"
                                               )}>{Math.round(budgetProgress * 100)}%</span>
                                             </div>
-                                            <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden border border-white/5 relative">
+                                            <div className="relative h-1 w-full overflow-hidden rounded-full bg-white/[0.07]">
                                               <div 
-                                                className={cn("h-full transition-all duration-1000 shadow-[0_0_8px_rgba(0,0,0,0.3)]", 
+                                                className={cn("h-full rounded-full transition-all duration-1000",
                                                   budgetProgress > 1 ? "bg-danger" : 
                                                   budgetProgress > 0.9 ? "bg-warning" : 
-                                                  "bg-success/50"
+                                                  "bg-blue-400/60"
                                                 )} 
                                                 style={{ width: `${Math.min(budgetProgress * 100, 100)}%` }}
                                               ></div>
@@ -1456,10 +1547,10 @@ export default function App() {
                                       );
 
                                       if (colId === 'estado') return (
-                                        <td key={colId} className="px-2 py-1.5 text-center">
+                                        <td key={colId} className="px-2 py-3 text-center">
                                           <div className="inline-flex items-center gap-1.5">
-                                            <div className={cn("w-1 h-1 rounded-full", status.bg)}></div>
-                                            <span className={cn("text-[9px] font-bold uppercase tracking-widest leading-none", status.color)}>
+                                            <div className={cn("h-1.5 w-1.5 rounded-full", status.bg)}></div>
+                                            <span className={cn("text-[10px] font-medium leading-none", status.color)}>
                                               {status.label}
                                             </span>
                                           </div>
@@ -1469,11 +1560,11 @@ export default function App() {
                                       return null;
                                     })}
 
-                                    <td className="px-2 py-1.5 text-right pr-5">
+                                    <td className="px-3 py-3 text-right">
                                       <div className="flex items-center justify-end gap-1">
                                         <button 
                                           onClick={() => setConfigEntity(acc)}
-                                          className="p-1.5 hover:bg-white/5 rounded-lg text-neutral-700 hover:text-blue-500 transition-all opacity-0 group-hover:opacity-100"
+                                          className="rounded-lg p-1.5 text-neutral-600 opacity-60 transition-all hover:bg-white/5 hover:text-blue-300 group-hover:opacity-100"
                                           title="Configurar cliente"
                                         >
                                           <Settings className="w-3.5 h-3.5" />
@@ -1489,6 +1580,7 @@ export default function App() {
                       </table>
                     </div>
                   </div>
+                  </section>
                 </div>
               )}
 
@@ -2526,14 +2618,14 @@ const SortableHeader: React.FC<SortableHeaderProps> = ({ id, label, width }) => 
       ref={setNodeRef} 
       style={style} 
       className={cn(
-        "py-3 text-[9px] font-black text-neutral-700 uppercase tracking-[0.2em] text-center cursor-grab active:cursor-grabbing hover:bg-white/[0.02] transition-colors relative group",
+        "group relative cursor-grab py-3 text-center text-[10px] font-medium text-neutral-500 transition-colors hover:bg-white/[0.025] hover:text-neutral-300 active:cursor-grabbing",
         width
       )}
       {...attributes}
       {...listeners}
     >
-      <div className="flex items-center justify-center gap-1">
-        <GripVertical className="w-2.5 h-2.5 opacity-0 group-hover:opacity-50 transition-opacity whitespace-nowrap" />
+      <div className="flex items-center justify-center gap-1.5 px-1">
+        <GripVertical className="h-2.5 w-2.5 whitespace-nowrap opacity-0 transition-opacity group-hover:opacity-50" />
         <span className="truncate">{label}</span>
       </div>
     </th>

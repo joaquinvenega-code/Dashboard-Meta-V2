@@ -1,12 +1,14 @@
 import { format, subDays, setDate, setMonth, subMonths } from 'date-fns';
 
 export interface ParsedVoiceCommand {
-  intent: 'ADD_LOG_EXTENDED' | 'RECORD_OFFLINE_SALE' | 'CREATIVE_PERFORMANCE' | 'PERFORMANCE_RANKING' | 'TRIGGER_SYNC' | 'UNKNOWN' | 'MODIFY_PREVIOUS_ENTRY' | 'DELETE_PREVIOUS_ENTRY' | 'VIEW_OFFLINE_SALES' | 'ORION_CAPABILITIES';
+  intent: 'ADD_LOG_EXTENDED' | 'RECORD_OFFLINE_SALE' | 'CREATIVE_PERFORMANCE' | 'PERFORMANCE_RANKING' | 'TRIGGER_SYNC' | 'UNKNOWN' | 'MODIFY_PREVIOUS_ENTRY' | 'DELETE_PREVIOUS_ENTRY' | 'VIEW_OFFLINE_SALES' | 'VIEW_ACCOUNT_LOGS' | 'MODIFY_ACCOUNT_LOG' | 'DELETE_ACCOUNT_LOG' | 'ORION_CAPABILITIES';
   clientName?: string;
   clientId?: string;
   date: string; // YYYY-MM-DD
   amount?: number;
   noteText?: string;
+  dateDetected: boolean;
+  clientMatchScore: number;
   raw: string;
 }
 
@@ -213,7 +215,9 @@ export function parseAdvancedVoiceCommand(
       candidatesDay.sort((a, b) => b.score - a.score);
       const bestCandidate = candidatesDay[0];
       
-      if (bestCandidate.score >= 5 || (candidatesDay.length === 1 && bestCandidate.score > -20)) {
+      // A number only counts as a date when it has real date context. This avoids
+      // interpreting the article "una" in "una bitácora" as day 1.
+      if (bestCandidate.score >= 5) {
         docDate = new Date();
         
         let monthDetected = false;
@@ -305,12 +309,22 @@ export function parseAdvancedVoiceCommand(
 
   // 3. Match Intents
   // A. RECORD_OFFLINE_SALE
-  const saleKeywords = ['venta', 'ventas', 'registrar venta', 'monto', 'offline sale', 'vender', 'vendi', 'venda'];
+  const saleKeywords = ['venta', 'ventas', 'registrar venta', 'cargar venta', 'anotar venta', 'venta offline', 'offline sale', 'vender', 'vendi', 'vendimos'];
   const isSale = saleKeywords.some(kw => normalized.includes(kw));
 
   // B. ADD_LOG_EXTENDED
   const logKeywords = ['bitacora', 'nota', 'comentario', 'anotar', 'registrar bitacora', 'agregar bitacora', 'bitacoras'];
   const isLog = logKeywords.some(kw => normalized.includes(kw));
+
+  // Natural account-management phrases should also become log entries, even when
+  // the speaker does not explicitly say "bitácora" or "nota".
+  const accountActionPatterns = [
+    /\bse (?:hizo|hicieron|realizo|realizaron|aplico|aplicaron|implemento|implementaron|configuro|configuraron|ajusto|ajustaron|optimizo|optimizaron|reviso|revisaron|corrigio|corrigieron|pauso|pausaron|activo|activaron|desactivo|desactivaron|modifico|modificaron|cambio|cambiaron|actualizo|actualizaron|creo|crearon|elimino|eliminaron|duplico|duplicaron)\b/,
+    /\b(?:hicimos|realizamos|aplicamos|implementamos|configuramos|ajustamos|optimizamos|revisamos|corregimos|pausamos|activamos|desactivamos|modificamos|cambiamos|actualizamos|creamos|eliminamos|duplicamos|aumentamos|redujimos|subimos|bajamos)\b/,
+    /\b(?:hubo|hay) (?:un |varios |algunos )?(?:cambio|cambios|ajuste|ajustes|modificacion|modificaciones)\b/,
+    /\b(?:cambio|cambios|ajuste|ajustes|optimizacion|optimizaciones|modificacion|modificaciones) (?:en|sobre|para) (?:la )?(?:cuenta|campana|campanas|anuncio|anuncios|presupuesto)\b/
+  ];
+  const isAccountAction = accountActionPatterns.some(pattern => pattern.test(normalized));
 
   // C. CREATIVE_PERFORMANCE
   const creativeKeywords = ['creativo', 'creativos', 'anuncio', 'anuncios', 'creatividad', 'rendimiento de creativos', 'rendimiento de anuncios'];
@@ -322,22 +336,31 @@ export function parseAdvancedVoiceCommand(
 
   // E. MODIFY_PREVIOUS_ENTRY
   const modificationKeywords = [
-    'modifica', 'modificar', 'cambiale', 'cambiarle', 'ponele', 'ponle', 'corregir', 'corrije', 'corrige', 
+    'modifica', 'modificar', 'cambiale', 'cambiarle', 'ponele', 'ponle', 'corregir', 'corregi', 'corrije', 'corrige',
     'correccion', 'rectificar', 'rectifica', 'modifiques'
   ];
-  const isModification = modificationKeywords.some(kw => normalized.includes(kw));
+  const previousEntryKeywords = [
+    'registro', 'entrada anterior', 'ultima entrada', 'venta anterior', 'ultima venta',
+    'venta registrada', 'monto registrado', 'importe registrado', 'fecha registrada',
+    'ese importe', 'esa fecha', 'la bitacora anterior'
+  ];
+  const referencesPreviousEntry = previousEntryKeywords.some(kw => normalized.includes(kw));
+  const hasModificationVerb = modificationKeywords.some(kw => normalized.includes(kw));
+  const isModification = referencesPreviousEntry && hasModificationVerb;
 
   // F. DELETE_PREVIOUS_ENTRY
   const deleteKeywords = [
     'borra', 'borrar', 'elimina', 'eliminar', 'cancela', 'cancelar', 'deshace', 'deshacer', 'quitar', 'quita'
   ];
-  const isDelete = deleteKeywords.some(kw => normalized.includes(kw));
+  const hasDeleteVerb = deleteKeywords.some(kw => normalized.includes(kw));
+  const isDelete = referencesPreviousEntry && hasDeleteVerb;
 
   // G. VIEW_OFFLINE_SALES
   const viewKeywords = [
-    'ver', 'mostrar', 'mostrame', 'decime', 'menciona', 'mencioname', 'listar', 'lista', 'cuales tiene', 'que tiene', 'consulta', 'consultar', 'historial'
+    'ver', 'mostrar', 'mostrame', 'previsualizar', 'previsualizacion', 'vista previa', 'preview', 'repasar', 'repasemos', 'resumen', 'hasta ahora', 'decime', 'menciona', 'mencioname', 'listar', 'lista', 'cuales tiene', 'que tiene', 'consulta', 'consultar', 'historial'
   ];
   const isView = viewKeywords.some(kw => normalized.includes(kw));
+  const mentionsAccountLog = /\b(?:bitacora|bitacoras|nota|notas|accion|acciones|registro de gestion|registros de gestion)\b/.test(normalized);
 
   // Sync / Refresh keywords
   const syncKeywords = [
@@ -347,13 +370,19 @@ export function parseAdvancedVoiceCommand(
 
   // Capabilities & Help keywords
   const capabilitiesKeywords = [
-    'capacidad', 'capacidades', 'acciones', 'ayudarme', 'ayuda', 'ayudame', 'potencial', 'funcionas', 'funciona', 'podes hacer', 'puedes hacer', 'quien sos', 'que sos', 'que haces', 'como andas', 'instrucciones', 'comandos', 'que se puede', 'que podemos'
+    'capacidad', 'capacidades', 'ayudarme', 'ayuda', 'ayudame', 'potencial', 'funcionas', 'funciona', 'podes hacer', 'puedes hacer', 'quien sos', 'que sos', 'que haces', 'como andas', 'instrucciones', 'comandos', 'que se puede', 'que podemos'
   ];
   const isCapabilities = capabilitiesKeywords.some(kw => normalized.includes(kw));
 
   // Determine intent based on keywords and priorities (Capabilities and specific intents should dominate over general Sync keywords)
   if (isCapabilities) {
     intent = 'ORION_CAPABILITIES';
+  } else if (mentionsAccountLog && hasDeleteVerb) {
+    intent = 'DELETE_ACCOUNT_LOG';
+  } else if (mentionsAccountLog && hasModificationVerb) {
+    intent = 'MODIFY_ACCOUNT_LOG';
+  } else if (mentionsAccountLog && isView) {
+    intent = 'VIEW_ACCOUNT_LOGS';
   } else if (isDelete) {
     intent = 'DELETE_PREVIOUS_ENTRY';
   } else if (isModification) {
@@ -364,6 +393,8 @@ export function parseAdvancedVoiceCommand(
     intent = 'VIEW_OFFLINE_SALES';
   } else if (isSale) {
     intent = 'RECORD_OFFLINE_SALE';
+  } else if (isAccountAction) {
+    intent = 'ADD_LOG_EXTENDED';
   } else if (isSync) {
     intent = 'TRIGGER_SYNC';
   } else if (isCreative) {
@@ -506,6 +537,12 @@ export function parseAdvancedVoiceCommand(
       }
     }
   } else if (intent === 'ADD_LOG_EXTENDED') {
+    if (isAccountAction && !isLog) {
+      noteText = rawText.trim();
+      if (noteText.length > 0) {
+        noteText = noteText.charAt(0).toUpperCase() + noteText.slice(1);
+      }
+    } else {
     // We try to find markers indicating the content
     let noteTextRaw = rawText;
     const contentMarkers = [
@@ -570,10 +607,11 @@ export function parseAdvancedVoiceCommand(
          cleanText = cleanText.replace(regex, '');
        });
 
+       // Keep the content empty when the user only asked to create a log entry.
+       // The confirmation form will request the missing observation instead of
+       // storing the command itself as the note.
        noteText = cleanText.replace(/^[:\s\-–—]+/g, '').replace(/[:\s\-–—]+$/g, '').trim();
-       if (!noteText) {
-         noteText = rawText; // Fallback
-       }
+    }
     }
   }
 
@@ -584,6 +622,8 @@ export function parseAdvancedVoiceCommand(
     date: dateStr,
     amount,
     noteText,
+    dateDetected,
+    clientMatchScore: bestScore,
     raw: rawText
   };
 }

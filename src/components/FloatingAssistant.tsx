@@ -38,6 +38,22 @@ interface ChatMessage {
   isProcessing?: boolean;
 }
 
+interface PendingBitacoraDraft {
+  type: 'RECORD_OFFLINE_SALE' | 'ADD_LOG_EXTENDED';
+  accountId: string;
+  date: string;
+  amount: string;
+  noteText: string;
+  warnings: string[];
+}
+
+interface PendingNoteAction {
+  type: 'delete' | 'update';
+  note: AccountNote;
+  accountName: string;
+  newText?: string;
+}
+
 // Custom interactive synthesiser of hologram interface sounds using native web AudioContext
 class OrionSynthesizer {
   private ctx: AudioContext | null = null;
@@ -296,6 +312,25 @@ export function optimizeTextForSpeech(text: string): string {
   return cleaned;
 }
 
+export function makeSpeechBrief(text: string): string {
+  const plainText = text
+    .replace(/\*\*/g, '')
+    .replace(/^\s*\d+\.\s*/gm, '')
+    .replace(/\s+/g, ' ')
+    .replace(/^(?:A sus órdenes|A su servicio|Entendido perfectamente|Entendido|Soberbio|Mis disculpas|Disculpe|Señor)[,.:\s]+/i, '')
+    .trim();
+
+  const sentences = plainText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [plainText];
+  let brief = sentences.slice(0, 2).join(' ').trim();
+
+  if (brief.length > 190) {
+    const shortened = brief.slice(0, 190);
+    brief = `${shortened.slice(0, shortened.lastIndexOf(' ')) || shortened}…`;
+  }
+
+  return brief || 'Listo.';
+}
+
 export default function FloatingAssistant({
   accounts,
   accountGroups = [],
@@ -320,6 +355,12 @@ export default function FloatingAssistant({
   const [isSuccessState, setIsSuccessState] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [transcriptText, setTranscriptText] = useState('');
+  const [pendingDraft, setPendingDraft] = useState<PendingBitacoraDraft | null>(null);
+  const [draftError, setDraftError] = useState('');
+  const [lastPreviewedNotes, setLastPreviewedNotes] = useState<AccountNote[]>([]);
+  const [lastPreviewedAccountId, setLastPreviewedAccountId] = useState<string | null>(null);
+  const [pendingNoteAction, setPendingNoteAction] = useState<PendingNoteAction | null>(null);
+  const [pendingClientIntent, setPendingClientIntent] = useState<ParsedVoiceCommand['intent'] | null>(null);
   const [lastAction, setLastAction] = useState<{
     type: 'RECORD_OFFLINE_SALE' | 'ADD_LOG_EXTENDED';
     accountId: string;
@@ -331,6 +372,8 @@ export default function FloatingAssistant({
   
   const recognitionRef = useRef<any>(null);
   const silenceTimeoutRef = useRef<any>(null);
+  const transcriptBufferRef = useRef('');
+  const lastProcessedTranscriptRef = useRef<{ text: string; at: number } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isDraggingRef = useRef(false);
@@ -358,6 +401,18 @@ export default function FloatingAssistant({
   } else {
     currentOrionState = 'standby';
   }
+
+  const orbStatus = isGeneratingReport
+    ? 'Analizando'
+    : currentOrionState === 'success'
+      ? 'Listo'
+      : isSpeaking
+        ? 'Respondiendo'
+        : currentOrionState === 'listening'
+          ? 'Escuchando'
+          : currentOrionState === 'thinking'
+            ? 'Procesando'
+            : 'Orión';
 
   // Mount/Unmount effects
   useEffect(() => {
@@ -427,7 +482,7 @@ export default function FloatingAssistant({
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, transcriptText]);
+  }, [messages, transcriptText, pendingDraft, pendingNoteAction]);
 
   // Clean speaking on unmount
   useEffect(() => {
@@ -496,6 +551,8 @@ export default function FloatingAssistant({
       window.speechSynthesis.cancel();
     }
 
+    const spokenText = makeSpeechBrief(text);
+
     // Trigger talking chord
     synth.playConfirm();
 
@@ -504,7 +561,7 @@ export default function FloatingAssistant({
       const response = await fetch(`${baseUrl}/orion/tts-google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voiceName: orionSettings?.voiceType || 'es-US-Neural2-C' }),
+        body: JSON.stringify({ text: spokenText, voiceName: orionSettings?.voiceType || 'es-US-Neural2-C' }),
       });
 
       if (response.ok) {
@@ -525,18 +582,18 @@ export default function FloatingAssistant({
         
         audioRef.current.play().catch(e => {
           console.error("Audio playback failed, falling back to window.speechSynthesis", e);
-          fallbackSpeechSynthesis(text);
+          fallbackSpeechSynthesis(spokenText);
         });
       } else if (response.status === 503 || response.status === 500) {
         console.warn(`Google Cloud TTS configuracion faltante API Error: ${response.status}. Usando respaldo...`);
-        fallbackSpeechSynthesis(text);
+        fallbackSpeechSynthesis(spokenText);
       } else {
         console.warn('Google Cloud TTS failed, falling back...');
-        fallbackSpeechSynthesis(text);
+        fallbackSpeechSynthesis(spokenText);
       }
     } catch (e) {
       console.error('Error fetching Google Cloud TTS:', e);
-      fallbackSpeechSynthesis(text);
+      fallbackSpeechSynthesis(spokenText);
     }
   };
 
@@ -548,8 +605,8 @@ export default function FloatingAssistant({
 
     const optimized = optimizeTextForSpeech(text);
     const utterance = new SpeechSynthesisUtterance(optimized);
-    utterance.rate = 1.15; // Habla de manera más fluida, ágil y rápida, respondiendo al ritmo solicitado
-    utterance.pitch = 0.52; // Tono notablemente más grave, profundo e imponente
+    utterance.rate = 1.05;
+    utterance.pitch = 0.9;
 
     const voices = window.speechSynthesis.getVoices();
     const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
@@ -593,13 +650,10 @@ export default function FloatingAssistant({
       }
       
       const greetings = [
-        `${timeGreeting}. Sistemas de análisis en línea. ¿En qué cuenta o registro le asisto hoy?`,
-        `${timeGreeting}. Listo para procesar sus directivas. ¿Hacia dónde dirigimos la atención?`,
-        `${timeGreeting}. Protocolos operando con normalidad. ¿Qué métricas evaluamos hoy?`,
-        `${timeGreeting}. Núcleo analítico desplegado, a su entera disposición.`,
-        `${timeGreeting}. Interfaces de control a la escucha. ¿En qué le puedo facilitar la gestión?`,
-        `${timeGreeting}. Preparado para maximizar el rendimiento. ¿Por dónde empezamos?`,
-        `${timeGreeting}. En línea y procesando. ¿Hay alguna actualización estratégica que reportar?`
+        `${timeGreeting}. ¿Qué necesitás registrar?`,
+        `${timeGreeting}. Te escucho.`,
+        `${timeGreeting}. ¿En qué cuenta trabajamos?`,
+        `${timeGreeting}. Orión está listo.`
       ];
       
       const welcomeText = greetings[Math.floor(Math.random() * greetings.length)];
@@ -625,6 +679,152 @@ export default function FloatingAssistant({
       }
       setIsSpeaking(false);
     }
+  };
+
+  const bitacoraClients = [
+    ...accounts.map(account => ({
+      id: account.id,
+      name: settings[account.id]?.customName || account.name,
+      currency: settings[account.id]?.currency || account.currency || 'ARS'
+    })),
+    ...accountGroups.map(group => ({
+      id: group.id,
+      name: settings[group.id]?.customName || group.name,
+      currency: settings[group.id]?.currency || 'ARS'
+    }))
+  ];
+
+  const handleCancelDraft = () => {
+    setPendingDraft(null);
+    setDraftError('');
+    const message = 'Borrador cancelado. No se guardó ningún dato.';
+    addMessage('assistant', message);
+    speakAsOrion(message);
+  };
+
+  const handleConfirmDraft = async () => {
+    if (!pendingDraft || isProcessing) return;
+
+    const selectedClient = bitacoraClients.find(client => client.id === pendingDraft.accountId);
+    if (!selectedClient) {
+      setDraftError('Seleccioná el cliente antes de guardar.');
+      return;
+    }
+
+    const parsedDate = new Date(`${pendingDraft.date}T12:00:00`);
+    if (!pendingDraft.date || Number.isNaN(parsedDate.getTime())) {
+      setDraftError('Revisá la fecha antes de guardar.');
+      return;
+    }
+
+    const amount = Number(pendingDraft.amount);
+    if (pendingDraft.type === 'RECORD_OFFLINE_SALE' && (!Number.isFinite(amount) || amount <= 0)) {
+      setDraftError('Ingresá un importe mayor que cero.');
+      return;
+    }
+    if (pendingDraft.type === 'ADD_LOG_EXTENDED' && !pendingDraft.noteText.trim()) {
+      setDraftError('Escribí el contenido de la bitácora antes de guardar.');
+      return;
+    }
+
+    setDraftError('');
+    setIsProcessing(true);
+    let cloudSaved = true;
+
+    try {
+      if (pendingDraft.type === 'RECORD_OFFLINE_SALE') {
+        const entryId = `sale_voice_${Math.random().toString(36).substring(2, 9)}`;
+        try {
+          await executeWithTimeout(saveOfflineSaleToFirestore(selectedClient.id, amount, pendingDraft.date), 1800);
+        } catch (error) {
+          cloudSaved = false;
+          console.warn('La venta se guardará localmente porque Firestore no respondió:', error);
+        }
+
+        onAddOfflineSale(selectedClient.id, amount, pendingDraft.date, entryId);
+        setLastAction({
+          type: 'RECORD_OFFLINE_SALE',
+          accountId: selectedClient.id,
+          entryId,
+          date: pendingDraft.date,
+          amount
+        });
+
+        const message = `Venta confirmada: $${amount.toLocaleString('es-AR')} para ${selectedClient.name}, con fecha ${pendingDraft.date}.${cloudSaved ? '' : ' Quedó guardada localmente porque la nube no respondió.'}`;
+        addMessage('assistant', message);
+        speakAsOrion(message);
+      } else {
+        const entryId = `voice_${Math.random().toString(36).substring(2, 9)}`;
+        const noteText = pendingDraft.noteText.trim();
+        try {
+          await executeWithTimeout(saveLogToFirestore(selectedClient.id, noteText, pendingDraft.date), 1800);
+        } catch (error) {
+          cloudSaved = false;
+          console.warn('La bitácora se guardará localmente porque Firestore no respondió:', error);
+        }
+
+        const newLocalNote: AccountNote = {
+          id: entryId,
+          accountId: selectedClient.id,
+          text: noteText,
+          timestamp: new Date(`${pendingDraft.date}T12:00:00`).toISOString(),
+          category: 'observation',
+          tags: cloudSaved ? ['Voz'] : ['Local', 'Voz']
+        };
+        onAddNote(newLocalNote);
+        setLastAction({
+          type: 'ADD_LOG_EXTENDED',
+          accountId: selectedClient.id,
+          entryId,
+          date: pendingDraft.date,
+          noteText
+        });
+
+        const message = `Bitácora confirmada para ${selectedClient.name}, con fecha ${pendingDraft.date}.${cloudSaved ? '' : ' Quedó guardada localmente porque la nube no respondió.'}`;
+        addMessage('assistant', message);
+        speakAsOrion(message);
+      }
+
+      setPendingDraft(null);
+      triggerSuccessState();
+    } catch (error) {
+      console.error('No se pudo confirmar el borrador de bitácora:', error);
+      setDraftError('No se pudo guardar. Revisá los datos e intentá nuevamente.');
+      synth.playError();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCancelNoteAction = () => {
+    setPendingNoteAction(null);
+    const message = 'Cambio cancelado. La bitácora quedó igual.';
+    addMessage('assistant', message);
+    speakAsOrion(message);
+  };
+
+  const handleConfirmNoteAction = () => {
+    if (!pendingNoteAction) return;
+
+    if (pendingNoteAction.type === 'delete') {
+      if (!onDeleteNote) return;
+      onDeleteNote(pendingNoteAction.note.id);
+      setLastPreviewedNotes(previous => previous.filter(note => note.id !== pendingNoteAction.note.id));
+      const message = `Eliminé la bitácora de ${pendingNoteAction.accountName}.`;
+      addMessage('assistant', message);
+      speakAsOrion(message);
+    } else {
+      if (!onUpdateNote || !pendingNoteAction.newText?.trim()) return;
+      const updatedNote = { ...pendingNoteAction.note, text: pendingNoteAction.newText.trim() };
+      onUpdateNote(updatedNote);
+      setLastPreviewedNotes(previous => previous.map(note => note.id === updatedNote.id ? updatedNote : note));
+      const message = `Actualicé la bitácora de ${pendingNoteAction.accountName}.`;
+      addMessage('assistant', message);
+      speakAsOrion(message);
+    }
+
+    setPendingNoteAction(null);
+    triggerSuccessState();
   };
 
   const handleStartListening = () => {
@@ -659,6 +859,7 @@ export default function FloatingAssistant({
       rec.onstart = () => {
         setIsListening(true);
         setTranscriptText('');
+        transcriptBufferRef.current = '';
         
         // Start an idle timer (if they do not speak at all for 8 seconds, automatically shut down)
         if (silenceTimeoutRef.current) {
@@ -672,7 +873,7 @@ export default function FloatingAssistant({
       rec.onresult = (event: any) => {
         let finalTranscript = '';
         let interimTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
+        for (let i = 0; i < event.results.length; ++i) {
           const trans = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             finalTranscript += trans;
@@ -681,8 +882,9 @@ export default function FloatingAssistant({
           }
         }
         
-        const currentText = finalTranscript || interimTranscript;
+        const currentText = `${finalTranscript} ${interimTranscript}`.trim();
         if (currentText.trim()) {
+          transcriptBufferRef.current = currentText.trim();
           setTranscriptText(currentText);
         }
 
@@ -718,12 +920,22 @@ export default function FloatingAssistant({
           clearTimeout(silenceTimeoutRef.current);
           silenceTimeoutRef.current = null;
         }
-        setTranscriptText(prev => {
-          if (prev.trim()) {
-            processTranscription(prev);
+        const finalText = transcriptBufferRef.current.trim();
+        transcriptBufferRef.current = '';
+        setTranscriptText('');
+
+        if (finalText) {
+          const normalizedFinalText = finalText.toLocaleLowerCase('es-AR').replace(/\s+/g, ' ');
+          const lastProcessed = lastProcessedTranscriptRef.current;
+          const isDuplicate = lastProcessed
+            && lastProcessed.text === normalizedFinalText
+            && Date.now() - lastProcessed.at < 5000;
+
+          if (!isDuplicate) {
+            lastProcessedTranscriptRef.current = { text: normalizedFinalText, at: Date.now() };
+            void processTranscription(finalText);
           }
-          return '';
-        });
+        }
       };
 
       recognitionRef.current = rec;
@@ -750,6 +962,33 @@ export default function FloatingAssistant({
     // 1. Log user request in chat bubble
     addMessage('user', rawString);
     setIsProcessing(true);
+
+    const normalizedRequest = rawString
+      .toLocaleLowerCase('es-AR')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+
+    if (pendingNoteAction) {
+      if (/\b(?:confirmar|confirmo|confirma|si,? guardar|si,? borrar|si,? modificar)\b/.test(normalizedRequest)) {
+        setIsProcessing(false);
+        handleConfirmNoteAction();
+        return;
+      }
+      if (/\b(?:cancelar|cancelo|cancela|no,? cancelar|dejalo asi|dejarlo asi)\b/.test(normalizedRequest)) {
+        setIsProcessing(false);
+        handleCancelNoteAction();
+        return;
+      }
+      if (pendingNoteAction.type === 'update' && !pendingNoteAction.newText?.trim()) {
+        setPendingNoteAction({ ...pendingNoteAction, newText: rawString.trim() });
+        const message = 'Tomé el nuevo texto. Decí “confirmar” para guardarlo o “cancelar”.';
+        setIsProcessing(false);
+        addMessage('assistant', message);
+        speakAsOrion(message);
+        return;
+      }
+    }
 
     const consolidatedClients = [
       ...accounts.map(acc => {
@@ -807,20 +1046,34 @@ export default function FloatingAssistant({
 
     const parsed: ParsedVoiceCommand = parseAdvancedVoiceCommand(rawString, mappedClients);
     const targetClient = consolidatedClients.find(c => c.id === parsed.clientId);
+    let resolvedIntent = parsed.intent;
+    const isClientOnlyFollowUp = Boolean(targetClient) && !/\b(?:ver|mostrar|previsualizar|registrar|cargar|venta|bitacora|nota|borrar|eliminar|modificar|cambiar|auditar|analizar|sincronizar)\b/.test(normalizedRequest);
+
+    // Keep the previous request alive when Orion asked only for the missing client.
+    // A short follow-up such as "Victoria Metálicas" can now complete the command.
+    if (pendingClientIntent && targetClient) {
+      if (parsed.intent === 'UNKNOWN' || isClientOnlyFollowUp) {
+        resolvedIntent = pendingClientIntent;
+      }
+      if (resolvedIntent === pendingClientIntent) {
+        setPendingClientIntent(null);
+      }
+    }
 
     let systemResponse = '';
 
     try {
-      switch (parsed.intent) {
+      switch (resolvedIntent) {
         case 'ORION_CAPABILITIES': {
           systemResponse = `A sus órdenes, señor. Mi núcleo operacional, el Protocolo Orión, está diseñado para ser la inteligencia táctica de su bitácora de Meta Ads. Estoy facultado para realizar múltiples cursos de acción por comandos de voz:
 
 1. **Registrar de Ventas Manuales**: Diciendo por ejemplo "Registrar venta de un millón doscientos mil en Productos de Fierro hoy". Procesaré de inmediato la cifra, el cliente y la fecha para insertarlo localmente y sincronizarlo ante Firebase Firestore.
 2. **Consultar Historial**: Al decirme "Mostrame las ventas de [Cliente]" o "Ver historial", le listaré los últimos registros de transacciones.
-3. **Bitácora Cualitativa**: Puede decirme "Anotar bitácora para [Cliente] de que pausamos campaña de retargeting" para sumar observaciones críticas.
-4. **Auditorías Creativas**: Preguntándome "Rendimiento creativo de [Cliente]" o "Auditar anuncios de [Cliente]". Analizaré los montos invertidos, conversión y sugeriré correcciones de presupuesto.
-5. **Fórmulas de Rendimiento y Ránkings**: Si me consulta por "ranking global" o "quiénes van mejor", organizaré sus marcas según ROAS determinando puntos de fuga y líderes de eficiencia.
-6. **Rectificación de Bitácora**: Si comete un error, puede ordenarme "Eliminar último registro" o presionar el botón "Deshacer" para revertir de manera instantánea el cambio.
+3. **Bitácora Cualitativa**: Puede decirme "Anotar bitácora para [Cliente] de que pausamos campaña de retargeting" o hablar naturalmente: "Hoy hicimos cambios en la cuenta de [Cliente]".
+4. **Previsualizar Bitácoras**: Diga "Mostrame las bitácoras de [Cliente]". Después puede pedir "borrá la primera" o "modificá la segunda".
+5. **Auditorías Creativas**: Preguntándome "Rendimiento creativo de [Cliente]" o "Auditar anuncios de [Cliente]". Analizaré los montos invertidos, conversión y sugeriré correcciones de presupuesto.
+6. **Fórmulas de Rendimiento y Ránkings**: Si me consulta por "ranking global" o "quiénes van mejor", organizaré sus marcas según ROAS determinando puntos de fuga y líderes de eficiencia.
+7. **Rectificación de Bitácora**: Si comete un error, puede ordenarme "Eliminar último registro" o presionar el botón "Deshacer" para revertir de manera instantánea el cambio.
 
 Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que su terminal siga operativa incluso bajo fluctuaciones o caídas en la conexión central. ¿Qué protocolo desea que iniciemos ahora, señor?`;
           triggerSuccessState();
@@ -828,111 +1081,42 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
         }
 
         case 'ADD_LOG_EXTENDED': {
-          if (!targetClient) {
-            systemResponse = `Disculpe, señor. Comprendo que desea guardar una entrada en la bitácora, pero no logro identificar a cuál de sus cuentas se refiere. ¿Podría especificarme el nombre del cliente, por favor?`;
-            break;
-          }
-          const noteText = parsed.noteText || "Nota guardada vía asistente de voz";
-          const generatedNoteId = 'voice_' + Math.random().toString(36).substring(2, 9);
-          
-          try {
-            // Write to Firestore with robust 1.8 seconds timeout limit to prevent hanging if firebase or network freezes
-            await executeWithTimeout(saveLogToFirestore(targetClient.id, noteText, parsed.date), 1800);
-            
-            // Instantly update local react state
-            const parsedDateObj = parsed.date ? new Date(parsed.date + "T12:00:00Z") : new Date();
-            const newLocalNote: AccountNote = {
-              id: generatedNoteId,
-              accountId: targetClient.id,
-              text: noteText,
-              timestamp: parsedDateObj.toISOString(),
-              category: 'observation',
-              tags: ['Voz']
-            };
-            onAddNote(newLocalNote);
+          const warnings: string[] = [];
+          if (!targetClient) warnings.push('No pude identificar el cliente con seguridad.');
+          else if (parsed.clientMatchScore < 60) warnings.push('La coincidencia del cliente es aproximada.');
+          if (!parsed.dateDetected) warnings.push('No escuché una fecha; coloqué hoy como valor inicial.');
+          if (!parsed.noteText?.trim()) warnings.push('No pude separar claramente el contenido de la nota.');
 
-            setLastAction({
-              type: 'ADD_LOG_EXTENDED',
-              accountId: targetClient.id,
-              entryId: generatedNoteId,
-              date: parsed.date,
-              noteText
-            });
-
-            systemResponse = `A sus órdenes, señor. He registrado su entrada en la bitácora de ${targetClient.name} hoy ${parsed.date}. La nota se guardó exitosamente y se sincronizó con Firebase Firestore: "${noteText}". ¿Desea realizar alguna otra auditoría o registrar algo más, señor?`;
-          } catch (fireErr) {
-            console.warn("Fallo momentáneo de guardado en la nube en tiempo real (Timeout/Offline):", fireErr);
-            
-            // Instantly resguard locally through state, persisting to localStorage
-            const newLocalNote: AccountNote = {
-              id: generatedNoteId,
-              accountId: targetClient.id,
-              text: noteText,
-              timestamp: new Date().toISOString(),
-              category: 'observation',
-              tags: ['Local', 'Voz']
-            };
-            onAddNote(newLocalNote);
-
-            setLastAction({
-              type: 'ADD_LOG_EXTENDED',
-              accountId: targetClient.id,
-              entryId: generatedNoteId,
-              date: parsed.date,
-              noteText
-            });
-
-            systemResponse = `Señor, he procesado su anotación para ${targetClient.name}: "${noteText}". Debido a que la base de datos de Firebase no respondió a tiempo debido a una fluctuación temporal de red, guardé la entrada de manera totalmente segura en la memoria y almacenamiento local del sistema. Se sincronizará por detrás de forma transparente apenas retorne la conexión estable.`;
-          }
-          triggerSuccessState();
+          setPendingDraft({
+            type: 'ADD_LOG_EXTENDED',
+            accountId: targetClient?.id || '',
+            date: parsed.date,
+            amount: '',
+            noteText: parsed.noteText || '',
+            warnings
+          });
+          setDraftError('');
+          systemResponse = 'Preparé un borrador de bitácora. Revisá el cliente, la fecha y el texto antes de confirmar. Todavía no guardé nada.';
           break;
         }
 
         case 'RECORD_OFFLINE_SALE': {
-          if (!targetClient) {
-            systemResponse = `Lo lamento, señor. Detecté su solicitud para registrar una venta manual, pero no pude asociarla con ningún cliente registrado en el sistema. ¿Podría repetirme el comando especificando el nombre de la cuenta o grupo publicitario, por favor?`;
-            break;
-          }
-          if (parsed.amount === undefined || isNaN(parsed.amount)) {
-            systemResponse = `Señor, he intentado asentar la venta manual para ${targetClient.name}, pero no he logrado detectar un importe numérico válido en su instrucción. ¿Sería tan amable de indicarme la cifra exacta?`;
-            break;
-          }
+          const warnings: string[] = [];
+          if (!targetClient) warnings.push('No pude identificar el cliente con seguridad.');
+          else if (parsed.clientMatchScore < 60) warnings.push('La coincidencia del cliente es aproximada.');
+          if (!parsed.dateDetected) warnings.push('No escuché una fecha; coloqué hoy como valor inicial.');
+          if (parsed.amount === undefined || !Number.isFinite(parsed.amount)) warnings.push('No pude reconocer un importe válido.');
 
-          const generatedSaleId = 'sale_voice_' + Math.random().toString(36).substring(2, 9);
-
-          try {
-            // Try updating Firestore with a robust timeout limit of 1.8 seconds
-            await executeWithTimeout(saveOfflineSaleToFirestore(targetClient.id, parsed.amount, parsed.date), 1800);
-            
-            // Local state mutation callback
-            onAddOfflineSale(targetClient.id, parsed.amount, parsed.date, generatedSaleId);
-
-            setLastAction({
-              type: 'RECORD_OFFLINE_SALE',
-              accountId: targetClient.id,
-              entryId: generatedSaleId,
-              date: parsed.date,
-              amount: parsed.amount
-            });
-
-            systemResponse = `Entendido, señor. He asentado con éxito una venta manual por un valor de $${parsed.amount.toLocaleString('es-AR')} en la cuenta de ${targetClient.name} con fecha ${parsed.date}. La entrada se sincronizó correctamente con Firebase Firestore. ¿Hay alguna otra tarea que requiera mi atención?`;
-          } catch (fireErr) {
-            console.warn("Fallo o tardanza en Firestore para venta offline:", fireErr);
-            
-            // Fallback: save to Local storage instantly so the user experience is flawless
-            onAddOfflineSale(targetClient.id, parsed.amount, parsed.date, generatedSaleId);
-
-            setLastAction({
-              type: 'RECORD_OFFLINE_SALE',
-              accountId: targetClient.id,
-              entryId: generatedSaleId,
-              date: parsed.date,
-              amount: parsed.amount
-            });
-
-            systemResponse = `Señor, he registrado con total éxito la venta manual de $${parsed.amount.toLocaleString('es-AR')} para ${targetClient.name} de la fecha ${parsed.date}. El servidor central de Firebase demororó en responder, por lo que he procedido a resguardarla localmente en el almacenamiento auxiliar del sistema, garantizando que el reporte se recalcule y actualice de inmediato.`;
-          }
-          triggerSuccessState();
+          setPendingDraft({
+            type: 'RECORD_OFFLINE_SALE',
+            accountId: targetClient?.id || '',
+            date: parsed.date,
+            amount: parsed.amount === undefined ? '' : String(parsed.amount),
+            noteText: '',
+            warnings
+          });
+          setDraftError('');
+          systemResponse = 'Preparé un borrador de venta offline. Revisá especialmente el importe, el cliente y la fecha. Todavía no guardé nada.';
           break;
         }
 
@@ -1141,6 +1325,99 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
           break;
         }
 
+        case 'VIEW_ACCOUNT_LOGS': {
+          const accountId = targetClient?.id || lastPreviewedAccountId;
+          const account = consolidatedClients.find(client => client.id === accountId);
+
+          if (!accountId || !account) {
+            setPendingClientIntent('VIEW_ACCOUNT_LOGS');
+            systemResponse = 'Decime de qué cliente querés ver la bitácora.';
+            break;
+          }
+
+          const accountNotes = notes
+            .filter(note => note.accountId === accountId)
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+          if (accountNotes.length === 0) {
+            setLastPreviewedNotes([]);
+            setLastPreviewedAccountId(accountId);
+            systemResponse = `No hay bitácoras cargadas para ${account.name}.`;
+            break;
+          }
+
+          const previewNotes = accountNotes.slice(0, 8);
+          setLastPreviewedNotes(previewNotes);
+          setLastPreviewedAccountId(accountId);
+
+          const preview = previewNotes.map((note, index) => {
+            const date = new Date(note.timestamp).toLocaleDateString('es-AR');
+            return `${index + 1}. ${date} — ${note.text}`;
+          }).join('\n');
+
+          systemResponse = `Encontré ${accountNotes.length} bitácora${accountNotes.length === 1 ? '' : 's'} de ${account.name}. Te muestro las más recientes:\n\n${preview}${accountNotes.length > previewNotes.length ? `\n\nHay ${accountNotes.length - previewNotes.length} más antiguas.` : ''}\n\nPodés decir “borrá la primera” o “modificá la segunda”.`;
+          break;
+        }
+
+        case 'DELETE_ACCOUNT_LOG':
+        case 'MODIFY_ACCOUNT_LOG': {
+          const accountId = targetClient?.id || lastPreviewedAccountId;
+          const account = consolidatedClients.find(client => client.id === accountId);
+
+          if (!accountId || !account) {
+            setPendingClientIntent(resolvedIntent);
+            systemResponse = 'Primero decime el cliente o pedime que muestre su bitácora.';
+            break;
+          }
+
+          const availableNotes = (lastPreviewedAccountId === accountId && lastPreviewedNotes.length > 0
+            ? lastPreviewedNotes
+            : notes
+                .filter(note => note.accountId === accountId)
+                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+
+          const ordinalMatchers = [
+            /\b(?:1|primera|primer|uno)\b/,
+            /\b(?:2|segunda|segundo|dos)\b/,
+            /\b(?:3|tercera|tercer|tres)\b/,
+            /\b(?:4|cuarta|cuarto|cuatro)\b/,
+            /\b(?:5|quinta|quinto|cinco)\b/,
+            /\b(?:6|sexta|sexto|seis)\b/,
+            /\b(?:7|septima|septimo|siete)\b/,
+            /\b(?:8|octava|octavo|ocho)\b/
+          ];
+          const requestedIndex = ordinalMatchers.findIndex(pattern => pattern.test(normalizedRequest));
+          let selectedNote = requestedIndex >= 0 ? availableNotes[requestedIndex] : availableNotes[0];
+
+          if (parsed.dateDetected) {
+            const noteOnDate = availableNotes.find(note => note.timestamp.slice(0, 10) === parsed.date);
+            if (noteOnDate) selectedNote = noteOnDate;
+          }
+
+          if (!selectedNote) {
+            systemResponse = `No encontré esa bitácora de ${account.name}. Pedime una previsualización para ver la lista actual.`;
+            break;
+          }
+
+          if (resolvedIntent === 'DELETE_ACCOUNT_LOG') {
+            setPendingNoteAction({ type: 'delete', note: selectedNote, accountName: account.name });
+            systemResponse = `Preparé la eliminación de esta bitácora: “${selectedNote.text}”. Decí “confirmar” para borrarla o “cancelar”.`;
+          } else {
+            const replacementMatch = rawString.match(/(?:que diga|por el texto|nuevo texto|cambiarla? a|modificarla? a)\s*[:,-]?\s*(.+)$/i);
+            const replacementText = replacementMatch?.[1]?.trim() || '';
+            setPendingNoteAction({
+              type: 'update',
+              note: selectedNote,
+              accountName: account.name,
+              newText: replacementText
+            });
+            systemResponse = replacementText
+              ? `Preparé el cambio de la bitácora. Decí “confirmar” para guardarlo o “cancelar”.`
+              : 'Decime ahora el nuevo texto de la bitácora.';
+          }
+          break;
+        }
+
         case 'VIEW_OFFLINE_SALES': {
           if (!targetClient) {
             systemResponse = `Mis disculpas, señor. Comprendo que desea auditar o visualizar el registro de ventas manuales, pero no logro relacionar su solicitud con alguna de las cuentas publicitarias en Orion. ¿Me indicaría el nombre de la cuenta, por favor?`;
@@ -1311,7 +1588,9 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
         }
 
         default: {
-          systemResponse = `Lo siento mucho, señor. No logré decodificar su comando. Recuerde que puede pedirme "Auditar rendimiento de [cliente]", "Registrar venta manual de [monto] para [cliente] ayer", o "Guardar bitácora para [cliente] que diga [observación]". ¿En cuál de ellos le asisto ahora mismo, señor?`;
+          systemResponse = pendingClientIntent
+            ? 'No encontré ese cliente. Decime el nombre como aparece en la lista de cuentas.'
+            : 'No entendí la orden. Probá con “mostrar bitácoras”, “registrar venta” o “anotar un cambio”.';
           break;
         }
       }
@@ -1424,11 +1703,15 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
                     <div className="flex flex-col gap-1.5 text-left border-t border-white/[0.04] pt-3">
                       <div className="text-[9px] font-mono text-neutral-400 flex items-center gap-2">
                         <span className="w-1 h-3 bg-amber-500/60 rounded" />
-                        <span>"Guardar bitácora para [Cliente]"</span>
+                        <span>"Hoy hicimos cambios en [Cliente]"</span>
                       </div>
                       <div className="text-[9px] font-mono text-neutral-400 flex items-center gap-2">
                         <span className="w-1 h-3 bg-amber-500/60 rounded" />
                         <span>"Registrar venta de [monto] hoy"</span>
+                      </div>
+                      <div className="text-[9px] font-mono text-neutral-400 flex items-center gap-2">
+                        <span className="w-1 h-3 bg-cyan-500/60 rounded" />
+                        <span>"Mostrar bitácoras de [Cliente]"</span>
                       </div>
                       <div className="text-[9px] font-mono text-neutral-400 flex items-center gap-2">
                         <span className="w-1 h-3 bg-amber-500/60 rounded" />
@@ -1456,6 +1739,160 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
                   </div>
                 </div>
               ))}
+
+              {pendingDraft && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.96, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  className="rounded-xl border border-blue-500/25 bg-blue-500/[0.05] p-3.5 space-y-3"
+                >
+                  <div>
+                    <div className="text-[10px] font-bold text-white">Revisar antes de guardar</div>
+                    <div className="mt-1 text-[9px] leading-relaxed text-neutral-400">
+                      {pendingDraft.type === 'RECORD_OFFLINE_SALE' ? 'Venta offline' : 'Nota de bitácora'} · todavía no se guardó
+                    </div>
+                  </div>
+
+                  {pendingDraft.warnings.length > 0 && (
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.07] px-2.5 py-2">
+                      {pendingDraft.warnings.map(warning => (
+                        <p key={warning} className="text-[9px] leading-relaxed text-amber-200">• {warning}</p>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="space-y-2.5">
+                    <label className="block">
+                      <span className="mb-1 block text-[8px] font-bold uppercase tracking-wider text-neutral-500">Cliente</span>
+                      <select
+                        value={pendingDraft.accountId}
+                        onChange={event => setPendingDraft({ ...pendingDraft, accountId: event.target.value })}
+                        className="w-full rounded-lg border border-white/[0.08] bg-neutral-950 px-2.5 py-2 text-[10px] text-neutral-200 outline-none focus:border-blue-500/60"
+                      >
+                        <option value="">Seleccionar cliente</option>
+                        {bitacoraClients.map(client => (
+                          <option key={client.id} value={client.id}>{client.name}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-1 block text-[8px] font-bold uppercase tracking-wider text-neutral-500">Fecha</span>
+                      <input
+                        type="date"
+                        value={pendingDraft.date}
+                        onChange={event => setPendingDraft({ ...pendingDraft, date: event.target.value })}
+                        className="w-full rounded-lg border border-white/[0.08] bg-neutral-950 px-2.5 py-2 text-[10px] text-neutral-200 outline-none focus:border-blue-500/60"
+                      />
+                    </label>
+
+                    {pendingDraft.type === 'RECORD_OFFLINE_SALE' ? (
+                      <label className="block">
+                        <span className="mb-1 block text-[8px] font-bold uppercase tracking-wider text-neutral-500">Importe</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          inputMode="decimal"
+                          value={pendingDraft.amount}
+                          onChange={event => setPendingDraft({ ...pendingDraft, amount: event.target.value })}
+                          placeholder="Ej.: 250000"
+                          className="w-full rounded-lg border border-white/[0.08] bg-neutral-950 px-2.5 py-2 text-[11px] font-semibold text-white outline-none focus:border-blue-500/60"
+                        />
+                      </label>
+                    ) : (
+                      <label className="block">
+                        <span className="mb-1 block text-[8px] font-bold uppercase tracking-wider text-neutral-500">Contenido</span>
+                        <textarea
+                          rows={3}
+                          value={pendingDraft.noteText}
+                          onChange={event => setPendingDraft({ ...pendingDraft, noteText: event.target.value })}
+                          placeholder="Escribí o corregí la observación"
+                          className="w-full resize-none rounded-lg border border-white/[0.08] bg-neutral-950 px-2.5 py-2 text-[10px] leading-relaxed text-neutral-200 outline-none focus:border-blue-500/60"
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {draftError && (
+                    <p className="text-[9px] leading-relaxed text-red-300">{draftError}</p>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleConfirmDraft}
+                      disabled={isProcessing}
+                      className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-white transition hover:bg-blue-500 disabled:opacity-50"
+                    >
+                      Confirmar y guardar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelDraft}
+                      disabled={isProcessing}
+                      className="rounded-lg border border-white/[0.08] px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-neutral-400 transition hover:text-white disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {pendingNoteAction && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.96, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  className="rounded-xl border border-amber-500/25 bg-amber-500/[0.05] p-3.5 space-y-3"
+                >
+                  <div>
+                    <div className="text-[10px] font-bold text-white">
+                      {pendingNoteAction.type === 'delete' ? 'Confirmar eliminación' : 'Confirmar modificación'}
+                    </div>
+                    <div className="mt-1 text-[9px] text-neutral-500">{pendingNoteAction.accountName}</div>
+                  </div>
+
+                  <div className="rounded-lg border border-white/[0.06] bg-neutral-950/70 p-2.5">
+                    <div className="text-[8px] font-bold uppercase tracking-wider text-neutral-600">Texto actual</div>
+                    <p className="mt-1 text-[9px] leading-relaxed text-neutral-300">{pendingNoteAction.note.text}</p>
+                  </div>
+
+                  {pendingNoteAction.type === 'update' && (
+                    <label className="block">
+                      <span className="mb-1 block text-[8px] font-bold uppercase tracking-wider text-neutral-500">Texto nuevo</span>
+                      <textarea
+                        rows={3}
+                        value={pendingNoteAction.newText || ''}
+                        onChange={event => setPendingNoteAction({ ...pendingNoteAction, newText: event.target.value })}
+                        placeholder="Podés dictarlo o escribirlo"
+                        className="w-full resize-none rounded-lg border border-white/[0.08] bg-neutral-950 px-2.5 py-2 text-[10px] leading-relaxed text-neutral-200 outline-none focus:border-blue-500/60"
+                      />
+                    </label>
+                  )}
+
+                  <p className="text-[9px] leading-relaxed text-neutral-500">
+                    También podés decir “confirmar” o “cancelar”.
+                  </p>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleConfirmNoteAction}
+                      disabled={pendingNoteAction.type === 'update' && !pendingNoteAction.newText?.trim()}
+                      className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Confirmar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelNoteAction}
+                      className="rounded-lg border border-white/[0.08] px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-neutral-400 transition hover:text-white"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </motion.div>
+              )}
 
               {/* Interactive confirmation action box with custom "Undo" option when modification is saved */}
               {lastAction && (
@@ -1577,17 +2014,47 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
       {/* Floating Living Entity Orb (Core) modeled exactly after the complex bright golden sphere photo */}
       <motion.div
         animate={{
-          y: isOpen ? 0 : [0, -9, 0],
+          y: isOpen ? 0 : [0, -6, 0],
+          scale: isSpeaking ? [1, 1.025, 1] : 1,
         }}
         transition={{
           y: {
             repeat: Infinity,
             duration: 3.8,
             ease: "easeInOut"
+          },
+          scale: {
+            repeat: Infinity,
+            duration: 0.9,
+            ease: "easeInOut"
           }
         }}
         className="relative"
       >
+        <AnimatePresence>
+          {(isListening || isSpeaking || currentOrionState === 'thinking') && (
+            <>
+              {[0, 1].map(index => (
+                <motion.div
+                  key={`activity-wave-${index}`}
+                  initial={{ scale: 0.72, opacity: 0.55 }}
+                  animate={{ scale: 1.55 + index * 0.22, opacity: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: currentOrionState === 'thinking' ? 1.1 : 1.6,
+                    delay: index * 0.55,
+                    ease: 'easeOut'
+                  }}
+                  className={`absolute inset-2 rounded-full border pointer-events-none ${
+                    isListening ? 'border-cyan-300/70' : isSpeaking ? 'border-blue-300/60' : 'border-amber-300/55'
+                  }`}
+                />
+              ))}
+            </>
+          )}
+        </AnimatePresence>
+
         {/* Glowing outer aura bloom */}
         <div className={`absolute inset-0 rounded-full blur-2xl opacity-75 transition-all duration-700 ${
           currentOrionState === 'success'
@@ -1617,6 +2084,45 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
           className="relative w-28 h-28 rounded-full flex items-center justify-center select-none active:scale-95 transition-all duration-300 outline-none filter brightness-110"
           id="orion-living-core-button"
         >
+          {/* Rotating radar sweep gives the core a continuous data-scanning motion. */}
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{
+              repeat: Infinity,
+              duration: currentOrionState === 'thinking' ? 1.8 : 7,
+              ease: 'linear'
+            }}
+            className="absolute inset-[-5px] rounded-full opacity-60"
+            style={{
+              background: 'conic-gradient(from 0deg, transparent 0deg, transparent 300deg, rgba(56,189,248,.7) 338deg, transparent 360deg)',
+              WebkitMaskImage: 'radial-gradient(circle, transparent 61%, #000 63%, #000 67%, transparent 69%)',
+              maskImage: 'radial-gradient(circle, transparent 61%, #000 63%, #000 67%, transparent 69%)'
+            }}
+          />
+
+          {/* Independent data particles make every state feel active rather than decorative. */}
+          {[0, 1, 2, 3, 4, 5].map(index => (
+            <motion.div
+              key={`orion-particle-${index}`}
+              initial={{ rotate: index * 60 }}
+              animate={{ rotate: index % 2 === 0 ? index * 60 + 360 : index * 60 - 360 }}
+              transition={{
+                repeat: Infinity,
+                duration: (currentOrionState === 'thinking' ? 2.4 : 6.5) + index * 0.7,
+                ease: 'linear'
+              }}
+              className="absolute inset-[5px] rounded-full pointer-events-none"
+            >
+              <motion.span
+                animate={{ scale: [0.7, 1.45, 0.7], opacity: [0.35, 1, 0.35] }}
+                transition={{ repeat: Infinity, duration: 1.2 + index * 0.12, ease: 'easeInOut' }}
+                className={`absolute left-1/2 top-0 h-1 w-1 rounded-full ${
+                  currentOrionState === 'success' ? 'bg-emerald-300' : index % 2 === 0 ? 'bg-cyan-300' : 'bg-blue-400'
+                } shadow-[0_0_7px_currentColor]`}
+              />
+            </motion.div>
+          ))}
+
           {/* Multiple complex concentric holographic rings of data matching the attached gold sphere file */}
           
           {/* Success Ring (Outward radiating pulse) */}
@@ -1788,6 +2294,14 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
             </motion.div>
           </div>
         </button>
+
+        <motion.div
+          animate={{ opacity: [0.55, 1, 0.55] }}
+          transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
+          className="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-cyan-400/15 bg-neutral-950/85 px-2 py-0.5 text-[7px] font-mono uppercase tracking-[0.18em] text-cyan-200/80 shadow-[0_0_12px_rgba(34,211,238,0.12)] backdrop-blur"
+        >
+          {orbStatus}
+        </motion.div>
       </motion.div>
     </motion.div>
   );

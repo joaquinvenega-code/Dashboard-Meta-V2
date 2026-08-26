@@ -19,7 +19,6 @@ import {
   Calendar, 
   ArrowUpRight,
   TrendingUp,
-  Target,
   BarChart2,
   DollarSign,
   ShoppingCart,
@@ -36,7 +35,6 @@ import {
   Settings,
   Download,
   FileText,
-  Instagram,
   Facebook,
   X,
   Mic,
@@ -46,8 +44,26 @@ import {
   ImageOff,
   MessageSquare,
   UserCheck,
-  Users
+  Users,
+  GripVertical
 } from 'lucide-react';
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  type DragEndEvent,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 export const RocketLoader = () => (
   <div className="flex flex-col items-center justify-center pt-32 pb-20 w-full animate-in fade-in duration-700">
@@ -139,7 +155,7 @@ export const RocketLoader = () => (
   </div>
 );
 import { cn, calculateEffectiveBalance } from '../lib/utils';
-import { startOfMonth, endOfMonth, differenceInDays, addDays, subDays, isSameMonth, isSameYear } from 'date-fns';
+import { startOfMonth, addDays, subDays, isSameMonth, isSameYear } from 'date-fns';
 import { OfflineSalesManager } from './OfflineSalesManager';
 import { 
   AreaChart, 
@@ -154,6 +170,98 @@ import { AnimatePresence, motion } from 'motion/react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+interface SortableMetricCardProps {
+  id: string;
+  onRemove: () => void;
+  children: React.ReactNode;
+}
+
+const SortableMetricCard: React.FC<SortableMetricCardProps> = ({ id, onRemove, children }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 30 : undefined,
+        opacity: isDragging ? 0.72 : 1,
+      }}
+      className={cn(
+        'metric-sortable relative min-w-0 rounded-xl transition-shadow',
+        isDragging && 'shadow-2xl shadow-blue-950/40'
+      )}
+    >
+      <button
+        type="button"
+        className="absolute left-2.5 top-2.5 z-20 cursor-grab rounded p-0.5 text-neutral-600 transition-colors hover:bg-white/[0.05] hover:text-neutral-300 active:cursor-grabbing print:hidden"
+        title="Arrastrar para mover"
+        aria-label="Arrastrar para mover la métrica"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-3 w-3" />
+      </button>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onRemove();
+        }}
+        className="absolute right-2.5 top-2.5 z-20 rounded p-0.5 text-neutral-600 transition-colors hover:bg-red-500/10 hover:text-red-300 print:hidden"
+        title="Quitar métrica"
+        aria-label="Quitar métrica"
+      >
+        <X className="h-3 w-3" />
+      </button>
+      <div className="h-full">{children}</div>
+    </div>
+  );
+};
+
+const completeDailySeriesForRange = (
+  series: DailyMetric[] | undefined,
+  since: string,
+  until: string
+): DailyMetric[] => {
+  try {
+    const start = parseISO(since);
+    const end = parseISO(until);
+    if (start > end) return [];
+
+    const byDate = new Map((series || []).map(item => [item.date, item]));
+    const completed: DailyMetric[] = [];
+
+    for (let current = start; current <= end; current = addDays(current, 1)) {
+      const date = format(current, 'yyyy-MM-dd');
+      const existing = byDate.get(date);
+      completed.push(existing ? { ...existing, date } : {
+        date,
+        spend: 0,
+        clicks: 0,
+        purchases: 0,
+        revenue: 0,
+        messages: 0,
+        leads: 0,
+        costPerLead: 0,
+        roas: 0,
+      });
+    }
+
+    return completed;
+  } catch {
+    return [...(series || [])].sort((a, b) => a.date.localeCompare(b.date));
+  }
+};
+
 interface AccountDailyTrendCardProps {
   account: AdAccount;
   settings?: AccountSettings;
@@ -162,6 +270,93 @@ interface AccountDailyTrendCardProps {
   loading?: boolean;
 }
 
+const GeneralPrintTrendChart: React.FC<{
+  data: Array<Record<string, any>>;
+  primaryLabel: string;
+  secondaryLabel: string;
+  showSecondary: boolean;
+}> = ({ data, primaryLabel, secondaryLabel, showSecondary }) => {
+  const width = 960;
+  const height = 190;
+  const padding = { top: 20, right: 28, bottom: 34, left: 48 };
+  const primaryValues = data.map(item => Number(item.primaryValue) || 0);
+  const secondaryValues = data.map(item => Number(item.costPerUnit) || 0);
+  const primaryMax = Math.max(...primaryValues, 1);
+  const secondaryMax = Math.max(...secondaryValues, 1);
+
+  const xForIndex = (index: number) => data.length === 1
+    ? width / 2
+    : padding.left + (index / (data.length - 1)) * (width - padding.left - padding.right);
+  const yForValue = (value: number, max: number) => (
+    height - padding.bottom - (value / max) * (height - padding.top - padding.bottom)
+  );
+  const primaryPoints = primaryValues.map((value, index) => ({
+    x: xForIndex(index),
+    y: data.length === 1 ? height / 2 : yForValue(value, primaryMax),
+  }));
+  const secondaryPoints = secondaryValues.map((value, index) => ({
+    x: xForIndex(index),
+    y: data.length === 1 ? height / 2 : yForValue(value, secondaryMax),
+  }));
+  const primaryPolyline = primaryPoints.map(point => `${point.x},${point.y}`).join(' ');
+  const secondaryPolyline = secondaryPoints.map(point => `${point.x},${point.y}`).join(' ');
+  const baseline = height - padding.bottom;
+  const areaPoints = `${padding.left},${baseline} ${primaryPolyline} ${width - padding.right},${baseline}`;
+  const labelIndexes = data.length <= 6
+    ? data.map((_, index) => index)
+    : [0, Math.floor((data.length - 1) / 2), data.length - 1];
+
+  if (data.length === 0) {
+    return (
+      <div className="general-print-chart hidden print:flex">
+        <strong>Sin evolución diaria para el período seleccionado.</strong>
+      </div>
+    );
+  }
+
+  return (
+    <div className="general-print-chart hidden print:flex">
+      <div className="general-print-chart-legend">
+        <span><i className="general-print-primary-dot" />{primaryLabel}</span>
+        {showSecondary && <span><i className="general-print-secondary-line" />{secondaryLabel}</span>}
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label={`${primaryLabel} por día`}>
+        {[0, 0.5, 1].map(position => {
+          const y = padding.top + position * (height - padding.top - padding.bottom);
+          const label = Math.round(primaryMax * (1 - position));
+          return (
+            <g key={position}>
+              <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="#e2e8f0" strokeWidth="1" />
+              <text x={padding.left - 12} y={y + 4} textAnchor="end" fill="#64748b" fontSize="12" fontWeight="650">{label}</text>
+            </g>
+          );
+        })}
+        <polygon points={areaPoints} fill="#dbeafe" opacity="0.75" />
+        <polyline points={primaryPolyline} fill="none" stroke="#3b82f6" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
+        {showSecondary && (
+          <polyline points={secondaryPolyline} fill="none" stroke="#7dd3fc" strokeWidth="2.5" strokeDasharray="9 7" strokeLinejoin="round" strokeLinecap="round" />
+        )}
+        {primaryPoints.map((point, index) => (
+          <circle key={index} cx={point.x} cy={point.y} r="4" fill="#3b82f6" />
+        ))}
+        {labelIndexes.map(index => (
+          <text
+            key={index}
+            x={xForIndex(index)}
+            y={height - 8}
+            textAnchor={index === 0 ? 'start' : index === data.length - 1 ? 'end' : 'middle'}
+            fill="#64748b"
+            fontSize="12"
+            fontWeight="650"
+          >
+            {data[index]?.formattedDate}
+          </text>
+        ))}
+      </svg>
+    </div>
+  );
+};
+
 export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
   account,
   settings,
@@ -169,7 +364,7 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
   dateRange,
   loading = false,
 }) => {
-  const isMessaging = settings?.tracking === 'messaging';
+  const isMultiChannel = settings?.tracking === 'all' || settings?.tracking === 'both';
   const currency = settings?.currency || account.currency || 'ARS';
 
   // Active metric tab toggle: 'messages' | 'leads' | 'purchases'
@@ -179,77 +374,19 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
     if (settings?.tracking === 'ecommerce') return 'purchases';
     if (account.leads && account.leads > 0) return 'leads';
     if (account.messagesReal || account.messages) return 'messages';
-    return isMessaging ? 'messages' : 'purchases';
+    return 'purchases';
   });
 
-  // Ensure messaging client doesn't stay on purchases
+  // La configuración de la cuenta define la única serie relevante.
   React.useEffect(() => {
-    if (isMessaging && activeMetric === 'purchases') {
-      setActiveMetric('messages');
-    }
-  }, [isMessaging, activeMetric]);
+    if (settings?.tracking === 'messaging') setActiveMetric('messages');
+    if (settings?.tracking === 'leads') setActiveMetric('leads');
+    if (settings?.tracking === 'ecommerce') setActiveMetric('purchases');
+  }, [settings?.tracking]);
 
-  // Selected overlay toggles
-  const [showCostOverlay, setShowCostOverlay] = useState<boolean>(true);
-
-  // Process data or synthesize fallback if empty
+  // Completa el calendario seleccionado sin inventar actividad para los días vacíos.
   const chartData = React.useMemo(() => {
-    let sourceData = dailySeries;
-
-    if (!sourceData || sourceData.length === 0) {
-      try {
-        const start = parseISO(dateRange.since);
-        const end = parseISO(dateRange.until);
-        const daysCount = Math.max(1, differenceInDays(end, start) + 1);
-
-        const totalMessages = account.messagesReal || account.messages || 0;
-        const totalLeads = account.leadsReal || account.leads || (totalMessages > 0 ? Math.round(totalMessages * 0.4) : (settings?.tracking === 'leads' ? 45 : 0));
-        const totalPurchases = account.purchases || 0;
-        const totalSpend = account.spend || 0;
-        const totalRevenue = account.revenue || 0;
-
-        const generated: DailyMetric[] = [];
-        let accumulatedMsgs = 0;
-        let accumulatedLeads = 0;
-        let accumulatedPurchases = 0;
-
-        for (let i = 0; i < daysCount; i++) {
-          const currentDate = format(addDays(start, i), 'yyyy-MM-dd');
-          const factor = 0.55 + 0.75 * Math.abs(Math.sin((i + 1) * 0.9)) + ((i * 11) % 7) * 0.03;
-          
-          let dayMsgs = Math.round((totalMessages / daysCount) * factor);
-          let dayLeads = Math.round((totalLeads / daysCount) * factor);
-          let dayPurchases = Math.round((totalPurchases / daysCount) * factor);
-          const daySpend = (totalSpend / daysCount) * factor;
-          const dayRevenue = (totalRevenue / daysCount) * factor;
-
-          if (i === daysCount - 1) {
-            dayMsgs = Math.max(0, totalMessages - accumulatedMsgs);
-            dayLeads = Math.max(0, totalLeads - accumulatedLeads);
-            dayPurchases = Math.max(0, totalPurchases - accumulatedPurchases);
-          } else {
-            accumulatedMsgs += dayMsgs;
-            accumulatedLeads += dayLeads;
-            accumulatedPurchases += dayPurchases;
-          }
-
-          generated.push({
-            date: currentDate,
-            spend: daySpend,
-            purchases: dayPurchases,
-            revenue: dayRevenue,
-            messages: dayMsgs,
-            leads: dayLeads,
-            costPerLead: dayLeads > 0 ? daySpend / dayLeads : 0,
-            clicks: Math.round(dayMsgs * 3.5),
-            roas: daySpend > 0 ? dayRevenue / daySpend : 0
-          });
-        }
-        sourceData = generated;
-      } catch (err) {
-        sourceData = [];
-      }
-    }
+    const sourceData = completeDailySeriesForRange(dailySeries, dateRange.since, dateRange.until);
 
     return sourceData.map(d => {
       const msgs = d.messages || 0;
@@ -284,24 +421,7 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
         formattedDate: format(parseISO(d.date), 'dd/MM', { locale: es })
       };
     });
-  }, [dailySeries, dateRange, account, activeMetric, settings?.tracking]);
-
-  // Totals & averages
-  const totalPrimary = React.useMemo(() => {
-    return chartData.reduce((acc, curr) => acc + curr.primaryValue, 0);
-  }, [chartData]);
-
-  const totalMessagesAcc = React.useMemo(() => chartData.reduce((acc, curr) => acc + curr.messages, 0), [chartData]);
-  const totalLeadsAcc = React.useMemo(() => chartData.reduce((acc, curr) => acc + curr.leads, 0), [chartData]);
-  const totalPurchasesAcc = React.useMemo(() => chartData.reduce((acc, curr) => acc + curr.purchases, 0), [chartData]);
-  const totalSpendAcc = React.useMemo(() => chartData.reduce((acc, curr) => acc + curr.spend, 0), [chartData]);
-
-  const avgDaily = chartData.length > 0 ? (totalPrimary / chartData.length).toFixed(1) : '0';
-
-  const peakDay = React.useMemo(() => {
-    if (chartData.length === 0) return null;
-    return chartData.reduce((max, item) => item.primaryValue > max.primaryValue ? item : max, chartData[0]);
-  }, [chartData]);
+  }, [dailySeries, dateRange.since, dateRange.until, activeMetric]);
 
   const metricMeta = React.useMemo(() => {
     switch (activeMetric) {
@@ -310,20 +430,16 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
           label: 'Clientes Potenciales',
           shortLabel: 'Leads',
           costLabel: 'Costo x Lead',
-          primaryColor: '#f59e0b',
-          secondaryColor: '#10b981',
-          badgeStyle: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-          icon: <UserCheck className="w-5 h-5 text-amber-400" />
+          primaryColor: '#60a5fa',
+          secondaryColor: '#93c5fd'
         };
       case 'messages':
         return {
           label: 'Mensajes',
           shortLabel: 'Mensajes',
           costLabel: 'Costo x Mensaje',
-          primaryColor: '#8b5cf6',
-          secondaryColor: '#06b6d4',
-          badgeStyle: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-          icon: <MessageSquare className="w-5 h-5 text-purple-400" />
+          primaryColor: '#60a5fa',
+          secondaryColor: '#93c5fd'
         };
       case 'purchases':
       default:
@@ -331,153 +447,89 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
           label: 'Ventas Web',
           shortLabel: 'Compras',
           costLabel: 'Facturación / CPA',
-          primaryColor: '#3b82f6',
-          secondaryColor: '#22c55e',
-          badgeStyle: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-          icon: <ShoppingCart className="w-5 h-5 text-blue-400" />
+          primaryColor: '#60a5fa',
+          secondaryColor: '#93c5fd'
         };
     }
   }, [activeMetric]);
 
   const gradientId = `accDailyGrad-${account.id}-${activeMetric}`;
-  const costGradId = `accCostGrad-${account.id}-${activeMetric}`;
-
-  const formatCurrency = (val: number, curr: string = 'ARS') => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: curr,
-      maximumFractionDigits: 0
-    }).format(val);
-  };
 
   return (
-    <div className="bg-[#111] rounded-2xl border border-white/5 p-4 print:p-2.5 shadow-2xl relative overflow-hidden group print:bg-white print:border-neutral-200 print:shadow-none mb-4 print:mb-2">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4 print:mb-2 border-b border-white/5 print:border-neutral-200 pb-3 print:pb-1 text-white print:text-black">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 print:gap-2">
-          <div className={cn(
-            "w-10 h-10 print:w-7 print:h-7 rounded-xl flex items-center justify-center shrink-0 border shadow-lg",
-            metricMeta.badgeStyle
-          )}>
-            {metricMeta.icon}
-          </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h4 className="text-xs print:text-[10px] font-black uppercase tracking-wider text-white print:text-black">
-                {metricMeta.label} a lo largo del tiempo
-              </h4>
-              <span className={cn("px-2 py-0.5 rounded text-[8px] print:text-[7px] font-black uppercase tracking-widest border", metricMeta.badgeStyle)}>
-                {settings?.tracking === 'leads' ? 'Clientes Potenciales' : settings?.tracking === 'messaging' ? 'Mensajería' : settings?.tracking === 'all' ? 'Multicanal' : 'Ventas Web'}
-              </span>
-            </div>
-            <p className="text-[9px] print:text-[7.5px] text-neutral-500 font-medium mt-0.5 print:mt-0">
-              Evolución diaria por cliente ({dateRange.since} al {dateRange.until})
-            </p>
-          </div>
+    <div className="account-trend-print group relative mb-3 overflow-hidden rounded-xl border border-white/[0.07] bg-[#12161d] p-4 print:mb-2 print:border-neutral-200 print:bg-white print:p-2.5 print:shadow-none">
+      <div className="mb-2 flex flex-col justify-between gap-2 text-white print:mb-1 print:text-black sm:flex-row sm:items-center">
+        <div>
+          <h4 className="text-sm font-semibold text-white print:text-[10px] print:text-black">
+            Evolución de {metricMeta.label.toLowerCase()}
+          </h4>
+          <p className="mt-0.5 text-[10px] font-medium text-neutral-500 print:mt-0 print:text-[7.5px]">
+            Datos diarios · {dateRange.since} al {dateRange.until}
+          </p>
         </div>
 
-        {/* Metric Selector Pills */}
-        <div className="flex items-center gap-1.5 bg-black/60 p-1 rounded-xl border border-white/10 self-start sm:self-auto print:hidden">
+        {/* Solo las cuentas multicanal necesitan elegir qué resultado graficar. */}
+        {isMultiChannel && (
+        <div className="flex items-center gap-1 self-start rounded-lg border border-white/[0.07] bg-black/20 p-1 print:hidden sm:self-auto">
           <button
             onClick={() => setActiveMetric('messages')}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all",
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[10px] font-medium transition-colors",
               activeMetric === 'messages'
-                ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
+                ? "bg-blue-500/15 text-blue-200"
                 : "text-neutral-400 hover:text-white hover:bg-white/5"
             )}
             title="Ver gráfico de Mensajes"
           >
             <MessageSquare className="w-3.5 h-3.5" />
-            <span>Mensajes ({totalMessagesAcc})</span>
+            <span>Mensajes</span>
           </button>
 
           <button
             onClick={() => setActiveMetric('leads')}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all",
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[10px] font-medium transition-colors",
               activeMetric === 'leads'
-                ? "bg-amber-600 text-white shadow-lg shadow-amber-600/30"
+                ? "bg-blue-500/15 text-blue-200"
                 : "text-neutral-400 hover:text-white hover:bg-white/5"
             )}
             title="Ver gráfico de Clientes Potenciales"
           >
             <UserCheck className="w-3.5 h-3.5" />
-            <span>Leads ({totalLeadsAcc})</span>
+            <span>Leads</span>
           </button>
 
-          {!isMessaging && (
-            <button
-              onClick={() => setActiveMetric('purchases')}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all",
-                activeMetric === 'purchases'
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
-                  : "text-neutral-400 hover:text-white hover:bg-white/5"
-              )}
-              title="Ver gráfico de Compras Web"
-            >
-              <ShoppingCart className="w-3.5 h-3.5" />
-              <span>Ventas ({totalPurchasesAcc})</span>
-            </button>
-          )}
+          <button
+            onClick={() => setActiveMetric('purchases')}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[10px] font-medium transition-colors",
+              activeMetric === 'purchases'
+                ? "bg-blue-500/15 text-blue-200"
+                : "text-neutral-400 hover:text-white hover:bg-white/5"
+            )}
+            title="Ver gráfico de Compras Web"
+          >
+            <ShoppingCart className="w-3.5 h-3.5" />
+            <span>Ventas</span>
+          </button>
         </div>
+        )}
       </div>
 
-      {/* Summary metric badges row */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-4 print:mb-2 bg-black/40 print:bg-neutral-50 p-2.5 print:p-1.5 rounded-xl border border-white/5 print:border-neutral-200">
-        <div className="flex flex-wrap items-center gap-3 print:gap-2">
-          <div className="px-2.5 py-1 print:px-2 print:py-0.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-center">
-            <div className="text-[7px] print:text-[6.5px] font-black text-purple-300 print:text-purple-700 uppercase tracking-widest">Total Mensajes</div>
-            <div className="text-xs print:text-[10px] font-black text-purple-400 print:text-purple-800">
-              {totalMessagesAcc.toLocaleString('es-AR')}
-              <span className="text-[8px] print:text-[7px] text-purple-300/70 print:text-purple-600 ml-1 font-bold">
-                ({totalMessagesAcc > 0 ? formatCurrency(totalSpendAcc / totalMessagesAcc, currency) : '—'}/msg)
-              </span>
-            </div>
-          </div>
-
-          <div className="px-2.5 py-1 print:px-2 print:py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
-            <div className="text-[7px] print:text-[6.5px] font-black text-amber-300 print:text-amber-700 uppercase tracking-widest">Clientes Potenciales</div>
-            <div className="text-xs print:text-[10px] font-black text-amber-400 print:text-amber-800">
-              {totalLeadsAcc.toLocaleString('es-AR')}
-              <span className="text-[8px] print:text-[7px] text-amber-300/70 print:text-amber-600 ml-1 font-bold">
-                ({totalLeadsAcc > 0 ? formatCurrency(totalSpendAcc / totalLeadsAcc, currency) : '—'}/lead)
-              </span>
-            </div>
-          </div>
-
-          <div className="px-2.5 py-1 print:px-2 print:py-0.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-center">
-            <div className="text-[7px] print:text-[6.5px] font-black text-blue-300 print:text-blue-700 uppercase tracking-widest">Promedio Diario ({metricMeta.shortLabel})</div>
-            <div className="text-xs print:text-[10px] font-black text-white print:text-neutral-900">
-              {avgDaily} /día
-            </div>
-          </div>
-
-          {peakDay && peakDay.primaryValue > 0 && (
-            <div className="px-2.5 py-1 print:px-2 print:py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-center hidden sm:block">
-              <div className="text-[7px] print:text-[6.5px] font-black text-emerald-300 print:text-emerald-700 uppercase tracking-widest">Día Pico ({peakDay.formattedDate})</div>
-              <div className="text-xs print:text-[10px] font-black text-emerald-400 print:text-emerald-800">
-                {peakDay.primaryValue.toLocaleString('es-AR')} {metricMeta.shortLabel.toLowerCase()}
-              </div>
-            </div>
-          )}
+      {activeMetric === 'messages' && !loading && (
+        <div className="mb-1 flex items-center justify-end gap-4 px-2 text-[9px] font-medium text-neutral-400 print:hidden">
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+            Mensajes
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 border-t border-dashed border-sky-200" />
+            Costo por mensaje
+          </span>
         </div>
-
-        <button
-          onClick={() => setShowCostOverlay(!showCostOverlay)}
-          className={cn(
-            "px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-wider border transition-all print:hidden",
-            showCostOverlay 
-              ? "bg-white/10 text-white border-white/20" 
-              : "bg-black/20 text-neutral-500 border-white/5 hover:text-neutral-300"
-          )}
-        >
-          {showCostOverlay ? `Ocultar ${metricMeta.costLabel}` : `Ver ${metricMeta.costLabel}`}
-        </button>
-      </div>
+      )}
 
       {/* Responsive Chart */}
-      <div className="h-44 print:h-28 w-full relative">
+      <div className="account-trend-chart h-44 print:hidden w-full relative">
         {loading ? (
           <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-neutral-500">
             <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
@@ -485,21 +537,19 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <AreaChart data={chartData} margin={{ top: 10, right: 24, left: -12, bottom: 8 }}>
               <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={metricMeta.primaryColor} stopOpacity={0.4}/>
                   <stop offset="100%" stopColor={metricMeta.primaryColor} stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id={costGradId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={metricMeta.secondaryColor} stopOpacity={0.2}/>
-                  <stop offset="100%" stopColor={metricMeta.secondaryColor} stopOpacity={0}/>
                 </linearGradient>
               </defs>
               <XAxis 
                 dataKey="formattedDate" 
                 axisLine={false}
                 tickLine={false}
+                interval="preserveStartEnd"
+                minTickGap={42}
                 tick={{ fontSize: 9, fontWeight: 'bold', fill: '#888' }}
               />
               <YAxis 
@@ -509,13 +559,12 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
                 tick={{ fontSize: 9, fontWeight: 'bold', fill: '#888' }}
                 allowDecimals={false}
               />
-              {showCostOverlay && (
-                <YAxis 
-                  yAxisId="secondary"
+              {activeMetric === 'messages' && (
+                <YAxis
+                  yAxisId="cost"
                   orientation="right"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 8, fontWeight: 'bold', fill: '#666' }}
                   hide
                 />
               )}
@@ -529,8 +578,13 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
                 }}
                 formatter={(val: any, name: string) => {
                   if (name === 'primaryValue') return [val.toLocaleString('es-AR'), `Total ${metricMeta.label}`];
-                  if (name === 'costPerUnit') return [formatCurrency(val, currency), metricMeta.costLabel];
-                  if (name === 'revenue') return [formatCurrency(val, currency), 'Facturación'];
+                  if (name === 'costPerUnit') {
+                    return [new Intl.NumberFormat('es-AR', {
+                      style: 'currency',
+                      currency,
+                      maximumFractionDigits: 0,
+                    }).format(Number(val) || 0), 'Costo por mensaje'];
+                  }
                   return [val, name];
                 }}
                 labelStyle={{ fontSize: '10px', fontWeight: 'bold', color: '#888', marginBottom: '4px' }}
@@ -546,22 +600,31 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
                 dot={{ r: 3, fill: metricMeta.primaryColor, strokeWidth: 0 }}
                 activeDot={{ r: 6, fill: '#fff', stroke: metricMeta.primaryColor, strokeWidth: 2 }}
               />
-              {showCostOverlay && (
-                <Area 
-                  yAxisId="secondary"
-                  type="monotone" 
-                  dataKey={activeMetric === 'purchases' ? "revenue" : "costPerUnit"} 
-                  stroke={metricMeta.secondaryColor} 
-                  strokeWidth={1.5} 
-                  strokeDasharray="3 3"
-                  fill={`url(#${costGradId})`} 
+              {activeMetric === 'messages' && (
+                <Area
+                  yAxisId="cost"
+                  type="monotone"
+                  dataKey="costPerUnit"
+                  stroke="#bae6fd"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 3"
+                  fill="transparent"
                   dot={false}
+                  activeDot={{ r: 4, fill: '#bae6fd', stroke: '#12161d', strokeWidth: 2 }}
                 />
               )}
             </AreaChart>
           </ResponsiveContainer>
         )}
       </div>
+      {!loading && (
+        <GeneralPrintTrendChart
+          data={chartData}
+          primaryLabel={metricMeta.shortLabel}
+          secondaryLabel={metricMeta.costLabel}
+          showSecondary={activeMetric === 'messages'}
+        />
+      )}
     </div>
   );
 };
@@ -600,7 +663,9 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   isSyncing = false
 }) => {
   const periodKey = format(parseISO(dateRange.since), 'yyyy-MM');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    return sessionStorage.getItem('cr_detail_selected_account');
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [adsLoading, setAdsLoading] = useState(false);
   const [ads, setAds] = useState<Ad[]>([]);
@@ -626,6 +691,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
   const [accountDailySeries, setAccountDailySeries] = useState<DailyMetric[]>([]);
   const [loadingAccountSeries, setLoadingAccountSeries] = useState<boolean>(false);
+  const metricSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   const loadAccountDailySeries = useCallback(async () => {
     if (!selectedId) return;
@@ -650,8 +719,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     setTempUntil(dateRange.until);
   }, [dateRange]);
 
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-  const [isFilterHovered, setIsFilterHovered] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
   const [showOfflineManager, setShowOfflineManager] = useState(false);
@@ -715,10 +783,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     }
   };
 
-  const defaultVisibleMetrics = ['spend', 'revenue', 'manual_revenue', 'total_revenue', 'roas', 'objective', 'progress_revenue', 'progress_budget', 'ctr', 'purchases', 'atc', 'ic', 'cpp'];
-  const messagingDefaultMetrics = ['messages', 'cpm', 'manual_revenue', 'total_revenue', 'roas', 'ctr', 'spend', 'clicks', 'cpm_real'];
-  const leadsDefaultMetrics = ['leads', 'cpl', 'messages', 'cpm', 'manual_revenue', 'total_revenue', 'roas', 'ctr', 'spend', 'clicks'];
-  const allDefaultMetrics = ['messages', 'cpm', 'leads', 'cpl', 'spend', 'revenue', 'purchases', 'roas', 'ctr', 'clicks'];
+  const defaultVisibleMetrics = ['spend', 'total_revenue', 'roas', 'purchases', 'objective', 'progress_revenue', 'progress_budget', 'ctr'];
+  const messagingDefaultMetrics = ['messages', 'cpm_real', 'spend', 'total_revenue', 'roas', 'ctr'];
+  const leadsDefaultMetrics = ['leads', 'cpl', 'spend', 'total_revenue', 'roas', 'ctr'];
+  const allDefaultMetrics = ['messages', 'leads', 'spend', 'total_revenue', 'roas', 'ctr'];
   
   // Filter accounts for sidebar
   const sidebarAccounts = accounts.filter(acc => 
@@ -730,15 +798,103 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     acc.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Auto-select first account if none selected
+  // Mantiene el cliente actual durante sincronizaciones y cambios de período.
   useEffect(() => {
-    if (!selectedId && sidebarAccounts.length > 0) {
+    if (sidebarAccounts.length === 0) return;
+    const selectedStillAvailable = selectedId
+      ? sidebarAccounts.some(account => account.id === selectedId)
+      : false;
+
+    if (!selectedStillAvailable) {
       setSelectedId(sidebarAccounts[0].id);
     }
   }, [sidebarAccounts, selectedId]);
 
+  useEffect(() => {
+    if (selectedId) {
+      sessionStorage.setItem('cr_detail_selected_account', selectedId);
+    }
+  }, [selectedId]);
+
   const selectedAccount = accounts.find(a => a.id === selectedId);
-  const s = selectedId ? settings[selectedId] : null;
+  const s: AccountSettings | null = selectedId
+    ? (settings[selectedId] || {
+        objective: 0,
+        budget: 0,
+        currency: selectedAccount?.currency || 'ARS',
+        tracking: 'ecommerce',
+      })
+    : null;
+  const trackingLabel = s?.tracking === 'messaging'
+    ? 'Mensajería'
+    : s?.tracking === 'leads'
+      ? 'Clientes potenciales'
+      : s?.tracking === 'both'
+        ? 'Ecommerce + mensajería'
+        : s?.tracking === 'all'
+          ? 'Multicanal'
+          : 'Ecommerce web';
+  const sortLabel = ({
+    roas: 'ROAS',
+    messages: 'Mensajes',
+    leads: 'Clientes potenciales',
+    purchases: 'Compras',
+    revenue: 'Facturación',
+    spend: 'Inversión',
+  } as Record<string, string>)[sortBy] || sortBy;
+
+  const getDefaultMetricsForTracking = (tracking: AccountSettings['tracking']) => {
+    if (tracking === 'messaging') return messagingDefaultMetrics;
+    if (tracking === 'leads') return leadsDefaultMetrics;
+    if (tracking === 'all' || tracking === 'both') return allDefaultMetrics;
+    return defaultVisibleMetrics;
+  };
+
+  const handleTrackingChange = (tracking: AccountSettings['tracking']) => {
+    if (!selectedId || !s) return;
+    const nextMetrics = getDefaultMetricsForTracking(tracking);
+
+    setLocalVisibleMetrics(nextMetrics);
+    setChartFilters({});
+    if (tracking === 'messaging') setSortBy('messages');
+    else if (tracking === 'leads') setSortBy('leads');
+    else if (tracking === 'ecommerce' && (sortBy === 'messages' || sortBy === 'leads')) setSortBy('roas');
+
+    onSaveSettings(selectedId, {
+      ...s,
+      tracking,
+      visibleMetrics: nextMetrics,
+    });
+  };
+
+  type CreativeTrackingMode = 'ecommerce' | 'messaging' | 'leads';
+
+  const getCreativeTrackingMode = (ad?: Ad): CreativeTrackingMode => {
+    if (s?.tracking === 'messaging') return 'messaging';
+    if (s?.tracking === 'leads') return 'leads';
+    if (s?.tracking === 'ecommerce') return 'ecommerce';
+
+    // Las cuentas mixtas siguen el criterio elegido para ordenar creativos.
+    if (sortBy === 'messages') return 'messaging';
+    if (sortBy === 'leads') return 'leads';
+
+    // Si no hay un criterio explícito, usamos el resultado predominante del anuncio.
+    if (ad && (ad.messages || 0) > 0 && (ad.purchases || 0) === 0) return 'messaging';
+    if (ad && (ad.leads || 0) > 0 && (ad.purchases || 0) === 0) return 'leads';
+    return 'ecommerce';
+  };
+
+  const getCreativeDefaultFilters = (ad?: Ad) => {
+    const mode = getCreativeTrackingMode(ad);
+    if (mode === 'messaging') return ['messages', 'costPerMessage'];
+    if (mode === 'leads') return ['leads', 'costPerLead'];
+    return ['purchases', 'revenue'];
+  };
+
+  // Evita reutilizar métricas de otro cliente o de otro tipo de seguimiento.
+  useEffect(() => {
+    setChartFilters({});
+  }, [selectedId, s?.tracking, sortBy]);
 
   // Initialize observations when account changes
   useEffect(() => {
@@ -753,7 +909,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
   // Initialize local metrics - cuando cambia la cuenta o cuando los settings llegan por primera vez
   useEffect(() => {
-    if (s?.visibleMetrics && s.visibleMetrics.length > 0) {
+    if (Array.isArray(s?.visibleMetrics)) {
       setLocalVisibleMetrics(s.visibleMetrics);
     } else {
       let defaults = defaultVisibleMetrics;
@@ -766,7 +922,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       }
       setLocalVisibleMetrics(defaults);
     }
-  }, [selectedId, !!s?.visibleMetrics, s?.tracking, sortBy]);
+  }, [selectedId, s?.visibleMetrics, s?.tracking, sortBy]);
 
   const loadAds = useCallback(async () => {
     if (!selectedId) return;
@@ -795,7 +951,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const handlePrint = () => {
     const originalTitle = document.title;
     const accountName = settings[selectedId!]?.customName || selectedAccount?.name || 'ADS';
-    document.title = `REPORTE - ${accountName.toUpperCase()}`;
+    document.title = `INFORME DE RENDIMIENTOS - ${accountName.toUpperCase()}`;
     
     window.print();
     
@@ -910,9 +1066,20 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     onSaveSettings(selectedId, { ...(s || {}), visibleMetrics: next } as any);
   };
 
+  const handleMetricDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!selectedId || !over || active.id === over.id) return;
+    const oldIndex = visibleMetrics.indexOf(String(active.id));
+    const newIndex = visibleMetrics.indexOf(String(over.id));
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const next = arrayMove(visibleMetrics, oldIndex, newIndex);
+    setLocalVisibleMetrics(next);
+    onSaveSettings(selectedId, { ...(s || {}), visibleMetrics: next } as any);
+  };
+
   const toggleChartMetric = (adId: string, metric: string) => {
     setChartFilters(prev => {
-      const current = prev[adId] || ['purchases', 'revenue'];
+      const current = prev[adId] || getCreativeDefaultFilters(ads.find(ad => ad.id === adId));
       const next = current.includes(metric)
         ? current.filter(m => m !== metric)
         : [...current, metric];
@@ -953,7 +1120,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
           }}
           className="p-3 rounded-xl border border-white/5 bg-[#111] hover:bg-[#141414] transition-all shadow-lg group overflow-hidden cursor-pointer print:bg-white print:border-neutral-100 print:shadow-none print:border-b-2"
         >
-          <div className="flex items-center justify-between mb-1.5">
+          <div className="metric-card-heading flex items-center justify-between mb-1.5">
             <div className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover:text-neutral-500 transition-colors print:text-neutral-400">Ventas Offline ({periodKey})</div>
             <History className="w-2.5 h-2.5 text-blue-500 opacity-30 group-hover:opacity-100 transition-opacity print:hidden" />
           </div>
@@ -986,16 +1153,90 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     }
   };
 
+  const CreativePrintChart: React.FC<{
+    data: Array<Record<string, any>>;
+    mode: CreativeTrackingMode;
+  }> = ({ data, mode }) => {
+    const primaryKey = mode === 'messaging' ? 'messages' : mode === 'leads' ? 'leads' : 'purchases';
+    const secondaryKey = mode === 'messaging' ? 'costPerMessage' : mode === 'leads' ? 'costPerLead' : 'revenue';
+    const primaryLabel = mode === 'messaging' ? 'Mensajes' : mode === 'leads' ? 'Leads' : 'Compras';
+    const secondaryLabel = mode === 'messaging' ? 'Costo por mensaje' : mode === 'leads' ? 'Costo por lead' : 'Facturación';
+    const width = 640;
+    const height = 92;
+    const horizontalPadding = 10;
+    const verticalPadding = 10;
+
+    const toPoints = (key: string) => {
+      const values = data.map(item => Number(item[key]) || 0);
+      const max = Math.max(...values, 1);
+
+      return values.map((value, index) => {
+        const x = values.length === 1
+          ? width / 2
+          : horizontalPadding + (index / (values.length - 1)) * (width - horizontalPadding * 2);
+        const y = values.length === 1
+          ? height / 2
+          : height - verticalPadding - (value / max) * (height - verticalPadding * 2);
+        return { x, y };
+      });
+    };
+
+    if (data.length === 0) {
+      return (
+        <div className="creative-print-chart hidden print:flex">
+          <strong>Sin evolución diaria disponible</strong>
+          <span>El anuncio conserva sus métricas acumuladas.</span>
+        </div>
+      );
+    }
+
+    const primaryPoints = toPoints(primaryKey);
+    const secondaryPoints = toPoints(secondaryKey);
+    const primaryPolyline = primaryPoints.map(point => `${point.x},${point.y}`).join(' ');
+    const secondaryPolyline = secondaryPoints.map(point => `${point.x},${point.y}`).join(' ');
+    const areaPoints = `${horizontalPadding},${height - verticalPadding} ${primaryPolyline} ${width - horizontalPadding},${height - verticalPadding}`;
+
+    return (
+      <div className="creative-print-chart hidden print:flex">
+        <div className="creative-print-chart-header">
+          <strong>Evolución diaria</strong>
+          <div className="creative-print-chart-legend">
+            <span><i className="creative-print-primary-dot" />{primaryLabel}</span>
+            <span><i className="creative-print-secondary-line" />{secondaryLabel}</span>
+          </div>
+        </div>
+        <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={`${primaryLabel} y ${secondaryLabel} por día`}>
+          {[0.25, 0.5, 0.75].map(position => (
+            <line
+              key={position}
+              x1={horizontalPadding}
+              x2={width - horizontalPadding}
+              y1={height * position}
+              y2={height * position}
+              stroke="#e2e8f0"
+              strokeWidth="1"
+            />
+          ))}
+          <polygon points={areaPoints} fill="#dbeafe" opacity="0.72" />
+          <polyline points={primaryPolyline} fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+          <polyline points={secondaryPolyline} fill="none" stroke="#7dd3fc" strokeWidth="2" strokeDasharray="7 5" strokeLinejoin="round" strokeLinecap="round" />
+          {primaryPoints.map((point, index) => (
+            <circle key={index} cx={point.x} cy={point.y} r="3" fill="#3b82f6" />
+          ))}
+        </svg>
+        <div className="creative-print-chart-dates">
+          <span>{data[0]?.formattedDate}</span>
+          <span>{data[data.length - 1]?.formattedDate}</span>
+        </div>
+      </div>
+    );
+  };
+
   const AdCard: React.FC<{ ad: Ad; rank: number }> = ({ ad, rank }) => {
-    const isLeads = sortBy === 'leads' || s?.tracking === 'leads' || (ad.leads !== undefined && ad.leads > 0);
-    const isMessaging = sortBy === 'messages' || s?.tracking === 'messaging';
-    
-    // Default filters based on campaign type
-    const defaultFilters = isLeads 
-      ? ['leads', 'costPerLead', 'messages'] 
-      : isMessaging 
-      ? ['messages', 'costPerMessage'] 
-      : ['purchases', 'revenue', 'roas'];
+    const trackingMode = getCreativeTrackingMode(ad);
+    const isLeads = trackingMode === 'leads';
+    const isMessaging = trackingMode === 'messaging';
+    const defaultFilters = getCreativeDefaultFilters(ad);
 
     const filters = chartFilters[ad.id] || defaultFilters;
     
@@ -1006,8 +1247,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     const showLeads = filters.includes('leads');
     const showCostPerLead = filters.includes('costPerLead');
 
-    const chartData = ad.dailySeries?.filter(d => 
-      d.date >= dateRange.since && d.date <= dateRange.until
+    const chartData = completeDailySeriesForRange(
+      ad.dailySeries?.filter(d => d.date >= dateRange.since && d.date <= dateRange.until),
+      dateRange.since,
+      dateRange.until
     ).map(d => ({
       ...d,
       costPerMessage: d.messages && d.messages > 0 ? d.spend / d.messages : 0,
@@ -1016,21 +1259,21 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     })) || [];
 
     const stats = isLeads ? [
-      { label: 'Leads', value: (ad.leads || 0).toString(), color: 'text-amber-400' },
-      { label: 'Costo x Lead', value: formatCurrency(ad.leads && ad.leads > 0 ? ad.spend / ad.leads : (ad.costPerLead || 0), selectedAccount?.currency || 'ARS'), color: 'text-emerald-400' },
-      { label: 'Mensajes', value: (ad.messages || 0).toString(), color: 'text-purple-400' },
-      { label: 'Costo x Mensaje', value: formatCurrency(ad.messages && ad.messages > 0 ? ad.spend / ad.messages : 0, selectedAccount?.currency || 'ARS'), color: 'text-cyan-400' },
+      { label: 'Leads', value: (ad.leads || 0).toString(), color: 'text-blue-400' },
+      { label: 'Costo x Lead', value: formatCurrency(ad.leads && ad.leads > 0 ? ad.spend / ad.leads : (ad.costPerLead || 0), selectedAccount?.currency || 'ARS'), color: 'text-sky-300' },
       { label: 'CTR', value: `${ad.ctr.toFixed(2)}%` },
-      { label: 'Inversión', value: formatCurrency(ad.spend, selectedAccount?.currency || 'ARS') }
+      { label: 'Inversión', value: formatCurrency(ad.spend, selectedAccount?.currency || 'ARS') },
+      { label: 'Clics', value: (ad.clicks || 0).toString() },
+      { label: 'CPC', value: formatCurrency(ad.clicks && ad.clicks > 0 ? ad.spend / ad.clicks : 0, selectedAccount?.currency || 'ARS') }
     ] : isMessaging ? [
-      { label: 'Mensajes', value: (ad.messages || 0).toString(), color: 'text-purple-400' },
-      { label: 'Costo x Mensaje', value: formatCurrency(ad.messages && ad.messages > 0 ? ad.spend / ad.messages : 0, selectedAccount?.currency || 'ARS'), color: 'text-cyan-400' },
+      { label: 'Mensajes', value: (ad.messages || 0).toString(), color: 'text-blue-400' },
+      { label: 'Costo x Mensaje', value: formatCurrency(ad.messages && ad.messages > 0 ? ad.spend / ad.messages : 0, selectedAccount?.currency || 'ARS'), color: 'text-sky-300' },
       { label: 'CTR', value: `${ad.ctr.toFixed(2)}%` },
       { label: 'Inversión', value: formatCurrency(ad.spend, selectedAccount?.currency || 'ARS') },
       { label: 'Clics', value: (ad.clicks || 0).toString() },
       { label: 'CPC', value: formatCurrency(ad.clicks && ad.clicks > 0 ? ad.spend / ad.clicks : 0, selectedAccount?.currency || 'ARS') }
     ] : [
-      { label: 'ROAS', value: `×${ad.roas.toFixed(2)}`, color: 'text-success print:text-green-600' },
+      { label: 'ROAS', value: `×${ad.roas.toFixed(2)}`, color: 'text-blue-400 print:text-blue-600' },
       { label: 'CTR', value: `${ad.ctr.toFixed(2)}%` },
       { label: 'Inversión', value: formatCurrency(ad.spend, selectedAccount?.currency || 'ARS') },
       { label: 'Ventas', value: ad.purchases.toString() },
@@ -1040,9 +1283,9 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
     return (
       <div className="bg-[#111] rounded-xl border border-white/5 p-4 hover:bg-[#131313] transition-all shadow-xl group/card relative overflow-hidden ad-card-print print:bg-white print:border-neutral-100 print:shadow-none print:break-inside-avoid">
-         <div className="hidden print:block absolute top-1 right-2 text-[8px] font-black text-neutral-400 uppercase tracking-tighter">RANK #{rank}</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 items-center print:flex print:gap-4 print:items-center">
-          <div className="md:col-span-1 xl:col-span-2 print:shrink-0">
+         <div className="print-rank hidden print:block absolute top-1 right-2 text-[8px] font-black text-neutral-400 uppercase tracking-tighter">Creativo destacado #{rank}</div>
+        <div className="ad-card-print-layout grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-6 items-center print:items-center">
+          <div className="ad-card-print-media md:col-span-1 xl:col-span-2 print:shrink-0">
              <div className="bg-[#050505] rounded-xl overflow-hidden aspect-[4/5] border border-white/10 relative shadow-2xl print:border-neutral-200 print:w-24 print:h-32 print:aspect-auto">
                 <div className="absolute top-2 left-2 z-20 px-2 py-0.5 bg-black/95 backdrop-blur-md rounded-md text-[8px] font-black text-white uppercase tracking-widest border border-white/10 print:hidden">
                    #{rank}
@@ -1081,7 +1324,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
              </div>
           </div>
 
-          <div className="md:col-span-1 xl:col-span-3 flex flex-col gap-4 print:flex-[1.8] print:gap-2">
+          <div className="ad-card-print-info md:col-span-1 xl:col-span-3 flex flex-col gap-4 print:gap-2">
              <div className="space-y-0.5">
                 <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest whitespace-nowrap overflow-hidden text-ellipsis print:text-black print:whitespace-pre-wrap print:text-[8.5px] print:leading-tight print:font-bold" title={ad.name}>
                   {ad.name}
@@ -1098,7 +1341,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
              </div>
           </div>
 
-          <div className="xl:col-span-5 relative bg-black/50 rounded-lg p-3 border border-white/5 h-36 flex flex-col print:flex-[3.2] print:h-24 print:p-0 print:bg-transparent print:border-2 print:border-neutral-100/50 print:rounded-2xl print:overflow-hidden">
+          <div className="ad-card-print-chart xl:col-span-5 relative bg-black/50 rounded-lg p-3 border border-white/5 h-36 flex flex-col print:h-24 print:p-0 print:bg-transparent print:border print:border-neutral-200 print:rounded-lg print:overflow-hidden">
+            <div className="creative-chart-interactive flex h-full flex-col print:hidden">
              <div className="flex items-center justify-between mb-1.5 px-0.5">
                <span className="text-[8px] font-black uppercase tracking-widest text-neutral-400">
                  {isLeads ? 'Clientes Potenciales y Mensajes' : isMessaging ? 'Mensajes a lo largo del tiempo' : 'Compras a lo largo del tiempo'}
@@ -1109,30 +1353,30 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                   <>
                     <LegendButton 
                       active={showLeads} 
-                      color="#f59e0b" 
-                      label="Leads" 
+                      color="#60a5fa"
+                      label="Leads"
                       onClick={() => toggleChartMetric(ad.id, 'leads')}
                     />
                     <LegendButton 
                       active={showCostPerLead} 
-                      color="#10b981" 
-                      label="Costo/Lead" 
+                      color="#bae6fd"
+                      label="Costo/Lead"
                       onClick={() => toggleChartMetric(ad.id, 'costPerLead')}
                     />
                   </>
                 )}
-                {(isMessaging || isLeads) && (
+                {isMessaging && (
                   <>
                     <LegendButton 
                       active={showMessages} 
-                      color="#8b5cf6" 
-                      label="Mensajes" 
+                      color="#60a5fa"
+                      label="Mensajes"
                       onClick={() => toggleChartMetric(ad.id, 'messages')}
                     />
                     <LegendButton 
                       active={showCostPerMessage} 
-                      color="#06b6d4" 
-                      label="Costo/Mensaje" 
+                      color="#bae6fd"
+                      label="Costo/Mensaje"
                       onClick={() => toggleChartMetric(ad.id, 'costPerMessage')}
                     />
                   </>
@@ -1147,8 +1391,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     />
                     <LegendButton 
                       active={showRevenue} 
-                      color="#22c55e" 
-                      label="Facturación" 
+                      color="#93c5fd"
+                      label="Facturación"
                       onClick={() => toggleChartMetric(ad.id, 'revenue')}
                     />
                   </>
@@ -1156,6 +1400,11 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
              </div>
 
              <div className="flex-1 w-full min-h-0 print:pr-4 print:pb-2">
+               {chartData.length === 0 ? (
+                 <div className="h-full min-h-14 flex items-center justify-center rounded-md border border-dashed border-white/10 bg-white/[0.02] px-3 text-center text-[9px] font-semibold text-neutral-500 print:text-neutral-400">
+                   Sin serie diaria para este creativo en el período seleccionado
+                 </div>
+               ) : (
                <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
                     <defs>
@@ -1164,24 +1413,24 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                         <stop offset="100%" stopColor="#3b82f6" stopOpacity={0}/>
                       </linearGradient>
                       <linearGradient id={`gR-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#22c55e" stopOpacity={0.1}/>
-                        <stop offset="100%" stopColor="#22c55e" stopOpacity={0}/>
+                        <stop offset="0%" stopColor="#93c5fd" stopOpacity={0.12}/>
+                        <stop offset="100%" stopColor="#93c5fd" stopOpacity={0}/>
                       </linearGradient>
                       <linearGradient id={`gM-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.1}/>
-                        <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0}/>
+                        <stop offset="0%" stopColor="#60a5fa" stopOpacity={0.14}/>
+                        <stop offset="100%" stopColor="#60a5fa" stopOpacity={0}/>
                       </linearGradient>
                       <linearGradient id={`gCPM-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.1}/>
-                        <stop offset="100%" stopColor="#06b6d4" stopOpacity={0}/>
+                        <stop offset="0%" stopColor="#bae6fd" stopOpacity={0.1}/>
+                        <stop offset="100%" stopColor="#bae6fd" stopOpacity={0}/>
                       </linearGradient>
                       <linearGradient id={`gL-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.15}/>
-                        <stop offset="100%" stopColor="#f59e0b" stopOpacity={0}/>
+                        <stop offset="0%" stopColor="#60a5fa" stopOpacity={0.15}/>
+                        <stop offset="100%" stopColor="#60a5fa" stopOpacity={0}/>
                       </linearGradient>
                       <linearGradient id={`gCPL-${ad.id}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.1}/>
-                        <stop offset="100%" stopColor="#10b981" stopOpacity={0}/>
+                        <stop offset="0%" stopColor="#bae6fd" stopOpacity={0.1}/>
+                        <stop offset="100%" stopColor="#bae6fd" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
                     <XAxis 
@@ -1189,6 +1438,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                       hide={false}
                       axisLine={false}
                       tickLine={false}
+                      interval="preserveStartEnd"
+                      minTickGap={28}
                       tick={{ fontSize: 6, fontWeight: 'bold', fill: '#999' }}
                       className="print:block"
                     />
@@ -1201,29 +1452,32 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     />
                     {/* Ejes para escalas distintas */}
                     {showRevenue && (
-                      <Area type="monotone" dataKey="revenue" yAxisId="right" stroke="#22c55e" strokeWidth={1} fill={`url(#gR-${ad.id})`} dot={false} strokeDasharray="2 2" strokeOpacity={0.3} />
+                      <Area type="monotone" dataKey="revenue" yAxisId="right" stroke="#93c5fd" strokeWidth={1.25} fill={`url(#gR-${ad.id})`} dot={chartData.length === 1 ? { r: 2 } : false} strokeDasharray="2 2" strokeOpacity={0.7} />
                     )}
                     {showSales && (
-                      <Area type="monotone" dataKey="purchases" yAxisId="left" stroke="#3b82f6" strokeWidth={1.5} fill={`url(#gP-${ad.id})`} dot={false} />
+                      <Area type="monotone" dataKey="purchases" yAxisId="left" stroke="#3b82f6" strokeWidth={1.5} fill={`url(#gP-${ad.id})`} dot={chartData.length === 1 ? { r: 2 } : false} />
                     )}
                     {showLeads && (
-                      <Area type="monotone" dataKey="leads" yAxisId="left" stroke="#f59e0b" strokeWidth={2} fill={`url(#gL-${ad.id})`} dot={false} />
+                      <Area type="monotone" dataKey="leads" yAxisId="left" stroke="#60a5fa" strokeWidth={2} fill={`url(#gL-${ad.id})`} dot={chartData.length === 1 ? { r: 2 } : false} />
                     )}
                     {showCostPerLead && (
-                      <Area type="monotone" dataKey="costPerLead" yAxisId="right" stroke="#10b981" strokeWidth={1} dot={false} fill={`url(#gCPL-${ad.id})`} strokeDasharray="3 2" />
+                      <Area type="monotone" dataKey="costPerLead" yAxisId="right" stroke="#bae6fd" strokeWidth={1} dot={chartData.length === 1 ? { r: 2 } : false} fill={`url(#gCPL-${ad.id})`} strokeDasharray="3 2" />
                     )}
                     {showMessages && (
-                      <Area type="monotone" dataKey="messages" yAxisId="left" stroke="#8b5cf6" strokeWidth={1.5} fill={`url(#gM-${ad.id})`} dot={false} />
+                      <Area type="monotone" dataKey="messages" yAxisId="left" stroke="#60a5fa" strokeWidth={1.75} fill={`url(#gM-${ad.id})`} dot={chartData.length === 1 ? { r: 2 } : false} />
                     )}
                     {showCostPerMessage && (
-                      <Area type="monotone" dataKey="costPerMessage" yAxisId="right" stroke="#06b6d4" strokeWidth={1} dot={false} fill={`url(#gCPM-${ad.id})`} strokeDasharray="3 2" />
+                      <Area type="monotone" dataKey="costPerMessage" yAxisId="right" stroke="#bae6fd" strokeWidth={1} dot={chartData.length === 1 ? { r: 2 } : false} fill={`url(#gCPM-${ad.id})`} strokeDasharray="3 2" />
                     )}
                   </AreaChart>
                </ResponsiveContainer>
+               )}
              </div>
+            </div>
+            <CreativePrintChart data={chartData} mode={trackingMode} />
           </div>
 
-          <div className="xl:col-span-2 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0 print:flex print:items-center print:justify-center print:border-none print:ml-1 relative print:shrink-0 print:w-24">
+          <div className="ad-card-print-link xl:col-span-2 flex flex-col items-center pt-2 md:pt-0 border-t md:border-t-0 md:border-l border-white/5 md:pl-4 mt-2 md:mt-0 print:flex print:items-center print:justify-center print:border-none relative print:shrink-0">
             <a 
               href={ad.previewUrl} 
               target="_blank" 
@@ -1237,11 +1491,11 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
               </div>
               
               <div className="hidden print:flex flex-col items-center justify-center h-full">
-                 <span className="text-white text-[7px] font-black uppercase whitespace-nowrap mb-0.5">
-                   VER ANUNCIO
+                 <span className="text-white text-[7px] font-black whitespace-nowrap mb-0.5">
+                   Ver anuncio
                  </span>
-                 <span className="text-white/80 text-[6px] font-black uppercase tracking-tighter whitespace-nowrap border-t border-white/20 pt-0.5 mt-0.5">
-                   EN META →
+                 <span className="text-white/80 text-[6px] font-bold whitespace-nowrap border-t border-white/20 pt-0.5 mt-0.5">
+                   Abrir en Meta
                  </span>
               </div>
             </a>
@@ -1277,7 +1531,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     const hasObs = Boolean(observations && observations.trim().length > 0);
 
     return (
-      <div className="space-y-4 print:break-inside-avoid print:my-4">
+      <div className={cn(
+        "print-timeline-section space-y-4 print:my-4",
+        !hasNotes && !hasObs && "print-timeline-empty"
+      )}>
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 pb-3 print:border-neutral-200">
           <div className="flex items-center gap-3">
@@ -1386,57 +1643,35 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="account-detail-print-root space-y-4">
       {/* Top Toolbar */}
-      <div className="flex flex-wrap items-center gap-4 print:hidden">
-        <motion.div 
-          animate={{ width: isFilterHovered ? 320 : 48 }}
-          onMouseEnter={() => setIsFilterHovered(true)}
-          onMouseLeave={() => setIsFilterHovered(false)}
-          className="flex items-center bg-[#111] h-10 px-0 rounded-xl border border-white/5 opacity-70 hover:opacity-100 transition-all overflow-hidden shadow-inner group/filter"
-        >
-          <div className="flex items-center justify-center w-[48px] h-full shrink-0">
-            <Filter className={cn(
-              "w-3.5 h-3.5 transition-colors",
-              isFilterHovered ? "text-blue-500" : "text-neutral-600"
-            )} />
-          </div>
-          
-          <div className="flex-1 overflow-hidden">
-            <AnimatePresence initial={false}>
-              {isFilterHovered && (
-                <motion.div 
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  className="flex items-center gap-0.5 pr-2 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-                >
-                  {[
-                    { id: 'all', label: 'Todos' },
-                    ...clientCategories.map(cat => ({ id: cat.id, label: cat.name }))
-                  ].map(btn => (
-                    <button
-                      key={btn.id}
-                      onClick={() => setFilterCategoryId(btn.id)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
-                        filterCategoryId === btn.id 
-                          ? "bg-blue-600/20 text-blue-400 border border-blue-500/30" 
-                          : "text-neutral-500 hover:text-neutral-300"
-                      )}
-                    >
-                      {btn.label}
-                    </button>
-                  ))}
-                </motion.div>
+      <div className="flex flex-wrap items-center gap-3 print:hidden">
+        <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-white/[0.07] bg-[#12161d] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <Filter className="mx-2 h-3.5 w-3.5 shrink-0 text-neutral-600" />
+          {[
+            { id: 'all', label: 'Todos' },
+            ...clientCategories.map(cat => ({ id: cat.id, label: cat.name }))
+          ].map(btn => (
+            <button
+              type="button"
+              key={btn.id}
+              onClick={() => setFilterCategoryId(btn.id)}
+              aria-pressed={filterCategoryId === btn.id}
+              className={cn(
+                "whitespace-nowrap rounded-md px-2.5 py-1.5 text-[10px] font-medium transition-colors",
+                filterCategoryId === btn.id
+                  ? "bg-blue-500/12 text-blue-300"
+                  : "text-neutral-500 hover:bg-white/[0.04] hover:text-neutral-300"
               )}
-            </AnimatePresence>
-          </div>
-        </motion.div>
+            >
+              {btn.label}
+            </button>
+          ))}
+        </div>
 
         <div className="flex items-center gap-2 ml-auto">
             {/* New Date Picker in Detail View (Minimalist) */}
-            <div className="flex items-center gap-1.5 bg-neutral-900 border border-white/10 px-4 h-10 rounded-xl transition-all mr-2 shadow-lg">
+            <div className="flex h-9 items-center gap-1.5 rounded-lg border border-white/[0.07] bg-[#12161d] px-3 transition-colors">
               <Calendar className="w-3.5 h-3.5 text-neutral-400" />
               <select 
                 value={isCustomDate ? 'custom' : (
@@ -1472,7 +1707,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     }
                   }
                 }}
-                className="bg-transparent text-[10px] font-black text-neutral-200 uppercase tracking-widest outline-none cursor-pointer border-none py-0.5 pr-1 focus:text-neutral-100"
+                className="cursor-pointer border-none bg-transparent py-0.5 pr-1 text-xs font-medium text-neutral-300 outline-none focus:text-white"
               >
                 <option value="today" className="bg-[#121212] text-neutral-200 font-bold uppercase">Hoy</option>
                 <option value="yesterday" className="bg-[#121212] text-neutral-200 font-bold uppercase">Ayer</option>
@@ -1511,38 +1746,44 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
             <button 
              onClick={handlePrint}
-             className="bg-neutral-900 border border-white/10 px-4 py-2.5 rounded-xl text-[10px] font-black text-white uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2 shadow-lg"
+             className="flex h-9 items-center gap-2 rounded-lg border border-white/[0.07] bg-[#12161d] px-3 text-xs font-medium text-neutral-300 transition-colors hover:bg-white/[0.05] hover:text-white"
            >
              <ArrowUpRight className="w-3.5 h-3.5 rotate-180" />
-             PDF Report
+             Exportar PDF
            </button>
         </div>
       </div>
 
-      <div className="flex bg-transparent gap-4 h-[calc(100vh-200px)] print:h-auto relative">
+      <div className="relative flex h-[calc(100vh-200px)] gap-3 bg-transparent print:h-auto">
         {/* Sidebar - Accounts List - Horizontal Expandable */}
         <motion.div 
           initial={false}
           animate={{ 
             width: isSidebarExpanded ? 280 : 48,
           }}
-          onMouseEnter={() => setIsSidebarExpanded(true)}
-          onMouseLeave={() => setIsSidebarExpanded(false)}
-          className="bg-[#111]/80 rounded-xl border border-white/5 overflow-hidden flex flex-col shadow-2xl backdrop-blur-md print:hidden z-30 group/sidebar"
+          className="group/sidebar z-30 flex flex-col overflow-hidden rounded-xl border border-white/[0.07] bg-[#12161d] print:hidden"
         >
-          <div className="p-3 border-b border-white/5 space-y-3">
-            <div className="flex items-center justify-between overflow-hidden whitespace-nowrap">
-               <div className="flex items-center gap-3">
-                 <div className="w-5 h-5 rounded bg-blue-600/10 flex items-center justify-center shrink-0">
-                    <LayoutGrid className="w-3 h-3 text-blue-500" />
+          <div className="space-y-3 border-b border-white/[0.07] p-3">
+            <div className={cn("flex items-center justify-between overflow-hidden whitespace-nowrap", !isSidebarExpanded && "justify-center")}>
+               <div className={cn("flex items-center gap-3", !isSidebarExpanded && "hidden")}>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-blue-500/10">
+                     <LayoutGrid className="h-3 w-3 text-blue-300" />
                  </div>
                  <motion.h3 
                    animate={{ opacity: isSidebarExpanded ? 1 : 0 }}
-                   className="text-[9px] font-black text-neutral-400 uppercase tracking-[0.2em]"
+                    className="text-xs font-medium text-neutral-300"
                   >
-                    Cuentas
+                    Clientes
                   </motion.h3>
                </div>
+               <button
+                 type="button"
+                 onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
+                 className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-600 transition-colors hover:bg-white/[0.05] hover:text-neutral-300"
+                 title={isSidebarExpanded ? 'Contraer clientes' : 'Expandir clientes'}
+               >
+                 <ChevronUp className={cn('h-3.5 w-3.5 transition-transform', isSidebarExpanded ? '-rotate-90' : 'rotate-90')} />
+               </button>
             </div>
 
             {/* Embedded Search */}
@@ -1568,12 +1809,12 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                 placeholder="Buscar..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full h-full bg-black/40 border border-white/5 rounded-lg py-1.5 pl-10 pr-3 text-[10px] text-white placeholder-neutral-800 outline-none focus:border-blue-500/30 transition-all font-bold"
+                className="h-full w-full rounded-lg border border-white/[0.07] bg-black/20 py-1.5 pl-10 pr-3 text-[10px] font-medium text-white outline-none transition-colors placeholder:text-neutral-700 focus:border-blue-400/30"
               />
             </div>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-1.5 space-y-1 custom-scrollbar overflow-x-hidden">
+          <div className="custom-scrollbar flex-1 space-y-1 overflow-x-hidden overflow-y-auto p-1.5">
             {sidebarAccounts.map(acc => {
               const isActive = selectedId === acc.id;
               const customName = settings[acc.id]?.customName || acc.name;
@@ -1585,7 +1826,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                   className={cn(
                     "w-full text-left p-2.5 rounded-lg transition-all relative group flex items-center overflow-hidden h-10 shrink-0",
                     isActive 
-                      ? 'bg-blue-600/10 border border-blue-600/20 text-white' 
+                      ? 'bg-blue-500/10 border border-blue-400/15 text-white'
                       : 'hover:bg-white/[0.02] border border-transparent text-neutral-500'
                   )}
                 >
@@ -1597,7 +1838,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                       className="flex items-center justify-between gap-2 grow overflow-hidden whitespace-nowrap"
                       style={{ width: isSidebarExpanded ? 'auto' : 0 }}
                     >
-                      <span className="text-[11px] font-bold tracking-tight truncate max-w-[150px] uppercase">{customName}</span>
+                      <span className="max-w-[168px] truncate text-[11px] font-medium tracking-tight">{customName}</span>
                     </motion.div>
                   </div>
                   {isActive && <div className="absolute right-0 w-0.5 h-3 bg-blue-500 rounded-l-full" />}
@@ -1609,76 +1850,63 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
         {/* Dashboard Area */}
         {selectedAccount ? (
-          <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar animate-in fade-in slide-in-from-right-4 duration-500 print:overflow-visible print:pr-0 print:space-y-8">
-            {/* Running Header & Footer for PDF Print */}
-            <div className="print-running-header">
-              <span>{settings[selectedAccount.id]?.customName || selectedAccount.name} — Reporte de Rendimiento</span>
-              <span>{format(new Date(), "dd/MM/yyyy", { locale: es })}</span>
-            </div>
-            <div className="print-running-footer">
-              <span>© {new Date().getFullYear()} Meta Ads Performance Suite</span>
-              <span className="italic">Documento Confidencial para Uso Exclusivo del Cliente</span>
-            </div>
-
-            <div className="hidden print:flex flex-col gap-4 border-b border-neutral-200 pb-3 mb-3 text-black print:pt-0 print:-mt-4">
-              <div className="flex items-center justify-between px-2">
-                <div className="flex items-center gap-5">
-                  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-xl overflow-hidden print-keep-bg print-bg-white border border-neutral-100">
-                    {settings[selectedAccount.id]?.customLogo ? (
-                      <img 
-                        src={settings[selectedAccount.id]?.customLogo} 
-                        alt="Logo" 
-                        className="w-full h-full object-contain p-1"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <Instagram className="w-10 h-10 text-white" />
-                    )}
-                  </div>
-                  <h1 className="text-4xl font-black tracking-tighter text-neutral-900">
-                    {settings[selectedAccount.id]?.customName || selectedAccount.name}
-                  </h1>
+            <div className="account-detail-print-content custom-scrollbar flex-1 animate-in space-y-4 overflow-y-auto pr-2 fade-in duration-500 print:overflow-visible print:pr-0">
+            <section className="report-print-cover hidden print:flex">
+              <div className="report-print-title-block">
+                <p className="report-print-eyebrow">Orion Metrics</p>
+                <h1>Informe de rendimientos</h1>
+                <p className="report-print-channel">Meta Ads</p>
+              </div>
+              <div className="report-print-client">
+                <div className="report-print-logo">
+                  {settings[selectedAccount.id]?.customLogo ? (
+                    <img
+                      src={settings[selectedAccount.id]?.customLogo}
+                      alt="Logo del cliente"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <BarChart2 className="h-5 w-5" />
+                  )}
                 </div>
-                <div className="text-right">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">Status & Emisión</div>
-                  <div className="flex flex-col items-end gap-1">
-                    <div className="text-xs font-bold text-neutral-900">{format(new Date(), "dd/MM/yyyy", { locale: es })}</div>
-                    <div className="flex items-center gap-2 px-2 py-0.5 bg-green-50 text-green-700 rounded text-[9px] font-bold border border-green-100">
-                      <Target className="w-2.5 h-2.5" />
-                      Reporte Verificado
-                    </div>
-                  </div>
+                <div>
+                  <span>Cuenta publicitaria</span>
+                  <p className="report-print-account">{settings[selectedAccount.id]?.customName || selectedAccount.name}</p>
                 </div>
               </div>
-              
-              <div className="w-full flex justify-center mt-3">
-                 <p className="text-[11px] font-black text-blue-600 uppercase tracking-[0.45em] bg-blue-50/50 px-8 py-2 rounded-full border border-blue-100">
-                  Informe Semanal de Rendimiento — Meta Ads
-                 </p>
-              </div>
-
-              <div className="flex items-center justify-center gap-8 pt-4 mt-2">
-                <div className="flex items-center gap-2">
-                  <div className="text-[9px] font-black uppercase tracking-widest text-neutral-400 font-bold">Resumen de Periodo:</div>
-                  <div className="flex items-center gap-2 text-[11px] font-black text-neutral-900 bg-neutral-50 px-3 py-1 rounded-lg border border-neutral-100">
-                    <Calendar className="w-3 h-3 text-blue-600" />
-                    <span>{dateRange.since} al {dateRange.until}</span>
-                  </div>
+              <div className="report-print-meta">
+                <div>
+                  <span>Periodo analizado</span>
+                  <strong>{format(parseISO(dateRange.since), 'dd/MM/yyyy')} - {format(parseISO(dateRange.until), 'dd/MM/yyyy')}</strong>
+                </div>
+                <div>
+                  <span>Tipo de cuenta</span>
+                  <strong>{trackingLabel}</strong>
+                </div>
+                <div>
+                  <span>Moneda</span>
+                  <strong>{selectedAccount.currency}</strong>
+                </div>
+                <div>
+                  <span>Fecha de emisión</span>
+                  <strong>{format(new Date(), 'dd/MM/yyyy', { locale: es })}</strong>
                 </div>
               </div>
-            </div>
+            </section>
 
             {/* Account Info Header */}
-            <div className="flex items-center justify-between print:hidden">
-              <div className="flex items-center gap-4">
-                 <div className={`w-2 h-2 rounded-full ${selectedAccount.account_status === 1 ? 'bg-success shadow-[0_0_8px_rgba(34,197,94,0.3)]' : 'bg-neutral-800'} print:hidden`} />
-                 <h2 className="text-xl font-black text-white tracking-tight uppercase opacity-90 print:text-black print:text-2xl">{settings[selectedAccount.id]?.customName || selectedAccount.name}</h2>
-                 <div className="px-2 py-0.5 bg-white/5 border border-white/5 text-neutral-500 text-[9px] font-black rounded uppercase tracking-widest print:border-neutral-300 print:text-neutral-700">{selectedAccount.currency}</div>
+            <div className="flex items-center justify-between rounded-xl border border-white/[0.07] bg-[#12161d] px-4 py-3 print:hidden">
+              <div className="flex min-w-0 items-center gap-3">
+                 <div className={`h-1.5 w-1.5 shrink-0 rounded-full ${selectedAccount.account_status === 1 ? 'bg-success' : 'bg-neutral-700'} print:hidden`} />
+                 <div className="min-w-0">
+                   <h2 className="truncate text-lg font-semibold tracking-[-0.02em] text-white print:text-2xl print:text-black">{settings[selectedAccount.id]?.customName || selectedAccount.name}</h2>
+                   <p className="mt-0.5 text-[10px] text-neutral-500">{trackingLabel} · {selectedAccount.currency}</p>
+                 </div>
               </div>
               <div className="flex items-center gap-2 print:hidden relative">
                 <button 
                   onClick={() => setShowMetricConfig(!showMetricConfig)}
-                  className={`p-1.5 rounded-md border border-white/5 transition-all ${showMetricConfig ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-neutral-900 text-neutral-600 hover:text-neutral-400'}`}
+                  className={`rounded-lg border p-2 transition-colors ${showMetricConfig ? 'border-blue-400/20 bg-blue-500/10 text-blue-300' : 'border-white/[0.07] bg-black/15 text-neutral-500 hover:text-neutral-300'}`}
                   title="Configurar métricas"
                 >
                   <Settings className="w-3.5 h-3.5" />
@@ -1690,13 +1918,30 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                       initial={{ opacity: 0, scale: 0.95, y: 10 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                      className="absolute top-10 right-0 z-50 w-64 bg-[#111] border border-white/10 rounded-xl shadow-2xl p-4 overflow-hidden"
+                      className="absolute right-0 top-10 z-50 w-64 overflow-hidden rounded-xl border border-white/10 bg-[#12161d] p-4 shadow-2xl"
                     >
-                      <div className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-3 px-1">Configuración de Reporte</div>
+                      <div className="mb-3 px-1 text-xs font-medium text-neutral-300">Configurar reporte</div>
                       
                       <div className="space-y-4 mb-4 border-b border-white/5 pb-4">
                         <div className="space-y-1">
-                          <label className="text-[8px] font-black text-neutral-600 uppercase tracking-widest px-1 text-neutral-400">Nombre Personalizado</label>
+                          <label className="px-1 text-[9px] font-medium text-neutral-500">Tipo de cuenta</label>
+                          <select
+                            value={s?.tracking || 'ecommerce'}
+                            onChange={(e) => handleTrackingChange(e.target.value as AccountSettings['tracking'])}
+                            className="w-full cursor-pointer rounded-lg border border-white/[0.07] bg-black/50 px-3 py-2 text-[10px] font-medium text-white outline-none transition-colors focus:border-blue-400/40"
+                          >
+                            <option value="ecommerce">Ecommerce web</option>
+                            <option value="messaging">Mensajería</option>
+                            <option value="leads">Clientes potenciales</option>
+                            <option value="both">Ecommerce + mensajería</option>
+                            <option value="all">Multicanal</option>
+                          </select>
+                          <p className="px-1 pt-1 text-[8px] leading-relaxed text-neutral-600">
+                            Define el gráfico, las métricas y el orden de los creativos.
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="px-1 text-[9px] font-medium text-neutral-500">Nombre personalizado</label>
                           <input 
                             type="text"
                             placeholder="Ej: Marca Premium"
@@ -1706,7 +1951,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[8px] font-black text-neutral-600 uppercase tracking-widest px-1 text-neutral-400">Logo del Cliente (URL)</label>
+                          <label className="px-1 text-[9px] font-medium text-neutral-500">Logo del cliente (URL)</label>
                           <input 
                             type="text"
                             placeholder="https://ejemplo.com/logo.png"
@@ -1717,7 +1962,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                         </div>
                       </div>
 
-                      <div className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-3 px-1">Métricas Visibles</div>
+                      <div className="mb-3 px-1 text-[10px] font-medium text-neutral-400">Métricas visibles</div>
                       <div className="space-y-1 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
                         {ALL_METRICS.map(metric => {
                           const isVisible = visibleMetrics.includes(metric.id);
@@ -1731,7 +1976,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                                   : 'bg-transparent border-transparent text-neutral-600 hover:bg-white/[0.02]'
                               }`}
                             >
-                              <span className="text-[10px] font-bold uppercase tracking-tight">{metric.label}</span>
+                              <span className="text-[10px] font-medium">{metric.label}</span>
                               {isVisible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3 opacity-30" />}
                             </button>
                           );
@@ -1745,14 +1990,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
                 <button 
                   onClick={() => setShowMetrics(!showMetrics)}
-                  className={`p-1.5 rounded-md border border-white/5 transition-all ${showMetrics ? 'bg-blue-600/10 text-blue-500 overflow-hidden' : 'bg-neutral-900 text-neutral-600'}`}
+                  className={`rounded-lg border p-2 transition-colors ${showMetrics ? 'border-blue-400/15 bg-blue-500/10 text-blue-300' : 'border-white/[0.07] bg-black/15 text-neutral-600'}`}
                   title={showMetrics ? 'Ocultar métricas' : 'Mostrar métricas'}
                 >
                   {showMetrics ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                 </button>
                 <button 
                   onClick={() => setShowObservations(!showObservations)}
-                  className={`p-1.5 rounded-md border border-white/5 transition-all ${showObservations ? 'bg-blue-600/10 text-blue-500' : 'bg-neutral-900 text-neutral-600'}`}
+                  className={`rounded-lg border p-2 transition-colors ${showObservations ? 'border-blue-400/15 bg-blue-500/10 text-blue-300' : 'border-white/[0.07] bg-black/15 text-neutral-600'}`}
                   title={showObservations ? 'Ocultar observaciones' : 'Mostrar observaciones'}
                 >
                   <TableIcon className={`w-3.5 h-3.5 ${showObservations ? 'opacity-100' : 'opacity-40'}`} />
@@ -1770,11 +2015,12 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
             />
 
             {/* Metrics Grids */}
-            <div className="hidden print:block mb-3">
-              <h3 className="text-[10px] font-black text-neutral-900 uppercase tracking-[0.2em] border-l-4 border-blue-600 pl-3">
-                Métricas Generales
+            {showMetrics && visibleMetrics.length > 0 && <div className="print-metrics-heading hidden print:block mb-3">
+              <h3 className="print-section-title text-[10px] font-black text-neutral-900 uppercase tracking-[0.2em] border-l-4 border-blue-600 pl-3">
+                <span className="print-section-number hidden print:inline-flex">01</span>
+                Resumen de resultados
               </h3>
-            </div>
+            </div>}
             <AnimatePresence>
               {showMetrics && (
                 <motion.div 
@@ -1783,18 +2029,44 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                   exit={{ height: 0, opacity: 0 }}
                   className="space-y-3 overflow-hidden print:mb-2"
                 >
-                  <div className={cn(
-                    "grid gap-2 print:gap-3 print-metrics-grid",
-                    isSyncing 
-                      ? "grid-cols-1" 
-                      : "grid-cols-2 md:grid-cols-4 xl:grid-cols-6 print:grid-cols-4"
-                  )}>
-                    {isSyncing ? (
+                  {!isSyncing && (
+                    <div className="flex items-center px-1 print:hidden">
+                      <span className="text-[10px] font-medium text-neutral-500">Métricas generales</span>
+                    </div>
+                  )}
+
+                  {isSyncing ? (
+                    <div className="grid grid-cols-1 gap-2">
                       <RocketLoader />
-                    ) : (
-                      visibleMetrics.map(id => renderMetric(id, selectedAccount!))
-                    )}
-                  </div>
+                    </div>
+                  ) : visibleMetrics.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-white/[0.08] bg-white/[0.015] px-4 py-5 text-center print:hidden">
+                      <p className="text-[10px] font-medium text-neutral-500">No hay métricas visibles.</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowMetricConfig(true)}
+                        className="mt-2 text-[9px] font-medium text-blue-400 hover:text-blue-300"
+                      >
+                        Agregar métricas desde configuración
+                      </button>
+                    </div>
+                  ) : (
+                    <DndContext sensors={metricSensors} collisionDetection={closestCenter} onDragEnd={handleMetricDragEnd}>
+                      <SortableContext items={visibleMetrics} strategy={rectSortingStrategy}>
+                        <div className="print-metrics-grid grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4 print:grid-cols-4 print:gap-3">
+                          {visibleMetrics.map(id => (
+                            <SortableMetricCard
+                              key={id}
+                              id={id}
+                              onRemove={() => toggleMetric(id)}
+                            >
+                              {renderMetric(id, selectedAccount!)}
+                            </SortableMetricCard>
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1978,15 +2250,16 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
             </AnimatePresence>
 
             {/* Winners Section */}
-            <div className="space-y-4 pb-20 print:pb-0">
+            <div className="print-creatives-section space-y-4 pb-20 print:pb-0">
                <div className="flex items-center justify-between px-1 print:mb-4 print:border-b-2 print:border-neutral-100 print:pb-2">
                   <div className="flex items-center gap-4">
-                    <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest print:text-sm print:text-neutral-900 print:border-l-4 print:border-blue-600 print:pl-3">
-                      Anuncios de Mejor Rendimiento
+                    <h3 className="print-section-title text-[10px] font-black text-neutral-500 uppercase tracking-widest print:text-sm print:text-neutral-900 print:border-l-4 print:border-blue-600 print:pl-3">
+                      <span className="print-section-number hidden print:inline-flex">02</span>
+                      Creativos destacados
                     </h3>
-                    <div className="hidden print:flex items-center gap-2 px-2 py-0.5 bg-neutral-950 text-white rounded text-[8px] font-black uppercase tracking-widest">
+                    <div className="print-sort-criterion hidden print:flex items-center gap-2 px-2 py-0.5 bg-neutral-950 text-white rounded text-[8px] font-black uppercase tracking-widest">
                       <TrendingUp className="w-3 h-3" />
-                      Ponderado por: {sortBy.toUpperCase()}
+                      Criterio de orden: {sortLabel}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 print:hidden">
@@ -2042,7 +2315,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
             </div>
 
             {/* Bitácora Ilustrada del Mes en Curso */}
-            <div className="mt-8 pt-6 border-t border-white/5 print:border-neutral-200 print:mt-6 print:pt-4 print:break-inside-avoid">
+            <div className="print-notes-section mt-8 pt-6 border-t border-white/5 print:border-neutral-200 print:mt-6 print:pt-4">
               <MonthBitacoraTimeline 
                 accountId={selectedId}
                 notes={notes}
@@ -2050,15 +2323,9 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                 accountName={settings[selectedAccount.id]?.customName || selectedAccount.name}
               />
             </div>
-
-            {/* Print Only Footer */}
-            <div className="hidden print:flex justify-between items-center border-t border-neutral-100 pt-8 mt-12 text-neutral-400">
-              <div className="text-[8px] font-black uppercase tracking-widest">
-                © {new Date().getFullYear()} Meta Ads Performance Suite — Reporte de Rendimiento Estratégico
-              </div>
-              <div className="text-[8px] font-black uppercase tracking-widest italic">
-                Documento CONFIDENCIAL para uso exclusivo del cliente.
-              </div>
+            <div className="report-print-endnote hidden print:flex">
+              <span>Informe generado por Orion Metrics</span>
+              <span>Fuente: Meta Ads | Documento confidencial</span>
             </div>
           </div>
         ) : (
@@ -2171,21 +2438,21 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
 const MetricBox: React.FC<{ label: string; value: string; isPlaceholder?: boolean; variant?: 'default' | 'highlight' }> = ({ label, value, isPlaceholder, variant = 'default' }) => (
   <div className={cn(
-    "p-3 rounded-xl border transition-all shadow-lg group overflow-hidden print:bg-white print:border-neutral-100 print:shadow-sm print:border-b-2",
+    "group overflow-hidden rounded-xl border px-3.5 py-3 transition-colors print:border-b-2 print:border-neutral-100 print:bg-white print:shadow-sm",
     variant === 'highlight' 
-      ? "bg-blue-600/[0.05] border-blue-600/20 ring-1 ring-blue-600/10" 
-      : "bg-[#111] border-white/5 hover:bg-[#141414]"
+      ? "border-blue-400/15 bg-blue-500/[0.06]"
+      : "border-white/[0.07] bg-[#12161d] hover:bg-[#151a22]"
   )}>
-    <div className="flex items-center justify-between mb-1.5">
-      <div className="text-[8px] font-black text-neutral-700 uppercase tracking-widest group-hover:text-neutral-500 transition-colors print:text-neutral-400">{label}</div>
-      {variant === 'highlight' && <TrendingUp className="w-2.5 h-2.5 text-blue-500 opacity-50" />}
+    <div className="metric-card-heading mb-2 flex items-center justify-between">
+      <div className="text-[10px] font-medium text-neutral-500 transition-colors group-hover:text-neutral-400 print:text-neutral-400">{label}</div>
+      {variant === 'highlight' && <TrendingUp className="h-3 w-3 text-blue-400/60" />}
     </div>
     <div className={cn(
-      "text-sm md:text-base font-black tracking-tight truncate print:text-black",
-      isPlaceholder ? 'text-neutral-900' : 'text-white',
+      "truncate text-base font-semibold tracking-[-0.02em] print:text-black md:text-lg",
+      isPlaceholder ? 'text-neutral-700' : 'text-neutral-100',
       variant === 'highlight' && !isPlaceholder ? 'text-blue-100' : ''
     )}>
-      {isPlaceholder ? '—' : value}
+      {isPlaceholder ? '-' : value}
     </div>
   </div>
 );
