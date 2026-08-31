@@ -6,7 +6,6 @@ import {
   consumeFacebookOAuthResult,
   getFacebookLoginStatus, 
   setFacebookAccessToken,
-  validateFacebookAccessToken,
   getUserProfile, 
   getAdAccounts, 
   fetchInsights,
@@ -149,6 +148,7 @@ export default function App() {
   const [activePage, setActivePage] = useState('overview');
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [overviewCategoryId, setOverviewCategoryId] = useState('all');
+  const loadRequestIdRef = React.useRef(0);
   
   const [visibleCols, setVisibleCols] = useState<string[]>(['objetivo', 'facturado', 'saldo', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
   const [colOrder, setColOrder] = useState<string[]>(['objetivo', 'facturado', 'saldo', 'roas', 'mensajes', 'progreso', 'invertido', 'presupuesto', 'prespct', 'estado']);
@@ -424,7 +424,6 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    let hadStoredSession = false;
     const oauthResult = consumeFacebookOAuthResult();
 
     if (oauthResult?.error) {
@@ -451,17 +450,11 @@ export default function App() {
 
         const storedSession = readStoredMetaSession();
         if (storedSession) {
-          hadStoredSession = true;
           setFacebookAccessToken(storedSession.accessToken);
-          const isStoredSessionValid = await validateFacebookAccessToken(storedSession.accessToken);
-          if (isStoredSessionValid) {
-            return {
-              status: 'connected',
-              authResponse: { accessToken: storedSession.accessToken },
-            };
-          }
-          clearMetaSession();
-          return { status: 'unknown', authResponse: null };
+          return {
+            status: 'connected',
+            authResponse: { accessToken: storedSession.accessToken },
+          };
         }
 
         return getFacebookLoginStatus(true);
@@ -476,7 +469,7 @@ export default function App() {
           clearMetaSession();
           localStorage.removeItem('cr_is_logged');
           setIsLogged(false);
-          setError(hadStoredSession ? 'Tu sesión anterior de Meta venció. Ingresa nuevamente para continuar.' : null);
+          setError(null);
         }
       }).catch(err => {
         if (cancelled) return;
@@ -511,54 +504,70 @@ export default function App() {
 
   const loadData = useCallback(async () => {
     if (!isLogged) return;
+    const requestId = ++loadRequestIdRef.current;
     setLoading(true);
     try {
       const accs = await getAdAccounts();
+      if (requestId !== loadRequestIdRef.current) return;
       if (accs.length === 0) {
         setError('No se encontraron cuentas publicitarias vinculadas a tu perfil de Meta Ads.');
         setAccounts([]);
-        setLoading(false);
         return;
       }
-      
-      const detailedAccs = await Promise.all(accs.map(async (acc) => {
-        try {
-          const insights = await fetchInsights(acc.id, dateRange.since, dateRange.until);
-          return { ...acc, ...insights };
-        } catch (e) {
-          console.error(`Error fetching insights for ${acc.id}:`, e);
-          return { ...acc, spend: 0, revenue: 0 };
-        }
-      }));
+
+      // Show the account list immediately, then enrich it in small batches.
+      // This avoids holding the entire interface behind dozens of Meta requests.
+      const detailedAccs: AdAccount[] = [...accs];
       setAccounts(detailedAccs);
       setError(null);
-      
+
       setVisibleAccountIds(currentVisible => {
         const stored = localStorage.getItem('cr_visible_accounts');
-        if (stored === null && detailedAccs.length > 0) {
-          const allIds = detailedAccs.map(a => a.id);
+        if (stored === null && accs.length > 0) {
+          const allIds = accs.map(a => a.id);
           localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
           return allIds;
         }
-        
-        const hasVisibleMatches = detailedAccs.some(a => 
+
+        const hasVisibleMatches = accs.some(a =>
           currentVisible.some(vId => matchId(vId, a.id) || matchId(vId, a.account_id))
         );
-        
-        if (detailedAccs.length > 0 && currentVisible.length > 0 && !hasVisibleMatches) {
-          const allIds = detailedAccs.map(a => a.id);
+
+        if (accs.length > 0 && currentVisible.length > 0 && !hasVisibleMatches) {
+          const allIds = accs.map(a => a.id);
           localStorage.setItem('cr_visible_accounts', JSON.stringify(allIds));
           return allIds;
         }
-        
+
         return currentVisible;
       });
-      
+
+      const batchSize = 8;
+      for (let start = 0; start < accs.length; start += batchSize) {
+        const batch = accs.slice(start, start + batchSize);
+        const batchResults = await Promise.all(batch.map(async (acc) => {
+          try {
+            const insights = await fetchInsights(acc.id, dateRange.since, dateRange.until);
+            return { ...acc, ...insights };
+          } catch (e) {
+            console.error(`Error fetching insights for ${acc.id}:`, e);
+            return { ...acc, spend: 0, revenue: 0 };
+          }
+        }));
+
+        if (requestId !== loadRequestIdRef.current) return;
+        batchResults.forEach((account, index) => {
+          detailedAccs[start + index] = account;
+        });
+        setAccounts([...detailedAccs]);
+      }
+
       setLastSync(new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }));
     } catch (err: any) {
+      if (requestId !== loadRequestIdRef.current) return;
       setError(err.message || 'Error al sincronizar con Meta Ads');
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestIdRef.current) setLoading(false);
     }
   }, [dateRange, isLogged]);
 
@@ -1279,7 +1288,7 @@ export default function App() {
                     clientCategories={clientCategories}
                     filterCategoryId={overviewCategoryId}
                     onFilterCategoryChange={setOverviewCategoryId}
-                    loading={loading}
+                    loading={loading && accounts.length === 0}
                   />
 
                   <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#12161d]">

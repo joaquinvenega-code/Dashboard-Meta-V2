@@ -26,6 +26,8 @@ let isFacebookApiWrapped = false;
 
 const META_SDK_TIMEOUT_MS = 8000;
 const META_API_TIMEOUT_MS = 6000;
+const META_DATA_TIMEOUT_MS = 15000;
+const GRAPH_API_BASE_URL = 'https://graph.facebook.com/v19.0';
 const META_OAUTH_STATE_KEY = 'cr_meta_oauth_state';
 const META_LOGIN_SCOPES = 'ads_read,ads_management,business_management,public_profile';
 
@@ -43,6 +45,57 @@ export function setFacebookAccessToken(accessToken: string | null) {
   activeAccessToken = accessToken;
 }
 
+function metaApiError(error: any): Error {
+  const rawMessage = error?.message || 'Meta no pudo completar la consulta.';
+  if (
+    rawMessage.toLowerCase().includes('unexpected error') ||
+    error?.code === 1 ||
+    error?.code === 2 ||
+    error?.code === 190
+  ) {
+    return new Error('La sesión con Meta Ads expiró o la API no pudo completar la consulta. Reconecta tu cuenta de Facebook.');
+  }
+  return new Error(rawMessage);
+}
+
+async function graphApiGet(
+  path: string,
+  params: Record<string, string | number | boolean | null | undefined> = {},
+  timeoutMs = META_DATA_TIMEOUT_MS,
+): Promise<any> {
+  const requestToken = typeof params.access_token === 'string' ? params.access_token : activeAccessToken;
+  if (!requestToken) throw new Error('No hay una sesión activa de Meta Ads. Ingresa nuevamente.');
+
+  const requestUrl = /^https?:\/\//i.test(path)
+    ? new URL(path)
+    : new URL(`${GRAPH_API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`);
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) requestUrl.searchParams.set(key, String(value));
+  });
+  requestUrl.searchParams.set('access_token', requestToken);
+
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(requestUrl.toString(), {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || payload?.error) throw metaApiError(payload?.error);
+    return payload;
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Meta tardó demasiado en responder. Puedes reintentar la sincronización.');
+    }
+    throw error instanceof Error ? error : new Error('No pudimos conectar con la API de Meta.');
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 function enableAccessTokenInjection() {
   if (isFacebookApiWrapped || !window.FB?.api) return;
 
@@ -56,29 +109,13 @@ function enableAccessTokenInjection() {
   isFacebookApiWrapped = true;
 }
 
-export function validateFacebookAccessToken(accessToken: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (isValid: boolean) => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timeoutId);
-      resolve(isValid);
-    };
-    const timeoutId = window.setTimeout(() => finish(false), META_API_TIMEOUT_MS);
-
-    try {
-      if (!window.FB?.api) {
-        finish(false);
-        return;
-      }
-      window.FB.api('/me', 'GET', { fields: 'id', access_token: accessToken }, (response: any) => {
-        finish(Boolean(response?.id && !response?.error));
-      });
-    } catch {
-      finish(false);
-    }
-  });
+export async function validateFacebookAccessToken(accessToken: string): Promise<boolean> {
+  try {
+    const response = await graphApiGet('/me', { fields: 'id', access_token: accessToken }, META_API_TIMEOUT_MS);
+    return Boolean(response?.id);
+  } catch {
+    return false;
+  }
 }
 
 export function initFacebookSdk(appId: string): Promise<boolean> {
@@ -250,31 +287,13 @@ async function fetchAllPages(url: string, params: any): Promise<any[]> {
   let nextParams = { ...params };
 
   while (true) {
-    const response: any = await new Promise((resolve, reject) => {
-      window.FB.api(nextUrl, 'GET', nextParams, (res: any) => {
-        if (!res) reject(new Error('No response from Meta API'));
-        if (res.error) {
-          const rawMessage = res.error.message || JSON.stringify(res.error);
-          if (rawMessage.toLowerCase().includes('unexpected error') || res.error.code === 1 || res.error.code === 2 || res.error.code === 190) {
-            reject(new Error('La sesión con Meta Ads ha expirado o la API de Facebook ha devuelto una respuesta inesperada. Por favor reconecta tu cuenta de Facebook.'));
-          } else {
-            reject(new Error(rawMessage));
-          }
-        }
-        resolve(res);
-      });
-    });
+    const response = await graphApiGet(nextUrl, nextParams);
 
     results.push(...(response.data || []));
 
-    if (
-      response.paging &&
-      response.paging.cursors &&
-      response.paging.cursors.after &&
-      response.data &&
-      response.data.length > 0
-    ) {
-      nextParams = { ...params, after: response.paging.cursors.after };
+    if (response.paging?.next && response.data?.length > 0) {
+      nextUrl = response.paging.next;
+      nextParams = {};
     } else {
       break;
     }
@@ -292,33 +311,7 @@ export async function getAdAccounts(): Promise<AdAccount[]> {
 }
 
 export async function getUserProfile(): Promise<any> {
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const timeoutId = window.setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      reject(new Error('Meta tardó demasiado en cargar el perfil.'));
-    }, META_API_TIMEOUT_MS);
-
-    try {
-      window.FB.api('/me', 'GET', { fields: 'name,picture' }, (response: any) => {
-        if (settled) return;
-        settled = true;
-        window.clearTimeout(timeoutId);
-        if (response && !response.error) {
-          resolve(response);
-        } else {
-          reject(new Error(response?.error?.message || 'No pudimos cargar el perfil de Meta.'));
-        }
-      });
-    } catch {
-      if (!settled) {
-        settled = true;
-        window.clearTimeout(timeoutId);
-        reject(new Error('No pudimos cargar el perfil de Meta.'));
-      }
-    }
-  });
+  return graphApiGet('/me', { fields: 'name,picture' });
 }
 
 function getAction(arr: any[], type: string): number {
@@ -330,11 +323,13 @@ export async function fetchInsights(accountId: string, since: string, until: str
   const time_range = JSON.stringify({ since, until });
   const fields = 'spend,clicks,ctr,impressions,actions,action_values';
 
-  const response: any = await new Promise((resolve) => {
-    window.FB.api(`/${accountId}/insights`, 'GET', { fields, time_range, level: 'account' }, (res: any) => {
-      resolve(res);
-    });
-  });
+  const [response, msgData] = await Promise.all([
+    graphApiGet(`/${accountId}/insights`, { fields, time_range, level: 'account' }),
+    fetchMessagingCampaignInsights(accountId, since, until).catch(() => ({
+      messagesReal: 0,
+      costPerMessageReal: 0,
+    })),
+  ]);
 
   if (!response || !response.data || !response.data.length) {
     return {
@@ -361,9 +356,6 @@ export async function fetchInsights(accountId: string, since: string, until: str
   const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') || getAction(d.actions, 'onsite_conversion.total_messaging_connection');
   const leads = getAction(d.actions, 'lead') || getAction(d.actions, 'offsite_conversion.fb_pixel_lead') || getAction(d.actions, 'onsite_conversion.lead_grouped') || getAction(d.actions, 'leadgen_grouped');
 
-  // Fetch real messaging data if needed
-  const msgData = await fetchMessagingCampaignInsights(accountId, since, until);
-
   return {
     spend,
     clicks: parseInt(d.clicks) || 0,
@@ -386,25 +378,22 @@ export async function fetchInsights(accountId: string, since: string, until: str
 async function fetchMessagingCampaignInsights(accountId: string, since: string, until: string): Promise<{ messagesReal: number; costPerMessageReal: number }> {
   const time_range = JSON.stringify({ since, until });
 
-  const response: any = await new Promise((resolve) => {
-    window.FB.api(`/${accountId}/insights`, 'GET', {
+  const [response, campaigns] = await Promise.all([
+    graphApiGet(`/${accountId}/insights`, {
       fields: 'spend,actions,campaign_id',
       time_range,
       level: 'campaign',
       limit: 500,
-    }, (res: any) => resolve(res));
-  });
+    }),
+    graphApiGet(`/${accountId}/campaigns`, {
+      fields: 'id,objective,effective_status',
+      limit: 500,
+    }),
+  ]);
 
   if (!response || response.error || !response.data || !response.data.length) {
     return { messagesReal: 0, costPerMessageReal: 0 };
   }
-
-  const campaigns: any = await new Promise((resolve) => {
-    window.FB.api(`/${accountId}/campaigns`, 'GET', {
-      fields: 'id,objective,effective_status',
-      limit: 500,
-    }, (res: any) => resolve(res));
-  });
 
   if (!campaigns || campaigns.error || !campaigns.data) {
     return { messagesReal: 0, costPerMessageReal: 0 };
