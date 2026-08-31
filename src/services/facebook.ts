@@ -145,16 +145,34 @@ export function initFacebookSdk(appId: string): Promise<boolean> {
 
 export function loginWithFacebook(): Promise<any> {
   return new Promise((resolve, reject) => {
-    window.FB.login(
-      (response: any) => {
-        if (response.authResponse) {
-          resolve(response.authResponse);
-        } else {
-          reject(new Error('User cancelled login or did not fully authorize.'));
-        }
-      },
-      { scope: 'ads_read,ads_management,business_management,public_profile' }
-    );
+    let settled = false;
+    const finishWithError = (message: string) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      reject(new Error(message));
+    };
+    const timeoutId = window.setTimeout(() => {
+      finishWithError('No pudimos abrir el ingreso de Facebook. Habilita las ventanas emergentes e intenta nuevamente.');
+    }, 60000);
+
+    try {
+      window.FB.login(
+        (response: any) => {
+          if (settled) return;
+          if (response.authResponse) {
+            settled = true;
+            window.clearTimeout(timeoutId);
+            resolve(response.authResponse);
+          } else {
+            finishWithError('El ingreso con Facebook fue cancelado o no se autorizaron los permisos.');
+          }
+        },
+        { scope: 'ads_read,ads_management,business_management,public_profile' }
+      );
+    } catch {
+      finishWithError('No pudimos abrir el ingreso de Facebook. Habilita las ventanas emergentes e intenta nuevamente.');
+    }
   });
 }
 

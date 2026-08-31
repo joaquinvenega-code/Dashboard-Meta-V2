@@ -567,7 +567,10 @@ export default function App() {
     setError(null);
     setLoading(true);
     try {
-      await initFacebookSdk(cleanAppId);
+      // FB.login must run directly from the user's click or the browser can block its popup.
+      if (!window.FB?.login) {
+        throw new Error('La conexión con Meta no está disponible. Recarga la página e intenta nuevamente.');
+      }
       const authResponse = await loginWithFacebook();
       storeMetaSession(authResponse);
       await handleLoginSuccess();
@@ -845,10 +848,20 @@ export default function App() {
 
             <button 
               onClick={onLogin}
-              className="w-full bg-blue-600 text-white h-16 rounded-[1.5rem] text-sm font-black flex items-center justify-center gap-3 hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/25 active:scale-[0.98]"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white h-16 rounded-[1.5rem] text-sm font-black flex items-center justify-center gap-3 hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/25 active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
             >
-              <Facebook className="w-5 h-5 fill-current" />
-              Ingresar con Facebook
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Conectando con Meta…
+                </>
+              ) : (
+                <>
+                  <Facebook className="w-5 h-5 fill-current" />
+                  Ingresar con Facebook
+                </>
+              )}
             </button>
           </div>
 
