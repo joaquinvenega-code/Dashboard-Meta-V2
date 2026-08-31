@@ -26,6 +26,18 @@ let isFacebookApiWrapped = false;
 
 const META_SDK_TIMEOUT_MS = 8000;
 const META_API_TIMEOUT_MS = 6000;
+const META_OAUTH_STATE_KEY = 'cr_meta_oauth_state';
+const META_LOGIN_SCOPES = 'ads_read,ads_management,business_management,public_profile';
+
+type FacebookOAuthResult = {
+  authResponse?: {
+    accessToken: string;
+    expiresIn: number;
+  };
+  error?: string;
+};
+
+let cachedOAuthResult: FacebookOAuthResult | null | undefined;
 
 export function setFacebookAccessToken(accessToken: string | null) {
   activeAccessToken = accessToken;
@@ -143,37 +155,64 @@ export function initFacebookSdk(appId: string): Promise<boolean> {
   });
 }
 
-export function loginWithFacebook(): Promise<any> {
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const finishWithError = (message: string) => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timeoutId);
-      reject(new Error(message));
-    };
-    const timeoutId = window.setTimeout(() => {
-      finishWithError('No pudimos abrir el ingreso de Facebook. Habilita las ventanas emergentes e intenta nuevamente.');
-    }, 60000);
+export function startFacebookRedirectLogin(appId: string) {
+  const stateBytes = new Uint32Array(4);
+  window.crypto.getRandomValues(stateBytes);
+  const state = Array.from(stateBytes, value => value.toString(16).padStart(8, '0')).join('');
+  sessionStorage.setItem(META_OAUTH_STATE_KEY, state);
 
-    try {
-      window.FB.login(
-        (response: any) => {
-          if (settled) return;
-          if (response.authResponse) {
-            settled = true;
-            window.clearTimeout(timeoutId);
-            resolve(response.authResponse);
-          } else {
-            finishWithError('El ingreso con Facebook fue cancelado o no se autorizaron los permisos.');
-          }
-        },
-        { scope: 'ads_read,ads_management,business_management,public_profile' }
-      );
-    } catch {
-      finishWithError('No pudimos abrir el ingreso de Facebook. Habilita las ventanas emergentes e intenta nuevamente.');
-    }
-  });
+  const redirectUri = `${window.location.origin}${window.location.pathname}`;
+  const authUrl = new URL('https://www.facebook.com/v19.0/dialog/oauth');
+  authUrl.search = new URLSearchParams({
+    client_id: appId,
+    redirect_uri: redirectUri,
+    state,
+    response_type: 'token',
+    scope: META_LOGIN_SCOPES,
+  }).toString();
+
+  window.location.assign(authUrl.toString());
+}
+
+export function consumeFacebookOAuthResult(): FacebookOAuthResult | null {
+  if (cachedOAuthResult !== undefined) return cachedOAuthResult;
+  if (!window.location.hash) {
+    cachedOAuthResult = null;
+    return cachedOAuthResult;
+  }
+
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const accessToken = params.get('access_token');
+  const oauthError = params.get('error');
+  if (!accessToken && !oauthError) {
+    cachedOAuthResult = null;
+    return cachedOAuthResult;
+  }
+
+  const expectedState = sessionStorage.getItem(META_OAUTH_STATE_KEY);
+  const returnedState = params.get('state');
+  sessionStorage.removeItem(META_OAUTH_STATE_KEY);
+  window.history.replaceState(null, document.title, `${window.location.pathname}${window.location.search}`);
+
+  if (!expectedState || !returnedState || expectedState !== returnedState) {
+    cachedOAuthResult = { error: 'No pudimos validar el regreso desde Facebook. Intenta ingresar nuevamente.' };
+    return cachedOAuthResult;
+  }
+
+  if (oauthError) {
+    cachedOAuthResult = {
+      error: params.get('error_description') || 'El ingreso con Facebook fue cancelado o no se autorizaron los permisos.',
+    };
+    return cachedOAuthResult;
+  }
+
+  cachedOAuthResult = {
+    authResponse: {
+      accessToken: accessToken as string,
+      expiresIn: Number(params.get('expires_in')) || 3600,
+    },
+  };
+  return cachedOAuthResult;
 }
 
 export function getFacebookLoginStatus(forceRefresh: boolean = false): Promise<any> {

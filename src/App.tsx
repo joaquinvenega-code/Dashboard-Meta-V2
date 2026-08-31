@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   initFacebookSdk, 
-  loginWithFacebook, 
+  startFacebookRedirectLogin,
+  consumeFacebookOAuthResult,
   getFacebookLoginStatus, 
   setFacebookAccessToken,
   validateFacebookAccessToken,
@@ -424,11 +425,30 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     let hadStoredSession = false;
+    const oauthResult = consumeFacebookOAuthResult();
+
+    if (oauthResult?.error) {
+      clearMetaSession();
+      localStorage.removeItem('cr_is_logged');
+      setIsLogged(false);
+      setError(oauthResult.error);
+      setIsInitialized(true);
+      return () => {
+        cancelled = true;
+      };
+    }
 
     if (appId && appId.trim()) {
       const cleanAppId = appId.trim();
       localStorage.setItem('cr_appid', cleanAppId);
       initFacebookSdk(cleanAppId).then(async () => {
+        if (oauthResult?.authResponse) {
+          return {
+            status: 'connected',
+            authResponse: oauthResult.authResponse,
+          };
+        }
+
         const storedSession = readStoredMetaSession();
         if (storedSession) {
           hadStoredSession = true;
@@ -567,16 +587,9 @@ export default function App() {
     setError(null);
     setLoading(true);
     try {
-      // FB.login must run directly from the user's click or the browser can block its popup.
-      if (!window.FB?.login) {
-        throw new Error('La conexión con Meta no está disponible. Recarga la página e intenta nuevamente.');
-      }
-      const authResponse = await loginWithFacebook();
-      storeMetaSession(authResponse);
-      await handleLoginSuccess();
+      startFacebookRedirectLogin(cleanAppId);
     } catch (err: any) {
       setError(err.message || 'Error al conectar con Facebook');
-    } finally {
       setLoading(false);
     }
   };
@@ -1211,17 +1224,7 @@ export default function App() {
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button
-                  onClick={async () => {
-                    setError(null);
-                    setLoading(true);
-                    try {
-                      await loginWithFacebook();
-                      handleLoginSuccess();
-                    } catch (err: any) {
-                      setError(err.message || 'Error al conectar con Facebook');
-                      setLoading(false);
-                    }
-                  }}
+                  onClick={onLogin}
                   className="w-full sm:w-auto px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 active:scale-95 cursor-pointer"
                 >
                   <Facebook className="w-4 h-4 fill-current" />
@@ -1264,17 +1267,7 @@ export default function App() {
                   </button>
                 ) : (
                   <button
-                    onClick={async () => {
-                      setError(null);
-                      setLoading(true);
-                      try {
-                        await loginWithFacebook();
-                        handleLoginSuccess();
-                      } catch (err: any) {
-                        setError(err.message || 'Error al conectar con Facebook');
-                        setLoading(false);
-                      }
-                    }}
+                    onClick={onLogin}
                     className="w-full sm:w-auto px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 active:scale-95 cursor-pointer"
                   >
                     <Facebook className="w-4 h-4 fill-current" />
