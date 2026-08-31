@@ -328,7 +328,7 @@ const GeneralPrintTrendChart: React.FC<{
           return (
             <g key={position}>
               <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="#e2e8f0" strokeWidth="1" />
-              <text x={padding.left - 12} y={y + 4} textAnchor="end" fill="#64748b" fontSize="12" fontWeight="650">{label}</text>
+              <text x={padding.left - 12} y={y + 4} textAnchor="end" fill="#64748b" fontSize="14" fontWeight="650">{label}</text>
             </g>
           );
         })}
@@ -347,7 +347,7 @@ const GeneralPrintTrendChart: React.FC<{
             y={height - 8}
             textAnchor={index === 0 ? 'start' : index === data.length - 1 ? 'end' : 'middle'}
             fill="#64748b"
-            fontSize="12"
+            fontSize="14"
             fontWeight="650"
           >
             {data[index]?.formattedDate}
