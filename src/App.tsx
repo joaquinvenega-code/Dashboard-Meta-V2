@@ -497,24 +497,16 @@ export default function App() {
     };
   }, [appId]);
 
-  const handleLoginSuccess = async () => {
+  const handleLoginSuccess = () => {
     setIsLogged(true);
     localStorage.setItem('cr_is_logged', 'true');
-    setLoading(true);
-    try {
-      const profile = await getUserProfile();
-      setUser(profile);
-      await loadData();
-    } catch (err: any) {
-      console.error("Login success error:", err);
-      // If session expired, reset logged state but keep saved Meta App ID
-      clearMetaSession();
-      localStorage.removeItem('cr_is_logged');
-      setIsLogged(false);
-      setError(err?.message || 'La sesión con Meta Ads expiró. Haz clic en "Ingresar con Facebook" para reconectar.');
-    } finally {
-      setLoading(false);
-    }
+    setUser(currentUser => currentUser || { name: 'Usuario' });
+
+    // Profile information is decorative. A slow profile request must not discard
+    // a valid Ads session or block the account data synchronization.
+    void getUserProfile()
+      .then(profile => setUser(profile))
+      .catch(err => console.warn('Meta profile unavailable:', err));
   };
 
   const loadData = useCallback(async () => {

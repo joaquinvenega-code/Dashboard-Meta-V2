@@ -297,7 +297,7 @@ export async function getUserProfile(): Promise<any> {
     const timeoutId = window.setTimeout(() => {
       if (settled) return;
       settled = true;
-      reject(new Error('Meta tardó demasiado en cargar el perfil. Ingresa nuevamente.'));
+      reject(new Error('Meta tardó demasiado en cargar el perfil.'));
     }, META_API_TIMEOUT_MS);
 
     try {
