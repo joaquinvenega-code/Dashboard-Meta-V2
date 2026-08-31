@@ -24,6 +24,9 @@ const MESSAGING_OPTIMIZATION_GOALS = new Set([
 let activeAccessToken: string | null = null;
 let isFacebookApiWrapped = false;
 
+const META_SDK_TIMEOUT_MS = 8000;
+const META_API_TIMEOUT_MS = 6000;
+
 export function setFacebookAccessToken(accessToken: string | null) {
   activeAccessToken = accessToken;
 }
@@ -43,41 +46,100 @@ function enableAccessTokenInjection() {
 
 export function validateFacebookAccessToken(accessToken: string): Promise<boolean> {
   return new Promise((resolve) => {
-    window.FB.api('/me', 'GET', { fields: 'id', access_token: accessToken }, (response: any) => {
-      resolve(Boolean(response?.id && !response?.error));
-    });
+    let settled = false;
+    const finish = (isValid: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      resolve(isValid);
+    };
+    const timeoutId = window.setTimeout(() => finish(false), META_API_TIMEOUT_MS);
+
+    try {
+      if (!window.FB?.api) {
+        finish(false);
+        return;
+      }
+      window.FB.api('/me', 'GET', { fields: 'id', access_token: accessToken }, (response: any) => {
+        finish(Boolean(response?.id && !response?.error));
+      });
+    } catch {
+      finish(false);
+    }
   });
 }
 
 export function initFacebookSdk(appId: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (window.FB) {
-      window.FB.init({
-        appId,
-        cookie: true,
-        xfbml: false,
-        version: 'v19.0',
-      });
-      enableAccessTokenInjection();
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let script: HTMLScriptElement | null = null;
+
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      script?.removeEventListener('load', initializeSdk);
+      script?.removeEventListener('error', handleScriptError);
+    };
+
+    const succeed = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
       resolve(true);
+    };
+
+    const fail = (message: string) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (!window.FB && script?.parentNode) script.parentNode.removeChild(script);
+      reject(new Error(message));
+    };
+
+    const initializeSdk = () => {
+      try {
+        if (!window.FB?.init) {
+          fail('Meta no respondió al iniciar la conexión. Intenta nuevamente.');
+          return;
+        }
+        window.FB.init({
+          appId,
+          cookie: true,
+          xfbml: false,
+          version: 'v19.0',
+        });
+        enableAccessTokenInjection();
+        succeed();
+      } catch {
+        fail('No pudimos iniciar la conexión con Meta. Intenta nuevamente.');
+      }
+    };
+
+    const handleScriptError = () => {
+      fail('No pudimos cargar la conexión con Meta. Revisa tu conexión o las extensiones del navegador.');
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      fail('Meta tardó demasiado en responder. Intenta ingresar nuevamente.');
+    }, META_SDK_TIMEOUT_MS);
+
+    if (window.FB) {
+      initializeSdk();
       return;
     }
 
-    const script = document.createElement('script');
-    script.src = 'https://connect.facebook.net/en_US/sdk.js';
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      window.FB.init({
-        appId,
-        cookie: true,
-        xfbml: false,
-        version: 'v19.0',
-      });
-      enableAccessTokenInjection();
-      resolve(true);
-    };
-    document.head.appendChild(script);
+    script = document.querySelector<HTMLScriptElement>('script[data-orion-facebook-sdk="true"]');
+    let shouldAppendScript = false;
+    if (!script) {
+      script = document.createElement('script');
+      script.src = 'https://connect.facebook.net/en_US/sdk.js';
+      script.async = true;
+      script.defer = true;
+      script.dataset.orionFacebookSdk = 'true';
+      shouldAppendScript = true;
+    }
+    script.addEventListener('load', initializeSdk, { once: true });
+    script.addEventListener('error', handleScriptError, { once: true });
+    if (shouldAppendScript) document.head.appendChild(script);
   });
 }
 
@@ -97,10 +159,31 @@ export function loginWithFacebook(): Promise<any> {
 }
 
 export function getFacebookLoginStatus(forceRefresh: boolean = false): Promise<any> {
-  return new Promise((resolve) => {
-    window.FB.getLoginStatus((response: any) => {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (response: any) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
       resolve(response);
-    }, forceRefresh);
+    };
+    const timeoutId = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error('Meta tardó demasiado en comprobar la sesión. Ingresa nuevamente.'));
+    }, META_API_TIMEOUT_MS);
+
+    try {
+      if (!window.FB?.getLoginStatus) {
+        throw new Error('La conexión con Meta no está disponible.');
+      }
+      window.FB.getLoginStatus((response: any) => finish(response), forceRefresh);
+    } catch (error) {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      reject(error);
+    }
   });
 }
 
@@ -153,13 +236,31 @@ export async function getAdAccounts(): Promise<AdAccount[]> {
 
 export async function getUserProfile(): Promise<any> {
   return new Promise((resolve, reject) => {
-    window.FB.api('/me', 'GET', { fields: 'name,picture' }, (response: any) => {
-      if (response && !response.error) {
-        resolve(response);
-      } else {
-        reject(new Error(response?.error?.message || 'Failed to get user profile'));
+    let settled = false;
+    const timeoutId = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error('Meta tardó demasiado en cargar el perfil. Ingresa nuevamente.'));
+    }, META_API_TIMEOUT_MS);
+
+    try {
+      window.FB.api('/me', 'GET', { fields: 'name,picture' }, (response: any) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeoutId);
+        if (response && !response.error) {
+          resolve(response);
+        } else {
+          reject(new Error(response?.error?.message || 'No pudimos cargar el perfil de Meta.'));
+        }
+      });
+    } catch {
+      if (!settled) {
+        settled = true;
+        window.clearTimeout(timeoutId);
+        reject(new Error('No pudimos cargar el perfil de Meta.'));
       }
-    });
+    }
   });
 }
 

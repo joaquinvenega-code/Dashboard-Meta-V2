@@ -423,6 +423,7 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
+    let hadStoredSession = false;
 
     if (appId && appId.trim()) {
       const cleanAppId = appId.trim();
@@ -430,6 +431,7 @@ export default function App() {
       initFacebookSdk(cleanAppId).then(async () => {
         const storedSession = readStoredMetaSession();
         if (storedSession) {
+          hadStoredSession = true;
           setFacebookAccessToken(storedSession.accessToken);
           const isStoredSessionValid = await validateFacebookAccessToken(storedSession.accessToken);
           if (isStoredSessionValid) {
@@ -439,6 +441,7 @@ export default function App() {
             };
           }
           clearMetaSession();
+          return { status: 'unknown', authResponse: null };
         }
 
         return getFacebookLoginStatus(true);
@@ -447,12 +450,13 @@ export default function App() {
 
         if (res?.status === 'connected' && res?.authResponse?.accessToken) {
           storeMetaSession(res.authResponse);
+          setIsInitialized(true);
           await handleLoginSuccess();
         } else {
           clearMetaSession();
           localStorage.removeItem('cr_is_logged');
           setIsLogged(false);
-          setError(null);
+          setError(hadStoredSession ? 'Tu sesión anterior de Meta venció. Ingresa nuevamente para continuar.' : null);
         }
       }).catch(err => {
         if (cancelled) return;
@@ -460,6 +464,7 @@ export default function App() {
         clearMetaSession();
         localStorage.removeItem('cr_is_logged');
         setIsLogged(false);
+        setError(err?.message || 'No pudimos restaurar la sesión con Meta. Ingresa nuevamente.');
       }).finally(() => {
         if (!cancelled) setIsInitialized(true);
       });
