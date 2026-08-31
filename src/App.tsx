@@ -32,6 +32,7 @@ import { AccountDetailView, RocketLoader } from './components/AccountDetailView'
 import { StrategyCanvas } from './components/StrategyCanvas';
 import { AlertsSection } from './components/AlertsSection';
 import { ReportsSection } from './components/ReportsSection';
+import { AccountsManagement } from './components/AccountsManagement';
 import FloatingAssistant from './components/FloatingAssistant';
 import { formatCurrency, formatNumber, formatDecimal, cn } from './lib/utils';
 import { 
@@ -740,8 +741,47 @@ export default function App() {
   };
 
   const saveAccountGroups = (newGroups: AccountGroup[]) => {
-    setAccountGroups(newGroups);
-    localStorage.setItem('cr_groups', JSON.stringify(newGroups));
+    const claimedAccountIds = new Set<string>();
+    const normalizedGroups = newGroups.map(group => ({
+      ...group,
+      accountIds: (group.accountIds || []).filter(accountId => {
+        const normalizedId = accountId.toString().replace(/^act_/i, '').toLowerCase();
+        if (!normalizedId || claimedAccountIds.has(normalizedId)) return false;
+        claimedAccountIds.add(normalizedId);
+        return true;
+      }),
+    }));
+    setAccountGroups(normalizedGroups);
+    localStorage.setItem('cr_groups', JSON.stringify(normalizedGroups));
+  };
+
+  const setAccountsVisibility = (accountIds: string[], visible: boolean) => {
+    const next = visible
+      ? [...visibleAccountIds, ...accountIds.filter(id => !visibleAccountIds.some(current => matchId(current, id)))]
+      : visibleAccountIds.filter(current => !accountIds.some(id => matchId(current, id)));
+    setVisibleAccountIds(next);
+    localStorage.setItem('cr_visible_accounts', JSON.stringify(next));
+  };
+
+  const assignEntityToCategory = (entityId: string, categoryId: string) => {
+    const current = settings[entityId] || {
+      objective: 0,
+      budget: 0,
+      currency: 'ARS',
+      tracking: 'ecommerce' as const,
+    };
+    handleSaveSettings(entityId, { ...current, categoryId });
+  };
+
+  const deleteClientCategory = (categoryId: string) => {
+    setClientCategories(current => current.filter(category => category.id !== categoryId));
+    const nextSettings = Object.fromEntries(Object.entries(settings).map(([id, accountSettings]) => [
+      id,
+      accountSettings.categoryId === categoryId ? { ...accountSettings, categoryId: '' } : accountSettings,
+    ]));
+    setSettings(nextSettings);
+    localStorage.setItem('cr_settings', JSON.stringify(nextSettings));
+    if (overviewCategoryId === categoryId) setOverviewCategoryId('all');
   };
 
   const { overviewEntities, overviewSettings } = React.useMemo(() => {
@@ -767,16 +807,34 @@ export default function App() {
 
           if (isGroupVisible) {
              const sG = settings[g.id];
+             const sumMetric = (metric: keyof AdAccount) => gAccs.reduce((sum, account) => {
+               const value = account[metric];
+               return sum + (typeof value === 'number' ? value : 0);
+             }, 0);
              entities.push({
                id: g.id,
                account_id: 'GRUPO',
-               name: g.name || 'Grupo',
+               name: sG?.customName || g.name || 'Grupo',
                account_status: 1,
                currency: sG?.currency || gAccs[0].currency || 'ARS',
-               spend: gAccs.reduce((sum, a) => sum + (a?.spend || 0), 0),
-               revenue: gAccs.reduce((sum, a) => sum + (a?.revenue || 0), 0),
-               purchases: gAccs.reduce((sum, a) => sum + (a?.purchases || 0), 0),
-               messages: gAccs.reduce((sum, a) => sum + (a?.messages || 0), 0),
+               spend: sumMetric('spend'),
+               revenue: sumMetric('revenue'),
+               purchases: sumMetric('purchases'),
+               messages: sumMetric('messages'),
+               messagesReal: sumMetric('messagesReal'),
+               leads: sumMetric('leads'),
+               leadsReal: sumMetric('leadsReal'),
+               clicks: sumMetric('clicks'),
+               impressions: sumMetric('impressions'),
+               addToCart: sumMetric('addToCart'),
+               viewContent: sumMetric('viewContent'),
+               checkouts: sumMetric('checkouts'),
+               ctr: sumMetric('impressions') > 0 ? (sumMetric('clicks') / sumMetric('impressions')) * 100 : 0,
+               costPerPurchase: sumMetric('purchases') > 0 ? sumMetric('spend') / sumMetric('purchases') : 0,
+               costPerMessage: sumMetric('messages') > 0 ? sumMetric('spend') / sumMetric('messages') : 0,
+               costPerMessageReal: sumMetric('messagesReal') > 0 ? sumMetric('spend') / sumMetric('messagesReal') : 0,
+               costPerLead: sumMetric('leads') > 0 ? sumMetric('spend') / sumMetric('leads') : 0,
+               costPerLeadReal: sumMetric('leadsReal') > 0 ? sumMetric('spend') / sumMetric('leadsReal') : 0,
              });
              gAccs.forEach(a => handledAccountIds.add(a.id?.toString()));
           }
@@ -987,7 +1045,7 @@ export default function App() {
       
       <main className={cn(
         "min-w-0 flex-1 overflow-y-auto",
-        ['overview', 'detail'].includes(activePage) ? "bg-[#0c1016] p-4 md:p-7" : "p-10"
+        ['overview', 'detail', 'accounts'].includes(activePage) ? "bg-[#0c1016] p-4 md:p-7" : "p-10"
       )}>
         <div className={cn("mx-auto max-w-7xl", ['overview', 'detail'].includes(activePage) ? "space-y-5" : "space-y-10")}>
           {error && (
@@ -1243,7 +1301,7 @@ export default function App() {
                 </button>
               </div>
             </div>
-          ) : overviewEntities.length === 0 ? (
+          ) : overviewEntities.length === 0 && activePage !== 'accounts' ? (
             <div className="bg-[#111] border border-white/5 rounded-[2.5rem] p-10 text-center my-8 max-w-xl mx-auto shadow-2xl animate-in fade-in duration-500">
               <div className="w-16 h-16 bg-blue-600/10 border border-blue-600/20 rounded-2xl flex items-center justify-center mx-auto text-blue-500 mb-6">
                 <Facebook className="w-8 h-8 opacity-80" />
@@ -1598,9 +1656,10 @@ export default function App() {
 
               {activePage === 'detail' && (
                 <AccountDetailView 
-                  accounts={accounts}
-                  visibleAccountIds={visibleAccountIds}
-                  settings={settings}
+                  accounts={overviewEntities}
+                  visibleAccountIds={overviewEntities.map(account => account.id)}
+                  settings={overviewSettings}
+                  accountGroups={accountGroups}
                   onSaveSettings={handleSaveSettings}
                   dateRange={dateRange}
                   setDateRange={setDateRange}
@@ -1795,6 +1854,22 @@ export default function App() {
               )}
 
               {activePage === 'accounts' && (
+                <AccountsManagement
+                  accounts={accounts}
+                  visibleAccountIds={visibleAccountIds}
+                  accountGroups={accountGroups}
+                  clientCategories={clientCategories}
+                  settings={settings}
+                  onSetAccountsVisibility={setAccountsVisibility}
+                  onGroupsChange={saveAccountGroups}
+                  onCategoriesChange={setClientCategories}
+                  onAssignCategory={assignEntityToCategory}
+                  onDeleteCategory={deleteClientCategory}
+                  onConfigure={setConfigEntity}
+                />
+              )}
+
+              {false && activePage === 'accounts' && (
                 <div className="animate-in fade-in duration-500 max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 pb-20">
                   <div className="bg-[#111] rounded-lg border border-white/5 overflow-hidden shadow-2xl p-8 flex flex-col">
                     <div className="flex items-center justify-between mb-8">

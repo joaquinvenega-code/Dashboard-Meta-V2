@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   AdAccount, 
   AccountSettings, 
@@ -6,7 +6,8 @@ import {
   DailyMetric,
   AccountNote,
   OfflineSaleEntry,
-  ClientCategory
+  ClientCategory,
+  AccountGroup
 } from '../types';
 import { 
   fetchTopAds, 
@@ -632,6 +633,7 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
 interface AccountDetailViewProps {
   accounts: AdAccount[];
   visibleAccountIds: string[];
+  accountGroups: AccountGroup[];
   settings: Record<string, AccountSettings>;
   onSaveSettings: (id: string, s: AccountSettings) => void;
   dateRange: { since: string; until: string };
@@ -649,6 +651,7 @@ interface AccountDetailViewProps {
 export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   accounts,
   visibleAccountIds,
+  accountGroups,
   settings,
   onSaveSettings,
   dateRange,
@@ -696,19 +699,50 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  const selectedSourceAccountIds = useMemo(() => {
+    if (!selectedId) return [];
+    const group = accountGroups.find(item => item.id === selectedId);
+    return group?.accountIds.length ? group.accountIds : [selectedId];
+  }, [accountGroups, selectedId]);
+
   const loadAccountDailySeries = useCallback(async () => {
     if (!selectedId) return;
     setLoadingAccountSeries(true);
     try {
-      const data = await fetchAccountDailyPerformance(selectedId, dateRange.since, dateRange.until);
-      setAccountDailySeries(data || []);
+      const seriesByAccount = await Promise.all(selectedSourceAccountIds.map(accountId =>
+        fetchAccountDailyPerformance(accountId, dateRange.since, dateRange.until).catch(() => []),
+      ));
+      const byDate = new Map<string, DailyMetric>();
+      seriesByAccount.flat().forEach(item => {
+        const current = byDate.get(item.date) || {
+          date: item.date,
+          spend: 0,
+          clicks: 0,
+          purchases: 0,
+          revenue: 0,
+          messages: 0,
+          leads: 0,
+          costPerLead: 0,
+          roas: 0,
+        };
+        current.spend += item.spend || 0;
+        current.clicks = (current.clicks || 0) + (item.clicks || 0);
+        current.purchases += item.purchases || 0;
+        current.revenue += item.revenue || 0;
+        current.messages = (current.messages || 0) + (item.messages || 0);
+        current.leads = (current.leads || 0) + (item.leads || 0);
+        current.roas = current.spend > 0 ? current.revenue / current.spend : 0;
+        current.costPerLead = (current.leads || 0) > 0 ? current.spend / (current.leads || 1) : 0;
+        byDate.set(item.date, current);
+      });
+      setAccountDailySeries([...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)));
     } catch (e) {
       console.error("Error loading account daily performance:", e);
       setAccountDailySeries([]);
     } finally {
       setLoadingAccountSeries(false);
     }
-  }, [selectedId, dateRange.since, dateRange.until]);
+  }, [selectedId, selectedSourceAccountIds, dateRange.since, dateRange.until]);
 
   useEffect(() => {
     loadAccountDailySeries();
@@ -928,21 +962,29 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     if (!selectedId) return;
     setAdsLoading(true);
     try {
-      const topAds = await fetchTopAds(selectedId, dateRange.since, dateRange.until, topN, sortBy);
-      const adIds = topAds.map(a => a.id);
-      if (adIds.length > 0) {
-        const series = await fetchDailySeries(selectedId, dateRange.since, dateRange.until, adIds);
-        topAds.forEach(ad => {
-          ad.dailySeries = series[ad.id] || [];
-        });
-      }
-      setAds(topAds);
+      const adsByAccount = await Promise.all(selectedSourceAccountIds.map(async accountId => {
+        const topAds = await fetchTopAds(accountId, dateRange.since, dateRange.until, topN, sortBy);
+        const adIds = topAds.map(ad => ad.id);
+        if (adIds.length > 0) {
+          const series = await fetchDailySeries(accountId, dateRange.since, dateRange.until, adIds);
+          topAds.forEach(ad => {
+            ad.dailySeries = series[ad.id] || [];
+          });
+        }
+        return topAds;
+      }));
+      const metricValue = (ad: Ad) => {
+        if (sortBy === 'roas') return ad.roas || (ad.spend > 0 ? ad.revenue / ad.spend : 0);
+        return Number(ad[sortBy as keyof Ad]) || 0;
+      };
+      setAds(adsByAccount.flat().sort((a, b) => metricValue(b) - metricValue(a)).slice(0, topN));
     } catch (e) {
       console.error("Error loading ads:", e);
+      setAds([]);
     } finally {
       setAdsLoading(false);
     }
-  }, [selectedId, dateRange, topN, sortBy]);
+  }, [selectedId, selectedSourceAccountIds, dateRange, topN, sortBy]);
 
   useEffect(() => {
     loadAds();
