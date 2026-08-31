@@ -503,7 +503,8 @@
     grid-template-areas:
       "media info link"
       "media chart chart" !important;
-    grid-template-columns: 190px minmax(0, 1fr) 82px !important;
+    grid-template-columns: 180px minmax(0, 1fr) 82px !important;
+    grid-template-rows: max-content 1fr !important;
     align-items: start !important;
     column-gap: 8px !important;
     row-gap: 5px !important;
@@ -523,8 +524,8 @@
   .ad-card-print-link { grid-area: link !important; }
 
   .ad-card-print-media > div {
-    width: 190px !important;
-    height: 224px !important;
+    width: 180px !important;
+    height: 272px !important;
     border-radius: 10px !important;
     background: #e2e8f0 !important;
   }
@@ -548,7 +549,7 @@
 
   .ad-card-print-info > div:last-child {
     display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     gap: 4px !important;
     margin: 0 !important;
   }
@@ -573,8 +574,8 @@
   }
 
   .ad-card-print-chart {
-    height: 86px !important;
-    align-self: end !important;
+    height: 112px !important;
+    align-self: start !important;
     padding: 5px 8px !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 8px !important;
