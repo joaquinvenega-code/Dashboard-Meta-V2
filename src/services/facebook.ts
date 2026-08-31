@@ -60,7 +60,7 @@ function metaApiError(error: any): Error {
 
 async function graphApiGet(
   path: string,
-  params: Record<string, string | number | boolean | null | undefined> = {},
+  params: Record<string, unknown> = {},
   timeoutMs = META_DATA_TIMEOUT_MS,
 ): Promise<any> {
   const requestToken = typeof params.access_token === 'string' ? params.access_token : activeAccessToken;
@@ -71,7 +71,9 @@ async function graphApiGet(
     : new URL(`${GRAPH_API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`);
 
   Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) requestUrl.searchParams.set(key, String(value));
+    if (value === undefined || value === null) return;
+    const serializedValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+    requestUrl.searchParams.set(key, serializedValue);
   });
   requestUrl.searchParams.set('access_token', requestToken);
 
@@ -96,6 +98,15 @@ async function graphApiGet(
   }
 }
 
+async function graphApiGetSafe(path: string, params: Record<string, unknown> = {}): Promise<any | null> {
+  try {
+    return await graphApiGet(path, params);
+  } catch (error) {
+    console.warn(`Optional Meta request failed for ${path}:`, error);
+    return null;
+  }
+}
+
 function enableAccessTokenInjection() {
   if (isFacebookApiWrapped || !window.FB?.api) return;
 
@@ -104,7 +115,23 @@ function enableAccessTokenInjection() {
     const authenticatedParams = activeAccessToken
       ? { ...params, access_token: activeAccessToken }
       : params;
-    return originalApi(path, method, authenticatedParams, callback);
+    let settled = false;
+    const finish = (response: any) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      callback(response);
+    };
+    const timeoutId = window.setTimeout(() => {
+      finish({ error: { code: 2, message: 'Meta tardó demasiado en responder.' } });
+    }, META_DATA_TIMEOUT_MS);
+
+    try {
+      return originalApi(path, method, authenticatedParams, finish);
+    } catch (error: any) {
+      finish({ error: { code: 2, message: error?.message || 'No pudimos consultar Meta.' } });
+      return undefined;
+    }
   };
   isFacebookApiWrapped = true;
 }
@@ -446,13 +473,11 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
   console.log(`[TopAds] Fetching account: ${accountId}`);
   const time_range = JSON.stringify({ since, until });
 
-  const insRes: any = await new Promise((resolve) => {
-    window.FB.api(`/${accountId}/insights`, 'GET', {
+  const insRes = await graphApiGet(`/${accountId}/insights`, {
       fields: 'ad_id,ad_name,spend,clicks,ctr,actions,action_values',
       time_range,
       level: 'ad',
       limit: 500,
-    }, (res: any) => resolve(res));
   });
 
   if (!insRes || insRes.error || !insRes.data || !insRes.data.length) {
@@ -513,16 +538,12 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       let adType = "desconocido";
 
       // PASO 0: Llamada inicial (v4.3 - Reforzamos campos de video y thumbnails)
-      let adRes: any = await new Promise((resolve) => {
-        window.FB.api(`/${ad.id}`, 'GET', {
+      let adRes: any = await graphApiGetSafe(`/${ad.id}`, {
           fields: 'creative{id,image_url,image_hash,thumbnail_url,object_story_spec,asset_feed_spec,effective_object_story_id,effective_instagram_story_id,video_id}'
-        }, (res: any) => resolve(res));
       });
 
       if (!adRes || adRes.error) {
-        adRes = await new Promise((resolve) => {
-          window.FB.api(`/${ad.id}`, 'GET', { fields: 'creative{id,image_url,thumbnail_url}' }, (res: any) => resolve(res));
-        });
+        adRes = await graphApiGetSafe(`/${ad.id}`, { fields: 'creative{id,image_url,thumbnail_url}' });
       }
 
       if (adRes && !adRes.error && adRes.creative) {
@@ -533,9 +554,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         if (!thumb && creative.effective_instagram_story_id) {
           adType = "publicacion_redes";
           const igStoryId = creative.effective_instagram_story_id;
-          const igNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${igStoryId}`, 'GET', { fields: 'thumbnail_url,media_url,media_type,children{media_url,thumbnail_url,media_type}' }, (res: any) => resolve(res));
-          });
+          const igNode: any = await graphApiGetSafe(`/${igStoryId}`, { fields: 'thumbnail_url,media_url,media_type,children{media_url,thumbnail_url,media_type}' });
           if (igNode && !igNode.error) {
             if (igNode.media_type === 'IMAGE') {
                thumb = igNode.media_url; // Direct image (high-res)
@@ -558,9 +577,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         if (!thumb && creative.effective_object_story_id) {
           adType = "publicacion_redes";
           const storyId = creative.effective_object_story_id;
-          const storyNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${storyId}`, 'GET', { fields: 'thumbnail_url,full_picture,attachments{type,target{id},media{source,image{src,height,width}},subattachments{type,target{id},media{image{src,height,width}}}}' }, (res: any) => resolve(res));
-          });
+          const storyNode: any = await graphApiGetSafe(`/${storyId}`, { fields: 'thumbnail_url,full_picture,attachments{type,target{id},media{source,image{src,height,width}},subattachments{type,target{id},media{image{src,height,width}}}}' });
           
           if (storyNode && !storyNode.error) {
             // Prioridad #1: metadata.thumbnail_url del post o full_picture nativo
@@ -594,9 +611,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           const vidId = creative.video_id || spec.video_data?.video_id;
           // Sub-intento A: Nodo de video
           if (vidId) {
-            const vidNode: any = await new Promise((resolve) => {
-              window.FB.api(`/${vidId}`, 'GET', { fields: 'picture,format,thumbnail_url' }, (res: any) => resolve(res));
-            });
+            const vidNode: any = await graphApiGetSafe(`/${vidId}`, { fields: 'picture,format,thumbnail_url' });
             if (vidNode && !vidNode.error) {
               if (Array.isArray(vidNode.format)) {
                 const sorted = [...vidNode.format].sort((a,b) => (b.width * b.height) - (a.width * a.height));
@@ -611,9 +626,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           if (!thumb) {
             const vHash = spec.video_data?.image_hash;
             if (vHash) {
-              const imgNode: any = await new Promise((resolve) => {
-                window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: [vHash], fields: 'url' }, (res: any) => resolve(res));
-              });
+              const imgNode: any = await graphApiGetSafe(`/${accountId}/adimages`, { hashes: [vHash], fields: 'url' });
               if (imgNode?.data?.[0]?.url) thumb = imgNode.data[0].url;
             }
             thumb = thumb || spec.video_data?.image_url || creative.image_url || creative.thumbnail_url;
@@ -627,9 +640,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           const afs = creative.asset_feed_spec;
           const hash = afs.images?.[0]?.hash || afs.videos?.[0]?.thumbnail_hash;
           if (hash) {
-            const imgNode: any = await new Promise((resolve) => {
-              window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: [hash], fields: 'url' }, (res: any) => resolve(res));
-            });
+            const imgNode: any = await graphApiGetSafe(`/${accountId}/adimages`, { hashes: [hash], fields: 'url' });
             thumb = imgNode?.data?.[0]?.url;
           }
           thumb = thumb || afs.images?.[0]?.url || afs.videos?.[0]?.thumbnail_url;
@@ -644,9 +655,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           if (firstChild) {
             const cHash = firstChild.image_hash || spec.link_data?.image_hash;
             if (cHash) {
-              const imgNode: any = await new Promise((resolve) => {
-                window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: [cHash], fields: 'url' }, (res: any) => resolve(res));
-              });
+              const imgNode: any = await graphApiGetSafe(`/${accountId}/adimages`, { hashes: [cHash], fields: 'url' });
               // Solo sobreescribimos si realmente obtuvimos una URL válida para no dejarlo en blanco
               if (imgNode?.data?.[0]?.url) {
                 thumb = imgNode.data[0].url;
@@ -662,9 +671,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           adType = adType === "desconocido" ? "imagen_estatica" : adType;
           const hashList = [creative.image_hash, spec.photo_data?.image_hash, spec.link_data?.image_hash, spec.link_data?.child_attachments?.[0]?.image_hash].filter(Boolean);
           if (hashList.length > 0) {
-            const imgNode: any = await new Promise((resolve) => {
-              window.FB.api(`/${accountId}/adimages`, 'GET', { hashes: [hashList[0] as string], fields: 'url' }, (res: any) => resolve(res));
-            });
+            const imgNode: any = await graphApiGetSafe(`/${accountId}/adimages`, { hashes: [hashList[0] as string], fields: 'url' });
             thumb = imgNode?.data?.[0]?.url;
             if (thumb) winningStep = "static hash resolution";
           }
@@ -674,9 +681,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         if (!thumb && creative.effective_object_story_id) {
           adType = "publicacion_redes";
           const storyId = creative.effective_object_story_id;
-          const storyNode: any = await new Promise((resolve) => {
-            window.FB.api(`/${storyId}`, 'GET', { fields: 'full_picture,attachments{media{image{src,width,height}},subattachments{media{image{src,width,height}}}}' }, (res: any) => resolve(res));
-          });
+          const storyNode: any = await graphApiGetSafe(`/${storyId}`, { fields: 'full_picture,attachments{media{image{src,width,height}},subattachments{media{image{src,width,height}}}}' });
           
           if (storyNode && !storyNode.error) {
             // Buscamos la imagen más grande en attachments
@@ -708,9 +713,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
 
       // PASO FINAL: Link de Previsualización (Aislado de la carga de imágenes para evitar bloqueos)
       try {
-        const prevRes: any = await new Promise((resolve) => {
-          window.FB.api(`/${ad.id}/previews`, 'GET', { ad_format: 'DESKTOP_FEED_STANDARD' }, (res: any) => resolve(res));
-        });
+        const prevRes: any = await graphApiGetSafe(`/${ad.id}/previews`, { ad_format: 'DESKTOP_FEED_STANDARD' });
         if (prevRes && !prevRes.error && prevRes.data?.[0]) {
           const iframeMatch = prevRes.data[0].body.match(/src="([^"]+)"/);
           if (iframeMatch) {
@@ -824,15 +827,13 @@ function inferFunnelStage(name: string, objective: string): 'TOFU' | 'MOFU' | 'B
 
 export async function fetchDailySeries(accountId: string, since: string, until: string, adIds: string[]): Promise<Record<string, DailyMetric[]>> {
   const time_range = JSON.stringify({ since, until });
-  const response: any = await new Promise((resolve) => {
-    window.FB.api(`/${accountId}/insights`, 'GET', {
+  const response = await graphApiGet(`/${accountId}/insights`, {
       fields: 'ad_id,date_start,spend,clicks,actions,action_values',
       time_range,
       level: 'ad',
       time_increment: 1,
       filtering: JSON.stringify([{ field: 'ad.id', operator: 'IN', value: adIds }]),
       limit: 1000,
-    }, (res: any) => resolve(res));
   });
 
   const byAd: Record<string, DailyMetric[]> = {};
@@ -857,14 +858,12 @@ export async function fetchDailySeries(accountId: string, since: string, until: 
 
 export async function fetchAccountDailyPerformance(accountId: string, since: string, until: string): Promise<any[]> {
   const time_range = JSON.stringify({ since, until });
-  const response: any = await new Promise((resolve) => {
-    window.FB.api(`/${accountId}/insights`, 'GET', {
+  const response = await graphApiGet(`/${accountId}/insights`, {
       fields: 'date_start,spend,actions,action_values,clicks,impressions',
       time_range,
       level: 'account',
       time_increment: 1,
       limit: 1000,
-    }, (res: any) => resolve(res));
   });
 
   if (!response || response.error || !Array.isArray(response.data)) return [];
@@ -898,14 +897,12 @@ export async function fetchAccountDailyPerformance(accountId: string, since: str
 
 export async function fetchDemographics(accountId: string, since: string, until: string): Promise<any[]> {
   const time_range = JSON.stringify({ since, until });
-  const response: any = await new Promise((resolve) => {
-    window.FB.api(`/${accountId}/insights`, 'GET', {
+  const response = await graphApiGet(`/${accountId}/insights`, {
       fields: 'spend,actions,action_values',
       time_range,
       level: 'account',
       breakdowns: 'age,gender',
       limit: 1000,
-    }, (res: any) => resolve(res));
   });
 
   if (!response || response.error || !Array.isArray(response.data)) return [];
@@ -915,14 +912,12 @@ export async function fetchDemographics(accountId: string, since: string, until:
 
 export async function fetchGeography(accountId: string, since: string, until: string): Promise<any[]> {
   const time_range = JSON.stringify({ since, until });
-  const response: any = await new Promise((resolve) => {
-    window.FB.api(`/${accountId}/insights`, 'GET', {
+  const response = await graphApiGet(`/${accountId}/insights`, {
       fields: 'spend,actions,action_values',
       time_range,
       level: 'account',
       breakdowns: 'country,region',
       limit: 1000,
-    }, (res: any) => resolve(res));
   });
 
   if (!response || response.error || !Array.isArray(response.data)) return [];
@@ -932,14 +927,12 @@ export async function fetchGeography(accountId: string, since: string, until: st
 
 export async function fetchPlacements(accountId: string, since: string, until: string): Promise<any[]> {
   const time_range = JSON.stringify({ since, until });
-  const response: any = await new Promise((resolve) => {
-    window.FB.api(`/${accountId}/insights`, 'GET', {
+  const response = await graphApiGet(`/${accountId}/insights`, {
       fields: 'spend,actions,action_values',
       time_range,
       level: 'account',
       breakdowns: 'publisher_platform,platform_position',
       limit: 1000,
-    }, (res: any) => resolve(res));
   });
 
   if (!response || response.error || !Array.isArray(response.data)) return [];
