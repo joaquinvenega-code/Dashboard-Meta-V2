@@ -1,196 +1,22 @@
-import React, { useState } from 'react';
-import { Clock, LayoutTemplate, Waypoints } from 'lucide-react';
-import { cn } from '../../../lib/utils';
-
-interface LogEntry {
-  id: string;
-  date: string;
-  description: string;
-  category?: 'optimizacion' | 'alerta' | 'estrategia' | 'creativo' | 'config';
+import React from 'react';
+import { Mic, PenLine, SlidersHorizontal, CalendarDays } from 'lucide-react';
+import type { ReportLog } from '../reportLogs';
+const categories: Record<string, string> = { observation: 'Observación', change: 'Cambio', meeting: 'Reunión', urgent: 'Prioridad', optimizacion: 'Optimización', estrategia: 'Estrategia', creativo: 'Creativos', config: 'Configuración', estructura: 'Estructura', testing: 'Prueba', escalado: 'Escalado' };
+export function ManagementTimelineV2({ logs, notice }: { logs: ReportLog[]; notice?: string }) {
+  const rows = Array.from({ length: Math.ceil(logs.length / 2) }, (_, index) => logs.slice(index * 2, index * 2 + 2));
+  return <section className="report-panel report-timeline">
+    <header className="report-panel-heading"><h3><CalendarDays size={16} /> Bitácora de gestión</h3><p>{logs.length ? `${logs.length} registros del mes. Seguí los números para recorrer los cambios en orden cronológico.` : 'Historial de cambios, revisiones y decisiones del mes.'}</p></header>
+    {notice && <p className="report-data-note">{notice}</p>}
+    {logs.length ? <div className="report-timeline-path" role="list">{rows.map((row, rowIndex) => <div className={'report-timeline-row' + (rowIndex % 2 ? ' is-reversed' : '') + (rowIndex === rows.length - 1 ? ' is-last' : '')} key={rowIndex}>
+      {row.map((log, index) => {
+        const Icon = log.source === 'Voz' ? Mic : log.source === 'Manual' ? PenLine : SlidersHorizontal;
+        return <article key={log.id} role="listitem" className="report-timeline-entry">
+          <span className="report-timeline-node">{rowIndex * 2 + index + 1}</span>
+          <div className="report-timeline-card"><div className="report-timeline-meta"><time>{log.date}</time><span><Icon size={11} />{log.source || 'Gestión'}</span></div>
+            <h4>{categories[log.category || ''] || 'Registro de gestión'}</h4><p>{log.description}</p>
+          </div>
+        </article>;
+      })}
+    </div>)}</div> : <p className="report-empty">No se encontraron anotaciones para esta cuenta y este mes. Las notas de voz confirmadas y las guardadas en Detalle de cuentas aparecen aquí con su fecha.</p>}
+  </section>;
 }
-
-interface ManagementTimelineV2Props {
-  logs: LogEntry[];
-}
-
-
-export const ManagementTimelineV2: React.FC<ManagementTimelineV2Props> = ({ logs }) => {
-  const [viewMode, setViewMode] = useState<'serpentine' | 'masonry'>('masonry');
-
-  if (logs.length === 0) {
-    return (
-      <div className="flex flex-col items-center py-10 text-slate-400 opacity-50">
-        <Clock className="w-8 h-8 mb-2" />
-        <p className="text-[10px] font-black uppercase tracking-widest text-center">No hay registros de bitácora para este período</p>
-      </div>
-    );
-  }
-
-  const itemsPerRow = 2;
-
-  const getXPercent = (index: number) => {
-     const rowIndex = Math.floor(index / itemsPerRow);
-     const colIndex = index % itemsPerRow;
-     const isEvenRow = rowIndex % 2 === 0;
-     const visualColIndex = isEvenRow ? colIndex : (itemsPerRow - 1 - colIndex);
-     return (visualColIndex * (100 / itemsPerRow)) + (50 / itemsPerRow);
-  };
-  
-  const getYPos = (index: number) => {
-     const rowIndex = Math.floor(index / itemsPerRow);
-     return 140 + (rowIndex * 110);
-  };
-
-  const drawPathStr = () => {
-    if (logs.length <= 1) return '';
-    let d = `M ${getXPercent(0) * 10} ${getYPos(0)}`;
-    for (let i = 0; i < logs.length - 1; i++) {
-        const x1 = getXPercent(i) * 10;
-        const y1 = getYPos(i);
-        const x2 = getXPercent(i+1) * 10;
-        const y2 = getYPos(i+1);
-        
-        if (y1 === y2) {
-           d += ` L ${x2} ${y2}`;
-        } else {
-           const isRightSide = x1 > 500; 
-           const curveOffset = isRightSide ? 220 : -220; 
-           d += ` C ${x1 + curveOffset} ${y1}, ${x2 + curveOffset} ${y2}, ${x2} ${y2}`;
-        }
-    }
-    return d;
-  };
-
-  const lastY = logs.length > 0 ? getYPos(logs.length - 1) : 0;
-  const totalHeight = lastY + 50;
-
-  return (
-    <div className="w-full relative">
-      <div className="flex justify-end mb-6 print:hidden">
-         <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
-            <button 
-               onClick={() => setViewMode('masonry')}
-               className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all", viewMode === 'masonry' ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600")}
-            >
-               <LayoutTemplate className="w-3.5 h-3.5" />
-               Flexible
-            </button>
-            <button 
-               onClick={() => setViewMode('serpentine')}
-               className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all", viewMode === 'serpentine' ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600")}
-            >
-               <Waypoints className="w-3.5 h-3.5" />
-               Camino
-            </button>
-         </div>
-      </div>
-      
-      {/* DESKTOP VIEW (Serpentine Timeline) */}
-      {viewMode === 'serpentine' && (
-      <div className="hidden lg:block print:hidden relative w-full overflow-hidden mb-8" style={{ height: `${totalHeight}px` }}>
-        
-        {/* The Serpentine Path */}
-        <svg 
-           className="absolute inset-0 w-full h-full pointer-events-none" 
-           viewBox={`0 0 1000 ${totalHeight}`}
-           preserveAspectRatio="none"
-        >
-            <path 
-               d={drawPathStr()} 
-               stroke="#94a3b8" 
-               strokeWidth="5" 
-               fill="none" 
-               strokeLinecap="round"
-               strokeLinejoin="round" 
-               className="opacity-70"
-            />
-        </svg>
-
-        {/* Nodes and Cards */}
-        {logs.map((log, index) => {
-           const xPos = getXPercent(index);
-           const yPos = getYPos(index);
-           const rowIndex = Math.floor(index / itemsPerRow);
-           
-           const colIndex = index % itemsPerRow;
-           const isEvenRow = rowIndex % 2 === 0;
-           const visualColIndex = isEvenRow ? colIndex : (itemsPerRow - 1 - colIndex);
-           const cardTop = true;
-
-           return (
-             <div 
-               key={log.id} 
-               className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-500 will-change-transform"
-               style={{ left: `${xPos}%`, top: `${yPos}px`, width: `42%`, animationDelay: `${index * 50}ms` }}
-             >
-               {/* Node Dot */}
-               <div className="relative z-20 w-5 h-5 bg-[#3b82f6] rounded-full border-[4px] border-white shadow flex items-center justify-center">
-                 <div className="w-1.5 h-1.5 bg-blue-100 rounded-full animate-pulse" />
-               </div>
-
-               {/* Date Label */}
-               <div className={`absolute ${cardTop ? 'bottom-[34px]' : 'top-[34px]'} left-1/2 -translate-x-1/2 font-black text-slate-900 text-[10px] tracking-widest bg-white/95 px-1.5 py-0.5 rounded backdrop-blur-sm z-30 shadow-sm border border-slate-100`}>
-                 {log.date}
-               </div>
-
-               {/* Card Container */}
-               <div className={`absolute ${cardTop ? 'bottom-[50px]' : 'top-[50px]'} left-1/2 -translate-x-1/2 w-full px-1 z-10 hover:z-50`}>
-                 <div className="bg-white border text-center border-slate-200 hover:border-blue-400 rounded-xl p-2.5 shadow-sm hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] transition-all cursor-default relative">
-                    {/* Directional Arrow pointing to node */}
-                    <div className={`absolute left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white border-r border-b border-slate-200 transform rotate-45 transition-colors ${cardTop ? '-bottom-[7px] rotate-[45deg]' : '-top-[7px] rotate-[-135deg] border-t border-l border-r-0 border-b-0'} group-hover:border-blue-400`} />
-                    
-                    <div className="px-1">
-                      <p className="text-[10px] text-slate-600 font-medium leading-tight">
-                         {log.description}
-                      </p>
-                    </div>
-                 </div>
-               </div>
-             </div>
-           );
-        })}
-      </div>
-      )}
-
-      {/* MOBILE / TABLET VIEW / PRINT VIEW (Vertical Alternating Timeline) */}
-      <div className={cn("relative pb-6 sm:pb-6 mt-4 print:pb-4 print:block", viewMode === 'masonry' ? 'block' : 'block lg:hidden')}>
-        {/* Center Line for alternating timeline */}
-        <div className="absolute left-[24px] sm:left-1/2 print:left-[24px] sm:-translate-x-1/2 print:translate-x-0 top-0 bottom-0 w-1 bg-[#94a3b8] opacity-70 rounded-full" />
-
-        <div className="space-y-4 sm:-space-y-2 print:space-y-4 relative pt-2">
-            {logs.map((log, index) => {
-              const isEven = index % 2 === 0;
-              return (
-                <div key={log.id} className={`relative flex flex-col sm:flex-row print:flex-col items-start sm:items-center print:items-start w-full animate-in fade-in slide-in-from-bottom-4 duration-500 print:break-inside-avoid ${isEven ? 'sm:justify-start' : 'sm:justify-end'} print:justify-start`} style={{ animationDelay: `${index * 50}ms` }}>
-                  
-                  {/* Node Dot Mobile/Tablet */}
-                  <div className="absolute left-[16px] sm:left-1/2 print:left-[16px] sm:-translate-x-1/2 print:translate-x-0 top-4 sm:top-1/2 print:top-4 sm:-translate-y-1/2 print:translate-y-0 z-20 w-5 h-5 bg-[#3b82f6] rounded-full border-[4px] border-white shadow-md flex items-center justify-center">
-                     <div className="w-1.5 h-1.5 bg-blue-100 rounded-full animate-pulse" />
-                  </div>
-
-                  {/* Card wrapper */}
-                  <div className={`w-full sm:w-[50%] print:w-full pl-[48px] print:pl-[48px] sm:pl-0 ${isEven ? 'sm:pr-6 print:pr-0' : 'sm:pl-6 print:pl-[48px]'}`}>
-                     <div className="bg-white text-center sm:text-center print:text-left border border-slate-200 rounded-xl p-3 relative shadow-sm hover:border-blue-400 transition-all cursor-default">
-                        
-                        {/* Mobile arrow (left) */}
-                        <div className={`absolute top-[18px] -left-[6px] w-3 h-3 bg-white border-b border-l border-slate-200 transform rotate-45 sm:hidden print:block`} />
-                        
-                        {/* Tablet arrow (alternating) */}
-                        <div className={`hidden sm:block print:hidden absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-slate-200 transform rotate-45 ${isEven ? '-right-[6px] border-t border-r' : '-left-[6px] border-b border-l'}`} />
-
-                        <div className="flex items-center justify-center print:justify-start mb-1 pb-1">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-tight">{log.date}</span>
-                        </div>
-                        <p className="text-[10px] text-slate-600 leading-tight font-medium">{log.description}</p>
-                     </div>
-                  </div>
-
-                </div>
-              );
-            })}
-        </div>
-      </div>
-
-    </div>
-  );
-};

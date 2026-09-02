@@ -1,195 +1,69 @@
 import React from 'react';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  Legend,
-  LineChart,
-  Line,
-  ComposedChart
-} from 'recharts';
-import { formatCurrency } from '../../../lib/utils';
-import { BarChart3, TrendingUp, ShoppingCart } from 'lucide-react';
+import { formatCurrency, formatDecimal } from '../../../lib/utils';
+import { DailyReportPoint, ReportMode } from '../reportData';
 
-interface PerformanceChartV2Props {
-  data: {
-    date: string;
-    revenue: number;
-    purchases: number;
-    messages?: number;
-    spend?: number;
-  }[];
-  currency: string;
-  mode?: 'ecommerce' | 'messaging';
+export function chartMaximum(values: Array<number | null | undefined>, integers = false) {
+  const max = Math.max(0, ...values.filter((value): value is number => value != null && Number.isFinite(value)));
+  if (max === 0) return 1;
+  const power = Math.pow(10, Math.floor(Math.log10(max)));
+  const step = [1, 2, 5, 10].find(value => value * power >= max) || 10;
+  return integers ? Math.max(1, Math.ceil(step * power)) : step * power;
 }
 
-export const PerformanceChartV2: React.FC<PerformanceChartV2Props> = ({ data, currency, mode = 'ecommerce' }) => {
-  return (
-    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm h-full flex flex-col">
-      <div className="px-8 py-6 border-b border-slate-50 flex items-center justify-between">
-        <div>
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Métricas Consolidadas</h3>
-          <p className="text-sm font-bold text-slate-900">Histórico Diario del Mes</p>
-        </div>
-        <div className="flex items-center gap-6">
-          {mode === 'ecommerce' ? (
-            <>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-blue-600" />
-                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none">Facturado (ARS)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-sky-400" />
-                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none">Ventas</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none">Mensajes Iniciados</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-blue-600" />
-                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest leading-none">Inversión (ARS)</span>
-              </div>
-            </>
-          )}
-        </div>
+export function PerformanceChartV2({ data, currency, mode = 'ecommerce', expectedResults }: { data: DailyReportPoint[]; currency: string; mode?: ReportMode; expectedResults?: number }) {
+  const uid = React.useId().replace(/:/g, '');
+  const messaging = mode === 'messaging';
+  const upperKey = messaging ? 'messages' : 'purchases';
+  const lowerKey = messaging ? 'spend' : 'revenue';
+  const resultLabel = messaging ? 'Mensajes iniciados' : 'Compras';
+  const moneyLabel = messaging ? 'Inversión' : 'Facturación';
+  const upper = data.map(row => row[upperKey]);
+  const lower = data.map(row => row[lowerKey]);
+  const maxUpper = chartMaximum(upper, true);
+  const maxLower = chartMaximum(lower);
+  const peak = Math.max(0, ...upper.map(value => value || 0));
+  const peakDays = data.filter(row => peak > 0 && row[upperKey] === peak).map(row => row.date);
+  const total = upper.reduce<number>((sum, value) => sum + (value || 0), 0);
+  const discrepancy = expectedResults != null && Math.abs(total - expectedResults) > 0.01;
+  const reported = data.filter(row => row[upperKey] != null).length;
+  const left = 62, right = 664, panelHeight = 88;
+  const x = (index: number) => left + (right - left) * (index + 0.5) / Math.max(1, data.length);
+  const y = (value: number, top: number, max: number) => top + panelHeight - value / max * panelHeight;
+  const tickIndexes = data.map((_, index) => index).filter(index => index === 0 || index === data.length - 1 || index % Math.max(1, Math.ceil(data.length / 9)) === 0);
+  const shortMoney = (value: number) => value === 0 ? '0' : value >= 1e6 ? (value / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' M' : value >= 1000 ? (value / 1000).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' mil' : formatDecimal(value, value < 10 ? 1 : 0);
+  const lineSegments: string[] = [];
+  let segment = '';
+  lower.forEach((value, index) => {
+    if (value == null) { if (segment) lineSegments.push(segment); segment = ''; return; }
+    segment += (segment ? ' L ' : 'M ') + x(index) + ' ' + y(value, 202, maxLower);
+  });
+  if (segment) lineSegments.push(segment);
+  return <section className="report-panel report-daily">
+    <header className="report-panel-heading"><h3>Evolución diaria</h3><p>Dos escalas independientes y las mismas fechas para comparar el comportamiento del mes.</p></header>
+    {reported ? <>
+      <svg className="report-daily-svg" viewBox="0 0 700 327" role="img" aria-labelledby={uid + '-title'}>
+        <title id={uid + '-title'}>{`${resultLabel} y ${moneyLabel.toLowerCase()} por día. Cada panel utiliza su propia escala.`}</title>
+        {[{ top: 40, max: maxUpper, label: resultLabel, color: '#059669', money: false }, { top: 202, max: maxLower, label: moneyLabel + ' (' + currency + ')', color: '#2563eb', money: true }].map(panel => <g key={panel.label}>
+          <text x={left} y={panel.top - 16} className="report-svg-heading" fill={panel.color}>{panel.label}</text>
+          {[0, panel.max / 2, panel.max].filter((value, index) => panel.money || Number.isInteger(value) || index !== 1).map(value => <g key={value}>
+            <line x1={left} x2={right} y1={y(value, panel.top, panel.max)} y2={y(value, panel.top, panel.max)} stroke="#e2e8f0" strokeDasharray={value ? '3 4' : undefined} />
+            <text x={left - 9} y={y(value, panel.top, panel.max) + 3} textAnchor="end" className="report-svg-tick">{panel.money ? shortMoney(value) : formatDecimal(value, 0)}</text>
+          </g>)}
+          {tickIndexes.map(index => <text key={index} x={x(index)} y={panel.top + panelHeight + 19} textAnchor="middle" className="report-svg-tick">{data[index].date}</text>)}
+        </g>)}
+        {data.map((row, index) => row[upperKey] == null ? null : <g key={row.date}>
+          <title>{`${row.date}: ${formatDecimal(row[upperKey]!, 0)} ${resultLabel.toLowerCase()}`}</title>
+          <rect x={x(index) - Math.min(6, 230 / data.length)} y={y(row[upperKey]!, 40, maxUpper)} width={Math.min(12, 460 / data.length)} height={Math.max(1, (row[upperKey] || 0) / maxUpper * panelHeight)} rx="2" fill={row[upperKey] === peak ? '#059669' : '#6ee7b7'} />
+          {row[upperKey] === peak && peak > 0 && <text x={x(index)} y={y(peak, 40, maxUpper) - 5} textAnchor="middle" className="report-svg-tick" fill="#047857">{peak}</text>}
+        </g>)}
+        {lineSegments.map((path, index) => <path key={index} d={path} fill="none" stroke="#2563eb" strokeWidth="2" strokeLinejoin="round" />)}
+        {data.map((row, index) => row[lowerKey] == null ? null : <circle key={row.date} cx={x(index)} cy={y(row[lowerKey]!, 202, maxLower)} r="2.5" fill="#2563eb"><title>{`${row.date}: ${formatCurrency(row[lowerKey]!, currency)}`}</title></circle>)}
+      </svg>
+      <div className="report-daily-notes">
+        <p><strong>Pico de {messaging ? 'mensajes' : 'compras'}:</strong> {peak > 0 ? formatDecimal(peak, 0) + ' · ' + peakDays.slice(0, 3).join(', ') + (peakDays.length > 3 ? ' y ' + (peakDays.length - 3) + ' días más' : '') : 'Sin resultados registrados.'}</p>
+        <p>{reported} de {data.length} días con datos. Los días sin datos se muestran como huecos, no como ceros.</p>
       </div>
-
-      <div className="flex-1 w-full min-h-[350px] p-8 print:p-6">
-        <ResponsiveContainer width="99%" height="100%" minHeight={350}>
-          <ComposedChart data={data} margin={{ top: 10, right: 55, left: 25, bottom: 5 }}>
-            <defs>
-              <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#2563eb" stopOpacity={0.08}/>
-                <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-              </linearGradient>
-              <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.08}/>
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#f1f5f9" />
-            <XAxis 
-              dataKey="date" 
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
-              dy={15}
-            />
-            <YAxis 
-              yAxisId="left"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 9, fontWeight: 700, fill: '#64748b' }}
-              tickFormatter={(value) => mode === 'ecommerce' ? `$${(value/1000).toFixed(0)}k` : `${value}`}
-              label={{ 
-                value: mode === 'ecommerce' ? 'Facturación' : 'Mensajes Iniciados', 
-                angle: -90, 
-                position: 'insideLeft', 
-                offset: -20, 
-                style: { fontSize: 9, fontWeight: 900, fill: '#94a3b8', textAnchor: 'middle' } 
-              }}
-            />
-            <YAxis 
-              yAxisId="right"
-              orientation="right"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 9, fontWeight: 700, fill: mode === 'ecommerce' ? '#38bdf8' : '#2563eb' }}
-              tickFormatter={(value) => mode === 'ecommerce' ? `${value}` : `$${(value/1000).toFixed(0)}k`}
-              dx={10}
-              label={{ 
-                value: mode === 'ecommerce' ? 'Ventas' : 'Inversión', 
-                angle: 90, 
-                position: 'insideRight', 
-                offset: -50, 
-                style: { fontSize: 9, fontWeight: 900, fill: '#94a3b8', textAnchor: 'middle' } 
-              }}
-            />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'rgba(255, 255, 255, 0.98)', 
-                border: '1px solid #f1f5f9', 
-                borderRadius: '16px',
-                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.05)',
-                fontSize: '11px',
-                fontWeight: 800,
-                padding: '16px',
-                backdropFilter: 'blur(8px)'
-              }}
-              cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }}
-              formatter={(value: any, name: string) => {
-                if (mode === 'ecommerce') {
-                  return [
-                    name === 'revenue' ? formatCurrency(value, currency) : value, 
-                    name === 'revenue' ? 'Facturado (ARS)' : 'Ventas'
-                  ];
-                } else {
-                  return [
-                    name === 'messages' ? `${value} mensajes` : formatCurrency(value, currency), 
-                    name === 'messages' ? 'Mensajes Iniciados' : 'Inversión'
-                  ];
-                }
-              }}
-              labelStyle={{ color: '#94a3b8', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '9px' }}
-            />
-            {mode === 'ecommerce' ? (
-              <>
-                <Area 
-                  yAxisId="left"
-                  type="monotone" 
-                  dataKey="revenue" 
-                  name="revenue"
-                  stroke="#2563eb" 
-                  strokeWidth={2.5}
-                  fillOpacity={1} 
-                  fill="url(#colorRevenue)" 
-                />
-                <Line 
-                  yAxisId="right"
-                  type="monotone" 
-                  dataKey="purchases" 
-                  name="purchases"
-                  stroke="#38bdf8" 
-                  strokeWidth={2.5}
-                  dot={false}
-                  activeDot={{ r: 4, strokeWidth: 0, fill: '#38bdf8' }}
-                />
-              </>
-            ) : (
-              <>
-                <Area 
-                  yAxisId="left"
-                  type="monotone" 
-                  dataKey="messages" 
-                  name="messages"
-                  stroke="#10b981" 
-                  strokeWidth={2.5}
-                  fillOpacity={1} 
-                  fill="url(#colorMessages)" 
-                />
-                <Line 
-                  yAxisId="right"
-                  type="monotone" 
-                  dataKey="spend" 
-                  name="spend"
-                  stroke="#2563eb" 
-                  strokeWidth={2.5}
-                  dot={false}
-                  activeDot={{ r: 4, strokeWidth: 0, fill: '#2563eb' }}
-                />
-              </>
-            )}
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-};
+      {discrepancy && <p className="report-data-note">El histórico diario suma {formatDecimal(total, 0)} resultados; el resumen del período registra {formatDecimal(expectedResults!, 0)}. Son consultas separadas de Meta y la diferencia requiere revisión.</p>}
+    </> : <p className="report-empty">No hay datos diarios disponibles para este período.</p>}
+  </section>;
+}

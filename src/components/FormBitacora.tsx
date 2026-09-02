@@ -25,6 +25,7 @@ export const FormBitacora: React.FC<FormBitacoraProps> = ({ clientId, onLogAdded
           clientId,
           category,
           description,
+          timestamp: new Date().toISOString(),
           date: new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
         })
       });

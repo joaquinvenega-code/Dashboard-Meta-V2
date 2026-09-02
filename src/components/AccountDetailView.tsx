@@ -1034,6 +1034,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
           clientId: selectedId,
           category: 'optimizacion',
           description: textToSave,
+          noteId: newNote.id,
+          timestamp,
           date: format(parseISO(timestamp), 'dd/MM')
         })
       });

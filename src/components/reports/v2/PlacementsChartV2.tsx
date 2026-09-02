@@ -1,174 +1,23 @@
-import React from "react";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Legend,
-} from "recharts";
-import { Share2, MousePointer2 } from "lucide-react";
+import React from 'react';
+import { formatCurrency, formatDecimal } from '../../../lib/utils';
+import { PlacementBasis } from '../reportData';
+import { ReportDonut, reportChartColors } from '../ReportDonut';
 
 interface PlacementsChartV2Props {
-  data: {
-    name: string;
-    value: number;
-    color: string;
-  }[];
+  data: { name: string; value: number; color?: string; rawValue?: number }[];
+  basis?: PlacementBasis; currency?: string;
 }
-
-export const PlacementsChartV2: React.FC<PlacementsChartV2Props> = ({
-  data,
-}) => {
-  return (
-    <div className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm h-full flex flex-col">
-      <div className="px-8 py-6 border-b border-slate-50 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-            <Share2 className="w-4 h-4 text-blue-600" />
-          </div>
-          <div>
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">
-              Distribución
-            </h3>
-            <p className="text-xs font-bold text-slate-900">
-              Ubicaciones de Compra
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-8 print:p-4 flex flex-col justify-between flex-1">
-        <div className="w-full h-[320px] print:hidden flex items-center justify-center py-1">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data}
-                isAnimationActive={false}
-                cx="50%"
-                cy="50%"
-                innerRadius={70}
-                outerRadius={112}
-                paddingAngle={4}
-                dataKey="value"
-                label={({
-                  cx,
-                  cy,
-                  midAngle,
-                  innerRadius,
-                  outerRadius,
-                  value,
-                  name,
-                  x,
-                  y,
-                  textAnchor,
-                }) => {
-                  return (
-                    <text
-                      x={x}
-                      y={y}
-                      fill="#64748b"
-                      textAnchor={textAnchor}
-                      dominantBaseline="central"
-                      className="text-[11px] font-black"
-                    >
-                      {`${value}%`}
-                    </text>
-                  );
-                }}
-                labelLine={{ stroke: "#cbd5e1", strokeWidth: 1.5 }}
-              >
-                {data.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={entry.color}
-                    stroke="none"
-                  />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#fff",
-                  border: "1px solid #f1f5f9",
-                  borderRadius: "12px",
-                  boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
-                  fontSize: "11px",
-                  fontWeight: 700,
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* PRINT ONLY FIXED LAYOUT CHART */}
-        <div className="hidden print:flex w-full h-[260px] justify-center items-center mt-2">
-          <PieChart width={380} height={260}>
-            <Pie
-              data={data}
-              isAnimationActive={false}
-              cx="50%"
-              cy="50%"
-              innerRadius={70}
-              outerRadius={112}
-              paddingAngle={4}
-              dataKey="value"
-              label={({
-                cx,
-                cy,
-                midAngle,
-                innerRadius,
-                outerRadius,
-                value,
-                name,
-                x,
-                y,
-                textAnchor,
-              }) => {
-                return (
-                  <text
-                    x={x}
-                    y={y}
-                    fill="#64748b"
-                    textAnchor={textAnchor}
-                    dominantBaseline="central"
-                    className="text-[11px] font-black"
-                  >
-                    {`${value}%`}
-                  </text>
-                );
-              }}
-              labelLine={{ stroke: "#cbd5e1", strokeWidth: 1.5 }}
-            >
-              {data.map((entry, index) => (
-                <Cell
-                  key={`cell-print-${index}`}
-                  fill={entry.color}
-                  stroke="none"
-                />
-              ))}
-            </Pie>
-          </PieChart>
-        </div>
-
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-2 mt-4 print:mt-2">
-          {data.map((entry, index) => (
-            <div key={`legend-${index}`} className="flex items-center gap-2">
-              <svg className="w-2.5 h-2.5 shrink-0" viewBox="0 0 8 8">
-                <circle cx="4" cy="4" r="4" fill={entry.color} />
-              </svg>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight truncate">
-                {entry.name}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-slate-50 px-8 py-3 border-t border-slate-100 mt-auto">
-        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-center">
-          Basado en conversiones atribuidas en los últimos 30 días
-        </p>
-      </div>
-    </div>
-  );
-};
+export function PlacementsChartV2({ data, basis = 'spend', currency = 'ARS' }: PlacementsChartV2Props) {
+  const rows = [...data].filter(row => row.value > 0).sort((a, b) => b.value - a.value);
+  const label = basis === 'messages' ? 'mensajes' : basis === 'purchases' ? 'compras' : 'inversión';
+  return <section className="report-panel report-placement-ranking">
+    <header className="report-panel-heading"><h3>Distribución de ubicaciones</h3><p>Participación de {label} en el desglose disponible.</p></header>
+    {rows.length > 0 && <div className="report-placement-donut"><ReportDonut values={rows.map(row => row.value)} label={`Distribución de ${label} por ubicación`} center={formatDecimal(rows[0].value, 1) + '%'} caption="ubicación principal" /><strong>{rows[0].name}</strong></div>}
+    {rows.length ? <ol className="report-ranking-rows">{rows.map((row, index) => <li key={row.name}>
+      <div><span>{row.name}</span><strong>{row.value < 0.1 ? '<0,1' : formatDecimal(row.value, 1)}%</strong></div>
+      <div className="report-bar-track"><span style={{ width: Math.min(100, row.value) + '%', background: reportChartColors[index % reportChartColors.length] }} /></div>
+      {row.rawValue != null && <small>{basis === 'spend' ? formatCurrency(row.rawValue, currency) : formatDecimal(row.rawValue, 0) + ' ' + label}</small>}
+    </li>)}</ol> : <p className="report-empty">No hay datos de ubicaciones para este período.</p>}
+    <p className="report-caption">{basis === 'spend' ? 'Base: inversión. No hay conversiones disponibles por ubicación.' : 'Base: resultados atribuidos por ubicación.'} Los porcentajes pueden diferir de 100% por redondeo.</p>
+  </section>;
+}

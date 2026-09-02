@@ -856,6 +856,17 @@ export async function fetchDailySeries(accountId: string, since: string, until: 
   return byAd;
 }
 
+// Monthly unique reach cannot be derived by summing daily reach or estimating
+// it from impressions. Keep a separate, unbroken-down period query for reports.
+export async function fetchReportPeriodTotals(accountId: string, since: string, until: string): Promise<any | null> {
+  const response = await graphApiGetSafe(`/${accountId}/insights`, {
+    fields: 'spend,actions,action_values,clicks,impressions,reach',
+    time_range: JSON.stringify({ since, until }),
+    level: 'account',
+  });
+  return response?.data?.[0] || null;
+}
+
 export async function fetchAccountDailyPerformance(accountId: string, since: string, until: string): Promise<any[]> {
   const time_range = JSON.stringify({ since, until });
   const response = await graphApiGet(`/${accountId}/insights`, {

@@ -1,115 +1,27 @@
 import React from 'react';
-import { Info } from 'lucide-react';
-import { formatCurrency } from '../../../lib/utils';
-
-interface KPIProps {
-  label: string;
-  value: string;
+import { formatCurrency, formatDecimal } from '../../../lib/utils';
+interface Props {
+  metrics: { spend: number; purchases: number; roas: number; revenue: number; messages?: number; costPerMessage?: number; clicks?: number; ctr?: number; currency?: string };
+  narrative: string; onNarrativeChange: (value: string) => void; isEditing: boolean; mode?: 'ecommerce' | 'messaging'; dataAvailable?: boolean;
 }
-
-const KPICard = ({ label, value }: KPIProps) => {
-  return (
-    <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl print:p-3">
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 print:text-[8px]">{label}</p>
-      <div className="flex items-end justify-between">
-        <h4 className="text-xl xl:text-2xl font-black text-slate-900 tracking-tighter break-words print:text-lg print:tracking-normal print:overflow-visible print:whitespace-normal">{value}</h4>
-      </div>
+export function ExecutiveSummaryV2({ metrics, narrative, onNarrativeChange, isEditing, mode = 'ecommerce', dataAvailable = true }: Props) {
+  const currency = metrics.currency || 'ARS';
+  const messaging = mode === 'messaging';
+  const results = messaging ? metrics.messages || 0 : metrics.purchases;
+  const cpa = results > 0 ? formatCurrency(metrics.spend / results, currency) : 'Sin resultados';
+  const items = messaging ? [
+    ['Inversión', formatCurrency(metrics.spend, currency)], ['Mensajes iniciados', formatDecimal(results, 0)], ['Costo por mensaje', results > 0 ? cpa : '—'], ['CTR', formatDecimal(metrics.ctr || 0, 2) + '%'],
+  ] : [
+    ['Inversión', formatCurrency(metrics.spend, currency)], ['Compras', formatDecimal(results, 0)], ['ROAS', formatDecimal(metrics.roas, 2) + 'x'], ['Facturación', formatCurrency(metrics.revenue, currency)],
+  ];
+  const autoSummary = 'En el período se registraron ' + formatDecimal(results, 0) + (messaging ? ' mensajes iniciados' : ' compras') + ' con una inversión de ' + formatCurrency(metrics.spend, currency) + (results > 0 ? '. El costo medio por ' + (messaging ? 'mensaje' : 'compra') + ' fue de ' + cpa + '.' : '. No se puede calcular un costo por resultado.');
+  return <section className="report-summary">
+    <div className="report-kpis">{items.map(([label, value]) => <div key={label}><span>{label}</span><strong>{dataAvailable ? value : '—'}</strong></div>)}</div>
+    <div className="report-summary-reading"><h3>Lectura del mes</h3>
+      {isEditing && <textarea className="report-screen-only" aria-label="Conclusión del mes" value={narrative} onChange={event => onNarrativeChange(event.target.value)} placeholder="Agregá tu análisis del mes. Si queda vacío, se imprimirá una síntesis factual de las métricas." />}
+      <p className={isEditing ? 'report-print-only' : ''}>{narrative.trim() || (dataAvailable ? autoSummary : 'No hay métricas disponibles para este período. No se reemplazaron los datos faltantes por valores de ejemplo.')}</p>
+      {!narrative.trim() && <small>Síntesis automática de métricas; no incluye una evaluación de rentabilidad.</small>}
     </div>
-  );
-};
-
-interface ExecutiveSummaryV2Props {
-  metrics: {
-    spend: number;
-    purchases: number;
-    roas: number;
-    revenue: number;
-    messages?: number;
-    costPerMessage?: number;
-    clicks?: number;
-    ctr?: number;
-  };
-  narrative: string;
-  onNarrativeChange: (value: string) => void;
-  isEditing: boolean;
-  mode?: 'ecommerce' | 'messaging';
+  </section>;
 }
-
-export const ExecutiveSummaryV2: React.FC<ExecutiveSummaryV2Props> = ({ 
-  metrics, 
-  narrative, 
-  onNarrativeChange,
-  isEditing,
-  mode = 'ecommerce'
-}) => {
-  return (
-    <section className="space-y-6 print:space-y-3">
-      <div className="flex items-center gap-3 mb-2 print:mb-0">
-        <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-black">01</div>
-        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Resumen Ejecutivo</h3>
-      </div>
-
-      <div className="space-y-4 print:space-y-2">
-        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-          <Info className="w-4 h-4" />
-          Status General y Análisis Narrativo
-        </div>
-        {isEditing ? (
-          <textarea
-            value={narrative}
-            onChange={(e) => onNarrativeChange(e.target.value)}
-            placeholder="Escribe el resumen ejecutivo para el cliente..."
-            className="w-full min-h-[120px] p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        ) : (
-          <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-            {narrative || "No se ha ingresado un resumen narrativo para este período."}
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 print:grid-cols-4 gap-4">
-        {mode === 'ecommerce' ? (
-          <>
-            <KPICard 
-              label="Inversión" 
-              value={formatCurrency(metrics.spend, 'ARS')} 
-            />
-            <KPICard 
-              label="Conversiones" 
-              value={metrics.purchases.toString()} 
-            />
-            <KPICard 
-              label="ROAS Promedio" 
-              value={`${metrics.roas.toFixed(2)}x`} 
-            />
-            <KPICard 
-              label="Facturación Total" 
-              value={formatCurrency(metrics.revenue, 'ARS')} 
-            />
-          </>
-        ) : (
-          <>
-            <KPICard 
-              label="Inversión" 
-              value={formatCurrency(metrics.spend, 'ARS')} 
-            />
-            <KPICard 
-              label="Mensajes Iniciados" 
-              value={(metrics.messages || 0).toString()} 
-            />
-            <KPICard 
-              label="Costo por Mensaje (CPA)" 
-              value={metrics.costPerMessage && metrics.costPerMessage > 0 ? formatCurrency(metrics.costPerMessage, 'ARS') : '$0,00'} 
-            />
-            <KPICard 
-              label="CTR Promedio" 
-              value={`${(metrics.ctr || 0).toFixed(2)}%`} 
-            />
-          </>
-        )}
-      </div>
-    </section>
-  );
-};
 

@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:reports": "node --import tsx --test src/components/reports/reportData.test.tsx"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

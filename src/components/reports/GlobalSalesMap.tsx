@@ -510,7 +510,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
   return (
     <div
       id="global-sales-map-root"
-      className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm flex flex-col gap-6 select-none relative animate-in fade-in duration-500"
+      className="report-global-map bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm flex flex-col gap-6 select-none relative animate-in fade-in duration-500"
     >
       {/* HEADER SECTION */}
       <div className="mb-2">
@@ -523,16 +523,16 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
       </div>
 
       {/* CONTENT SECTION */}
-      <div className="flex flex-col lg:flex-row gap-6 items-stretch">
+      <div className="report-global-map-layout flex flex-col lg:flex-row gap-6 items-stretch">
         {/* INTERACTIVE SVG MAP CONTAINER */}
         <div
           ref={containerRef}
           onMouseMove={handleMouseMove}
           onMouseLeave={() => setHoveredElement(null)}
-          className="relative bg-[#070b13] rounded-2xl border border-slate-950 p-2 overflow-hidden flex items-center justify-center w-full lg:w-[60%] shadow-inner min-h-[420px] lg:min-h-0"
+          className="report-global-map-canvas relative bg-[#070b13] rounded-2xl border border-slate-950 p-2 overflow-hidden flex items-center justify-center w-full lg:w-[60%] shadow-inner min-h-[420px] lg:min-h-0"
         >
           {/* ZOOM CONTROLS */}
-          <div className="absolute top-4 right-4 z-40 flex flex-col gap-1">
+          <div className="absolute top-4 right-4 z-40 flex flex-col gap-1 print:hidden">
             <button
               onClick={() => setMapZoom((prev) => Math.min(prev + 0.25, 3))}
               className="w-7 h-7 bg-slate-900/60 hover:bg-slate-800 text-white rounded flex items-center justify-center border border-slate-700/50 backdrop-blur-md transition-colors"
@@ -588,7 +588,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
                   setHoveredElement(null);
                   setMapZoom(1);
                 }}
-                className="absolute top-4 left-4 z-40 flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-700/60 hover:bg-slate-800 text-white text-[10px] sm:text-xs font-black uppercase rounded-xl shadow-lg transition-all active:scale-95 text-center"
+                className="absolute top-4 left-4 z-40 flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-700/60 hover:bg-slate-800 text-white text-[10px] sm:text-xs font-black uppercase rounded-xl shadow-lg transition-all active:scale-95 text-center print:hidden"
               >
                 ← Volver al mapa global
               </motion.button>
@@ -863,9 +863,9 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
         </div>
 
         {/* RIGHT SIDEBAR: METRICS + LIST */}
-        <div className="w-full lg:w-[40%] flex flex-col md:flex-row print:flex-row gap-3 max-h-[500px] print:max-h-none">
+        <div className="report-global-map-sidebar w-full lg:w-[40%] flex flex-col md:flex-row print:flex-row gap-3 max-h-[500px] print:max-h-none">
           {/* COL 1: METRICS & LEGEND */}
-          <div className="w-full md:w-[45%] flex flex-col gap-3">
+          <div className="report-global-map-summary w-full md:w-[45%] flex flex-col gap-3">
             {/* METRICS PANEL */}
             <div
               id="map-summary-panel"
@@ -921,7 +921,7 @@ export const GlobalSalesMap: React.FC<GlobalSalesMapProps> = ({
           </div>
 
           {/* COL 2: REGIONS LIST */}
-          <div className="w-full md:w-[55%] flex-1 min-h-[350px] bg-slate-50 border border-slate-100 rounded-xl flex flex-col overflow-hidden print:overflow-visible shadow-xs max-h-[500px] print:max-h-none">
+          <div className="report-global-map-list w-full md:w-[55%] flex-1 min-h-[350px] bg-slate-50 border border-slate-100 rounded-xl flex flex-col overflow-hidden print:overflow-visible shadow-xs max-h-[500px] print:max-h-none">
             <div className="px-3 py-2 border-b border-slate-200 bg-white shadow-sm z-10 flex justify-between items-center">
               <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">
                 {selectedCountry ? "Top Regiones" : "Top Países"}

@@ -4,6 +4,8 @@ export interface BitacoraLog {
   id: string;
   clientId: string;
   date: string; // ISO String o Formato DD/MM
+  timestamp?: string;
+  noteId?: string;
   category: LogCategory;
   description: string;
 }

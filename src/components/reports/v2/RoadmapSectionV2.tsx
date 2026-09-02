@@ -1,90 +1,12 @@
 import React from 'react';
-import { Lightbulb, Rocket, ClipboardList } from 'lucide-react';
-import { cn } from '../../../lib/utils';
-
-interface RoadmapSectionV2Props {
-  learnings: string;
-  actionPlan: string;
-  clientRequests: string;
-  onUpdate: (field: string, value: string) => void;
-  isEditing: boolean;
+interface Props { learnings: string; actionPlan: string; clientRequests: string; onUpdate: (field: string, value: string) => void; isEditing: boolean }
+export function RoadmapSectionV2({ learnings, actionPlan, clientRequests, onUpdate, isEditing }: Props) {
+  const cards = [{ field: 'learnings', title: 'Aprendizajes', value: learnings }, { field: 'actionPlan', title: 'Próximas acciones', value: actionPlan }, { field: 'clientRequests', title: 'Necesidades del cliente', value: clientRequests }];
+  const populated = cards.filter(card => card.value?.trim());
+  return <section className={'report-panel report-next-steps' + (!populated.length ? ' report-screen-only' : '')}>
+    <header className="report-panel-heading"><h3>Conclusiones y próximos pasos</h3></header>
+    {isEditing && <div className="report-roadmap-edit report-screen-only">{cards.map(card => <label key={card.field}>{card.title}<textarea value={card.value || ''} onChange={event => onUpdate(card.field, event.target.value)} placeholder={'Definir ' + card.title.toLowerCase()} /></label>)}</div>}
+    <dl className={isEditing ? 'report-next-list report-print-only' : 'report-next-list'}>{populated.map(card => <div key={card.field}><dt>{card.title}</dt><dd>{card.value}</dd></div>)}</dl>
+    {!populated.length && !isEditing && <p className="report-empty">Sin conclusiones cargadas. Este bloque no aparece en el PDF.</p>}
+  </section>;
 }
-
-const RoadmapCard = ({ 
-  icon: Icon, 
-  title, 
-  value, 
-  placeholder, 
-  onChange, 
-  isEditing,
-  colorClass 
-}: { 
-  icon: any, 
-  title: string, 
-  value: string, 
-  placeholder: string, 
-  onChange: (val: string) => void, 
-  isEditing: boolean,
-  colorClass: string
-}) => (
-  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-    <div className={cn("px-4 py-2 border-b border-slate-100 flex items-center gap-2", colorClass)}>
-      <Icon className="w-4 h-4" />
-      <h4 className="text-[10px] font-black uppercase tracking-widest">{title}</h4>
-    </div>
-    <div className="p-4">
-      {isEditing ? (
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full min-h-[100px] text-xs text-slate-700 bg-transparent focus:outline-none resize-none"
-        />
-      ) : (
-        <div className="text-xs text-slate-600 leading-relaxed min-h-[100px] whitespace-pre-wrap italic">
-          {value || "Sin definir para este período."}
-        </div>
-      )}
-    </div>
-  </div>
-);
-
-export const RoadmapSectionV2: React.FC<RoadmapSectionV2Props> = ({
-  learnings,
-  actionPlan,
-  clientRequests,
-  onUpdate,
-  isEditing
-}) => {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 print:grid-cols-3 gap-6">
-        <RoadmapCard
-          icon={Lightbulb}
-          title="Aprendizajes del Mes"
-          value={learnings}
-          placeholder="Ej: El público de 35-44 respondió mejor a..."
-          onChange={(val) => onUpdate('learnings', val)}
-          isEditing={isEditing}
-          colorClass="bg-amber-50 text-amber-700"
-        />
-        <RoadmapCard
-          icon={Rocket}
-          title="Plan de Acción"
-          value={actionPlan}
-          placeholder="Ej: Escalar presupuesto en el Conjunto C..."
-          onChange={(val) => onUpdate('actionPlan', val)}
-          isEditing={isEditing}
-          colorClass="bg-blue-50 text-blue-700"
-        />
-        <RoadmapCard
-          icon={ClipboardList}
-          title="Requerimientos Cliente"
-          value={clientRequests}
-          placeholder="Ej: Necesitamos fotos del nuevo stock..."
-          onChange={(val) => onUpdate('clientRequests', val)}
-          isEditing={isEditing}
-          colorClass="bg-emerald-50 text-emerald-700"
-        />
-      </div>
-  );
-};
