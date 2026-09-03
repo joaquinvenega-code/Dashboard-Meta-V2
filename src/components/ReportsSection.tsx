@@ -19,7 +19,7 @@ import { es } from 'date-fns/locale';
 import { MonthlyReportDocument } from './reports/MonthlyReportDocument';
 import './reports/report-editorial.css';
 import { collectReportLogs, ReportLog } from './reports/reportLogs';
-import { aggregateDemographics, aggregatePlacements, completeDailySeries, countryLabel, positiveNumber, reportAction, reportPeriodMetrics, ReportMetrics, PlacementBasis } from './reports/reportData';
+import { aggregateDemographics, aggregateGeography, aggregatePlacements, completeDailySeries, reportPeriodMetrics, ReportMetrics, PlacementBasis, ReportMode, REPORT_MODES } from './reports/reportData';
 import { fetchAccountDailyPerformance, fetchReportPeriodTotals, fetchDemographics, fetchGeography, fetchTopAds, fetchPlacements } from '../services/facebook';
 
 interface ReportsSectionProps {
@@ -34,7 +34,7 @@ interface ReportsSectionProps {
 export function ReportsSection({ accounts, visibleAccountIds, settings, notes, setDateRange, onGeneratingChange }: ReportsSectionProps) {
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [reportMonth, setReportMonth] = useState<string>(format(subMonths(new Date(), 1), 'yyyy-MM'));
-  const [reportType, setReportType] = useState<'ecommerce' | 'messaging'>('ecommerce');
+  const [reportType, setReportType] = useState<ReportMode>('ecommerce');
   const [reportTheme, setReportTheme] = useState<'light' | 'dark'>('light');
   const [isReportGenerated, setIsReportGenerated] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
@@ -55,6 +55,8 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
     viewContent: 0, 
     messages: 0,
     costPerMessage: 0,
+    leads: 0,
+    costPerLead: 0,
     ctr: 0,
     currency: 'ARS' 
   });
@@ -166,7 +168,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
         const until = format(endOfMonth(start), 'yyyy-MM-dd');
         const [daily, topAds, demo, geography, placements, period] = await Promise.all([
           fetchAccountDailyPerformance(selectedAccountId, since, until),
-          fetchTopAds(selectedAccountId, since, until, 5, 'spend'),
+          fetchTopAds(selectedAccountId, since, until, 5, reportType === 'leads' ? 'leads' : 'spend'),
           fetchDemographics(selectedAccountId, since, until),
           fetchGeography(selectedAccountId, since, until),
           fetchPlacements(selectedAccountId, since, until),
@@ -181,28 +183,9 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
         const distribution = aggregatePlacements(placements, reportType);
         setRealPlacements(distribution.data);
         setPlacementBasis(distribution.basis);
-        const countries = new Map<string, any>();
-        const regions = new Map<string, any>();
-        geography.forEach((row: any) => {
-          const countryId = String(row.country || 'ZZ').toUpperCase();
-          const values = {
-            spend: positiveNumber(row.spend),
-            purchases: reportAction(row.actions, 'purchase', 'offsite_conversion.fb_pixel_purchase'),
-            revenue: reportAction(row.action_values, 'purchase', 'offsite_conversion.fb_pixel_purchase'),
-            messages: reportAction(row.actions, 'onsite_conversion.messaging_conversation_started_7d', 'onsite_conversion.total_messaging_connection'),
-          };
-          const country = countries.get(countryId) || { countryId, spend: 0, purchases: 0, revenue: 0, messages: 0 };
-          for (const key of ['spend', 'purchases', 'revenue', 'messages'] as const) country[key] += values[key];
-          countries.set(countryId, country);
-          if (row.region) {
-            const regionId = countryId + '_' + row.region;
-            const region = regions.get(regionId) || { regionId, countryId, regionName: row.region + ' · ' + countryLabel(countryId), spend: 0, purchases: 0, revenue: 0, messages: 0 };
-            for (const key of ['spend', 'purchases', 'revenue', 'messages'] as const) region[key] += values[key];
-            regions.set(regionId, region);
-          }
-        });
-        setRealGeography([...countries.values()]);
-        setRealGeographyRegions([...regions.values()]);
+        const geographicData = aggregateGeography(geography);
+        setRealGeography(geographicData.countries);
+        setRealGeographyRegions(geographicData.regions);
       } catch (error) {
         if (cancelled) return;
         console.error('Error fetching report data', error);
@@ -296,11 +279,12 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Paquete de Informe</label>
-            <div className="grid grid-cols-2 gap-2">
+            <label id="report-event-label" className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Evento principal del informe</label>
+            <div className="grid grid-cols-2 gap-2" role="group" aria-labelledby="report-event-label">
               <button
                 type="button"
                 onClick={() => setReportType('ecommerce')}
+                aria-pressed={reportType === 'ecommerce'}
                 className={cn(
                   "py-3 px-2 rounded text-[10px] font-black uppercase tracking-wider border transition-all text-center",
                   reportType === 'ecommerce'
@@ -313,6 +297,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               <button
                 type="button"
                 onClick={() => setReportType('messaging')}
+                aria-pressed={reportType === 'messaging'}
                 className={cn(
                   "py-3 px-2 rounded text-[10px] font-black uppercase tracking-wider border transition-all text-center",
                   reportType === 'messaging'
@@ -322,7 +307,25 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               >
                 Solo Mensajería
               </button>
+              <button
+                type="button"
+                onClick={() => setReportType('leads')}
+                aria-pressed={reportType === 'leads'}
+                className={cn(
+                  "col-span-2 py-3 px-2 rounded text-[10px] font-black uppercase tracking-wider border transition-all text-center",
+                  reportType === 'leads'
+                    ? "bg-violet-600 border-violet-500 text-white shadow-lg shadow-violet-500/20"
+                    : "bg-[#111] border-white/10 text-slate-400 hover:text-white"
+                )}
+              >
+                Clientes potenciales
+              </button>
             </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              {reportType === 'leads'
+                ? 'Evento: cliente potencial (lead) de Meta. El informe mostrará leads y costo por cliente potencial (CPL), sin mezclarlos con mensajes o compras.'
+                : reportType === 'messaging' ? 'Evento: conversaciones iniciadas. El informe mostrará mensajes y costo por mensaje.' : 'Evento: compras atribuidas. El informe mostrará compras, facturación y ROAS.'}
+            </p>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -363,7 +366,7 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               "mt-4 text-white font-black text-xs uppercase tracking-widest py-4 px-6 rounded-md transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer",
               reportType === 'ecommerce' 
                 ? "bg-blue-600 hover:bg-blue-500 shadow-blue-500/20" 
-                : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20"
+                : reportType === 'leads' ? "bg-violet-600 hover:bg-violet-500 shadow-violet-500/20" : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20"
             )}
           >
             <BarChart3 className="w-4 h-4" />
@@ -399,9 +402,9 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
               "border rounded px-3 py-1.5 text-[10px] font-black uppercase tracking-widest",
               reportType === 'ecommerce' 
                 ? "border-blue-500/20 bg-blue-500/10 text-blue-400"
-                : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                : reportType === 'leads' ? "border-violet-500/20 bg-violet-500/10 text-violet-400" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
             )}>
-              {reportType === 'ecommerce' ? '🛒 Solo E-commerce' : '💬 Solo Mensajería'}
+              {REPORT_MODES[reportType].label}
             </div>
           </div>
 

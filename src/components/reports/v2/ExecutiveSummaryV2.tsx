@@ -1,20 +1,21 @@
 import React from 'react';
 import { formatCurrency, formatDecimal } from '../../../lib/utils';
+import { REPORT_MODES, ReportMode } from '../reportData';
 interface Props {
-  metrics: { spend: number; purchases: number; roas: number; revenue: number; messages?: number; costPerMessage?: number; clicks?: number; ctr?: number; currency?: string };
-  narrative: string; onNarrativeChange: (value: string) => void; isEditing: boolean; mode?: 'ecommerce' | 'messaging'; dataAvailable?: boolean;
+  metrics: { spend: number; purchases: number; roas: number; revenue: number; messages?: number; costPerMessage?: number; leads?: number; clicks?: number; ctr?: number; currency?: string };
+  narrative: string; onNarrativeChange: (value: string) => void; isEditing: boolean; mode?: ReportMode; dataAvailable?: boolean;
 }
 export function ExecutiveSummaryV2({ metrics, narrative, onNarrativeChange, isEditing, mode = 'ecommerce', dataAvailable = true }: Props) {
   const currency = metrics.currency || 'ARS';
-  const messaging = mode === 'messaging';
-  const results = messaging ? metrics.messages || 0 : metrics.purchases;
+  const event = REPORT_MODES[mode];
+  const results = metrics[event.key] || 0;
   const cpa = results > 0 ? formatCurrency(metrics.spend / results, currency) : 'Sin resultados';
-  const items = messaging ? [
-    ['Inversión', formatCurrency(metrics.spend, currency)], ['Mensajes iniciados', formatDecimal(results, 0)], ['Costo por mensaje', results > 0 ? cpa : '—'], ['CTR', formatDecimal(metrics.ctr || 0, 2) + '%'],
+  const items = mode !== 'ecommerce' ? [
+    ['Inversión', formatCurrency(metrics.spend, currency)], [event.result, formatDecimal(results, 0)], [event.cost, results > 0 ? cpa : '—'], ['CTR', formatDecimal(metrics.ctr || 0, 2) + '%'],
   ] : [
     ['Inversión', formatCurrency(metrics.spend, currency)], ['Compras', formatDecimal(results, 0)], ['ROAS', formatDecimal(metrics.roas, 2) + 'x'], ['Facturación', formatCurrency(metrics.revenue, currency)],
   ];
-  const autoSummary = 'En el período se registraron ' + formatDecimal(results, 0) + (messaging ? ' mensajes iniciados' : ' compras') + ' con una inversión de ' + formatCurrency(metrics.spend, currency) + (results > 0 ? '. El costo medio por ' + (messaging ? 'mensaje' : 'compra') + ' fue de ' + cpa + '.' : '. No se puede calcular un costo por resultado.');
+  const autoSummary = 'En el período se registraron ' + formatDecimal(results, 0) + ' ' + event.result.toLowerCase() + ' con una inversión de ' + formatCurrency(metrics.spend, currency) + (results > 0 ? '. El costo medio por ' + event.singular + ' fue de ' + cpa + '.' : '. No se puede calcular un costo por resultado.');
   return <section className="report-summary">
     <div className="report-kpis">{items.map(([label, value]) => <div key={label}><span>{label}</span><strong>{dataAvailable ? value : '—'}</strong></div>)}</div>
     <div className="report-summary-reading"><h3>Lectura del mes</h3>

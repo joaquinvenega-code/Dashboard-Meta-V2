@@ -1,3 +1,5 @@
+import type { AdTrafficMetrics } from './lib/adTraffic';
+
 export interface AdAccount {
   id: string;
   account_id: string;
@@ -66,6 +68,7 @@ export interface Ad {
   name: string;
   spend: number;
   clicks?: number;
+  traffic?: AdTrafficMetrics;
   purchases: number;
   revenue: number;
   messages?: number;

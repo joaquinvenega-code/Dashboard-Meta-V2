@@ -1,18 +1,18 @@
 import React from 'react';
 import { formatCurrency, formatDecimal } from '../../lib/utils';
-import { countryLabel, GeographicResult, RegionResult, ReportMode } from './reportData';
+import { countryLabel, GeographicResult, RegionResult, ReportMode, REPORT_MODES } from './reportData';
 import { ReportActivityMap } from './ReportActivityMap';
 
 export function GeographicSummary({ countries, regions, mode, currency, expectedResults }: { countries: GeographicResult[]; regions: RegionResult[]; mode: ReportMode; currency: string; expectedResults: number }) {
-  const key = mode === 'messaging' ? 'messages' : 'purchases';
-  const label = mode === 'messaging' ? 'Mensajes' : 'Compras';
-  const total = countries.reduce((sum, row) => sum + row[key], 0);
+  const key = REPORT_MODES[mode].key;
+  const label = mode === 'messaging' ? 'Mensajes' : REPORT_MODES[mode].result;
+  const total = countries.reduce((sum, row) => sum + (row[key] || 0), 0);
   const spendOnly = total === 0;
-  const rankedCountries = [...countries].sort((a, b) => spendOnly ? b.spend - a.spend : b[key] - a[key]);
-  const rankedRegions = [...regions].sort((a, b) => spendOnly ? b.spend - a.spend : b[key] - a[key]);
+  const rankedCountries = [...countries].sort((a, b) => spendOnly ? b.spend - a.spend : (b[key] || 0) - (a[key] || 0));
+  const rankedRegions = [...regions].sort((a, b) => spendOnly ? b.spend - a.spend : (b[key] || 0) - (a[key] || 0));
   const mismatch = countries.length > 0 && Math.abs(total - expectedResults) > 0.01;
   return <section className="report-panel report-geography">
-    <header className="report-panel-heading"><h3>Distribución geográfica</h3><p>{countries.length} países y {regions.length} regiones con datos disponibles.</p></header>
+    <header className="report-panel-heading"><h3>Distribución geográfica</h3><p>{countries.length} {countries.length === 1 ? 'país' : 'países'} y {regions.length} {regions.length === 1 ? 'región' : 'regiones'} con datos disponibles.</p></header>
     {countries.length ? <>
       <ReportActivityMap countries={countries} regions={regions} mode={mode} currency={currency} />
       <details className="report-screen-only report-geo-details"><summary>Ver cifras por país y región</summary><div className="report-geography-grid">

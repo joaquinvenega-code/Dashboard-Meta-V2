@@ -1,31 +1,60 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { formatCurrency, formatDecimal } from '../../../lib/utils';
+import { adTrafficMetrics, AdTrafficMetrics } from '../../../lib/adTraffic';
+import { REPORT_MODES, ReportMode } from '../reportData';
 export interface AdAsset {
   id: string; name: string; thumbnail: string; originalThumbnailUrl?: string; previewUrl?: string;
-  roas: number; purchases: number; revenue: number; spend: number; messages?: number; ctr?: number;
+  roas: number; purchases: number; revenue: number; spend: number; messages?: number; leads?: number; ctr?: number;
+  clicks?: number; impressions?: number; traffic?: AdTrafficMetrics;
 }
-type SortCriteria = 'roas' | 'purchases' | 'revenue' | 'messages' | 'spend' | 'ctr';
-export function AssetPerformanceV2({ assets, mode = 'ecommerce', currency = 'ARS' }: { assets: AdAsset[]; mode?: 'ecommerce' | 'messaging'; currency?: string }) {
-  const [sortBy, setSortBy] = useState<SortCriteria>(mode === 'messaging' ? 'messages' : 'roas');
-  useEffect(() => setSortBy(mode === 'messaging' ? 'messages' : 'roas'), [mode]);
-  const rows = useMemo(() => [...assets].sort((a, b) => (Number(b[sortBy]) || 0) - (Number(a[sortBy]) || 0)).slice(0, 5), [assets, sortBy]);
-  const labels = { roas: 'Mayor ROAS', purchases: 'Más compras', revenue: 'Mayor facturación', messages: 'Más mensajes', spend: 'Mayor inversión', ctr: 'Mayor CTR' };
-  const criteria: SortCriteria[] = mode === 'messaging' ? ['messages', 'spend', 'ctr'] : ['roas', 'purchases', 'revenue'];
-  return <section className="report-panel report-assets-table">
-    <header className="report-panel-heading"><div><h3>Rendimiento de anuncios</h3><p>Hasta cinco anuncios de mayor inversión. Orden actual: {labels[sortBy].toLowerCase()}.</p></div>
+type SortCriteria = 'roas' | 'purchases' | 'revenue' | 'messages' | 'leads' | 'spend' | 'ctr';
+function AdThumbnail({ ad }: { ad: AdAsset }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [ad.thumbnail, ad.originalThumbnailUrl]);
+  return <div className="report-ad-media">{!failed && (ad.thumbnail || ad.originalThumbnailUrl) ? <img key={`${ad.thumbnail}|${ad.originalThumbnailUrl}`} src={ad.thumbnail || ad.originalThumbnailUrl} alt={`Creatividad: ${ad.name}`} loading="eager" referrerPolicy="no-referrer" onError={event => {
+    const img = event.currentTarget;
+    if (!img.dataset.retried && ad.originalThumbnailUrl && img.src !== ad.originalThumbnailUrl) { img.dataset.retried = 'true'; img.src = ad.originalThumbnailUrl; }
+    else { setFailed(true); }
+  }} /> : <span className="report-ad-noimage">Miniatura no disponible</span>}</div>;
+}
+export function AssetPerformanceV2({ assets, mode = 'ecommerce', currency = 'ARS' }: { assets: AdAsset[]; mode?: ReportMode; currency?: string }) {
+  const event = REPORT_MODES[mode];
+  const defaultSort = mode === 'ecommerce' ? 'roas' : event.key;
+  const [sortBy, setSortBy] = useState<SortCriteria>(defaultSort);
+  useEffect(() => setSortBy(defaultSort), [defaultSort]);
+  const rows = useMemo(() => {
+    const value = (ad: AdAsset) => sortBy === 'ctr' ? (ad.traffic ?? adTrafficMetrics(ad)).ctr || 0 : Number(ad[sortBy]) || 0;
+    return [...assets].sort((a, b) => value(b) - value(a)).slice(0, 5);
+  }, [assets, sortBy]);
+  const labels = { roas: 'Mayor ROAS', purchases: 'Más compras', revenue: 'Mayor facturación', messages: 'Más mensajes', leads: 'Más clientes potenciales', spend: 'Mayor inversión', ctr: 'Mayor CTR' };
+  const criteria: SortCriteria[] = mode !== 'ecommerce' ? [event.key, 'spend', 'ctr'] : ['roas', 'purchases', 'revenue'];
+  return <section className="report-panel report-assets-gallery">
+    <header className="report-panel-heading"><div><h3>Rendimiento de anuncios</h3><p>Hasta cinco anuncios destacados del período. Orden actual: {labels[sortBy].toLowerCase()}.</p></div>
       <label className="report-screen-only report-sort-label">Ordenar <select value={sortBy} onChange={event => setSortBy(event.target.value as SortCriteria)}>{criteria.map(key => <option key={key} value={key}>{labels[key]}</option>)}</select></label>
     </header>
-    {rows.length ? <div className="report-table-scroll"><table>
-      <thead><tr><th scope="col">Anuncio</th><th scope="col">{mode === 'messaging' ? 'Mensajes' : 'Compras'}</th><th scope="col">{mode === 'messaging' ? 'Costo / mensaje' : 'ROAS'}</th><th scope="col">Inversión</th>{mode === 'ecommerce' && <th scope="col">Facturación</th>}</tr></thead>
-      <tbody>{rows.map((ad, index) => {
-        const results = mode === 'messaging' ? ad.messages || 0 : ad.purchases;
-        return <tr key={ad.id}><td><div className="report-ad-identity">
-          <span className="report-ad-rank">{index + 1}</span>
-          {ad.thumbnail ? <img src={ad.thumbnail} alt="" loading="eager" referrerPolicy="no-referrer" onError={event => { const img = event.currentTarget; if (!img.dataset.retried && ad.originalThumbnailUrl && img.src !== ad.originalThumbnailUrl) { img.dataset.retried = 'true'; img.src = ad.originalThumbnailUrl; } else { img.style.visibility = 'hidden'; } }} /> : <span className="report-ad-noimage">Sin imagen</span>}
-          <div><span>{ad.name}</span>{results === 0 && <small>Sin resultados registrados</small>}{ad.previewUrl && <a className="report-screen-only" href={ad.previewUrl} target="_blank" rel="noopener noreferrer">Ver anuncio</a>}</div>
-        </div></td><td>{formatDecimal(results, 0)}</td><td>{mode === 'messaging' ? results > 0 ? formatCurrency(ad.spend / results, currency) : '—' : formatDecimal(ad.roas, 2) + 'x'}</td><td>{formatCurrency(ad.spend, currency)}</td>{mode === 'ecommerce' && <td>{formatCurrency(ad.revenue, currency)}</td>}</tr>;
-      })}</tbody>
-    </table></div> : <p className="report-empty">No hay anuncios disponibles para este período.</p>}
-    <p className="report-caption">Una posición alta en esta lista no implica rentabilidad. Sin resultados, el costo por resultado no se puede calcular.</p>
+    {rows.length ? <ol className="report-ad-cards">{rows.map((ad, index) => {
+        const results = ad[event.key] || 0;
+        const traffic = ad.traffic ?? adTrafficMetrics(ad);
+        return <li className="report-ad-card" key={ad.id}>
+          <AdThumbnail ad={ad} />
+          <div className="report-ad-content"><div className="report-ad-heading"><span className="report-ad-rank">{String(index + 1).padStart(2, '0')}</span><h4>{ad.name}</h4></div>
+            <dl className={'report-ad-metrics' + (mode === 'ecommerce' ? ' is-ecommerce' : '')}>
+              <div className="report-ad-result"><dt>{mode === 'messaging' ? 'Mensajes' : event.result}</dt><dd>{formatDecimal(results, 0)}</dd></div>
+              <div><dt>{mode !== 'ecommerce' ? event.compactCost : 'ROAS'}</dt><dd>{mode !== 'ecommerce' ? results > 0 ? formatCurrency(ad.spend / results, currency) : '—' : formatDecimal(ad.roas, 2) + 'x'}</dd></div>
+              <div><dt>Inversión</dt><dd>{formatCurrency(ad.spend, currency)}</dd></div>
+              {mode === 'ecommerce' && <div><dt>Facturación</dt><dd>{formatCurrency(ad.revenue, currency)}</dd></div>}
+            </dl>
+            <dl className="report-ad-traffic" aria-label="Exposición y clics del anuncio">
+              <div><dt>CTR (todos)</dt><dd>{traffic.ctr != null ? traffic.ctr > 0 && traffic.ctr < 0.01 ? '<0,01%' : formatDecimal(traffic.ctr, 2) + '%' : '—'}</dd></div>
+              <div><dt>Clics (todos)</dt><dd>{traffic.clicks != null ? formatDecimal(traffic.clicks, 0) : '—'}</dd></div>
+              <div><dt>Impresiones</dt><dd>{traffic.impressions != null ? formatDecimal(traffic.impressions, 0) : '—'}</dd></div>
+              <div><dt>Costo / clic</dt><dd>{traffic.cpc != null ? traffic.cpc > 0 && traffic.cpc < 0.01 ? '<' + formatCurrency(0.01, currency, 2) : formatCurrency(traffic.cpc, currency, 2) : '—'}</dd></div>
+            </dl>
+            {results === 0 && <p className="report-ad-status">Sin resultados registrados</p>}
+            {ad.previewUrl && <a className="report-screen-only report-ad-preview" href={ad.previewUrl} target="_blank" rel="noopener noreferrer">Ver anuncio</a>}
+          </div>
+        </li>;
+      })}</ol> : <p className="report-empty">No hay anuncios disponibles para este período.</p>}
+    <p className="report-caption">CTR: clics / impresiones. Se incluyen todos los clics, no solo los del enlace. Costo / clic: inversión / clics. —: dato no disponible o no calculable. Una posición alta no implica rentabilidad.</p>
   </section>;
 }

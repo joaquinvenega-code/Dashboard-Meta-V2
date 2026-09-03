@@ -1,6 +1,6 @@
 import React from 'react';
 import { formatCurrency, formatDecimal } from '../../../lib/utils';
-import { DailyReportPoint, ReportMode } from '../reportData';
+import { DailyReportPoint, ReportMode, REPORT_MODES } from '../reportData';
 
 export function chartMaximum(values: Array<number | null | undefined>, integers = false) {
   const max = Math.max(0, ...values.filter((value): value is number => value != null && Number.isFinite(value)));
@@ -12,11 +12,11 @@ export function chartMaximum(values: Array<number | null | undefined>, integers 
 
 export function PerformanceChartV2({ data, currency, mode = 'ecommerce', expectedResults }: { data: DailyReportPoint[]; currency: string; mode?: ReportMode; expectedResults?: number }) {
   const uid = React.useId().replace(/:/g, '');
-  const messaging = mode === 'messaging';
-  const upperKey = messaging ? 'messages' : 'purchases';
-  const lowerKey = messaging ? 'spend' : 'revenue';
-  const resultLabel = messaging ? 'Mensajes iniciados' : 'Compras';
-  const moneyLabel = messaging ? 'Inversión' : 'Facturación';
+  const event = REPORT_MODES[mode];
+  const upperKey = event.key;
+  const lowerKey = mode === 'ecommerce' ? 'revenue' : 'spend';
+  const resultLabel = event.result;
+  const moneyLabel = mode === 'ecommerce' ? 'Facturación' : 'Inversión';
   const upper = data.map(row => row[upperKey]);
   const lower = data.map(row => row[lowerKey]);
   const maxUpper = chartMaximum(upper, true);
@@ -60,7 +60,7 @@ export function PerformanceChartV2({ data, currency, mode = 'ecommerce', expecte
         {data.map((row, index) => row[lowerKey] == null ? null : <circle key={row.date} cx={x(index)} cy={y(row[lowerKey]!, 202, maxLower)} r="2.5" fill="#2563eb"><title>{`${row.date}: ${formatCurrency(row[lowerKey]!, currency)}`}</title></circle>)}
       </svg>
       <div className="report-daily-notes">
-        <p><strong>Pico de {messaging ? 'mensajes' : 'compras'}:</strong> {peak > 0 ? formatDecimal(peak, 0) + ' · ' + peakDays.slice(0, 3).join(', ') + (peakDays.length > 3 ? ' y ' + (peakDays.length - 3) + ' días más' : '') : 'Sin resultados registrados.'}</p>
+        <p><strong>Pico de {resultLabel.toLowerCase()}:</strong> {peak > 0 ? formatDecimal(peak, 0) + ' · ' + peakDays.slice(0, 3).join(', ') + (peakDays.length > 3 ? ' y ' + (peakDays.length - 3) + ' días más' : '') : 'Sin resultados registrados.'}</p>
         <p>{reported} de {data.length} días con datos. Los días sin datos se muestran como huecos, no como ceros.</p>
       </div>
       {discrepancy && <p className="report-data-note">El histórico diario suma {formatDecimal(total, 0)} resultados; el resumen del período registra {formatDecimal(expectedResults!, 0)}. Son consultas separadas de Meta y la diferencia requiere revisión.</p>}

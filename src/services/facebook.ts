@@ -1,4 +1,6 @@
 import { AdAccount, Ad, DailyMetric, Campaign, AdSet } from '../types';
+import { AD_TRAFFIC_FIELDS, adTrafficMetrics } from '../lib/adTraffic';
+import { metaLeadCount } from '../lib/metaLeads';
 
 declare global {
   interface Window {
@@ -381,7 +383,7 @@ export async function fetchInsights(accountId: string, since: string, until: str
   const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase');
   const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase');
   const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') || getAction(d.actions, 'onsite_conversion.total_messaging_connection');
-  const leads = getAction(d.actions, 'lead') || getAction(d.actions, 'offsite_conversion.fb_pixel_lead') || getAction(d.actions, 'onsite_conversion.lead_grouped') || getAction(d.actions, 'leadgen_grouped');
+  const leads = metaLeadCount(d.actions);
 
   return {
     spend,
@@ -474,7 +476,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
   const time_range = JSON.stringify({ since, until });
 
   const insRes = await graphApiGet(`/${accountId}/insights`, {
-      fields: 'ad_id,ad_name,spend,clicks,ctr,actions,action_values',
+      fields: `ad_id,ad_name,${AD_TRAFFIC_FIELDS},actions,action_values`,
       time_range,
       level: 'ad',
       limit: 500,
@@ -492,7 +494,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase');
       const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') ||
                        getAction(d.actions, 'onsite_conversion.total_messaging_connection');
-      const leads = getAction(d.actions, 'lead') || getAction(d.actions, 'offsite_conversion.fb_pixel_lead') || getAction(d.actions, 'onsite_conversion.lead_grouped') || getAction(d.actions, 'leadgen_grouped');
+      const leads = metaLeadCount(d.actions);
       const costPerLead = leads > 0 ? spend / leads : 0;
       const roas = spend > 0 ? revenue / spend : 0;
       return {
@@ -500,6 +502,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         name: d.ad_name || d.ad_id,
         spend,
         clicks: parseInt(d.clicks) || 0,
+        traffic: adTrafficMetrics(d),
         purchases,
         revenue,
         messages,
@@ -518,9 +521,11 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
   const topPurchases = [...allAds].sort((a, b) => b.purchases - a.purchases).slice(0, n);
   const topRevenue = [...allAds].sort((a, b) => b.revenue - a.revenue).slice(0, n);
   const topSpend = [...allAds].sort((a, b) => b.spend - a.spend).slice(0, n);
+  // A lead-focused report must not miss winners that have no purchases/ROAS.
+  const topLeads = sortBy === 'leads' ? [...allAds].sort((a, b) => b.leads - a.leads).slice(0, n) : [];
 
   const uniqueAdsMap = new Map();
-  [...topPurchases, ...topRevenue, ...topRoas, ...topSpend].forEach(ad => {
+  [...topPurchases, ...topRevenue, ...topRoas, ...topSpend, ...topLeads].forEach(ad => {
     if (!uniqueAdsMap.has(ad.id)) {
       uniqueAdsMap.set(ad.id, ad);
     }
@@ -844,7 +849,7 @@ export async function fetchDailySeries(accountId: string, since: string, until: 
       const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase');
       const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') ||
                        getAction(d.actions, 'onsite_conversion.total_messaging_connection');
-      const leads = getAction(d.actions, 'lead') || getAction(d.actions, 'offsite_conversion.fb_pixel_lead') || getAction(d.actions, 'onsite_conversion.lead_grouped') || getAction(d.actions, 'leadgen_grouped') || 0;
+      const leads = metaLeadCount(d.actions);
       const clicks = parseInt(d.clicks) || 0;
       const roas = spend > 0 ? revenue / spend : 0;
       const adId = d.ad_id;
@@ -888,7 +893,7 @@ export async function fetchAccountDailyPerformance(accountId: string, since: str
     const atc = getAction(d.actions, 'add_to_cart') || getAction(d.actions, 'offsite_conversion.fb_pixel_add_to_cart');
     const viewContent = getAction(d.actions, 'view_content') || getAction(d.actions, 'offsite_conversion.fb_pixel_view_content');
     const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') || getAction(d.actions, 'onsite_conversion.total_messaging_connection') || 0;
-    const leads = getAction(d.actions, 'lead') || getAction(d.actions, 'offsite_conversion.fb_pixel_lead') || getAction(d.actions, 'onsite_conversion.lead_grouped') || getAction(d.actions, 'leadgen_grouped') || 0;
+    const leads = metaLeadCount(d.actions);
 
     return {
       date: d.date_start, // usually "YYYY-MM-DD"

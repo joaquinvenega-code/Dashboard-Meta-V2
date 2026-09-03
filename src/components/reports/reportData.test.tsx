@@ -2,15 +2,18 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { aggregateDemographics, aggregatePlacements, completeDailySeries, countryLabel, reportAction, reportPeriodMetrics } from './reportData';
-import { chartMaximum } from './v2/PerformanceChartV2';
+import { aggregateDemographics, aggregateGeography, aggregatePlacements, completeDailySeries, countryLabel, reportAction, reportPeriodMetrics, REPORT_MODES } from './reportData';
+import { chartMaximum, PerformanceChartV2 } from './v2/PerformanceChartV2';
 import { AssetPerformanceV2 } from './v2/AssetPerformanceV2';
 import { GeographicSummary } from './GeographicSummary';
 import { collectReportLogs } from './reportLogs';
 import { ManagementTimelineV2 } from './v2/ManagementTimelineV2';
-import { ReportActivityMap, activityColor, matchMapRegion, mapCountryId } from './ReportActivityMap';
+import { ReportActivityMap, activityColor, activityPalette, matchMapRegion, mapCountryId } from './ReportActivityMap';
 import { ReportFunnelBoard } from './ReportFunnelBoard';
 import { MonthlyReportDocument } from './MonthlyReportDocument';
+import { AD_TRAFFIC_FIELDS, adTrafficMetrics } from '../../lib/adTraffic';
+import { formatCurrency } from '../../lib/utils';
+import { metaLeadCount } from '../../lib/metaLeads';
 
 test('explicit zero is not replaced by a different action metric', () => {
   assert.equal(reportAction([{ action_type: 'a', value: '0' }, { action_type: 'b', value: '8' }], 'a', 'b'), 0);
@@ -87,9 +90,173 @@ test('funnel is an SVG illustration with unavailable reach stated explicitly', (
 test('Argentina actually renders its regional map and highlights Buenos Aires', () => {
   const html = renderToStaticMarkup(<ReportActivityMap mode="messaging" currency="ARS" countries={[{countryId:'AR',messages:5,purchases:0,revenue:0,spend:100}]} regions={[{countryId:'AR',regionId:'AR_Buenos Aires',regionName:'Buenos Aires · Argentina',messages:5,purchases:0,revenue:0,spend:100}]} />);
   assert.ok(html.includes('Detalle regional')); assert.ok(html.includes('Mapa regional de Argentina')); assert.ok(!html.includes('No hay cartografía regional'));
-  assert.ok(html.includes('Buenos Aires: 5')); assert.ok(html.includes('#d7301f'));
+  assert.ok(html.includes('Buenos Aires: 5')); assert.ok(html.includes(activityPalette[3]));
+});
+
+test('Argentina and Peru both print regional maps with the same activity scale', () => {
+  const countries = [{countryId:'AR',messages:51,purchases:0,revenue:0,spend:100}, {countryId:'PE',messages:11,purchases:0,revenue:0,spend:25}];
+  const regions = [{countryId:'AR',regionId:'AR_Buenos Aires',regionName:'Buenos Aires · Argentina',messages:11,purchases:0,revenue:0,spend:100}, {countryId:'PE',regionId:'PE_Lima',regionName:'Lima Region · Perú',messages:11,purchases:0,revenue:0,spend:25}];
+  const html = renderToStaticMarkup(<ReportActivityMap mode="messaging" currency="ARS" countries={countries} regions={regions} />);
+  assert.equal((html.match(/class="report-country-map"/g)||[]).length, 2);
+  assert.ok(html.includes('Mapa regional de Argentina')); assert.ok(html.includes('Mapa regional de Perú'));
+  assert.ok(html.includes('Lima: 11')); assert.ok(html.includes('Buenos Aires: 11'));
+  assert.equal((html.match(new RegExp(`fill="${activityPalette[3]}"`, 'g'))||[]).length, 2);
+  assert.ok(!html.includes('<select')); assert.ok(html.includes('Escala de color compartida'));
+  assert.ok(html.includes('82,3%')); assert.ok(html.includes('17,7%'));
+});
+
+test('Peru aliases keep metropolitan Lima distinct from Lima department', () => {
+  const lima = {id:'PE-LIM',properties:{name:'Lima'}};
+  const metro = {id:'PE-LMA',properties:{name:'Municipalidad Metropolitana de Lima'}};
+  const row = {countryId:'PE',regionId:'PE_Lima',regionName:'Lima Region · Perú',messages:11,purchases:0,revenue:0,spend:25};
+  assert.ok(matchMapRegion(row,'PER',lima)); assert.equal(matchMapRegion(row,'PER',metro),false);
+  const city = {...row,regionName:'Lima Province · Perú'};
+  assert.ok(matchMapRegion(city,'PER',metro)); assert.equal(matchMapRegion(city,'PER',lima),false);
+  const resolvedCity = {...row,regionId:'PE-LMA',regionName:'Lima'};
+  assert.ok(matchMapRegion(resolvedCity,'PER',metro)); assert.equal(matchMapRegion(resolvedCity,'PER',lima),false);
+  assert.ok(matchMapRegion({...row,regionName:'Callao Region · Perú'},'PER',{id:'PE-CAL',properties:{name:'El Callao'}}));
+  assert.ok(matchMapRegion({...row,regionName:'Cuzco · Perú'},'PER',{id:'PE-CUS',properties:{name:'Cusco'}}));
+});
+
+test('country cards preserve unsupported geography and unmatched regions without estimates', () => {
+  const html = renderToStaticMarkup(<ReportActivityMap mode="messaging" currency="ARS" countries={['AR','PE','MX','XX'].map(countryId=>({countryId,messages:1,purchases:0,revenue:0,spend:10}))} regions={[{countryId:'PE',regionId:'PE_Unknown',regionName:'Sin identificar · Perú',messages:3,purchases:0,revenue:0,spend:10}]} />);
+  assert.equal((html.match(/class="report-country-map"/g)||[]).length,4);
+  assert.ok(html.includes('Sin cartografía regional')); assert.ok(html.includes('Sin contorno disponible'));
+  assert.ok(html.includes('Sin identificar')); assert.ok(html.includes('Sin ubicar en el mapa'));
+  assert.ok(!html.includes('NaN')); assert.ok(!html.includes('Infinity')); assert.ok(!html.includes('Lima: 3'));
+});
+
+test('regional heat uses purchases for ecommerce and spend only when results are absent', () => {
+  const country = {countryId:'PE',messages:30,purchases:2,revenue:100,spend:0.02};
+  const region = {...country,regionId:'PE_Lima',regionName:'Lima'};
+  const purchases = renderToStaticMarkup(<ReportActivityMap mode="ecommerce" currency="USD" countries={[country]} regions={[region]} />);
+  assert.ok(purchases.includes('Lima: 2')); assert.ok(purchases.includes('2 compras'));
+  const spend = renderToStaticMarkup(<ReportActivityMap mode="ecommerce" currency="USD" countries={[{...country,purchases:0}]} regions={[{...region,purchases:0}]} />);
+  assert.ok(spend.includes('inversión por región')); assert.ok(spend.includes(activityPalette[3]));
+  assert.equal(activityColor(0.02,0.02),activityPalette[3]);
+});
+
+test('creative gallery retains five full names, visible images, metrics and ecommerce revenue', () => {
+  const assets = Array.from({length:5},(_,index)=>({id:String(index),name:'Creatividad completa '+index,thumbnail:'data:image/png;base64,abc',spend:100,messages:2,purchases:3,revenue:250,roas:2.5}));
+  const html = renderToStaticMarkup(<AssetPerformanceV2 mode="ecommerce" currency="ARS" assets={assets}/>);
+  assert.equal((html.match(/class="report-ad-card"/g)||[]).length,5);
+  assert.equal((html.match(/<img /g)||[]).length,5);
+  for (const ad of assets) assert.ok(html.includes(ad.name));
+  for (const label of ['Compras','ROAS','Inversión','Facturación','2,50x']) assert.ok(html.includes(label));
+  assert.ok(!html.includes('<table'));
+  const unavailable = renderToStaticMarkup(<AssetPerformanceV2 assets={[{...assets[0],thumbnail:''}]}/>);
+  assert.ok(unavailable.includes('Miniatura no disponible'));
 });
 test('a Meta outage does not remove the monthly management history', () => {
   const html = renderToStaticMarkup(<MonthlyReportDocument name="Cliente" month="2026-08" mode="messaging" metrics={reportPeriodMetrics(null, [], 'ARS')} dataAvailable={false} daily={[]} assets={[]} demographics={[]} countries={[]} regions={[]} placements={[]} placementBasis="spend" texts={{}} isEditing={false} onUpdate={()=>undefined} logs={[{id:'voice',date:'05/08',source:'Voz',description:'Registro que debe conservarse'}]} />);
   assert.ok(html.includes('No hay métricas disponibles')); assert.ok(html.includes('Bitácora de gestión')); assert.ok(html.includes('Registro que debe conservarse'));
+});
+
+test('ad traffic parses Meta fields without turning missing values into zero', () => {
+  for (const field of ['clicks','impressions','ctr','spend']) assert.ok(AD_TRAFFIC_FIELDS.split(',').includes(field));
+  assert.deepEqual(adTrafficMetrics({clicks:'25',impressions:'2000',ctr:'1.25',spend:'100'}), {clicks:25,impressions:2000,ctr:1.25,cpc:4});
+  for (const value of [undefined,null,'', ' ', 'invalid',NaN,Infinity,-1,true]) {
+    assert.deepEqual(adTrafficMetrics({clicks:value,impressions:value,ctr:value,spend:value}), {clicks:undefined,impressions:undefined,ctr:undefined,cpc:undefined});
+  }
+});
+
+test('traffic ratios respect explicit zeros and never divide by zero', () => {
+  assert.equal(adTrafficMetrics({clicks:25,impressions:2000}).ctr,1.25);
+  assert.equal(adTrafficMetrics({clicks:25,impressions:2000,ctr:0}).ctr,0);
+  assert.deepEqual(adTrafficMetrics({clicks:0,impressions:2000,spend:50}), {clicks:0,impressions:2000,ctr:0,cpc:undefined});
+  assert.equal(adTrafficMetrics({clicks:25,impressions:0}).ctr,undefined);
+  assert.equal(adTrafficMetrics({clicks:25}).cpc,undefined);
+  assert.equal(adTrafficMetrics({clicks:25,spend:0}).cpc,0);
+});
+
+test('ad cards print all four traffic metrics in all three report modes', () => {
+  const ad = {id:'ad',name:'Prueba CTR',thumbnail:'',spend:19.5,purchases:1,messages:1,revenue:80,roas:4,traffic:adTrafficMetrics({clicks:25,impressions:2000,ctr:1.25,spend:19.5})};
+  for (const mode of ['messaging','ecommerce','leads'] as const) {
+    const html = renderToStaticMarkup(<AssetPerformanceV2 mode={mode} currency="USD" assets={[ad]}/>);
+    const row = html.split('class="report-ad-traffic"')[1].split('</dl>')[0];
+    for (const value of ['CTR (todos)','Clics (todos)','Impresiones','Costo / clic','1,25%','>25<','2.000','U$D 0,78']) assert.ok(row.includes(value),value);
+    assert.ok(html.includes('no solo los del enlace'));
+  }
+  assert.equal(formatCurrency(19.5,'ARS'),'$20');
+  assert.equal(formatCurrency(0.78,'ARS',2),'$0,78');
+});
+
+test('unavailable traffic remains unavailable despite legacy zero defaults', () => {
+  const ad = {id:'ad',name:'Sin datos de tráfico',thumbnail:'',spend:100,purchases:0,revenue:0,roas:0,ctr:0,clicks:0,traffic:adTrafficMetrics({})};
+  const html = renderToStaticMarkup(<AssetPerformanceV2 mode="messaging" assets={[ad]}/>);
+  const row = html.split('class="report-ad-traffic"')[1].split('</dl>')[0];
+  assert.equal((row.match(/<dd>—<\/dd>/g)||[]).length,4);
+  assert.ok(!row.includes('0,00%'));
+});
+
+test('small positive traffic rates and costs never round down to displayed zero', () => {
+  const html = renderToStaticMarkup(<AssetPerformanceV2 mode="messaging" currency="USD" assets={[{id:'tiny',name:'Valores pequeños',thumbnail:'',spend:1,purchases:0,revenue:0,roas:0,traffic:{ctr:0.0028,clicks:1000,impressions:35000000,cpc:0.001}}]}/>);
+  const row = html.split('class="report-ad-traffic"')[1].split('</dl>')[0];
+  assert.ok(row.includes('&lt;0,01%')); assert.ok(row.includes('&lt;U$D 0,01'));
+  assert.ok(!row.includes('>0,00%'));
+});
+
+test('Meta lead aliases never double count or override an explicit aggregate zero', () => {
+  const aliases = ['offsite_conversion.fb_pixel_lead', 'onsite_conversion.lead_grouped', 'leadgen_grouped'];
+  const actions = aliases.map(action_type => ({ action_type, value: '8' }));
+  assert.equal(metaLeadCount([{action_type:'lead',value:'12'}, ...actions]),12);
+  assert.equal(metaLeadCount([{action_type:'lead',value:'0'}, ...actions]),0);
+  assert.equal(metaLeadCount(actions),8);
+  for (const action_type of aliases) assert.equal(metaLeadCount([{action_type,value:'8'}]),8);
+  for (const value of [-1,Infinity,NaN,'invalid']) assert.equal(metaLeadCount([{action_type:'lead',value}]),0);
+  assert.equal(metaLeadCount(),0);
+  assert.equal(metaLeadCount([{action_type:'purchase',value:20}]),0);
+});
+
+test('lead period totals and daily fallback use leads independently of messages and purchases', () => {
+  const daily = [{date:'2026-08-02',spend:100,leads:4,messages:40,purchases:30}, {date:'2026-08-03',spend:50,leads:0}];
+  const metrics = reportPeriodMetrics({spend:300,actions:[{action_type:'lead',value:'6'}]},daily,'USD');
+  assert.equal(metrics.leads,6); assert.equal(metrics.costPerLead,50);
+  const fallback = reportPeriodMetrics(null,daily,'USD');
+  assert.equal(fallback.leads,4); assert.equal(fallback.costPerLead,37.5);
+  const series = completeDailySeries(daily,'2026-08');
+  assert.equal(series[0].leads,null); assert.equal(series[1].leads,4); assert.equal(series[2].leads,0);
+  assert.equal(reportPeriodMetrics({spend:100,actions:[{action_type:'lead',value:0}]},daily,'USD').leads,0);
+});
+
+test('lead placements and geography preserve the selected event and both countries', () => {
+  const rows = [
+    {country:'AR',region:'Buenos Aires',publisher_platform:'instagram',platform_position:'feed',spend:100,actions:[{action_type:'lead',value:3},{action_type:'purchase',value:50}]},
+    {country:'PE',region:'Lima',publisher_platform:'facebook',platform_position:'feed',spend:300,actions:[{action_type:'onsite_conversion.lead_grouped',value:1}]},
+  ];
+  const placements = aggregatePlacements(rows,'leads');
+  assert.equal(placements.basis,'leads'); assert.deepEqual(placements.data.map(row=>row.value),[75,25]);
+  const geo = aggregateGeography(rows);
+  assert.deepEqual(geo.countries.map(row=>row.leads),[3,1]); assert.deepEqual(geo.regions.map(row=>row.leads),[3,1]);
+  const html = renderToStaticMarkup(<GeographicSummary {...geo} mode="leads" currency="USD" expectedResults={4}/>);
+  for (const label of ['Mapa regional de Argentina según clientes potenciales','Mapa regional de Perú según clientes potenciales','Buenos Aires: 3','Lima: 1','3 clientes potenciales','1 clientes potenciales']) assert.ok(html.includes(label),label);
+  assert.ok(!html.includes('Diferencia a revisar')); assert.ok(!html.includes('50 compras'));
+  const withoutLeads = [{...rows[0],actions:[{action_type:'purchase',value:50}]}];
+  assert.equal(aggregatePlacements(withoutLeads,'leads').basis,'spend');
+  const emptyGeo = renderToStaticMarkup(<GeographicSummary {...aggregateGeography(withoutLeads)} mode="leads" currency="USD" expectedResults={0}/>);
+  assert.ok(emptyGeo.includes('inversión por región')); assert.ok(!emptyGeo.includes('NaN'));
+});
+
+test('lead daily chart plots lead bars and investment, not purchase or revenue series', () => {
+  const html = renderToStaticMarkup(<PerformanceChartV2 mode="leads" currency="USD" expectedResults={4} data={[{date:'02/08',leads:4,messages:20,purchases:60,spend:80,revenue:9000}]}/>);
+  assert.ok(html.includes('Clientes potenciales y inversión por día'));
+  assert.ok(html.includes('02/08: 4 clientes potenciales')); assert.ok(html.includes('Pico de clientes potenciales'));
+  assert.ok(!html.includes('Facturación')); assert.ok(!html.includes('9.000')); assert.ok(!html.includes('requiere revisión'));
+});
+
+test('lead report renders its KPIs, funnel, ad ranking, glossary and intact management timeline', () => {
+  assert.deepEqual(Object.keys(REPORT_MODES),['ecommerce','messaging','leads']);
+  const metrics = {...reportPeriodMetrics({spend:120,clicks:20,impressions:1000,reach:500,actions:[{action_type:'lead',value:4}]},[],'USD'),purchases:90,messages:50};
+  const baseAd = {thumbnail:'',spend:60,roas:8,revenue:480,purchases:40,messages:10};
+  const html = renderToStaticMarkup(<MonthlyReportDocument name="Cliente de leads" month="2026-08" mode="leads" metrics={metrics} daily={[]} assets={[{...baseAd,id:'a',name:'Menos leads',leads:1},{...baseAd,id:'b',name:'Más leads',leads:3}]} demographics={[]} countries={[]} regions={[]} placements={[]} placementBasis="leads" texts={{}} isEditing={false} onUpdate={()=>undefined} logs={[{id:'v',date:'02/08',source:'Voz',description:'Nota de voz conservada'},{id:'m',date:'03/08',source:'Manual',description:'Nota manual conservada'}]}/>);
+  for (const label of ['Informe mensual · Clientes potenciales','Costo por lead (CPL)','4 clientes potenciales','U$D 30','Clic a cliente potencial','Costo / lead (CPL)','report-funnel-svg','Nota de voz conservada','Nota manual conservada','Evento lead atribuido por Meta']) assert.ok(html.includes(label),label);
+  assert.ok(html.indexOf('Más leads') < html.indexOf('Menos leads'));
+  assert.ok(!html.includes('ROAS')); assert.ok(!html.includes('Facturación')); assert.ok(!html.includes('Mensajes iniciados'));
+});
+
+test('zero lead ads do not substitute other conversions or display a false CPL', () => {
+  const html = renderToStaticMarkup(<AssetPerformanceV2 mode="leads" assets={[{id:'ad',name:'Sin leads',thumbnail:'',spend:60,leads:0,messages:90,purchases:50,roas:10,revenue:600}]}/>);
+  assert.ok(html.includes('<dt>Clientes potenciales</dt><dd>0</dd>'));
+  assert.ok(html.includes('<dt>Costo / lead (CPL)</dt><dd>—</dd>'));
+  assert.ok(html.includes('Sin resultados registrados')); assert.ok(!html.includes('Infinity'));
 });

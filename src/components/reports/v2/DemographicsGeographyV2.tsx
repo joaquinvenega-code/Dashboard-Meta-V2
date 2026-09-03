@@ -11,7 +11,7 @@ export function DemographicsGeographyV2({ demoData = [], currency = 'ARS' }: { d
     { name: 'Sin especificar', value: demoData.reduce((sum, row) => sum + (row.unknown || 0), 0) },
   ].filter(row => row.value > 0);
   return <section className="report-panel report-audiences">
-    <header className="report-panel-heading"><h3>Distribución de la inversión</h3><p>Inversión por edad y género, no volumen de ventas ni mensajes.</p></header>
+    <header className="report-panel-heading"><h3>Distribución de la inversión</h3><p>Inversión por edad y género, no volumen de conversiones.</p></header>
     {total > 0 ? <div className="report-audience-grid">
       <div><h4>Por rango de edad</h4><div className="report-audience-rows">{demoData.map(row => <div key={row.age}>
         <span>{row.age.toLowerCase() === 'unknown' ? 'Sin dato' : row.age}</span><div className="report-bar-track"><span style={{ width: row.rawValue / total * 100 + '%' }} /></div><strong>{formatCurrency(row.rawValue, currency)}</strong>

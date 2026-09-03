@@ -1,6 +1,11 @@
 import React from 'react';
-export function ReportGlossaryV2({ mode = 'ecommerce' }: { mode?: 'ecommerce' | 'messaging' }) {
-  const terms = mode === 'messaging' ? [
+import { ReportMode } from '../reportData';
+export function ReportGlossaryV2({ mode = 'ecommerce' }: { mode?: ReportMode }) {
+  const terms = mode === 'leads' ? [
+    ['Cliente potencial', 'Evento lead atribuido por Meta. No equivale necesariamente a una persona única, un contacto calificado o una venta.'],
+    ['CPL', 'Inversión dividida por clientes potenciales. Sin leads no se puede calcular este costo.'],
+    ['CTR', 'Clics divididos por impresiones. Indica la tasa de clic, no la tasa de captación de clientes potenciales.'],
+  ] : mode === 'messaging' ? [
     ['Mensajes', 'Conversaciones iniciadas atribuidas a anuncios; no equivale a cantidad de mensajes enviados.'],
     ['Costo / mensaje', 'Inversión dividida por conversaciones iniciadas. No mide rentabilidad ni calidad del contacto.'],
     ['CTR', 'Clics divididos por impresiones. Indica la tasa de clic, no la tasa de venta.'],
