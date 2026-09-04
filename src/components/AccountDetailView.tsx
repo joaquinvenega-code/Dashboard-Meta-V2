@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { MetaActivityPanel } from './reports/MetaActivityPanel';
 import { 
   AdAccount, 
   AccountSettings, 
@@ -2366,6 +2367,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                 observations={observations}
                 accountName={settings[selectedAccount.id]?.customName || selectedAccount.name}
               />
+              <MetaActivityPanel accountIds={selectedSourceAccountIds} since={dateRange.since} until={dateRange.until} />
             </div>
             <div className="report-print-endnote hidden print:flex">
               <span>Informe generado por Orion Metrics</span>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ExecutiveSummaryV2 } from './v2/ExecutiveSummaryV2';
@@ -10,12 +10,14 @@ import { DemographicsGeographyV2 } from './v2/DemographicsGeographyV2';
 import { RoadmapSectionV2 } from './v2/RoadmapSectionV2';
 import { ReportGlossaryV2 } from './v2/ReportGlossaryV2';
 import { GeographicSummary } from './GeographicSummary';
+import { ReportAgencyBrand } from './ReportAgencyBrand';
 import { ManagementTimelineV2 } from './v2/ManagementTimelineV2';
 import type { ReportLog } from './reportLogs';
 import { DailyReportPoint, DemographicSegment, GeographicResult, PlacementBasis, PlacementResult, RegionResult, ReportMetrics, ReportMode, REPORT_MODES } from './reportData';
 
 export interface MonthlyReportDocumentProps {
   name: string; logo?: string; month: string; mode: ReportMode; theme?: 'light' | 'dark';
+  agencyName?: string; agencyLogo?: string;
   metrics: ReportMetrics; dataAvailable?: boolean; daily: DailyReportPoint[]; assets: AdAsset[];
   demographics: DemographicSegment[]; countries: GeographicResult[]; regions: RegionResult[];
   placements: PlacementResult[]; placementBasis: PlacementBasis;
@@ -26,6 +28,7 @@ export interface MonthlyReportDocumentProps {
 
 export function MonthlyReportDocument(props: MonthlyReportDocumentProps) {
   const { name, logo, month, mode, metrics, texts, isEditing, onUpdate } = props;
+  const [failedLogo, setFailedLogo] = useState<string>();
   const event = REPORT_MODES[mode];
   const results = metrics[event.key] || 0;
   const hasManagement = props.logs.length > 0 || Boolean(texts.learnings?.trim() || texts.actionPlan?.trim() || texts.clientRequests?.trim());
@@ -33,7 +36,8 @@ export function MonthlyReportDocument(props: MonthlyReportDocumentProps) {
   const titles = ['Resumen y conversión', 'Evolución y audiencias', ...(hasAds ? ['Creatividades y resultados'] : []), 'Mapa de actividad', ...(hasManagement ? ['Bitácora y próximos pasos'] : [])];
   const geographyIndex = hasAds ? 3 : 2;
   const header = (index: number) => <header className="report-sheet-header">
-    <div className="report-client">{logo && <img src={logo} alt="" referrerPolicy="no-referrer" />}<div><span>Informe mensual · {event.label}</span><h1>{name}</h1></div></div>
+    <div className="report-client">{logo && logo !== failedLogo && <img src={logo} alt={`Logo de ${name}`} referrerPolicy="no-referrer" onError={() => setFailedLogo(logo)} />}<div><span>Informe mensual · {event.label}</span><h1>{name}</h1></div></div>
+    <ReportAgencyBrand name={props.agencyName} logo={props.agencyLogo} />
     <div className="report-period"><strong>{format(parseISO(month + '-01'), 'MMMM yyyy', { locale: es })}</strong><span>{index + 1}. {titles[index]}</span></div>
   </header>;
   const footer = (index: number) => <footer className="report-sheet-footer"><span>Orion · Informe privado</span><span>Bloque {index + 1} / {titles.length} · {titles[index]}</span></footer>;

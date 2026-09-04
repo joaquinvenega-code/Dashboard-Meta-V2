@@ -1,6 +1,8 @@
 import { AdAccount, Ad, DailyMetric, Campaign, AdSet } from '../types';
 import { AD_TRAFFIC_FIELDS, adTrafficMetrics } from '../lib/adTraffic';
 import { metaLeadCount } from '../lib/metaLeads';
+import { metaMessageCount } from '../lib/metaMessages';
+import { fetchAdShareLink } from '../lib/adShareLink';
 
 declare global {
   interface Window {
@@ -64,6 +66,7 @@ async function graphApiGet(
   path: string,
   params: Record<string, unknown> = {},
   timeoutMs = META_DATA_TIMEOUT_MS,
+  signal?: AbortSignal,
 ): Promise<any> {
   const requestToken = typeof params.access_token === 'string' ? params.access_token : activeAccessToken;
   if (!requestToken) throw new Error('No hay una sesión activa de Meta Ads. Ingresa nuevamente.');
@@ -80,6 +83,9 @@ async function graphApiGet(
   requestUrl.searchParams.set('access_token', requestToken);
 
   const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) controller.abort();
   const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(requestUrl.toString(), {
@@ -96,6 +102,7 @@ async function graphApiGet(
     }
     throw error instanceof Error ? error : new Error('No pudimos conectar con la API de Meta.');
   } finally {
+    signal?.removeEventListener('abort', abort);
     window.clearTimeout(timeoutId);
   }
 }
@@ -343,6 +350,60 @@ export async function getUserProfile(): Promise<any> {
   return graphApiGet('/me', { fields: 'name,picture' });
 }
 
+export interface MetaAccountActivity {
+  event_time?: string;
+  event_type?: string;
+  translated_event_type?: string;
+  object_id?: string;
+  object_name?: string;
+  object_type?: string;
+  actor_id?: string;
+  actor_name?: string;
+  extra_data?: string;
+}
+
+/** Read one activity page; keep pagination URLs (which can contain tokens) private. */
+export async function fetchAccountActivityPage(accountId: string, since: string, until: string, after?: string, signal?: AbortSignal): Promise<{ data: MetaAccountActivity[]; after?: string; hasMore: boolean }> {
+  if (!/^(act_)?\d+$/.test(accountId)) throw new Error('Cuenta publicitaria inválida.');
+  const start = Date.parse(since), end = Date.parse(until);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end) throw new Error('Período de actividad inválido.');
+  const account = accountId.startsWith('act_') ? accountId : `act_${accountId}`;
+  const response = await graphApiGet(`/${account}/activities`, {
+    fields: 'event_time,event_type,translated_event_type,object_id,object_name,object_type,actor_id,actor_name,extra_data',
+    since: Math.floor(start / 1000), until: Math.floor(end / 1000), limit: 100, after,
+  }, META_DATA_TIMEOUT_MS, signal);
+  if (!Array.isArray(response?.data)) throw new Error('Meta no devolvió un listado de actividad válido.');
+  return { data: response.data, after: response.paging?.cursors?.after, hasMore: Boolean(response.paging?.next) };
+}
+
+export async function fetchAccountActivity(accountId: string, since: string, until: string, signal?: AbortSignal) {
+  if (!/^(act_)?\d+$/.test(accountId)) throw new Error('Cuenta publicitaria inválida.');
+  const account = accountId.startsWith('act_') ? accountId : `act_${accountId}`;
+  const metadata = await graphApiGet(`/${account}`, { fields: 'currency,timezone_name' }, META_DATA_TIMEOUT_MS, signal);
+  // Cover all time zones, then filter exact calendar days in the account's zone.
+  const start = new Date(Date.parse(`${since}T00:00:00Z`) - 86400000).toISOString();
+  const end = new Date(Date.parse(`${until}T00:00:00Z`) + 2 * 86400000).toISOString();
+  const data: MetaAccountActivity[] = [];
+  const cursors = new Set<string>();
+  let after: string | undefined;
+  const deadline = Date.now() + 60000;
+  for (let pageNumber = 0; pageNumber < 20; pageNumber++) {
+    if (signal?.aborted) throw new Error('Consulta cancelada.');
+    try {
+      const page = await fetchAccountActivityPage(account, start, end, after, signal);
+      data.push(...page.data);
+      if (!page.hasMore) return { data, ...metadata, complete: true };
+      if (!page.after || cursors.has(page.after) || !page.data.length || Date.now() >= deadline) break;
+      after = page.after;
+      cursors.add(after);
+    } catch (error) {
+      if (!data.length || signal?.aborted) throw error;
+      break;
+    }
+  }
+  return { data, ...metadata, complete: false };
+}
+
 function getAction(arr: any[], type: string): number {
   const f = (arr || []).find((a: any) => a.action_type === type);
   return f ? parseFloat(f.value) : 0;
@@ -382,7 +443,7 @@ export async function fetchInsights(accountId: string, since: string, until: str
   const spend = parseFloat(d.spend) || 0;
   const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase');
   const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase');
-  const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') || getAction(d.actions, 'onsite_conversion.total_messaging_connection');
+  const messages = metaMessageCount(d.actions);
   const leads = metaLeadCount(d.actions);
 
   return {
@@ -444,8 +505,7 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
     const obj = objMap[d.campaign_id] || '';
     if (!MESSAGING_OBJECTIVES.has(obj)) return;
     
-    const msgs = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') ||
-                 getAction(d.actions, 'onsite_conversion.total_messaging_connection');
+    const msgs = metaMessageCount(d.actions);
     
     // If it's OUTCOME_SALES, only count it if it actually generated messages (it could be a web sales campaign)
     // Actually, to be safer, we only count these campaigns if messaging is a significant part of their actions?
@@ -492,8 +552,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       const spend = parseFloat(d.spend) || 0;
       const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase');
       const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase');
-      const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') ||
-                       getAction(d.actions, 'onsite_conversion.total_messaging_connection');
+      const messages = metaMessageCount(d.actions);
       const leads = metaLeadCount(d.actions);
       const costPerLead = leads > 0 ? spend / leads : 0;
       const roas = spend > 0 ? revenue / spend : 0;
@@ -534,6 +593,9 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
   const ads = Array.from(uniqueAdsMap.values());
 
   for (const ad of ads) {
+      // Independent of thumbnail resolution: an image failure must not hide a
+      // valid share link, and missing permission must not prevent the report.
+      ad.shareablePreviewUrl = await fetchAdShareLink(ad.id, graphApiGetSafe);
       // BASELINE: Link garantizado a la biblioteca de anuncios (NUNCA estará vacío para el PDF)
       ad.previewUrl = `https://www.facebook.com/ads/library/?id=${ad.id}`;
 
@@ -847,8 +909,7 @@ export async function fetchDailySeries(accountId: string, since: string, until: 
       const spend = parseFloat(d.spend) || 0;
       const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase');
       const revenue = getAction(d.action_values, 'purchase') || getAction(d.action_values, 'offsite_conversion.fb_pixel_purchase');
-      const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') ||
-                       getAction(d.actions, 'onsite_conversion.total_messaging_connection');
+      const messages = metaMessageCount(d.actions);
       const leads = metaLeadCount(d.actions);
       const clicks = parseInt(d.clicks) || 0;
       const roas = spend > 0 ? revenue / spend : 0;
@@ -892,7 +953,7 @@ export async function fetchAccountDailyPerformance(accountId: string, since: str
     const impressions = parseInt(d.impressions) || 0;
     const atc = getAction(d.actions, 'add_to_cart') || getAction(d.actions, 'offsite_conversion.fb_pixel_add_to_cart');
     const viewContent = getAction(d.actions, 'view_content') || getAction(d.actions, 'offsite_conversion.fb_pixel_view_content');
-    const messages = getAction(d.actions, 'onsite_conversion.messaging_conversation_started_7d') || getAction(d.actions, 'onsite_conversion.total_messaging_connection') || 0;
+    const messages = metaMessageCount(d.actions);
     const leads = metaLeadCount(d.actions);
 
     return {

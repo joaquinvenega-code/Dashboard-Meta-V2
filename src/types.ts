@@ -78,6 +78,7 @@ export interface Ad {
   roas: number;
   thumbnail: string | null;
   previewUrl: string | null;
+  shareablePreviewUrl?: string;
   originalThumbnailUrl?: string | null;
   dailySeries?: DailyMetric[];
   adsetId?: string;

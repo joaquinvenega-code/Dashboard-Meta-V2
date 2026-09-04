@@ -7,13 +7,20 @@
 .report-editorial * { box-sizing: border-box; }
 .report-editorial .report-sheet { background: var(--report-paper); padding: 44px; margin: 0 0 28px; border-radius: 14px; box-shadow: 0 16px 40px #0002; }
 .report-sheet-header { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding-bottom: 22px; margin-bottom: 24px; border-bottom: 2px solid var(--report-ink); }
-.report-client { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.report-client { display: flex; flex: 1; align-items: center; gap: 14px; min-width: 0; }
 .report-client img { width: 46px; height: 46px; object-fit: contain; }
 .report-client span { display: block; color: var(--report-blue); font-size: 10px; letter-spacing: .12em; font-weight: 700; text-transform: uppercase; }
 .report-client h1 { margin: 4px 0 0; font-size: 29px; line-height: 1.2; font-weight: 800; overflow-wrap: anywhere; }
 .report-period { text-align: right; flex-shrink: 0; }
 .report-period strong { display: block; font-size: 14px; text-transform: capitalize; }
 .report-period span { display: block; font-size: 10px; color: var(--report-muted); margin-top: 4px; }
+.report-agency-brand { display: flex; align-items: center; justify-content: center; gap: 10px; width: 190px; max-width: 100%; flex-shrink: 0; text-align: left; }
+.report-agency-name { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4px; }
+.report-agency-name > span { font-size: 8px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--report-muted); }
+.report-agency-brand img { display: block; width: 64px; height: 64px; flex-shrink: 0; object-fit: contain; }
+.report-agency-brand.logo-only img { width: 160px; max-width: 100%; }
+.report-agency-brand strong { font-size: 12px; line-height: 1.3; color: var(--report-ink); overflow-wrap: anywhere; }
+.report-agency-placeholder { display: flex; width: 128px; min-height: 48px; flex-shrink: 0; align-items: center; justify-content: center; border: 1px dashed var(--report-border); border-radius: 8px; padding: 8px; font-size: 10px; text-align: center; color: var(--report-muted); }
 .report-panel { background: var(--report-paper); border: 1px solid var(--report-border); border-radius: 10px; padding: 18px; min-width: 0; }
 .report-panel + .report-panel { margin-top: 20px; }
 .report-panel-heading { margin-bottom: 18px; }
@@ -22,9 +29,13 @@
 .report-caption, .report-empty { color: var(--report-muted); font-size: 10px; line-height: 1.5; margin: 14px 0 0; }
 .report-empty { padding: 16px 0; }
 .report-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.report-kpis > div { border-left: 3px solid var(--report-blue); background: var(--report-wash); padding: 13px 14px; min-width: 0; }
-.report-kpis span { display: block; font-size: 10px; color: var(--report-muted); }
-.report-kpis strong { display: block; font-size: 24px; line-height: 1.2; margin-top: 7px; font-weight: 800; overflow-wrap: anywhere; }
+.report-kpis > .report-kpi { border: 1px solid var(--report-border); border-radius: 10px; background: linear-gradient(135deg, var(--report-paper), var(--report-wash)); padding: 14px 16px; min-width: 0; box-shadow: 0 3px 10px #16233805; }
+.report-kpi-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 24px; }
+.report-kpi-heading span { display: block; font-size: 11px; font-weight: 500; color: var(--report-muted); }
+.report-kpi-heading svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--report-blue); stroke-width: 1.6; }
+.report-kpis strong { display: block; font-size: 27px; line-height: 1.15; letter-spacing: -.035em; margin-top: 9px; font-weight: 750; overflow-wrap: anywhere; }
+.report-kpis > .report-kpi-primary { border-color: #93b8f6; background: #edf4ff; }
+.report-kpi-primary strong { color: #1d4ed8; }
 .report-summary-reading { padding: 20px 0 22px; }
 .report-summary-reading p { margin: 8px 0 0; white-space: pre-wrap; }
 .report-summary-reading small { display: block; color: var(--report-muted); margin-top: 6px; font-size: 9px; }
@@ -66,28 +77,32 @@
 .report-editorial tr:last-child td { border-bottom: 0; }
 .report-editorial th:first-child, .report-editorial td:first-child { text-align: left; }
 .report-ad-cards { list-style: none; padding: 0; margin: 0; }
-.report-ad-card { display: grid; grid-template-columns: 196px minmax(0, 1fr); gap: 22px; align-items: center; padding: 16px 0; border-top: 1px solid var(--report-border); }
+.report-ad-card { display: grid; grid-template-columns: 168px minmax(0, 1fr) 100px; gap: 18px; align-items: center; padding: 16px 0; border-top: 1px solid var(--report-border); }
 .report-ad-card:first-child { border-top: 0; padding-top: 0; }
 .report-ad-card:last-child { padding-bottom: 0; }
-.report-ad-media { display: flex; align-items: center; justify-content: center; height: 184px; background: var(--report-wash); border: 1px solid var(--report-border); border-radius: 8px; overflow: hidden; }
-.report-ad-media img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.report-ad-media { position: relative; display: flex; align-items: center; justify-content: center; height: 210px; background: var(--report-wash); border: 1px solid var(--report-border); border-radius: 8px; overflow: hidden; }
+.report-ad-media img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 33%; }
 .report-ad-noimage { padding: 14px; font-size: 12px; text-align: center; color: var(--report-muted); }
 .report-ad-content { min-width: 0; }
 .report-ad-heading { display: flex; gap: 10px; align-items: baseline; }
 .report-ad-rank { font-size: 12px; font-weight: 750; color: var(--report-blue); flex-shrink: 0; }
 .report-editorial .report-ad-heading h4 { font-size: 14px; margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
-.report-ad-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0 0; }
+.report-ad-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 12px 0 0; border: 1px solid var(--report-border); border-radius: 8px; background: var(--report-wash); overflow: hidden; }
 .report-ad-metrics.is-ecommerce { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.report-ad-metrics > div { min-width: 0; }
-.report-ad-metrics dt { font-size: 12px; color: var(--report-muted); margin-bottom: 5px; }
-.report-ad-metrics dd { margin: 0; font-size: 22px; font-weight: 750; line-height: 1.2; overflow-wrap: anywhere; }
+.report-ad-metrics > div { min-width: 0; padding: 9px 10px; }
+.report-ad-metrics > div + div { border-left: 1px solid var(--report-border); }
+.report-ad-metrics dt { display: flex; align-items: center; min-height: 2.6em; font-size: 10px; line-height: 1.3; color: var(--report-muted); margin-bottom: 4px; }
+.report-ad-metrics dd { margin: 0; font-size: 20px; font-weight: 750; line-height: 1.2; letter-spacing: -.02em; overflow-wrap: anywhere; }
 .report-ad-result dd { color: var(--report-blue); }
-.report-ad-traffic { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding-top: 10px; margin: 12px 0 0; border-top: 1px solid var(--report-border); }
-.report-ad-traffic > div { min-width: 0; }
-.report-ad-traffic dt { font-size: 12px; color: var(--report-muted); }
-.report-ad-traffic dd { font-size: 15px; font-weight: 650; margin: 4px 0 0; overflow-wrap: anywhere; }
+.report-ad-traffic { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; row-gap: 0; padding: 0; margin: 8px 0 0; }
+.report-ad-traffic > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; padding: 5px 0; border-bottom: 1px solid var(--report-border); }
+.report-ad-traffic dt { font-size: 10px; line-height: 1.3; color: var(--report-muted); }
+.report-ad-traffic dd { font-size: 12px; line-height: 1.3; font-weight: 650; margin: 0; text-align: right; overflow-wrap: anywhere; }
 .report-ad-status { font-size: 12px; color: #92400e; margin: 12px 0 0; }
-.report-ad-preview { display: inline-block; font-size: 12px; color: var(--report-blue); margin-top: 12px; }
+.report-ad-preview { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; justify-self: end; width: 100px; min-height: 44px; gap: 6px; font-size: 12px; line-height: 1.4; text-align: center; font-weight: 650; color: var(--report-blue); background: var(--report-paper); border: 1px solid var(--report-blue); border-radius: 6px; padding: 10px 8px; text-decoration: none; }
+.report-ad-preview svg { width: 14px; height: 14px; flex-shrink: 0; }
+.report-ad-preview:hover, .report-ad-preview:focus-visible { outline: 2px solid var(--report-blue); outline-offset: 2px; }
+.report-ad-preview.is-unavailable { color: var(--report-muted); border-color: var(--report-border); font-weight: 400; }
 .report-audience-grid, .report-geography-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px; }
 .report-editorial h4 { font-size: 11px; font-weight: 700; margin: 0 0 12px; }
 .report-audience-rows > div { display: grid; grid-template-columns: 45px minmax(0, 1fr) 75px; gap: 8px; align-items: center; margin-bottom: 12px; font-size: 10px; }
@@ -117,14 +132,24 @@
 .report-funnel-rates span { display: block; font-size: 10px; color: var(--report-muted); }
 .report-funnel-rates strong { display: block; font-size: 18px; color: #059669; margin-top: 4px; }
 .report-funnel-frequency { font-size: 10px; color: var(--report-muted); margin: 12px 0 0; }
+.report-funnel-guide { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--report-border); }
+.report-funnel-guide h4 { margin: 0 0 10px; font-size: 11px; font-weight: 700; color: var(--report-ink); }
+.report-funnel-guide ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.report-funnel-guide li { display: flex; align-items: flex-start; gap: 8px; }
+.report-funnel-step-number { flex: 0 0 17px; height: 17px; border-radius: 50%; color: #fff; text-align: center; line-height: 17px; font-size: 10px; font-weight: 700; }
+.report-funnel-guide p { margin: 0; font-size: 10px; line-height: 1.45; color: var(--report-muted); }
+.report-funnel-guide strong { color: var(--report-ink); font-weight: 650; }
 .report-donut-svg { display: block; width: 140px; max-width: 100%; flex-shrink: 0; }
-.report-placement-donut { display: flex; align-items: center; gap: 14px; margin: -6px 0 16px; }
-.report-placement-donut strong { font-size: 12px; }
-.report-placement-donut .report-donut-svg { width: 120px; }
-.report-gender-chart { display: flex; align-items: center; gap: 14px; }
-.report-gender-chart .report-ranking-rows { flex: 1; min-width: 0; }
+.report-placement-donut { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: -6px 0 16px; }
+.report-placement-summary { flex: 1 1 110px; min-width: 0; display: flex; flex-direction: column; gap: 3px; overflow-wrap: anywhere; }
+.report-placement-summary > span { font-size: 11px; color: var(--report-muted); }
+.report-placement-summary > strong { font-size: 24px; line-height: 1.2; }
+.report-placement-summary > .report-placement-name { font-size: 12px; font-weight: 600; color: var(--report-ink); }
+.report-placement-donut .report-donut-svg { width: 150px; }
+.report-gender-chart { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.report-gender-chart .report-ranking-rows { flex: 1 1 120px; min-width: 0; }
 .report-gender-chart .report-ranking-rows li > div { font-size: 10px; gap: 8px; }
-.report-gender-chart .report-donut-svg { width: 120px; }
+.report-gender-chart .report-donut-svg { width: 160px; }
 .report-legend-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
 .report-map-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
 .report-map-grid figure { min-width: 0; margin: 0; padding: 14px; border: 1px solid var(--report-border); border-radius: 8px; }
@@ -147,6 +172,12 @@
 .report-geo-details { margin-top: 15px; }
 .report-geo-details summary { cursor: pointer; color: var(--report-blue); font-size: 11px; }
 .report-geo-details .report-geography-grid { margin-top: 15px; }
+.report-region-list { margin-top: 22px; }
+.report-editorial .report-region-list h4 { margin-bottom: 5px; font-size: 13px; }
+.report-region-list > .report-caption { margin: 0 0 10px; }
+.report-region-country { color: var(--report-muted); font-size: .9em; }
+.report-geography .report-region-table th:first-child { width: 50%; }
+.report-region-table tbody tr:nth-child(even) { background: var(--report-wash); }
 .report-timeline .report-panel-heading h3 { display: flex; align-items: center; gap: 8px; }
 .report-timeline-path { padding: 0 10px; }
 .report-timeline-row { position: relative; display: flex; gap: 24px; padding: 0 16px; margin-bottom: 18px; }
@@ -164,11 +195,13 @@
 .report-timeline-meta span { display: flex; gap: 4px; align-items: center; }
 .report-timeline-card h4 { margin-bottom: 5px; font-size: 11px; }
 .report-timeline-card p { font-size: 11px; line-height: 1.55; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.report-timeline-source { margin: 0 0 16px; }
+.report-timeline-actor { display: block; margin-top: 8px; font-size: 9px; color: var(--report-muted); overflow-wrap: anywhere; }
 @media screen and (max-width: 640px) {
   .report-map-grid { grid-template-columns: 1fr; }
   .report-map-grid figure:only-child { width: 100%; }
   .report-ad-card { grid-template-columns: 1fr; gap: 14px; }
-  .report-ad-media { height: 240px; }
+  .report-ad-media { width: min(100%, 224px); height: auto; aspect-ratio: 4 / 5; justify-self: center; }
   .report-ad-metrics.is-ecommerce { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .report-ad-traffic { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .report-timeline-row, .report-timeline-row.is-reversed { flex-direction: column; gap: 12px; padding: 0 0 0 16px; border-left: 2px solid #93b5e9; margin-bottom: 12px; }
@@ -180,6 +213,8 @@
 @media screen {
   .report-editorial-dark { --report-ink: #e2e8f0; --report-muted: #94a3b8; --report-border: #30384a; --report-paper: #151824; --report-wash: #202636; --report-blue: #60a5fa; }
   .report-editorial-dark .report-step-rate strong { color: #34d399; }
+  .report-editorial-dark .report-kpi-primary { border-color: #385b91; background: #1c2c47; }
+  .report-editorial-dark .report-kpi-primary strong { color: #93c5fd; }
 }
 @media screen and (max-width: 800px) {
   .report-editorial .report-sheet { padding: 20px; }
@@ -200,11 +235,20 @@
   .report-funnel-rates { margin-top: 3mm; padding-top: 3mm; gap: 3mm; }
   .report-funnel-rates span, .report-funnel-frequency { font-size: 8px; }
   .report-funnel-rates strong { font-size: 14px; }
+  .report-funnel-guide { margin-top: 3mm; padding-top: 2.5mm; }
+  .report-funnel-guide h4 { font-size: 9px; margin-bottom: 2mm; }
+  .report-funnel-guide ol { gap: 1.5mm; }
+  .report-funnel-guide li { gap: 1.5mm; }
+  .report-funnel-step-number { flex-basis: 13px; height: 13px; line-height: 13px; font-size: 8px; }
+  .report-funnel-guide p { font-size: 8.5px; line-height: 1.4; }
   .report-placement-donut { margin-bottom: 3mm; gap: 3mm; }
-  .report-placement-donut .report-donut-svg { width: 25mm; }
-  .report-placement-donut strong { font-size: 9px; }
+  .report-placement-donut .report-donut-svg { width: 32mm; }
+  .report-placement-summary { flex-basis: 25mm; gap: 1mm; }
+  .report-placement-summary > span { font-size: 9px; }
+  .report-placement-summary > strong { font-size: 18px; }
+  .report-placement-summary > .report-placement-name { font-size: 10px; }
   .report-gender-chart { gap: 3mm; }
-  .report-gender-chart .report-donut-svg { width: 25mm; }
+  .report-gender-chart .report-donut-svg { width: 34mm; }
   .report-gender-chart .report-ranking-rows li > div { font-size: 8px; }
   .report-map-grid { gap: 4mm; }
   .report-map-grid figure { padding: 2.5mm; break-inside: avoid; }
@@ -224,6 +268,7 @@
   .report-timeline-card { padding: 3mm; }
   .report-timeline-card h4 { font-size: 9px; margin-bottom: 1.5mm; }
   .report-timeline-card p { font-size: 9px; }
+  .report-timeline-actor { font-size: 8px; margin-top: 2mm; }
   .report-timeline-meta { font-size: 8px; }
   .report-timeline-meta time { font-size: 10px; }
   @page reportMonthly {
@@ -242,8 +287,16 @@
   .report-client img { width: 10mm; height: 10mm; }
   .report-period strong { font-size: 11px; }
   .report-period span { font-size: 8px; }
+  .report-agency-brand { width: 44mm; gap: 2mm; }
+  .report-agency-brand img { width: 16mm; height: 16mm; }
+  .report-agency-brand.logo-only img { width: 40mm; }
+  .report-agency-name { gap: 1mm; }
+  .report-agency-name > span { font-size: 6.5px; }
+  .report-agency-brand strong { font-size: 10px; }
   .report-kpis { gap: 3mm; break-inside: avoid; }
-  .report-kpis > div { padding: 3mm; }
+  .report-kpis > .report-kpi { padding: 2.5mm 3mm; border-radius: 2.5mm; box-shadow: none; }
+  .report-kpi-heading { min-height: 5mm; gap: 1.5mm; }
+  .report-kpi-heading svg { width: 3.5mm; height: 3.5mm; }
   .report-kpis strong { font-size: 20px; }
   .report-kpis span { font-size: 9px; }
   .report-summary-reading { padding: 5mm 0; }
@@ -268,30 +321,42 @@
   .report-reading-guide p { font-size: 9px; }
   .report-reading-guide > div { gap: 4mm; }
   .report-daily-notes, .report-data-note { font-size: 8.5px; }
-  .report-daily-svg { max-height: 72mm; }
   .report-table-scroll { overflow: visible; }
   .report-editorial table { font-size: 10px; }
   .report-editorial th { font-size: 8px; }
   .report-editorial td { padding: 7px 5px; }
   .report-editorial tr { break-inside: avoid; }
   .report-editorial thead { display: table-header-group; }
-  .report-ad-card { grid-template-columns: 48mm minmax(0, 1fr); gap: 5mm; padding: 2.5mm 0; break-inside: avoid; page-break-inside: avoid; }
-  .report-ad-media { height: 36mm; border-radius: 2mm; }
+  .report-ad-card { grid-template-columns: 32mm minmax(0, 1fr) 22mm; gap: 4mm; padding: 1mm 0; break-inside: avoid; page-break-inside: avoid; }
+  .report-ad-media { height: 40mm; border-radius: 2mm; }
+  .report-ad-preview { width: 22mm; min-height: 14mm; font-size: 9px; padding: 2mm; gap: 1mm; border-radius: 1.5mm; break-inside: avoid; }
+  .report-ad-preview svg { width: 10px; height: 10px; }
+  .report-ad-preview::after { content: none !important; }
   .report-ad-rank { font-size: 10px; }
-  .report-editorial .report-ad-heading h4 { font-size: 11px; }
-  .report-ad-metrics { margin-top: 2.5mm; gap: 3mm; }
-  .report-ad-metrics dt { font-size: 9px; margin-bottom: 1.5mm; }
-  .report-ad-metrics dd { font-size: 17px; }
-  .report-ad-metrics.is-ecommerce dd { font-size: 15px; }
-  .report-ad-traffic { margin-top: 2mm; padding-top: 1.5mm; gap: 3mm; }
-  .report-ad-traffic dt { font-size: 8.5px; }
-  .report-ad-traffic dd { font-size: 11px; margin-top: 1mm; }
-  .report-ad-status { margin-top: 2mm; font-size: 9px; }
+  .report-editorial .report-ad-heading h4 { font-size: 11px; line-height: 1.3; }
+  .report-ad-metrics { margin-top: 2mm; gap: 0; border-radius: 1.5mm; }
+  .report-ad-metrics > div { padding: 1.5mm 2mm; }
+  .report-ad-metrics dt { font-size: 8px; margin-bottom: .8mm; }
+  .report-ad-metrics dd { font-size: 15px; }
+  .report-ad-metrics.is-ecommerce dd { font-size: 13px; }
+  .report-ad-traffic { margin-top: 1mm; padding-top: 0; column-gap: 4mm; row-gap: 0; }
+  .report-ad-traffic > div { padding: 1mm 0; gap: 2mm; }
+  .report-ad-traffic dt { font-size: 8px; }
+  .report-ad-traffic dd { font-size: 10px; margin: 0; }
+  .report-ad-status { margin-top: 1.5mm; font-size: 9px; }
   .report-ad-cards > li:last-child { break-after: avoid; }
   .report-audience-grid, .report-geography-grid { gap: 5mm; }
   .report-editorial h4 { font-size: 10px; margin-bottom: 3mm; }
   .report-audience-rows > div { grid-template-columns: 34px minmax(0, 1fr) 64px; gap: 5px; font-size: 9px; margin-bottom: 3mm; }
   .report-geography th, .report-geography td { font-size: 8.5px; padding: 5px 3px; }
+  .report-region-list { margin-top: 5mm; break-inside: auto; }
+  .report-editorial .report-region-list h4 { font-size: 10px; break-after: avoid; }
+  .report-region-list > .report-caption { break-after: avoid; margin-bottom: 2mm; }
+  .report-region-table { break-inside: auto; }
+  .report-region-table thead { display: table-header-group; }
+  .report-region-table tbody { break-inside: auto; }
+  .report-region-table tr { break-inside: avoid; }
+  .report-geography .report-region-table th, .report-geography .report-region-table td { font-size: 9.5px; padding: 4px 3px; }
   .report-next-list > div, .report-management li { font-size: 9px; padding: 6px 0; }
   .report-next-list > div { grid-template-columns: 120px minmax(0, 1fr); }
   .report-management, .report-next-steps, .report-assets-gallery, .report-editorial .report-geography { break-inside: auto; }

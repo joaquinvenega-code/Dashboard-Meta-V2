@@ -17,8 +17,10 @@ import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale';
 
 import { MonthlyReportDocument } from './reports/MonthlyReportDocument';
+import { ReportBrandSettings, AgencyBrandSettings } from './reports/ReportBrandSettings';
 import './reports/report-editorial.css';
 import { collectReportLogs, ReportLog } from './reports/reportLogs';
+import { useMetaActivity } from './reports/useMetaActivity';
 import { aggregateDemographics, aggregateGeography, aggregatePlacements, completeDailySeries, reportPeriodMetrics, ReportMetrics, PlacementBasis, ReportMode, REPORT_MODES } from './reports/reportData';
 import { fetchAccountDailyPerformance, fetchReportPeriodTotals, fetchDemographics, fetchGeography, fetchTopAds, fetchPlacements } from '../services/facebook';
 
@@ -27,11 +29,13 @@ interface ReportsSectionProps {
   visibleAccountIds: string[];
   settings: Record<string, AccountSettings>;
   notes: AccountNote[];
+  agencySettings?: AgencyBrandSettings;
+  onAgencySettingsChange?: (value: AgencyBrandSettings) => void;
   setDateRange?: (range: { since: string; until: string }) => void;
   onGeneratingChange?: (generating: boolean) => void;
 }
 
-export function ReportsSection({ accounts, visibleAccountIds, settings, notes, setDateRange, onGeneratingChange }: ReportsSectionProps) {
+export function ReportsSection({ accounts, visibleAccountIds, settings, notes, setDateRange, onGeneratingChange, agencySettings, onAgencySettingsChange }: ReportsSectionProps) {
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [reportMonth, setReportMonth] = useState<string>(format(subMonths(new Date(), 1), 'yyyy-MM'));
   const [reportType, setReportType] = useState<ReportMode>('ecommerce');
@@ -40,7 +44,10 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
   const [isEditing, setIsEditing] = useState(true);
   const [bitacora, setBitacora] = useState<ReportLog[]>([]);
   const [bitacoraNotice, setBitacoraNotice] = useState('');
-  const [loadingBitacora, setLoadingBitacora] = useState(false);
+  const [loadingNotes, setLoadingBitacora] = useState(false);
+  const metaActivity = useMetaActivity(selectedAccountId ? [selectedAccountId] : [], reportMonth + '-01', format(endOfMonth(parseISO(reportMonth + '-01')), 'yyyy-MM-dd'), isReportGenerated);
+  const loadingBitacora = loadingNotes || metaActivity.loading;
+  const combinedBitacora = useMemo(() => [...bitacora, ...metaActivity.logs].sort((a, b) => (a.sortDate || '').localeCompare(b.sortDate || '') || a.id.localeCompare(b.id)), [bitacora, metaActivity.logs]);
 
   // Estados reales
   const [realMetrics, setRealMetrics] = useState<ReportMetrics>({
@@ -479,17 +486,23 @@ export function ReportsSection({ accounts, visibleAccountIds, settings, notes, s
         </div>
       </div>
 
+      {agencySettings && onAgencySettingsChange && <ReportBrandSettings value={agencySettings} onChange={onAgencySettingsChange} />}
+      <div className="print:hidden flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-400">
+        <p>Bitácora: notas de la agencia y {metaActivity.logs.length} registros de Meta Ads. Los eventos automáticos se consultan en Detalle de cuentas.</p>
+        <button type="button" onClick={metaActivity.refresh} disabled={loadingBitacora} className="rounded-md border border-blue-500/30 px-3 py-2 text-blue-300 disabled:opacity-50">Actualizar actividad de Meta</button>
+      </div>
       <div className="relative">
         {(loadingRealData || loadingBitacora) && <div className="print:hidden absolute inset-0 z-50 bg-white/80 flex items-start justify-center pt-16"><div className="bg-slate-900 text-white px-6 py-4 rounded-xl flex items-center gap-3"><Loader2 className="w-5 h-5 animate-spin" />Actualizando informe...</div></div>}
         <MonthlyReportDocument
           name={settings[selectedAccountId]?.customName || selectedAccount.name}
           logo={settings[selectedAccountId]?.customLogo}
+          agencyName={agencySettings?.agencyName} agencyLogo={agencySettings?.logoUrl}
           month={reportMonth} mode={reportType} theme={reportTheme}
           metrics={metrics} dataAvailable={hasReportData}
           daily={dailyPerformanceData} assets={reportAssets}
           demographics={realDemographics} countries={realGeography} regions={realGeographyRegions}
           placements={realPlacements} placementBasis={placementBasis}
-          texts={reportTexts} onUpdate={updateReportText} isEditing={isEditing} logs={bitacora} logsNotice={bitacoraNotice}
+          texts={reportTexts} onUpdate={updateReportText} isEditing={isEditing} logs={combinedBitacora} logsNotice={[bitacoraNotice, metaActivity.notice].filter(Boolean).join(' ')}
         />
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { format, isValid, parseISO } from 'date-fns';
 import type { AccountNote } from '../../types';
 
-export interface ReportLog { id: string; date: string; description: string; category?: string; source?: string; sortDate?: string }
+export interface ReportLog { id: string; date: string; description: string; category?: string; source?: string; sortDate?: string; actor?: string }
 const accountKey = (value: unknown) => String(value || '').replace(/^act_/, '');
 const cleanText = (text: string) => text.trim().replace(/\s+/g, ' ');
 function fullDate(value: unknown): string | undefined {

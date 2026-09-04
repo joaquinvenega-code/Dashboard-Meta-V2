@@ -15,12 +15,22 @@ export function GeographicSummary({ countries, regions, mode, currency, expected
     <header className="report-panel-heading"><h3>Distribución geográfica</h3><p>{countries.length} {countries.length === 1 ? 'país' : 'países'} y {regions.length} {regions.length === 1 ? 'región' : 'regiones'} con datos disponibles.</p></header>
     {countries.length ? <>
       <ReportActivityMap countries={countries} regions={regions} mode={mode} currency={currency} />
-      <details className="report-screen-only report-geo-details"><summary>Ver cifras por país y región</summary><div className="report-geography-grid">
+      <details className="report-screen-only report-geo-details"><summary>Ver cifras por país</summary><div>
         <div><h4>Por país</h4><table><thead><tr><th>País</th><th>{label}</th><th>Inversión</th></tr></thead><tbody>{rankedCountries.map(row => <tr key={row.countryId}><td>{countryLabel(row.countryId)}</td><td>{formatDecimal(row[key], 0)}</td><td>{formatCurrency(row.spend, currency)}</td></tr>)}</tbody></table></div>
-        <div><h4>Todas las regiones</h4>{rankedRegions.length ? <table><thead><tr><th>Región</th><th>{label}</th><th>Inversión</th></tr></thead><tbody>{rankedRegions.map(row => <tr key={row.regionId}><td>{row.regionName}</td><td>{formatDecimal(row[key], 0)}</td><td>{formatCurrency(row.spend, currency)}</td></tr>)}</tbody></table> : <p className="report-empty">Sin detalle regional disponible.</p>}</div>
       </div></details>
       {mismatch && <p className="report-data-note"><strong>Diferencia a revisar:</strong> el desglose geográfico suma {formatDecimal(total, 0)} {label.toLowerCase()} y el total del informe es {formatDecimal(expectedResults, 0)}. Se conservan ambas consultas de Meta sin ajustar cifras ni sumarlas entre sí.</p>}
       {spendOnly && <p className="report-caption">No hay resultados geográficos registrados. El orden se basa en inversión; no se estiman conversiones a partir del gasto.</p>}
+      <div className="report-region-list">
+        <h4>Detalle completo por región</h4>
+        <p className="report-caption">Todas las zonas disponibles, ordenadas por {spendOnly ? 'inversión' : label.toLowerCase()}. Meta entrega este desglose por región, no por ciudad.</p>
+        {rankedRegions.length ? <table aria-label="Detalle completo por región" className="report-region-table">
+          <thead><tr><th scope="col">Región / país</th><th scope="col">{label}</th><th scope="col">Inversión</th></tr></thead>
+          <tbody>{rankedRegions.map(row => <tr key={row.regionId}>
+            <td>{row.regionName}{row.countryId && !row.regionName.includes(' · ') && <span className="report-region-country">{' · ' + countryLabel(row.countryId)}</span>}</td>
+            <td>{formatDecimal(row[key] || 0, 0)}</td><td>{formatCurrency(row.spend, currency)}</td>
+          </tr>)}</tbody>
+        </table> : <p className="report-empty">Sin detalle regional disponible.</p>}
+      </div>
     </> : <p className="report-empty">No hay desglose geográfico disponible para este período.</p>}
   </section>;
 }

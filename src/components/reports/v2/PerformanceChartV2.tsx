@@ -26,7 +26,7 @@ export function PerformanceChartV2({ data, currency, mode = 'ecommerce', expecte
   const total = upper.reduce<number>((sum, value) => sum + (value || 0), 0);
   const discrepancy = expectedResults != null && Math.abs(total - expectedResults) > 0.01;
   const reported = data.filter(row => row[upperKey] != null).length;
-  const left = 62, right = 664, panelHeight = 88;
+  const left = 58, right = 680, panelHeight = 88;
   const x = (index: number) => left + (right - left) * (index + 0.5) / Math.max(1, data.length);
   const y = (value: number, top: number, max: number) => top + panelHeight - value / max * panelHeight;
   const tickIndexes = data.map((_, index) => index).filter(index => index === 0 || index === data.length - 1 || index % Math.max(1, Math.ceil(data.length / 9)) === 0);

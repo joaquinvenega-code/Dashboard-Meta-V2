@@ -29,7 +29,9 @@ const props: MonthlyReportDocumentProps = {
   logs: variant === 'empty' ? [] : Array.from({length:variant === 'long' ? 19 : 7},(_,index)=>({id:String(index),date:String(index + 1).padStart(2,'0')+'/08',source:index % 2 ? 'Manual' : 'Voz',category:['observation','change','testing'][index%3],description:variant === 'long' ? ('Registro ' + (index+1) + '. Texto extenso para comprobar que la anotación se conserva íntegra sin recortes. ').repeat(4) : ['Se revisó la calidad de las conversaciones y se registraron las consultas más frecuentes.','Se ajustó la distribución del presupuesto entre campañas activas.','Se preparó una prueba de nuevos creativos para el público de remarketing.','Se revisaron las ubicaciones con menor volumen de consultas.','Se incorporaron los comentarios del cliente sobre la calidad de los contactos.','Se verificó el seguimiento de conversiones y las métricas del período.','Se documentaron los aprendizajes y las acciones propuestas para el siguiente mes.'][index]})),
   isEditing:false, onUpdate:()=>undefined,
 };
-props.assets = props.assets.map((ad,index) => ({...ad,traffic:adTrafficMetrics({spend:ad.spend,clicks:[356,89,74,0,2][index],impressions:variant === 'long' && index === 0 ? 12500000 : [24830,9812,7540,5310,119][index]})}));
+// Synthetic, non-requested URLs exercise PDF link annotations; the last ad
+// covers the unavailable-link state. No live ad links or credentials are used.
+props.assets = props.assets.map((ad,index) => ({...ad,shareablePreviewUrl:index < 4 ? `https://fb.me/adspreview/qa-${index}` : undefined,traffic:adTrafficMetrics({spend:ad.spend,clicks:[356,89,74,0,2][index],impressions:variant === 'long' && index === 0 ? 12500000 : [24830,9812,7540,5310,119][index]})}));
 // All subdivisions, including explicit zeroes, exercise boundary contrast.
 const counts: Record<string, number> = {'AR-B':22,'AR-C':7,'AR-M':5,'AR-X':5,'AR-S':4,'AR-T':2,'AR-A':2,'AR-Y':1,'AR-U':1,'AR-H':1,'AR-Q':1,'PE-LIM':8,'PE-LMA':2,'PE-ARE':1};
 props.regions = [...regionsARG.features, ...regionsPER.features, {id:'AR-C',properties:{name:'Ciudad Autónoma de Buenos Aires',country:'ARG'}}].map(feature => ({countryId:feature.properties.country === 'ARG' ? 'AR' : 'PE',regionId:feature.id,regionName:feature.properties.name,messages:counts[feature.id] || 0,purchases:counts[feature.id] || 0,revenue:0,spend:(counts[feature.id] || 0)*500}));
@@ -53,6 +55,10 @@ if (variant.startsWith('leads')) {
   if (!zero) props.placements = props.placements.map((row,index)=>({...row,rawValue:[20,15,7,1][index],value:[20,15,7,1][index]/43*100}));
   props.texts = {learnings:'Comparar la calidad de los clientes potenciales por anuncio antes de decidir cambios de inversión.',actionPlan:'Revisar con el cliente cuántos leads avanzaron a una conversación comercial.'};
   props.logs = props.logs.map(log=>({...log,description:log.description.replace('conversaciones','clientes potenciales')}));
+}
+if (process.argv.includes('--brand')) {
+  props.agencyName = 'Agencia de muestra';
+  props.agencyLogo = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 40"><path fill="#2563eb" d="M4 36 20 4 36 36H25L20 23 15 36Z"/><text x="45" y="28" font-family="Arial" font-size="24" font-weight="700" fill="#162338">AGENCIA</text></svg>');
 }
 const css = fs.readdirSync('dist/assets').filter(name=>name.endsWith('.css')).map(name=>fs.readFileSync(path.join('dist/assets',name),'utf8')).join('\n');
 const html = '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Muestra de QA · Datos sintéticos</title><style>' + css + '</style></head><body><div id="root"><div class="min-h-screen flex"><aside class="print:hidden">App</aside><main class="p-10"><div class="mx-auto max-w-7xl space-y-10"><div class="print:hidden">Toolbar</div><div><div class="monthly-report-print-root space-y-6 pb-20"><div class="print:hidden">Exportar</div><div class="relative">' + renderToStaticMarkup(<MonthlyReportDocument {...props}/>) + '</div></div></div></div></main><div style="position:fixed;bottom:0">Asistente fuera del informe</div></div></div></body></html>';

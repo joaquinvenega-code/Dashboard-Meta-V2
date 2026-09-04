@@ -28,6 +28,7 @@ import {
 import { Sidebar } from './components/Sidebar';
 import { IndividualReport } from './components/IndividualReport';
 import { Overview } from './components/Overview';
+import { DashboardDateFilter } from './components/DashboardDateFilter';
 import { AccountDetailView, RocketLoader } from './components/AccountDetailView';
 import { StrategyCanvas } from './components/StrategyCanvas';
 import { AlertsSection } from './components/AlertsSection';
@@ -41,7 +42,6 @@ import {
   AlertCircle, 
   Facebook, 
   Settings2,
-  Calendar,
   LayoutDashboard,
   BarChart3,
   Settings,
@@ -59,7 +59,7 @@ import {
   Play
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { format, parseISO, subDays, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
+import { format, parseISO, startOfMonth, differenceInDays } from 'date-fns';
 import {
   DndContext, 
   closestCenter,
@@ -177,13 +177,6 @@ export default function App() {
     until: format(new Date(), 'yyyy-MM-dd')
   });
   const [isCustomDate, setIsCustomDate] = useState(false);
-  const [tempSince, setTempSince] = useState(dateRange.since);
-  const [tempUntil, setTempUntil] = useState(dateRange.until);
-
-  const now = new Date();
-  const todayStr = format(now, 'yyyy-MM-dd');
-  const yesterdayStr = format(subDays(now, 1), 'yyyy-MM-dd');
-
   const periodKey = format(parseISO(dateRange.since), 'yyyy-MM');
 
   const [settings, setSettings] = useState<Record<string, AccountSettings>>(() => {
@@ -1192,78 +1185,7 @@ export default function App() {
             </div>
 
             {activePage === 'overview' && (
-              <div className="flex h-9 items-center gap-1.5 rounded-lg border border-white/[0.07] bg-[#12161d] px-3 transition-colors">
-                <Calendar className="ml-0.5 h-3.5 w-3.5 text-neutral-500" />
-                <select 
-                  value={isCustomDate ? 'custom' : (
-                    dateRange.since === todayStr && dateRange.until === todayStr ? 'today' : (
-                      dateRange.since === yesterdayStr && dateRange.until === yesterdayStr ? 'yesterday' : (
-                        dateRange.since === format(startOfMonth(new Date()), 'yyyy-MM-dd') && dateRange.until === format(new Date(), 'yyyy-MM-dd') ? 'this_month' : (
-                          dateRange.since === format(subDays(new Date(), 7), 'yyyy-MM-dd') ? 'last_7' : (
-                            dateRange.since === format(subDays(new Date(), 30), 'yyyy-MM-dd') ? 'last_30' : 'custom'
-                          )
-                        )
-                      )
-                    )
-                  )}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const currentNow = new Date();
-                    if (val === 'custom') {
-                      setIsCustomDate(true);
-                      setTempSince(dateRange.since);
-                      setTempUntil(dateRange.until);
-                    } else {
-                      setIsCustomDate(false);
-                      if (val === 'today') {
-                        setDateRange({ since: todayStr, until: todayStr });
-                      } else if (val === 'yesterday') {
-                        setDateRange({ since: yesterdayStr, until: yesterdayStr });
-                      } else if (val === 'this_month') {
-                        setDateRange({ since: format(startOfMonth(currentNow), 'yyyy-MM-dd'), until: format(currentNow, 'yyyy-MM-dd') });
-                      } else if (val === 'last_7') {
-                        setDateRange({ since: format(subDays(currentNow, 7), 'yyyy-MM-dd'), until: format(currentNow, 'yyyy-MM-dd') });
-                      } else if (val === 'last_30') {
-                        setDateRange({ since: format(subDays(currentNow, 30), 'yyyy-MM-dd'), until: format(currentNow, 'yyyy-MM-dd') });
-                      }
-                    }
-                  }}
-                  className="cursor-pointer border-none bg-transparent py-0.5 pr-1 text-xs font-medium text-neutral-300 outline-none focus:text-white"
-                >
-                  <option value="today" className="bg-[#12161d] text-neutral-200">Hoy</option>
-                  <option value="yesterday" className="bg-[#12161d] text-neutral-200">Ayer</option>
-                  <option value="this_month" className="bg-[#12161d] text-neutral-200">Este mes</option>
-                  <option value="last_7" className="bg-[#12161d] text-neutral-200">Últimos 7 días</option>
-                  <option value="last_30" className="bg-[#12161d] text-neutral-200">Últimos 30 días</option>
-                  <option value="custom" className="bg-[#12161d] text-neutral-200">Personalizado</option>
-                </select>
-
-                {isCustomDate && (
-                  <div className="flex items-center gap-1.5 pl-1.5 border-l border-white/5 animate-in slide-in-from-right-1 duration-300">
-                    <input 
-                      type="date" 
-                      value={tempSince}
-                      onChange={(e) => setTempSince(e.target.value)}
-                      className="bg-transparent text-[9px] font-bold text-neutral-300 outline-none w-[95px] py-0.5"
-                    />
-                    <span className="text-[9px] text-neutral-600 font-bold uppercase">a</span>
-                    <input 
-                      type="date" 
-                      value={tempUntil}
-                      onChange={(e) => setTempUntil(e.target.value)}
-                      className="bg-transparent text-[9px] font-bold text-neutral-300 outline-none w-[95px] py-0.5"
-                    />
-                    <button
-                      onClick={() => {
-                        setDateRange({ since: tempSince, until: tempUntil });
-                      }}
-                      className="bg-blue-600/25 hover:bg-blue-600/40 text-blue-400 border border-blue-500/10 text-[9px] font-black px-2 py-0.5 rounded transition-all uppercase tracking-wider"
-                    >
-                      Aplicar
-                    </button>
-                  </div>
-                )}
-              </div>
+              <DashboardDateFilter value={dateRange} onChange={range => { setDateRange(range); setIsCustomDate(false); }} />
             )}
           </div>
 
@@ -1677,6 +1599,8 @@ export default function App() {
               {activePage === 'reports' && (
                 <div className="animate-in fade-in duration-500">
                   <ReportsSection 
+                    agencySettings={agencySettings}
+                    onAgencySettingsChange={setAgencySettings}
                     accounts={accounts} 
                     visibleAccountIds={visibleAccountIds}
                     settings={settings} 

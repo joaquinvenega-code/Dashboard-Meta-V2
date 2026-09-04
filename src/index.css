@@ -57,6 +57,9 @@
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
 
+.dashboard-date-dialog input[type="date"] { color-scheme: dark; }
+.dashboard-date-dialog input[type="date"]::-webkit-calendar-picker-indicator { filter: none; padding: 4px; opacity: 1; }
+
 .metric-card-heading {
   padding-right: 18px;
   padding-left: 18px;

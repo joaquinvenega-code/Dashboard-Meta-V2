@@ -14,9 +14,47 @@ import { MonthlyReportDocument } from './MonthlyReportDocument';
 import { AD_TRAFFIC_FIELDS, adTrafficMetrics } from '../../lib/adTraffic';
 import { formatCurrency } from '../../lib/utils';
 import { metaLeadCount } from '../../lib/metaLeads';
+import { metaMessageCount } from '../../lib/metaMessages';
+import { fetchAccountDailyPerformance, setFacebookAccessToken } from '../../services/facebook';
+import { AD_SHARE_LINK_FIELD, fetchAdShareLink, safeMetaShareLink } from '../../lib/adShareLink';
 
 test('explicit zero is not replaced by a different action metric', () => {
   assert.equal(reportAction([{ action_type: 'a', value: '0' }, { action_type: 'b', value: '8' }], 'a', 'b'), 0);
+});
+
+test('message aliases preserve zero and only fall back when the preferred event is absent', () => {
+  const preferred = 'onsite_conversion.messaging_conversation_started_7d';
+  const fallback = { action_type: 'onsite_conversion.total_messaging_connection', value: '8' };
+  assert.equal(metaMessageCount([{ action_type: preferred, value: '0' }, fallback]), 0);
+  assert.equal(metaMessageCount([fallback, { action_type: preferred, value: '3' }]), 3);
+  assert.equal(metaMessageCount([fallback]), 8);
+  assert.equal(metaMessageCount(), 0);
+});
+
+test('daily service and report breakdowns agree on messaging events with explicit zeros', async (t) => {
+  const primary = (value: string) => ({ action_type: 'onsite_conversion.messaging_conversation_started_7d', value });
+  const alternate = (value: string) => ({ action_type: 'onsite_conversion.total_messaging_connection', value });
+  const rows = [
+    { date_start: '2026-08-01', actions: [primary('0'), alternate('8')] },
+    { date_start: '2026-08-02', actions: [primary('3'), alternate('9')] },
+    { date_start: '2026-08-03', actions: [alternate('2')] },
+  ].map(row => ({ ...row, country: 'AR', region: 'Buenos Aires', publisher_platform: 'facebook', platform_position: 'feed', spend: '10' }));
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: { setTimeout, clearTimeout } });
+  setFacebookAccessToken('test-only-token');
+  t.after(() => {
+    setFacebookAccessToken(null);
+    if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+  });
+  t.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ data: rows }), { status: 200 }));
+  const daily = await fetchAccountDailyPerformance('act_test', '2026-08-01', '2026-08-31');
+  assert.deepEqual(daily.map(row => row.messages), [0, 3, 2]);
+  const period = reportPeriodMetrics({ actions: [primary('5'), alternate('19')] }, daily, 'ARS');
+  assert.equal(daily.reduce((sum, row) => sum + row.messages, 0), period.messages);
+  assert.equal(reportPeriodMetrics(null, daily, 'ARS').messages, 5);
+  assert.equal(aggregateGeography(rows).countries[0].messages, 5);
+  assert.equal(aggregatePlacements(rows, 'messaging').data[0].rawValue, 5);
 });
 test('messaging placements use messages, retain tiny shares, and handle Stories', () => {
   const rows = [{ publisher_platform: 'instagram', platform_position: 'stories', spend: '1', actions: [{ action_type: 'onsite_conversion.messaging_conversation_started_7d', value: '1' }] }, { publisher_platform: 'facebook', platform_position: 'feed', spend: '999', actions: [{ action_type: 'onsite_conversion.messaging_conversation_started_7d', value: '999' }] }];
@@ -52,6 +90,35 @@ test('zero-result creatives do not present a zero acquisition cost', () => {
 test('geographic mismatch is disclosed without normalizing source numbers', () => {
   const html = renderToStaticMarkup(<GeographicSummary countries={[{ countryId: 'PE', messages: 62, purchases: 0, revenue: 0, spend: 10 }]} regions={[]} expectedResults={58} currency="ARS" mode="messaging" />);
   assert.ok(html.includes('62')); assert.ok(html.includes('58')); assert.ok(html.includes('Diferencia a revisar')); assert.equal(countryLabel('PE'), 'Perú');
+});
+
+test('geography excludes empty countries and their regions from the entire report', () => {
+  const data = aggregateGeography([
+    { country: 'AR', region: 'Buenos Aires', spend: '100', actions: [{ action_type: 'onsite_conversion.messaging_conversation_started_7d', value: '5' }] },
+    { country: 'AR', region: 'Salta', spend: '0', actions: [] },
+    { country: 'PY', region: 'Buenos Aires', spend: '0', actions: [] },
+  ]);
+  assert.deepEqual(data.countries.map(country => country.countryId), ['AR']);
+  assert.equal(data.regions.length, 2);
+  const html = renderToStaticMarkup(<GeographicSummary {...data} expectedResults={5} currency="ARS" mode="messaging" />);
+  assert.ok(html.includes('1 país y 2 regiones'));
+  assert.ok(html.includes('Mapa regional de Argentina'));
+  assert.ok(html.includes('Salta'));
+  assert.ok(!html.includes('Paraguay'));
+  assert.equal((html.match(/class="report-country-map"/g) || []).length, 1);
+});
+
+test('geography retains unrounded spend and results even without investment', () => {
+  const data = aggregateGeography([
+    { country: 'PY', region: 'Central', spend: '0.01' },
+    { country: 'AR', spend: '0', actions: [{ action_type: 'onsite_conversion.messaging_conversation_started_7d', value: '1' }] },
+    { country: 'PE', spend: '0', actions: [{ action_type: 'purchase', value: '1' }] },
+    { country: 'BR', spend: '0', actions: [{ action_type: 'lead', value: '1' }] },
+    { country: 'UY', spend: '0', action_values: [{ action_type: 'purchase', value: '0.01' }] },
+  ]);
+  assert.deepEqual(data.countries.map(country => country.countryId), ['PY', 'AR', 'PE', 'BR', 'UY']);
+  assert.equal(data.countries[0].spend, 0.01);
+  assert.deepEqual(aggregateGeography([{ country: 'PY', region: 'Central', spend: '0' }]), { countries: [], regions: [] });
 });
 
 test('voice and manual notes stay chronological and do not collapse repeated days', () => {
@@ -259,4 +326,65 @@ test('zero lead ads do not substitute other conversions or display a false CPL',
   assert.ok(html.includes('<dt>Clientes potenciales</dt><dd>0</dd>'));
   assert.ok(html.includes('<dt>Costo / lead (CPL)</dt><dd>—</dd>'));
   assert.ok(html.includes('Sin resultados registrados')); assert.ok(!html.includes('Infinity'));
+});
+
+test('all geographic regions are printable, including rows beyond the three map highlights', () => {
+  const regions = Array.from({length:65},(_,index)=>({countryId:index % 2 ? 'PE' : 'AR',regionId:'zone-'+index,regionName:'Zona de prueba '+index,messages:index,leads:64-index,purchases:2,spend:100,revenue:0}));
+  const countries = [{countryId:'AR',messages:100,leads:100,purchases:2,spend:100,revenue:0},{countryId:'PE',messages:100,leads:100,purchases:2,spend:100,revenue:0}];
+  for (const mode of ['messaging','ecommerce','leads'] as const) {
+    const html = renderToStaticMarkup(<GeographicSummary countries={countries} regions={regions} expectedResults={200} currency="ARS" mode={mode}/>);
+    const list = html.split('<div class="report-region-list">')[1];
+    assert.ok(list); assert.ok(!list.includes('<details')); assert.ok(!list.includes('report-screen-only'));
+    assert.equal((list.match(/<tr>/g)||[]).length,66);
+    for (const region of regions) assert.ok(list.includes(region.regionName));
+    assert.ok(list.includes('Región / país')); assert.ok(list.includes('Argentina')); assert.ok(list.includes('Perú'));
+    assert.ok(list.includes('no por ciudad'));
+  }
+});
+
+test('share links are obtained from Meta independently and failures remain unavailable', async () => {
+  const link = 'https://fb.me/adspreview/test-share';
+  let calls = 0;
+  const result = await fetchAdShareLink('123', async (path, params) => {
+    calls++; assert.equal(path,'/123'); assert.deepEqual(params,{fields:AD_SHARE_LINK_FIELD});
+    return {preview_shareable_link:link};
+  });
+  assert.equal(calls,1); assert.equal(result,link);
+  for (const response of [{},null,{error:{message:'Permission missing'}},{preview_shareable_link:'javascript:alert(1)'}]) {
+    assert.equal(await fetchAdShareLink('123', async ()=>response),undefined);
+  }
+  assert.equal(await fetchAdShareLink('123', async ()=>{throw new Error('Offline');}),undefined);
+});
+
+test('public report links reject credentials, iframe previews, fabricated library links and unsafe protocols', () => {
+  assert.equal(safeMetaShareLink('https://www.facebook.com/ads/preview/?demo=123&amp;share=456'),'https://www.facebook.com/ads/preview/?demo=123&share=456');
+  for (const link of [undefined,'','javascript:alert(1)','http://facebook.com/preview','https://facebook.com.evil.example/ad','https://user:password@facebook.com/ad','https://www.facebook.com/ads/api/preview?ad_id=1','https://www.facebook.com/ads/library/?id=1','https://fb.me/adspreview/test?access_token=secret','https://facebook.com/preview?APPSECRET_PROOF=secret']) assert.equal(safeMetaShareLink(link),undefined);
+});
+
+test('ad share buttons remain printable and missing share links never fall back to the library', () => {
+  const ad = {id:'a',name:'Anuncio compartido',thumbnail:'',spend:100,messages:3,purchases:2,revenue:200,roas:2,shareablePreviewUrl:'https://fb.me/adspreview/test-share',previewUrl:'https://www.facebook.com/ads/library/?id=123'};
+  for (const mode of ['messaging','ecommerce','leads'] as const) {
+    const html = renderToStaticMarkup(<AssetPerformanceV2 mode={mode} assets={[ad,{...ad,id:'b',shareablePreviewUrl:undefined}]}/>);
+    assert.ok(html.includes('class="report-ad-preview" href="https://fb.me/adspreview/test-share"'));
+    assert.ok(html.includes('target="_blank" rel="noopener noreferrer"'));
+    assert.ok(html.includes('Ver anuncio en Meta')); assert.ok(html.includes('lucide-external-link'));
+    assert.ok(html.includes('Enlace no disponible')); assert.ok(!html.includes('href="https://www.facebook.com/ads/library'));
+    assert.ok(!html.includes('report-screen-only report-ad-preview'));
+  }
+});
+
+test('ad preview actions sit after the metrics, outside the thumbnail and content', () => {
+  const ad = {id:'a',name:'Anuncio vertical',thumbnail:'https://example.com/portrait.png',spend:100,messages:3,leads:2,purchases:2,revenue:200,roas:2,shareablePreviewUrl:'https://fb.me/adspreview/test-share'};
+  for (const mode of ['messaging','ecommerce','leads'] as const) {
+    const html = renderToStaticMarkup(<AssetPerformanceV2 mode={mode} assets={[ad,{...ad,id:'b',shareablePreviewUrl:undefined}]}/>);
+    const cards = html.match(/<li class="report-ad-card">[\s\S]*?<\/li>/g) || [];
+    assert.equal(cards.length, 2);
+    for (const card of cards) {
+      const media = card.slice(card.indexOf('class="report-ad-media"'), card.indexOf('class="report-ad-content"'));
+      assert.ok(media.includes('<img'));
+      assert.ok(!media.includes('report-ad-preview'));
+      assert.match(card, /<\/dl><\/div><(?:a|span) class="report-ad-preview/);
+      assert.ok(card.indexOf('report-ad-preview') > card.indexOf('report-ad-traffic'));
+    }
+  }
 });

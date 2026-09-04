@@ -1,4 +1,5 @@
 import { metaLeadCount } from '../../lib/metaLeads';
+import { metaMessageCount } from '../../lib/metaMessages';
 export type ReportMode = 'ecommerce' | 'messaging' | 'leads';
 export const REPORT_MODES = {
   ecommerce: { label: 'E-commerce', key: 'purchases', result: 'Compras', singular: 'compra', cost: 'Costo por compra', compactCost: 'Costo / compra', transition: 'Clic a compra', destination: 'la compra' },
@@ -35,7 +36,7 @@ export function aggregatePlacements(rows: any[], mode: ReportMode): { data: Plac
     const current = groups.get(name) || { spend: 0, results: 0 };
     current.spend += positiveNumber(row.spend);
     current.results += mode === 'messaging'
-      ? reportAction(row.actions, 'onsite_conversion.messaging_conversation_started_7d', 'onsite_conversion.total_messaging_connection')
+      ? metaMessageCount(row.actions)
       : mode === 'leads' ? metaLeadCount(row.actions) : reportAction(row.actions, 'purchase', 'offsite_conversion.fb_pixel_purchase');
     groups.set(name, current);
   }
@@ -65,7 +66,7 @@ export function aggregateDemographics(rows: any[]): DemographicSegment[] {
 export function reportPeriodMetrics(raw: any, daily: any[], currency: string): ReportMetrics {
   const sum = (key: string) => daily.reduce((total, day) => total + positiveNumber(day[key]), 0);
   const spend = raw ? positiveNumber(raw.spend) : sum('spend');
-  const messages = raw ? reportAction(raw.actions, 'onsite_conversion.messaging_conversation_started_7d', 'onsite_conversion.total_messaging_connection') : sum('messages');
+  const messages = raw ? metaMessageCount(raw.actions) : sum('messages');
   const purchases = raw ? reportAction(raw.actions, 'purchase', 'offsite_conversion.fb_pixel_purchase') : sum('purchases');
   const leads = raw ? metaLeadCount(raw.actions) : sum('leads');
   const revenue = raw ? reportAction(raw.action_values, 'purchase', 'offsite_conversion.fb_pixel_purchase') : sum('revenue');
@@ -100,7 +101,7 @@ export function aggregateGeography(rows: any[]) {
       spend: positiveNumber(row.spend),
       purchases: reportAction(row.actions, 'purchase', 'offsite_conversion.fb_pixel_purchase'),
       revenue: reportAction(row.action_values, 'purchase', 'offsite_conversion.fb_pixel_purchase'),
-      messages: reportAction(row.actions, 'onsite_conversion.messaging_conversation_started_7d', 'onsite_conversion.total_messaging_connection'),
+      messages: metaMessageCount(row.actions),
       leads: metaLeadCount(row.actions),
     };
     const country = countries.get(countryId) || { countryId, spend: 0, purchases: 0, revenue: 0, messages: 0, leads: 0 };
@@ -113,5 +114,13 @@ export function aggregateGeography(rows: any[]) {
       regions.set(regionId, region);
     }
   }
-  return { countries: [...countries.values()], regions: [...regions.values()] };
+  // Use source values, before display rounding. A country with a small spend
+  // or any result stays visible; zero-valued regions within it are preserved.
+  const activeCountries = [...countries.values()].filter(country =>
+    (['spend', 'messages', 'purchases', 'leads', 'revenue'] as const).some(key =>
+      (country[key] || 0) > 0,
+    ),
+  );
+  const activeCountryIds = new Set(activeCountries.map(country => country.countryId));
+  return { countries: activeCountries, regions: [...regions.values()].filter(region => activeCountryIds.has(region.countryId!)) };
 }
