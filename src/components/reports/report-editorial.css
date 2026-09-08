@@ -314,10 +314,13 @@
   .report-step-rate { padding-left: 8px; }
   .report-step-rate strong { font-size: 12px; }
   .report-ranking-rows li { margin-bottom: 4mm; }
+  /* Seven placement rows must leave room for the overview's reading guide. */
+  .report-placement-ranking .report-ranking-rows li { margin-bottom: 2.5mm; }
+  .report-placement-ranking .report-ranking-rows li:last-child { margin-bottom: 2mm; }
   .report-ranking-rows li > div:first-child { font-size: 10px; }
   .report-ranking-rows small { font-size: 8px; }
   .report-caption { font-size: 8px; margin-top: 3mm; }
-  .report-reading-guide { margin-top: 5mm; padding-top: 4mm; break-inside: avoid; }
+  .report-reading-guide { margin-top: 3mm; padding-top: 3mm; break-inside: avoid; }
   .report-reading-guide p { font-size: 9px; }
   .report-reading-guide > div { gap: 4mm; }
   .report-daily-notes, .report-data-note { font-size: 8.5px; }

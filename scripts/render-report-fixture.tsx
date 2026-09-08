@@ -1,5 +1,5 @@
 // Local, deterministic print QA. No account credentials or live Meta requests.
-// Run after npm run build: npx tsx scripts/render-report-fixture.tsx [messaging|ecommerce|leads|leads-zero|leads-long|empty|long|compact|single|many]
+// Run after npm run build: npx tsx scripts/render-report-fixture.tsx [messaging|ecommerce|leads|leads-zero|leads-long|empty|long|compact|single|many|placements]
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import fs from 'node:fs';
@@ -9,7 +9,7 @@ import regionsARG from '../src/assets/data/regions_ARG.json';
 import regionsPER from '../src/assets/data/regions_PER.json';
 import { adTrafficMetrics } from '../src/lib/adTraffic';
 const variant = process.argv[2] || 'messaging';
-if (!['messaging', 'ecommerce', 'leads', 'leads-zero', 'leads-long', 'empty', 'long', 'compact', 'single', 'many'].includes(variant)) throw new Error('Unknown fixture');
+if (!['messaging', 'ecommerce', 'leads', 'leads-zero', 'leads-long', 'empty', 'long', 'compact', 'single', 'many', 'placements'].includes(variant)) throw new Error('Unknown fixture');
 const messaging = variant !== 'ecommerce';
 const dailyMessages = [1,3,2,5,2,3,0,0,1,1,1,1,1,4,2,1,3,5,2,1,3,2,2,1,2,3,1,2,0,1,2];
 const dailySpend = [15000,29000,24000,24500,17000,15500,12000,9000,16000,11000,20000,19500,18500,14500,13000,22000,18000,19500,18500,21000,29000,23500,28500,21500,33500,28000,24000,22500,18500,27500,17234];
@@ -55,6 +55,12 @@ if (variant.startsWith('leads')) {
   if (!zero) props.placements = props.placements.map((row,index)=>({...row,rawValue:[20,15,7,1][index],value:[20,15,7,1][index]/43*100}));
   props.texts = {learnings:'Comparar la calidad de los clientes potenciales por anuncio antes de decidir cambios de inversión.',actionPlan:'Revisar con el cliente cuántos leads avanzaron a una conversación comercial.'};
   props.logs = props.logs.map(log=>({...log,description:log.description.replace('conversaciones','clientes potenciales')}));
+}
+// Dense overview regression: keep the reading guide on the opening A4 page.
+if (variant === 'placements') {
+  props.name = 'Cliente de muestra';
+  props.placementBasis = 'messages';
+  props.placements = ['Facebook Feed', 'Facebook Reels', 'Instagram Feed', 'Instagram Reels', 'Instagram Stories', 'Facebook Otros', 'Otras ubicaciones'].map((name, index) => ({ name, value: [40, 25, 15, 10, 5, 4, 1][index], rawValue: [40, 25, 15, 10, 5, 4, 1][index] }));
 }
 if (process.argv.includes('--brand')) {
   props.agencyName = 'Agencia de muestra';
