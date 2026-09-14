@@ -488,9 +488,15 @@
     text-transform: none !important;
   }
 
+  /* Four standard creative cards fit on an A4 continuation page without
+     shrinking type or the chart. Avoid stacking grid gaps and card margins. */
+  .print-creatives-section > .grid {
+    gap: 8px !important;
+  }
+
   .ad-card-print {
     display: block !important;
-    margin: 0 0 10px !important;
+    margin: 0 !important;
     padding: 10px !important;
     border: 1px solid #dbe3ee !important;
     border-radius: 10px !important;
@@ -507,7 +513,7 @@
       "media info link"
       "media chart chart" !important;
     grid-template-columns: 180px minmax(0, 1fr) 82px !important;
-    grid-template-rows: max-content 112px !important;
+    grid-template-rows: max-content 96px !important;
     align-items: start !important;
     column-gap: 8px !important;
     row-gap: 5px !important;
@@ -583,7 +589,7 @@
   }
 
   .ad-card-print-chart {
-    height: 112px !important;
+    height: 96px !important;
     align-self: start !important;
     padding: 5px 8px !important;
     border: 1px solid #e2e8f0 !important;
