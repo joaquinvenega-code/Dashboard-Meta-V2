@@ -379,6 +379,13 @@ export default function FloatingAssistant({
   const isDraggingRef = useRef(false);
   const dragStartTime = useRef<number>(0);
   const rootRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 639px)').matches);
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 639px)');
+    const update = () => setIsMobile(query.matches);
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
   const [chatPosition, setChatPosition] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>('bottom-right');
 
   useEffect(() => {
@@ -1618,7 +1625,7 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
       animate={{ scale: 1, opacity: 1, filter: "blur(0px) brightness(1)" }}
       exit={{ scale: [1, 1.5, 0], opacity: [1, 1, 0], filter: ["blur(0px) brightness(1)", "blur(10px) brightness(4)", "blur(20px) brightness(0)"] }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      drag
+      drag={!isMobile}
       dragConstraints={typeof window !== "undefined" ? { left: -window.innerWidth + 100, right: 0, top: -window.innerHeight + 100, bottom: 0 } : false}
       dragElastic={0.15}
       dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
@@ -1641,7 +1648,7 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: chatPosition.startsWith('top') ? -20 : 20 }}
             transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-            className={`absolute ${posClass} w-[350px] h-[510px] bg-neutral-950/95 backdrop-blur-xl border border-white/[0.08] rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden`}
+            className={`orion-chat-panel absolute ${posClass} w-[350px] h-[510px] bg-neutral-950/95 backdrop-blur-xl border border-white/[0.08] rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden`}
           >
             {/* Minimalist Muted Header */}
             <div className="p-4 bg-neutral-900/30 border-b border-white/[0.06] flex items-center justify-between">
@@ -2014,8 +2021,8 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
       {/* Floating Living Entity Orb (Core) modeled exactly after the complex bright golden sphere photo */}
       <motion.div
         animate={{
-          y: isOpen ? 0 : [0, -6, 0],
-          scale: isSpeaking ? [1, 1.025, 1] : 1,
+          y: isMobile || isOpen ? 0 : [0, -6, 0],
+          scale: !isMobile && isSpeaking ? [1, 1.025, 1] : 1,
         }}
         transition={{
           y: {
@@ -2029,7 +2036,7 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
             ease: "easeInOut"
           }
         }}
-        className="relative"
+        className="orion-orb relative"
       >
         <AnimatePresence>
           {(isListening || isSpeaking || currentOrionState === 'thinking') && (
@@ -2071,6 +2078,8 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
         <button
           type="button"
           onPointerDown={() => dragStartTime.current = Date.now()}
+          aria-label={isOpen ? 'Cerrar asistente Orión' : 'Abrir asistente Orión'}
+          aria-expanded={isOpen}
           onClick={() => {
             if (isDraggingRef.current) return;
             if (Date.now() - dragStartTime.current > 200) return; // Prevent open if drag/hold
@@ -2081,7 +2090,7 @@ Todo mi sistema cuenta con un resguardo local en tiempo real, garantizando que s
             }
             setIsOpen(!isOpen);
           }}
-          className="relative w-28 h-28 rounded-full flex items-center justify-center select-none active:scale-95 transition-all duration-300 outline-none filter brightness-110"
+          className="relative w-14 h-14 sm:w-28 sm:h-28 rounded-full flex items-center justify-center select-none active:scale-95 transition-all duration-300 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 filter brightness-110"
           id="orion-living-core-button"
         >
           {/* Rotating radar sweep gives the core a continuous data-scanning motion. */}

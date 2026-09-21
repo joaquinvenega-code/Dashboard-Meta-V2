@@ -21,10 +21,10 @@ export function DashboardDateFilter({ value, onChange }: { value: DashboardDateR
     dialog.current?.showModal();
   };
   return <>
-    <button type="button" onClick={open} aria-haspopup="dialog" aria-label={`Filtrar por fecha: ${applied?.label || 'Personalizado'}. ${rangeLabel(value)}`} className="flex min-h-12 items-center gap-3 rounded-xl border border-white/10 bg-[#161c25] px-4 py-2 text-left transition hover:border-blue-400/50 hover:bg-[#1b2431] focus-visible:outline-2 focus-visible:outline-blue-400">
+    <button type="button" onClick={open} aria-haspopup="dialog" aria-label={`Filtrar por fecha: ${applied?.label || 'Personalizado'}. ${rangeLabel(value)}`} className="dashboard-date-trigger flex w-full min-w-0 min-h-12 items-center gap-3 rounded-xl border border-white/10 bg-[#161c25] px-4 py-2 text-left transition hover:border-blue-400/50 hover:bg-[#1b2431] focus-visible:outline-2 focus-visible:outline-blue-400 sm:w-auto sm:shrink-0">
       <CalendarDays className="h-5 w-5 shrink-0 text-blue-400" />
-      <span><span className="block text-sm font-semibold text-neutral-100">{applied?.label || 'Personalizado'}</span><span className="block text-xs text-neutral-400">{rangeLabel(value)}</span></span>
-      <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-neutral-400" />
+      <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-neutral-100">{applied?.label || 'Personalizado'}</span><span className="block text-xs text-neutral-400">{rangeLabel(value)}</span></span>
+      <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-neutral-400" />
     </button>
     <dialog ref={dialog} aria-labelledby={`${id}-title`} onClick={event => { if (event.target === event.currentTarget) dialog.current?.close(); }} className="dashboard-date-dialog fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[#161c25] p-0 text-neutral-100 shadow-2xl backdrop:bg-black/65 backdrop:backdrop-blur-sm">
       <div className="p-5 sm:p-6">

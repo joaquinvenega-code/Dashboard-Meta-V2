@@ -60,6 +60,53 @@
 .dashboard-date-dialog input[type="date"] { color-scheme: dark; }
 .dashboard-date-dialog input[type="date"]::-webkit-calendar-picker-indicator { filter: none; padding: 4px; opacity: 1; }
 
+.mobile-nav-dialog .orion-sidebar { width: 100%; }
+.mobile-nav-dialog .orion-sidebar button { min-height: 44px; }
+.mobile-nav-dialog .orion-sidebar button[role="switch"] { min-height: 24px; }
+.orion-sidebar button:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+
+@media screen and (max-width: 1023px) {
+  .dashboard-main { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+  .mobile-app-bar { padding-top: calc(8px + env(safe-area-inset-top)); }
+  .mobile-nav-dialog .orion-sidebar { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+}
+
+@media screen and (max-width: 639px) {
+  .dashboard-main :is(input, select, textarea) { font-size: 16px; max-width: 100%; }
+  .dashboard-main :is(button, select, input:not([type="checkbox"]):not([type="radio"])) { min-height: 44px; }
+  .dashboard-header > :first-child { flex-basis: calc(100% - 60px); }
+  .notification-panel { position: fixed; top: 120px; left: 16px; right: 16px; width: auto; max-height: calc(100dvh - 150px); overflow-y: auto; }
+
+  /* Keep one set of values and column preferences for both presentations. */
+  .client-performance-table { display: block; min-width: 0 !important; }
+  .client-performance-table thead { display: none; }
+  .client-performance-table tbody { display: block; padding: 12px; }
+  .client-performance-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px 0; }
+  .client-performance-table tbody tr:first-child { padding-top: 0; }
+  .client-performance-table td { display: block; min-width: 0; padding: 0; text-align: left; overflow-wrap: anywhere; font-size: 14px; }
+  .client-performance-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 6px; color: #a3a3a3; font-size: 12px; font-weight: 400; }
+  .client-performance-table td[data-label] > span,
+  .client-performance-table td[data-label] > div span { font-size: 13px; }
+  .client-performance-table .client-name-cell,
+  .client-performance-table .client-actions-cell,
+  .client-performance-table td[colspan] { grid-column: 1 / -1; }
+  .client-performance-table .client-name-cell { padding-bottom: 8px; border-bottom: 1px solid #ffffff0d; }
+  .client-performance-table .client-name-cell .cursor-text { max-width: none; white-space: normal; font-size: 15px; }
+  .client-performance-table .client-name-cell .group\/name { min-width: 0; }
+  .client-performance-table .client-actions-cell button { display: flex; align-items: center; padding: 8px 12px; color: #93c5fd; opacity: 1; border: 1px solid #ffffff15; }
+
+  #orion-assistant-root { right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); transform: none !important; filter: none !important; cursor: auto; }
+  #orion-assistant-root .orion-orb { transform: none !important; }
+  #orion-assistant-root .orion-chat-panel { position: fixed; inset: auto 16px calc(88px + env(safe-area-inset-bottom)) 16px; width: auto; height: min(510px, calc(100dvh - 160px)); transform-origin: bottom right; margin: 0; }
+  #orion-assistant-root .orion-chat-panel :is(input, textarea) { font-size: 16px; }
+  #orion-assistant-root .orion-chat-panel button { min-height: 44px; min-width: 44px; }
+  #orion-living-core-button > .inset-2 { inset: 4px; }
+  #orion-living-core-button > .inset-4 { inset: 8px; }
+  #orion-living-core-button > .inset-6 { inset: 12px; }
+  #orion-living-core-button > .inset-7 { inset: 14px; }
+  #orion-living-core-button > .inset-8 { inset: 16px; }
+}
+
 .metric-card-heading {
   padding-right: 18px;
   padding-left: 18px;

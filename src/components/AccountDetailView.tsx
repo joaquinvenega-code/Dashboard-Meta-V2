@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { DashboardDateFilter } from './DashboardDateFilter';
 import { MetaActivityPanel } from './reports/MetaActivityPanel';
 import { 
   AdAccount, 
@@ -157,7 +158,7 @@ export const RocketLoader = () => (
   </div>
 );
 import { cn, calculateEffectiveBalance } from '../lib/utils';
-import { startOfMonth, addDays, subDays, isSameMonth, isSameYear } from 'date-fns';
+import { addDays, isSameMonth, isSameYear } from 'date-fns';
 import { OfflineSalesManager } from './OfflineSalesManager';
 import { 
   AreaChart, 
@@ -657,7 +658,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   onSaveSettings,
   dateRange,
   setDateRange,
-  isCustomDate,
   setIsCustomDate,
   onRefresh,
   notes,
@@ -686,13 +686,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
   const [noteDate, setNoteDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   
-  const currentNow = new Date();
-  const todayStr = format(currentNow, 'yyyy-MM-dd');
-  const yesterdayStr = format(subDays(currentNow, 1), 'yyyy-MM-dd');
-  
-  const [tempSince, setTempSince] = useState(dateRange.since);
-  const [tempUntil, setTempUntil] = useState(dateRange.until);
-
   const [accountDailySeries, setAccountDailySeries] = useState<DailyMetric[]>([]);
   const [loadingAccountSeries, setLoadingAccountSeries] = useState<boolean>(false);
   const metricSensors = useSensors(
@@ -748,11 +741,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   useEffect(() => {
     loadAccountDailySeries();
   }, [loadAccountDailySeries]);
-
-  useEffect(() => {
-    setTempSince(dateRange.since);
-    setTempUntil(dateRange.until);
-  }, [dateRange]);
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [isListening, setIsListening] = useState(false);
@@ -1714,80 +1702,8 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
           ))}
         </div>
 
-        <div className="flex items-center gap-2 ml-auto">
-            {/* New Date Picker in Detail View (Minimalist) */}
-            <div className="flex h-9 items-center gap-1.5 rounded-lg border border-white/[0.07] bg-[#12161d] px-3 transition-colors">
-              <Calendar className="w-3.5 h-3.5 text-neutral-400" />
-              <select 
-                value={isCustomDate ? 'custom' : (
-                  dateRange.since === todayStr && dateRange.until === todayStr ? 'today' : (
-                    dateRange.since === yesterdayStr && dateRange.until === yesterdayStr ? 'yesterday' : (
-                      dateRange.since === format(startOfMonth(new Date()), 'yyyy-MM-dd') && dateRange.until === format(new Date(), 'yyyy-MM-dd') ? 'this_month' : (
-                        dateRange.since === format(subDays(new Date(), 7), 'yyyy-MM-dd') ? 'last_7' : (
-                          dateRange.since === format(subDays(new Date(), 30), 'yyyy-MM-dd') ? 'last_30' : 'custom'
-                        )
-                      )
-                    )
-                  )
-                )}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const currentNow = new Date();
-                  if (val === 'custom') {
-                    setIsCustomDate(true);
-                    setTempSince(dateRange.since);
-                    setTempUntil(dateRange.until);
-                  } else {
-                    setIsCustomDate(false);
-                    if (val === 'today') {
-                      setDateRange({ since: todayStr, until: todayStr });
-                    } else if (val === 'yesterday') {
-                      setDateRange({ since: yesterdayStr, until: yesterdayStr });
-                    } else if (val === 'this_month') {
-                      setDateRange({ since: format(startOfMonth(currentNow), 'yyyy-MM-dd'), until: format(currentNow, 'yyyy-MM-dd') });
-                    } else if (val === 'last_7') {
-                      setDateRange({ since: format(subDays(currentNow, 7), 'yyyy-MM-dd'), until: format(currentNow, 'yyyy-MM-dd') });
-                    } else if (val === 'last_30') {
-                      setDateRange({ since: format(subDays(currentNow, 30), 'yyyy-MM-dd'), until: format(currentNow, 'yyyy-MM-dd') });
-                    }
-                  }
-                }}
-                className="cursor-pointer border-none bg-transparent py-0.5 pr-1 text-xs font-medium text-neutral-300 outline-none focus:text-white"
-              >
-                <option value="today" className="bg-[#121212] text-neutral-200 font-bold uppercase">Hoy</option>
-                <option value="yesterday" className="bg-[#121212] text-neutral-200 font-bold uppercase">Ayer</option>
-                <option value="this_month" className="bg-[#121212] text-neutral-200 font-bold uppercase">Este mes</option>
-                <option value="last_7" className="bg-[#121212] text-neutral-200 font-bold uppercase">Últimos 7 días</option>
-                <option value="last_30" className="bg-[#121212] text-neutral-200 font-bold uppercase">Últimos 30 días</option>
-                <option value="custom" className="bg-[#121212] text-neutral-200 font-bold uppercase">Personalizado</option>
-              </select>
-
-              {isCustomDate && (
-                <div className="flex items-center gap-1.5 pl-1.5 border-l border-white/5 animate-in slide-in-from-right-1 duration-300">
-                  <input 
-                    type="date" 
-                    value={tempSince}
-                    onChange={(e) => setTempSince(e.target.value)}
-                    className="bg-transparent text-[10px] font-bold text-neutral-300 outline-none w-[95px] py-0.5"
-                  />
-                  <span className="text-[10px] text-neutral-600 font-bold uppercase">a</span>
-                  <input 
-                    type="date" 
-                    value={tempUntil}
-                    onChange={(e) => setTempUntil(e.target.value)}
-                    className="bg-transparent text-[10px] font-bold text-neutral-300 outline-none w-[95px] py-0.5"
-                  />
-                  <button
-                    onClick={() => {
-                      setDateRange({ since: tempSince, until: tempUntil });
-                    }}
-                    className="bg-blue-600/25 hover:bg-blue-600/40 text-blue-400 border border-blue-500/10 text-[10px] font-black px-2 py-0.5 rounded transition-all uppercase tracking-wider"
-                  >
-                    Aplicar
-                  </button>
-                </div>
-              )}
-            </div>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+            <DashboardDateFilter value={dateRange} onChange={range => { setDateRange(range); setIsCustomDate(false); }} />
 
             <button 
              onClick={handlePrint}
@@ -1799,14 +1715,22 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
         </div>
       </div>
 
-      <div className="relative flex h-[calc(100vh-200px)] gap-3 bg-transparent print:h-auto">
+      <label className="block rounded-xl border border-white/10 bg-[#12161d] p-3 text-sm text-neutral-400 lg:hidden print:hidden">
+        Cliente · {sidebarAccounts.length} disponibles
+        <select aria-label="Seleccionar cliente" value={selectedId || ''} onChange={event => setSelectedId(event.target.value)} className="mt-2 min-h-12 w-full min-w-0 rounded-lg border border-white/10 bg-[#161c25] px-3 text-base text-white">
+          {!sidebarAccounts.some(account => account.id === selectedId) && <option value="">Elegí un cliente</option>}
+          {sidebarAccounts.map(account => <option key={account.id} value={account.id}>{settings[account.id]?.customName || account.name}</option>)}
+        </select>
+      </label>
+
+      <div className="relative flex h-auto min-w-0 gap-3 bg-transparent lg:h-[calc(100dvh-200px)] print:h-auto">
         {/* Sidebar - Accounts List - Horizontal Expandable */}
         <motion.div 
           initial={false}
           animate={{ 
             width: isSidebarExpanded ? 280 : 48,
           }}
-          className="group/sidebar z-30 flex flex-col overflow-hidden rounded-xl border border-white/[0.07] bg-[#12161d] print:hidden"
+          className="group/sidebar z-30 hidden shrink-0 lg:flex flex-col overflow-hidden rounded-xl border border-white/[0.07] bg-[#12161d] print:hidden"
         >
           <div className="space-y-3 border-b border-white/[0.07] p-3">
             <div className={cn("flex items-center justify-between overflow-hidden whitespace-nowrap", !isSidebarExpanded && "justify-center")}>
@@ -1895,7 +1819,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
         {/* Dashboard Area */}
         {selectedAccount ? (
-            <div className="account-detail-print-content custom-scrollbar flex-1 animate-in space-y-4 overflow-y-auto pr-2 fade-in duration-500 print:overflow-visible print:pr-0">
+            <div className="account-detail-print-content custom-scrollbar min-w-0 flex-1 animate-in space-y-4 lg:overflow-y-auto lg:pr-2 fade-in duration-500 print:overflow-visible print:pr-0">
             <section className="report-print-cover hidden print:flex">
               <div className="report-print-title-block">
                 <p className="report-print-eyebrow">Orion Metrics</p>
@@ -2296,7 +2220,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
             {/* Winners Section */}
             <div className="print-creatives-section space-y-4 pb-20 print:pb-0">
-               <div className="flex items-center justify-between px-1 print:mb-4 print:border-b-2 print:border-neutral-100 print:pb-2">
+               <div className="flex flex-wrap items-center justify-between gap-3 px-1 print:mb-4 print:border-b-2 print:border-neutral-100 print:pb-2">
                   <div className="flex items-center gap-4">
                     <h3 className="print-section-title text-[10px] font-black text-neutral-500 uppercase tracking-widest print:text-sm print:text-neutral-900 print:border-l-4 print:border-blue-600 print:pl-3">
                       <span className="print-section-number hidden print:inline-flex">02</span>
@@ -2307,13 +2231,13 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                       Criterio de orden: {sortLabel}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 print:hidden">
-                    <div className="flex items-center gap-2 bg-[#111] px-2 py-1 rounded border border-white/5">
+                  <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 print:hidden">
+                    <div className="flex min-w-0 max-w-full items-center gap-2 bg-[#111] px-2 py-1 rounded border border-white/5">
                        <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest">Sort</span>
                        <select 
                          value={sortBy}
                          onChange={(e) => setSortBy(e.target.value)}
-                         className="bg-transparent text-[9px] font-black text-neutral-400 outline-none uppercase tracking-widest cursor-pointer"
+                         className="min-w-0 max-w-full bg-transparent text-[9px] font-black text-neutral-400 outline-none uppercase tracking-widest cursor-pointer"
                        >
                          <option value="roas">Ponderar por ROAS</option>
                          <option value="messages">Ponderar por Mensajes</option>
@@ -2322,12 +2246,12 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                          <option value="spend">Ponderar por Gasto</option>
                        </select>
                     </div>
-                    <div className="flex items-center gap-2 bg-[#111] px-2 py-1 rounded border border-white/5">
+                    <div className="flex min-w-0 max-w-full items-center gap-2 bg-[#111] px-2 py-1 rounded border border-white/5">
                        <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest">Limit</span>
                        <select 
                          value={topN}
                          onChange={(e) => setTopN(parseInt(e.target.value))}
-                         className="bg-transparent text-[9px] font-black text-neutral-400 outline-none uppercase tracking-widest cursor-pointer"
+                         className="min-w-0 max-w-full bg-transparent text-[9px] font-black text-neutral-400 outline-none uppercase tracking-widest cursor-pointer"
                        >
                          <option value={3}>3</option>
                          <option value={5}>5</option>

@@ -88,7 +88,7 @@ export function Overview({
             onClick={() => onFilterCategoryChange(option.id)}
             aria-pressed={filterCategoryId === option.id}
             className={cn(
-              'shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+              'min-h-11 shrink-0 rounded-lg px-3 py-1.5 text-sm sm:min-h-0 sm:text-xs font-medium transition-colors',
               filterCategoryId === option.id
                 ? 'bg-blue-500/12 text-blue-300 ring-1 ring-inset ring-blue-400/20'
                 : 'text-neutral-500 hover:bg-white/[0.04] hover:text-neutral-300',
@@ -99,7 +99,7 @@ export function Overview({
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3 xl:grid-cols-4">
         <SummaryCard label="Inversión general" value={totalSpend} note="Reportado por Meta" />
         <SummaryCard label="Facturación general" value={totalRevenue} note="Período seleccionado" />
         <SummaryCard label="ROAS general" value={`×${formatDecimal(averageRoas, 1)}`} note="Promedio de la cartera" />
@@ -116,11 +116,11 @@ export function Overview({
 function SummaryCard({ label, value, note }: { label: string; value: string; note: string }) {
   return (
     <article className="min-w-0 rounded-xl border border-white/[0.07] bg-[#12161d] px-4 py-3.5">
-      <p className="text-[11px] font-medium text-neutral-500">{label}</p>
-      <p className="mt-2 truncate text-xl font-semibold tracking-[-0.025em] text-neutral-100 tabular-nums" title={value}>
+      <p className="text-xs font-medium text-neutral-400">{label}</p>
+      <p className="mt-2 break-words text-xl font-semibold tracking-[-0.025em] text-neutral-100 tabular-nums" title={value}>
         {value}
       </p>
-      <p className="mt-1 text-[10px] text-neutral-600">{note}</p>
+      <p className="mt-1 text-[11px] text-neutral-500">{note}</p>
     </article>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { 
   LayoutDashboard, 
   BarChart3, 
@@ -12,7 +12,9 @@ import {
   ChevronDown,
   User,
   Bot,
-  Sparkles
+  Sparkles,
+  Menu,
+  X
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -42,6 +44,28 @@ export function Sidebar({
 }: SidebarProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const mobileMenu = useRef<HTMLDialogElement>(null);
+  const menuId = useId();
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const closeMenu = () => mobileMenu.current?.close();
+  const navigate = (page: string) => {
+    onPageChange(page);
+    closeMenu();
+  };
+
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const onResize = () => { if (desktop.matches) closeMenu(); };
+    desktop.addEventListener('change', onResize);
+    return () => desktop.removeEventListener('change', onResize);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, [isMobileOpen]);
 
   // Auto-open config section when a sub-item is active
   useEffect(() => {
@@ -66,10 +90,10 @@ export function Sidebar({
 
   const isConfigActive = ['accounts', 'alerts', 'user_settings', 'orion_settings'].includes(activePage);
 
-  return (
+  const content = (
     <aside 
       className={cn(
-        "sticky top-0 h-screen flex flex-col justify-between p-4 bg-[#0c0d12] border-r border-white/10 shrink-0 z-40 transition-all duration-300 print:hidden select-none",
+        "orion-sidebar sticky top-0 h-dvh flex flex-col justify-between gap-8 overflow-y-auto p-4 bg-[#0c0d12] border-r border-white/10 shrink-0 z-40 transition-all duration-300 print:hidden select-none",
         isExpanded ? "w-64" : "w-20 items-center"
       )}
     >
@@ -99,6 +123,7 @@ export function Sidebar({
               </motion.div>
             )}
           </div>
+          <button type="button" aria-label="Cerrar menú" onClick={closeMenu} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-neutral-300 hover:bg-white/10 lg:hidden"><X className="h-5 w-5" /></button>
         </div>
 
         {/* Assistant Toggle Card */}
@@ -113,6 +138,10 @@ export function Sidebar({
                 <span className="text-xs font-semibold text-neutral-300">Asistente Orión</span>
               </div>
               <button
+                type="button"
+                role="switch"
+                aria-checked={isOrionEnabled}
+                aria-label="Asistente Orión"
                 onClick={() => onOrionToggle && onOrionToggle(!isOrionEnabled)}
                 className={cn(
                   "w-8 h-4 rounded-full p-0.5 transition-colors cursor-pointer",
@@ -145,7 +174,8 @@ export function Sidebar({
             return (
               <button
                 key={item.id}
-                onClick={() => onPageChange(item.id)}
+                onClick={() => navigate(item.id)}
+                aria-current={isActive ? 'page' : undefined}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all w-full text-left outline-none cursor-pointer group relative",
                   isActive 
@@ -207,7 +237,8 @@ export function Sidebar({
                     return (
                       <button
                         key={sub.id}
-                        onClick={() => onPageChange(sub.id)}
+                        onClick={() => navigate(sub.id)}
+                        aria-current={isSubActive ? 'page' : undefined}
                         className={cn(
                           "flex items-center gap-3 px-3 py-2 rounded-lg transition-all w-full text-left outline-none cursor-pointer group relative",
                           isSubActive 
@@ -283,4 +314,15 @@ export function Sidebar({
       </div>
     </aside>
   );
+
+  return <>
+    <div className="hidden lg:block print:hidden">{content}</div>
+    <header className="mobile-app-bar sticky top-0 z-[260] flex items-center gap-3 border-b border-white/10 bg-[#0c0d12]/95 px-4 py-2 backdrop-blur-lg lg:hidden print:hidden">
+      <button type="button" aria-label="Abrir menú" aria-haspopup="dialog" aria-controls={menuId} aria-expanded={isMobileOpen} onClick={() => { mobileMenu.current?.showModal(); setIsMobileOpen(true); }} className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 text-white hover:bg-white/10"><Menu className="h-5 w-5" /></button>
+      <div className="min-w-0"><p className="text-sm font-semibold text-white">Orion Metrics</p><p className="truncate text-xs text-neutral-400">{[...navItems, ...configItems].find(item => item.id === activePage)?.label}</p></div>
+    </header>
+    <dialog id={menuId} ref={mobileMenu} aria-label="Menú principal" onClose={() => setIsMobileOpen(false)} onClick={event => { if (event.target === event.currentTarget) closeMenu(); }} className="mobile-nav-dialog fixed inset-y-0 left-0 m-0 h-dvh max-h-dvh w-[min(320px,calc(100%-2rem))] max-w-none border-0 bg-[#0c0d12] p-0 text-white shadow-2xl backdrop:bg-black/65 backdrop:backdrop-blur-sm print:hidden">
+      {content}
+    </dialog>
+  </>;
 }
