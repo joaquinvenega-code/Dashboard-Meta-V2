@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DashboardDateFilter } from './DashboardDateFilter';
 import { MetaActivityPanel } from './reports/MetaActivityPanel';
+import { detailOptions, trackingMetrics, offlineRevenueForPeriod } from '../lib/weeklyReports';
+import type { WeeklySnapshot } from '../lib/weeklySnapshot';
 import { 
   AdAccount, 
   AccountSettings, 
@@ -633,6 +635,7 @@ export const AccountDailyTrendCard: React.FC<AccountDailyTrendCardProps> = ({
 };
 
 interface AccountDetailViewProps {
+  snapshot?: WeeklySnapshot;
   accounts: AdAccount[];
   visibleAccountIds: string[];
   accountGroups: AccountGroup[];
@@ -664,21 +667,23 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   onAddNote,
   onDeleteNote,
   clientCategories,
-  isSyncing = false
+  isSyncing = false,
+  snapshot,
 }) => {
   const periodKey = format(parseISO(dateRange.since), 'yyyy-MM');
   const [selectedId, setSelectedId] = useState<string | null>(() => {
-    return sessionStorage.getItem('cr_detail_selected_account');
+    return snapshot?.account.id || sessionStorage.getItem('cr_detail_selected_account');
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [adsLoading, setAdsLoading] = useState(false);
-  const [ads, setAds] = useState<Ad[]>([]);
-  const [sortBy, setSortBy] = useState('roas');
-  const [topN, setTopN] = useState(5);
+  const [ads, setAds] = useState<Ad[]>(snapshot?.ads || []);
+  const initialOptions = detailOptions(selectedId ? settings[selectedId] : undefined);
+  const [sortBy, setSortBy] = useState<string>(initialOptions.sortBy);
+  const [topN, setTopN] = useState(initialOptions.topN);
   const [observations, setObservations] = useState('');
   const [isSavingObs, setIsSavingObs] = useState(false);
-  const [showMetrics, setShowMetrics] = useState(true);
-  const [showObservations, setShowObservations] = useState(false);
+  const [showMetrics, setShowMetrics] = useState(initialOptions.showMetrics);
+  const [showObservations, setShowObservations] = useState(initialOptions.showObservations);
   const [showMetricConfig, setShowMetricConfig] = useState(false);
   const [selectedNoteForView, setSelectedNoteForView] = useState<AccountNote | null>(null);
   const [localVisibleMetrics, setLocalVisibleMetrics] = useState<string[]>([]);
@@ -686,7 +691,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
   const [noteDate, setNoteDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   
-  const [accountDailySeries, setAccountDailySeries] = useState<DailyMetric[]>([]);
+  const [accountDailySeries, setAccountDailySeries] = useState<DailyMetric[]>(snapshot?.daily || []);
   const [loadingAccountSeries, setLoadingAccountSeries] = useState<boolean>(false);
   const metricSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -700,6 +705,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   }, [accountGroups, selectedId]);
 
   const loadAccountDailySeries = useCallback(async () => {
+    if (snapshot) return;
     if (!selectedId) return;
     setLoadingAccountSeries(true);
     try {
@@ -806,10 +812,10 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     }
   };
 
-  const defaultVisibleMetrics = ['spend', 'total_revenue', 'roas', 'purchases', 'objective', 'progress_revenue', 'progress_budget', 'ctr'];
-  const messagingDefaultMetrics = ['messages', 'cpm_real', 'spend', 'total_revenue', 'roas', 'ctr'];
-  const leadsDefaultMetrics = ['leads', 'cpl', 'spend', 'total_revenue', 'roas', 'ctr'];
-  const allDefaultMetrics = ['messages', 'leads', 'spend', 'total_revenue', 'roas', 'ctr'];
+  const defaultVisibleMetrics = trackingMetrics('ecommerce');
+  const messagingDefaultMetrics = trackingMetrics('messaging');
+  const leadsDefaultMetrics = trackingMetrics('leads');
+  const allDefaultMetrics = trackingMetrics(settings[selectedId || '']?.tracking || 'all');
   
   // Filter accounts for sidebar
   const sidebarAccounts = accounts.filter(acc => 
@@ -867,10 +873,18 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   } as Record<string, string>)[sortBy] || sortBy;
 
   const getDefaultMetricsForTracking = (tracking: AccountSettings['tracking']) => {
-    if (tracking === 'messaging') return messagingDefaultMetrics;
-    if (tracking === 'leads') return leadsDefaultMetrics;
-    if (tracking === 'all' || tracking === 'both') return allDefaultMetrics;
-    return defaultVisibleMetrics;
+    return trackingMetrics(tracking);
+  };
+
+  useEffect(() => {
+    const options = detailOptions(s || undefined);
+    setSortBy(options.sortBy); setTopN(options.topN);
+    setShowMetrics(options.showMetrics); setShowObservations(options.showObservations);
+  }, [selectedId, s?.tracking, s?.detailReport]);
+
+  const updatePrintOption = (change: Partial<NonNullable<AccountSettings['detailReport']>>) => {
+    if (!selectedId || !s || snapshot) return;
+    onSaveSettings(selectedId, { ...s, detailReport: { ...detailOptions(s), ...change } });
   };
 
   const handleTrackingChange = (tracking: AccountSettings['tracking']) => {
@@ -887,6 +901,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
       ...s,
       tracking,
       visibleMetrics: nextMetrics,
+      detailReport: { ...detailOptions({ ...s, tracking, detailReport: undefined }), topN, showMetrics, showObservations },
     });
   };
 
@@ -948,6 +963,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   }, [selectedId, s?.visibleMetrics, s?.tracking, sortBy]);
 
   const loadAds = useCallback(async () => {
+    if (snapshot) return;
     if (!selectedId) return;
     setAdsLoading(true);
     try {
@@ -1122,23 +1138,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
   const renderMetric = (id: string, acc: AdAccount) => {
     const sAcc = settings[acc.id];
-    let manualRevenue = 0;
-    if (sAcc?.offlineSalesLogByMonth) {
-      const allEntries: any[] = [];
-      Object.values(sAcc.offlineSalesLogByMonth).forEach((list: any) => {
-        if (Array.isArray(list)) {
-          allEntries.push(...list);
-        }
-      });
-      if (allEntries.length > 0) {
-        const filteredEntries = allEntries.filter(entry => entry.date >= dateRange.since && entry.date <= dateRange.until);
-        manualRevenue = filteredEntries.reduce((sum, entry) => sum + entry.amount, 0);
-      } else {
-        manualRevenue = sAcc?.manualRevenueByMonth?.[periodKey] || 0;
-      }
-    } else {
-      manualRevenue = sAcc?.manualRevenueByMonth?.[periodKey] || 0;
-    }
+    const manualRevenue = offlineRevenueForPeriod(sAcc, dateRange.since, dateRange.until);
     const totalRevenue = (acc.revenue || 0) + manualRevenue;
     
     switch(id) {
@@ -1545,20 +1545,20 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     accountName?: string;
   }> = ({ accountId, notes, observations, accountName }) => {
     const now = new Date();
-    const currentMonthYearTitle = format(now, "MMMM 'de' yyyy", { locale: es }).toUpperCase();
-    const currentMonthShort = format(now, "MMMM yyyy", { locale: es });
+    const currentMonthShort = `${format(parseISO(dateRange.since), 'dd/MM/yyyy')} al ${format(parseISO(dateRange.until), 'dd/MM/yyyy')}`;
 
     const currentMonthNotes = React.useMemo(() => {
       return notes.filter(n => {
         if (n.accountId !== accountId) return false;
         try {
           const d = parseISO(n.timestamp);
-          return isSameMonth(d, now) && isSameYear(d, now);
+          const day = format(d, 'yyyy-MM-dd');
+          return day >= dateRange.since && day <= dateRange.until;
         } catch {
           return false;
         }
       }).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-    }, [notes, accountId, now]);
+    }, [notes, accountId, dateRange.since, dateRange.until]);
 
     const hasNotes = currentMonthNotes.length > 0;
     const hasObs = Boolean(observations && observations.trim().length > 0);
@@ -1587,7 +1587,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
           {!hasNotes && !hasObs ? (
             <div className="py-6 text-center">
               <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest print:text-neutral-600">
-                Sin observaciones ni hitos registrados en la bitácora para el mes en curso ({currentMonthShort})
+                Sin observaciones ni hitos registrados en la bitácora para el período ({currentMonthShort})
               </p>
             </div>
           ) : (
@@ -1605,7 +1605,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                         <FileText className="w-3 h-3" /> Observaciones y Hoja de Ruta
                       </span>
                       <span className="text-[8px] font-bold text-neutral-500 uppercase tracking-wider print:text-neutral-500">
-                        Resumen del Mes ({currentMonthShort})
+                        Observaciones del cliente
                       </span>
                     </div>
                     <p className="text-xs text-neutral-300 leading-relaxed font-medium whitespace-pre-wrap print:text-neutral-800 print:text-[10px]">
@@ -1958,14 +1958,14 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                 <div className="w-px h-4 bg-white/5 mx-1" />
 
                 <button 
-                  onClick={() => setShowMetrics(!showMetrics)}
+                  onClick={() => { setShowMetrics(!showMetrics); updatePrintOption({ showMetrics: !showMetrics }); }}
                   className={`rounded-lg border p-2 transition-colors ${showMetrics ? 'border-blue-400/15 bg-blue-500/10 text-blue-300' : 'border-white/[0.07] bg-black/15 text-neutral-600'}`}
                   title={showMetrics ? 'Ocultar métricas' : 'Mostrar métricas'}
                 >
                   {showMetrics ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                 </button>
                 <button 
-                  onClick={() => setShowObservations(!showObservations)}
+                  onClick={() => { setShowObservations(!showObservations); updatePrintOption({ showObservations: !showObservations }); }}
                   className={`rounded-lg border p-2 transition-colors ${showObservations ? 'border-blue-400/15 bg-blue-500/10 text-blue-300' : 'border-white/[0.07] bg-black/15 text-neutral-600'}`}
                   title={showObservations ? 'Ocultar observaciones' : 'Mostrar observaciones'}
                 >
@@ -1996,7 +1996,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  className="space-y-3 overflow-hidden print:mb-2"
+                  className="detail-metrics-content space-y-3 overflow-hidden print:mb-2"
                 >
                   {!isSyncing && (
                     <div className="flex items-center px-1 print:hidden">
@@ -2236,7 +2236,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                        <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest">Sort</span>
                        <select 
                          value={sortBy}
-                         onChange={(e) => setSortBy(e.target.value)}
+                         onChange={(e) => { setSortBy(e.target.value); updatePrintOption({ sortBy: e.target.value as NonNullable<AccountSettings['detailReport']>['sortBy'] }); }}
                          className="min-w-0 max-w-full bg-transparent text-[9px] font-black text-neutral-400 outline-none uppercase tracking-widest cursor-pointer"
                        >
                          <option value="roas">Ponderar por ROAS</option>
@@ -2250,7 +2250,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                        <span className="text-[8px] font-black text-neutral-700 uppercase tracking-widest">Limit</span>
                        <select 
                          value={topN}
-                         onChange={(e) => setTopN(parseInt(e.target.value))}
+                         onChange={(e) => { setTopN(Number(e.target.value)); updatePrintOption({ topN: Number(e.target.value) }); }}
                          className="min-w-0 max-w-full bg-transparent text-[9px] font-black text-neutral-400 outline-none uppercase tracking-widest cursor-pointer"
                        >
                          <option value={3}>3</option>
@@ -2291,7 +2291,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                 observations={observations}
                 accountName={settings[selectedAccount.id]?.customName || selectedAccount.name}
               />
-              <MetaActivityPanel accountIds={selectedSourceAccountIds} since={dateRange.since} until={dateRange.until} />
+              <MetaActivityPanel accountIds={selectedSourceAccountIds} since={dateRange.since} until={dateRange.until} snapshot={snapshot?.activity} />
             </div>
             <div className="report-print-endnote hidden print:flex">
               <span>Informe generado por Orion Metrics</span>

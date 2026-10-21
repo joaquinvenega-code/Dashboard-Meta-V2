@@ -59,6 +59,14 @@ export interface AccountSettings {
   observations?: string;
   visibleMetrics?: string[];
   categoryId?: string;
+  activeClient?: boolean;
+  weeklyReportEnabled?: boolean;
+  detailReport?: {
+    topN: number;
+    sortBy: 'roas' | 'messages' | 'leads' | 'purchases' | 'revenue' | 'spend';
+    showMetrics: boolean;
+    showObservations: boolean;
+  };
   manualRevenueByMonth?: Record<string, number>;
   offlineSalesLogByMonth?: Record<string, OfflineSaleEntry[]>;
 }

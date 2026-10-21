@@ -319,17 +319,20 @@ export function getFacebookLoginStatus(forceRefresh: boolean = false): Promise<a
 
 async function fetchAllPages(url: string, params: any): Promise<any[]> {
   const results: any[] = [];
-  let nextUrl = url;
   let nextParams = { ...params };
+  const cursors = new Set<string>();
 
   while (true) {
-    const response = await graphApiGet(nextUrl, nextParams);
+    const response = await graphApiGet(url, nextParams);
+    if (!Array.isArray(response?.data)) throw new Error('Meta devolvió una lista de datos inválida.');
 
     results.push(...(response.data || []));
 
     if (response.paging?.next && response.data?.length > 0) {
-      nextUrl = response.paging.next;
-      nextParams = {};
+      const after = response.paging.cursors?.after;
+      if (!after || cursors.has(after)) throw new Error('Meta no permitió completar la paginación.');
+      cursors.add(after);
+      nextParams = { ...params, after };
     } else {
       break;
     }
@@ -338,12 +341,20 @@ async function fetchAllPages(url: string, params: any): Promise<any[]> {
   return results;
 }
 
+async function graphApiCollection(url: string, params: Record<string, unknown>) {
+  return { data: await fetchAllPages(url, params) };
+}
+
 export async function getAdAccounts(): Promise<AdAccount[]> {
   const accounts = await fetchAllPages('/me/adaccounts', {
     fields: 'id,name,account_id,account_status,currency,balance,account_type,spend_cap,amount_spent,funding_source_details{id,type,display_string},prepaid_balance{amount,currency},is_prepaid_account,extended_credit_invoice_group{id,name,balance{amount,currency}}',
     limit: 100,
   });
   return accounts;
+}
+
+export async function getAdAccount(accountId: string): Promise<AdAccount> {
+  return graphApiGet(`/${accountId}`, { fields: 'id,name,account_id,account_status,currency' });
 }
 
 export async function getUserProfile(): Promise<any> {
@@ -409,16 +420,16 @@ function getAction(arr: any[], type: string): number {
   return f ? parseFloat(f.value) : 0;
 }
 
-export async function fetchInsights(accountId: string, since: string, until: string): Promise<Partial<AdAccount>> {
+export async function fetchInsights(accountId: string, since: string, until: string, strict = false): Promise<Partial<AdAccount>> {
   const time_range = JSON.stringify({ since, until });
   const fields = 'spend,clicks,ctr,impressions,actions,action_values';
 
   const [response, msgData] = await Promise.all([
     graphApiGet(`/${accountId}/insights`, { fields, time_range, level: 'account' }),
-    fetchMessagingCampaignInsights(accountId, since, until).catch(() => ({
+    fetchMessagingCampaignInsights(accountId, since, until).catch(error => { if (strict) throw error; return ({
       messagesReal: 0,
       costPerMessageReal: 0,
-    })),
+    }); }),
   ]);
 
   if (!response || !response.data || !response.data.length) {
@@ -469,23 +480,23 @@ async function fetchMessagingCampaignInsights(accountId: string, since: string, 
   const time_range = JSON.stringify({ since, until });
 
   const [response, campaigns] = await Promise.all([
-    graphApiGet(`/${accountId}/insights`, {
+    graphApiCollection(`/${accountId}/insights`, {
       fields: 'spend,actions,campaign_id',
       time_range,
       level: 'campaign',
       limit: 500,
     }),
-    graphApiGet(`/${accountId}/campaigns`, {
+    graphApiCollection(`/${accountId}/campaigns`, {
       fields: 'id,objective,effective_status',
       limit: 500,
     }),
   ]);
 
-  if (!response || response.error || !response.data || !response.data.length) {
+  if (!response.data.length) {
     return { messagesReal: 0, costPerMessageReal: 0 };
   }
 
-  if (!campaigns || campaigns.error || !campaigns.data) {
+  if (!campaigns.data) {
     return { messagesReal: 0, costPerMessageReal: 0 };
   }
 
@@ -535,15 +546,14 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
   console.log(`[TopAds] Fetching account: ${accountId}`);
   const time_range = JSON.stringify({ since, until });
 
-  const insRes = await graphApiGet(`/${accountId}/insights`, {
+  const insRes = await graphApiCollection(`/${accountId}/insights`, {
       fields: `ad_id,ad_name,${AD_TRAFFIC_FIELDS},actions,action_values`,
       time_range,
       level: 'ad',
       limit: 500,
   });
 
-  if (!insRes || insRes.error || !insRes.data || !insRes.data.length) {
-    if (insRes?.error) console.error("[TopAds] Insights error:", insRes.error);
+  if (!insRes.data.length) {
     return [];
   }
 
@@ -894,7 +904,7 @@ function inferFunnelStage(name: string, objective: string): 'TOFU' | 'MOFU' | 'B
 
 export async function fetchDailySeries(accountId: string, since: string, until: string, adIds: string[]): Promise<Record<string, DailyMetric[]>> {
   const time_range = JSON.stringify({ since, until });
-  const response = await graphApiGet(`/${accountId}/insights`, {
+  const response = await graphApiCollection(`/${accountId}/insights`, {
       fields: 'ad_id,date_start,spend,clicks,actions,action_values',
       time_range,
       level: 'ad',
@@ -904,7 +914,7 @@ export async function fetchDailySeries(accountId: string, since: string, until: 
   });
 
   const byAd: Record<string, DailyMetric[]> = {};
-  if (response && !response.error && Array.isArray(response.data)) {
+  if (Array.isArray(response.data)) {
     response.data.forEach((d: any) => {
       const spend = parseFloat(d.spend) || 0;
       const purchases = getAction(d.actions, 'purchase') || getAction(d.actions, 'offsite_conversion.fb_pixel_purchase');
@@ -935,7 +945,7 @@ export async function fetchReportPeriodTotals(accountId: string, since: string, 
 
 export async function fetchAccountDailyPerformance(accountId: string, since: string, until: string): Promise<any[]> {
   const time_range = JSON.stringify({ since, until });
-  const response = await graphApiGet(`/${accountId}/insights`, {
+  const response = await graphApiCollection(`/${accountId}/insights`, {
       fields: 'date_start,spend,actions,action_values,clicks,impressions',
       time_range,
       level: 'account',
@@ -943,7 +953,7 @@ export async function fetchAccountDailyPerformance(accountId: string, since: str
       limit: 1000,
   });
 
-  if (!response || response.error || !Array.isArray(response.data)) return [];
+  if (!Array.isArray(response.data)) return [];
 
   return response.data.map((d: any) => {
     const spend = parseFloat(d.spend) || 0;

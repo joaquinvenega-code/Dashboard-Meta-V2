@@ -34,6 +34,8 @@ import { StrategyCanvas } from './components/StrategyCanvas';
 import { AlertsSection } from './components/AlertsSection';
 import { ReportsSection } from './components/ReportsSection';
 import { AccountsManagement } from './components/AccountsManagement';
+import { PortfolioCloudPanel, usePortfolioCloud } from './components/PortfolioCloud';
+import type { Portfolio } from './lib/weeklyReports';
 import FloatingAssistant from './components/FloatingAssistant';
 import { formatCurrency, formatNumber, formatDecimal, cn } from './lib/utils';
 import { 
@@ -400,6 +402,18 @@ export default function App() {
     localStorage.setItem('cr_client_categories', JSON.stringify(clientCategories));
   }, [clientCategories]);
 
+  const portfolio: Portfolio = { version: 1, settings, groups: accountGroups, categories: clientCategories, visibleAccountIds, notes };
+  const restorePortfolio = (p: Portfolio) => {
+    localStorage.setItem('cr_settings', JSON.stringify(p.settings));
+    localStorage.setItem('cr_groups', JSON.stringify(p.groups));
+    localStorage.setItem('cr_client_categories', JSON.stringify(p.categories));
+    localStorage.setItem('cr_visible_accounts', JSON.stringify(p.visibleAccountIds));
+    localStorage.setItem('cr_notes', JSON.stringify(p.notes));
+    setSettings(p.settings); setAccountGroups(p.groups); setClientCategories(p.categories);
+    setVisibleAccountIds(p.visibleAccountIds); setNotes(p.notes);
+  };
+  const portfolioCloud = usePortfolioCloud(portfolio, restorePortfolio);
+
   useEffect(() => {
     if (activePage === 'strategy' && !structure && !loadingStructure && accounts.length > 0) {
       const firstAcc = accounts.find(a => visibleAccountIds.includes(a.id)) || accounts[0];
@@ -611,9 +625,11 @@ export default function App() {
   };
 
   const handleSaveSettings = (id: string, s: AccountSettings) => {
-    const newSettings = { ...settings, [id]: s };
-    setSettings(newSettings);
-    localStorage.setItem('cr_settings', JSON.stringify(newSettings));
+    setSettings(current => {
+      const next = { ...current, [id]: s };
+      localStorage.setItem('cr_settings', JSON.stringify(next));
+      return next;
+    });
   };
 
   const handleAddOfflineSaleLog = (accountId: string, amount: number, date: string, customId?: string) => {
@@ -1778,7 +1794,8 @@ export default function App() {
                 </div>
               )}
 
-              {activePage === 'accounts' && (
+              {activePage === 'accounts' && (<>
+                <PortfolioCloudPanel cloud={portfolioCloud} portfolio={portfolio} onImport={restorePortfolio} />
                 <AccountsManagement
                   accounts={accounts}
                   visibleAccountIds={visibleAccountIds}
@@ -1791,8 +1808,9 @@ export default function App() {
                   onAssignCategory={assignEntityToCategory}
                   onDeleteCategory={deleteClientCategory}
                   onConfigure={setConfigEntity}
+                  onSettingsChange={handleSaveSettings}
                 />
-              )}
+              </>)}
 
               {false && activePage === 'accounts' && (
                 <div className="animate-in fade-in duration-500 max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 pb-20">

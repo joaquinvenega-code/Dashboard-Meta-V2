@@ -60,7 +60,7 @@ if (variant.startsWith('leads')) {
 if (variant === 'placements') {
   props.name = 'Cliente de muestra';
   props.placementBasis = 'messages';
-  props.placements = ['Facebook Feed', 'Facebook Reels', 'Instagram Feed', 'Instagram Reels', 'Instagram Stories', 'Facebook Otros', 'Otras ubicaciones'].map((name, index) => ({ name, value: [40, 25, 15, 10, 5, 4, 1][index], rawValue: [40, 25, 15, 10, 5, 4, 1][index] }));
+  props.placements = ['Facebook Feed', 'Facebook Reels', 'Instagram Feed', 'Instagram Reels', 'Instagram Stories', 'Facebook Otros', 'Otras ubicaciones'].map((name, index) => ({ name, value: [40, 25, 15, 10, 5, 4, 1][index], rawValue: [40, 25, 15, 10, 5, 4, 1][index], color: '#2563eb' }));
 }
 if (process.argv.includes('--brand')) {
   props.agencyName = 'Agencia de muestra';
