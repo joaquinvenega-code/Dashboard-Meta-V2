@@ -1,13 +1,15 @@
 import React from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useMetaActivity } from './useMetaActivity';
+import type { WeeklySnapshot } from '../../lib/weeklySnapshot';
 
-export function MetaActivityPanel({ accountIds, since, until }: { accountIds: string[]; since: string; until: string }) {
-  const activity = useMetaActivity(accountIds, since, until);
+export function MetaActivityPanel({ accountIds, since, until, snapshot }: { accountIds: string[]; since: string; until: string; snapshot?: WeeklySnapshot['activity'] }) {
+  const live = useMetaActivity(accountIds, since, until, !snapshot);
+  const activity = snapshot ? { ...snapshot, loading: false, refresh: () => {} } : live;
   return <section className="mt-6 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5 print:bg-white print:border-neutral-200">
     <header className="flex items-center justify-between gap-4"><div>
       <h3 className="text-sm font-bold text-white print:text-neutral-900">Actividad de Meta en la bitácora</h3>
-      <p className="mt-1 text-xs text-neutral-400 print:text-neutral-600">Del {since.split('-').reverse().join('/')} al {until.split('-').reverse().join('/')}. Los cambios se incluyen automáticamente en el informe mensual correspondiente.</p>
+      <p className="mt-1 text-xs text-neutral-400 print:text-neutral-600">Del {since.split('-').reverse().join('/')} al {until.split('-').reverse().join('/')}. Cambios de gestión registrados durante el período seleccionado.</p>
     </div><button type="button" onClick={activity.refresh} disabled={activity.loading} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-blue-300 disabled:opacity-50 print:hidden"><RefreshCw size={14} className={activity.loading ? 'animate-spin' : ''} /><span>Actualizar actividad de Meta</span></button></header>
     {activity.loading && <p role="status" className="mt-4 text-sm text-neutral-400">Consultando cambios en Meta…</p>}
     {activity.notice && <p role="status" className="mt-4 text-sm text-amber-400 print:text-neutral-700">{activity.notice}</p>}

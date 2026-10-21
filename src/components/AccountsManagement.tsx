@@ -17,8 +17,9 @@ import {
 } from 'lucide-react';
 import { AdAccount, AccountGroup, AccountSettings, ClientCategory } from '../types';
 import { cn } from '../lib/utils';
+import { trackingMetrics } from '../lib/weeklyReports';
 
-type ManagementTab = 'visibility' | 'consolidation' | 'portfolios';
+type ManagementTab = 'visibility' | 'consolidation' | 'portfolios' | 'weekly';
 
 type DashboardEntity = {
   id: string;
@@ -40,7 +41,10 @@ interface AccountsManagementProps {
   onAssignCategory: (entityId: string, categoryId: string) => void;
   onDeleteCategory: (categoryId: string) => void;
   onConfigure: (entity: AdAccount) => void;
+  onSettingsChange: (entityId: string, settings: AccountSettings) => void;
 }
+
+const weeklyActionsUrl = import.meta.env.VITE_WEEKLY_ACTIONS_URL || '';
 
 const CATEGORY_COLORS = ['#60a5fa', '#a78bfa', '#2dd4bf', '#f59e0b', '#fb7185', '#22c55e'];
 
@@ -64,9 +68,11 @@ export function AccountsManagement({
   onAssignCategory,
   onDeleteCategory,
   onConfigure,
+  onSettingsChange,
 }: AccountsManagementProps) {
   const [activeTab, setActiveTab] = useState<ManagementTab>('visibility');
   const [search, setSearch] = useState('');
+  const [weeklyCategory, setWeeklyCategory] = useState('all');
   const [dialog, setDialog] = useState<{
     kind: 'group' | 'category';
     mode: 'create' | 'edit';
@@ -184,6 +190,7 @@ export function AccountsManagement({
     { id: 'visibility', label: 'Visibilidad', detail: 'Qué aparece en tableros', icon: Eye },
     { id: 'consolidation', label: 'Clientes consolidados', detail: 'Varias cuentas, una métrica', icon: Layers3 },
     { id: 'portfolios', label: 'Grupos de clientes', detail: 'Organizar la cartera', icon: FolderKanban },
+    { id: 'weekly', label: 'Informes semanales', detail: 'Clientes incluidos los lunes', icon: CheckCircle2 },
   ];
 
   return (
@@ -210,7 +217,7 @@ export function AccountsManagement({
           </div>
         </div>
 
-        <div className="grid gap-1 p-2 sm:grid-cols-3">
+        <div className="grid gap-1 p-2 sm:grid-cols-4">
           {tabs.map((tab, index) => {
             const Icon = tab.icon;
             const selected = activeTab === tab.id;
@@ -240,6 +247,37 @@ export function AccountsManagement({
           })}
         </div>
       </section>
+
+      {activeTab === 'weekly' && <section className="space-y-4 rounded-2xl border border-white/10 bg-[#11161e] p-5">
+        <h3 className="font-semibold text-white">PDF semanal de Detalle de cuentas</h3>
+        <p className="text-xs leading-5 text-neutral-400">Elegí los clientes que reciben informe. Tener acceso a una cuenta de Meta o mostrarla en el tablero no la incluye automáticamente. Cada cliente consolidado genera un único PDF.</p>
+        <p className="text-xs text-blue-200">Programación prevista: lunes 09:17, hora Argentina · período: lunes a domingo anterior. Requiere conectar la cartera y activar la tarea privada.</p>
+        <div className="flex flex-wrap gap-3 text-xs">
+          <select aria-label="Grupo de clientes para informes" className="rounded bg-neutral-900 p-2 text-white" value={weeklyCategory} onChange={e => setWeeklyCategory(e.target.value)}>
+            <option value="all">Todos los grupos</option>{clientCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <button className="rounded border border-white/15 px-3 py-2 text-blue-200" onClick={() => {
+            dashboardEntities.filter(e => weeklyCategory === 'all' || settings[e.id]?.categoryId === weeklyCategory).forEach(e => {
+              const s = settings[e.id]; if (s?.activeClient === true) onSettingsChange(e.id, { ...s, weeklyReportEnabled: true });
+            });
+          }}>Incluir los clientes activos del grupo</button>
+          {/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/actions(?:\/.*)?$/.test(weeklyActionsUrl) && <a className="rounded border border-white/15 px-3 py-2 text-blue-200" href={weeklyActionsUrl} target="_blank" rel="noreferrer">Descargar PDF / generar ahora en GitHub</a>}
+        </div>
+        <div className="divide-y divide-white/10">
+          {dashboardEntities.filter(e => weeklyCategory === 'all' || settings[e.id]?.categoryId === weeklyCategory).map(e => {
+            const s = settings[e.id] || { objective: 0, budget: 0, currency: e.account.currency, tracking: 'ecommerce' as const };
+            return <div key={e.id} className="flex flex-wrap items-center gap-4 py-4 text-xs text-neutral-200">
+              <div className="min-w-44 flex-1"><p className="font-semibold">{e.name}</p><p className="mt-1 text-neutral-500">{e.memberAccounts.length} cuenta(s) publicitaria(s)</p></div>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={s.activeClient === true} onChange={event => onSettingsChange(e.id, { ...s, activeClient: event.target.checked, weeklyReportEnabled: event.target.checked ? s.weeklyReportEnabled : false })} />Cliente activo</label>
+              <label className="flex items-center gap-2"><input type="checkbox" disabled={!s.activeClient} checked={s.activeClient === true && s.weeklyReportEnabled === true} onChange={event => onSettingsChange(e.id, { ...s, weeklyReportEnabled: event.target.checked })} />PDF los lunes</label>
+              <select aria-label={`Tipo de cliente ${e.name}`} className="rounded bg-neutral-900 p-2" value={s.tracking} onChange={event => {
+                const tracking = event.target.value as AccountSettings['tracking'];
+                onSettingsChange(e.id, { ...s, tracking, visibleMetrics: trackingMetrics(tracking), detailReport: undefined });
+              }}><option value="ecommerce">Compras web</option><option value="messaging">Mensajería</option><option value="both">Compras + mensajería</option><option value="leads">Clientes potenciales</option><option value="all">Multicanal</option></select>
+            </div>;
+          })}
+        </div>
+      </section>}
 
       {activeTab === 'visibility' && (
         <section className="overflow-hidden rounded-2xl border border-white/[0.07] bg-[#11161e]">

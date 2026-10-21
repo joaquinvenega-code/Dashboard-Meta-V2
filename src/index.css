@@ -171,6 +171,13 @@
     box-sizing: border-box;
   }
 
+  /* Printing may start during the expand animation. Never clip the last KPI row. */
+  .account-detail-print-root .detail-metrics-content {
+    height: auto !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+  }
+
   .bg-blue-600 { background-color: #2563eb !important; color: #fff !important; }
   .bg-blue-300 { background-color: #93c5fd !important; }
   .bg-blue-500 { background-color: #3b82f6 !important; color: #fff !important; }

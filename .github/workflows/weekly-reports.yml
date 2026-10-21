@@ -1,0 +1,61 @@
+name: PDF semanales de clientes
+
+on:
+  schedule:
+    # Mondays 09:17 Argentina (UTC-3). GitHub may delay scheduled execution.
+    - cron: '17 12 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weekly-client-reports
+  cancel-in-progress: false
+
+jobs:
+  reports:
+    # Copy this workflow to a PRIVATE runner repository. Never publish customer
+    # files as artifacts in the public Pages source repository.
+    if: github.event.repository.private == true && vars.ORION_WEEKLY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Validate pinned source
+        env:
+          SOURCE_REF: ${{ vars.ORION_SOURCE_REF }}
+        run: |
+          if [[ ! "$SOURCE_REF" =~ ^[a-f0-9]{40}$ ]]; then
+            echo 'Set ORION_SOURCE_REF to the reviewed source commit SHA.'
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          repository: joaquinvenega-code/Dashboard-Meta-V2
+          ref: ${{ vars.ORION_SOURCE_REF }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Build local print application
+        run: npm run build
+        env:
+          VITE_REPORT_RUNNER: 'true'
+      - name: Generate previous week's PDFs
+        run: npm run reports:weekly
+        env:
+          ORION_PRIVATE_RUNNER: 'true'
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          ORION_OWNER_UID: ${{ secrets.ORION_OWNER_UID }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+      - name: Save private reports and result manifest
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes-semanales-${{ github.run_number }}
+          path: output/weekly/
+          if-no-files-found: ignore
+          retention-days: 7
