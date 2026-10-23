@@ -1,0 +1,33 @@
+name: Verify private weekly downloads
+on:
+  pull_request:
+    paths:
+      - 'src/lib/weeklyDownloads*'
+      - 'src/services/weeklyDownloadsStore.ts'
+      - 'src/components/WeeklyDownloads.tsx'
+      - 'scripts/publish-weekly-reports.ts'
+      - 'scripts/test-weekly-download-rules.mjs'
+      - 'firestore.rules'
+      - '.github/workflows/test-weekly-downloads.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  downloads:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run lint && npm run test:downloads
+      - run: npm install --no-save --package-lock=false firebase-tools@15.34.1 @firebase/rules-unit-testing@6.0.0
+      - name: Verify owner isolation and publisher permissions using synthetic data
+        run: npx firebase emulators:exec --project demo-weekly-downloads --only firestore 'node scripts/test-weekly-download-rules.mjs'
