@@ -60,13 +60,14 @@ async function main() {
         await page.waitForFunction(() => Boolean(window.orionWeekly));
         await page.evaluate(async input => { await window.orionWeekly!.load(input); }, { portfolio, targetId: target.id, period, accessToken });
         await settlePrint(page, target.id);
-        const file = reportFilename(target.name, target.id, period.since, period.until);
+        const name = (await page.locator('.report-print-account').innerText()).trim() || target.name;
+        const file = reportFilename(name, target.id, period.since, period.until);
         const pdf = await page.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true });
         if (pdf.length < 1000) throw new Error('El PDF está vacío.');
         if (totalBytes + pdf.length > 60 * 1024 * 1024) throw new Error('El lote excede 60 MB. Reducí la cantidad de anuncios o dividí la cartera.');
         await writeFile(path.join(output, file), pdf);
         totalBytes += (await stat(path.join(output, file))).size;
-        results.push({ clientId: target.id, name: target.name, status: 'listo', file });
+        results.push({ clientId: target.id, name, status: 'listo', file });
       } catch {
         // Never echo browser exceptions, URLs or credentials into Actions logs.
         results.push({ clientId: target.id, name: target.name, status: 'requiere_revision', error: 'No se emitió el PDF. Revisar acceso a Meta, datos de todas las cuentas, fechas de ventas manuales y límite de tamaño; volver a ejecutar.' });

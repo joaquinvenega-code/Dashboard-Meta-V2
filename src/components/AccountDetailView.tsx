@@ -1827,12 +1827,13 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                 <p className="report-print-channel">Meta Ads</p>
               </div>
               <div className="report-print-client">
-                <div className="report-print-logo">
+                <div key={settings[selectedAccount.id]?.customLogo || 'default-logo'} className="report-print-logo">
                   {settings[selectedAccount.id]?.customLogo ? (
                     <img
                       src={settings[selectedAccount.id]?.customLogo}
                       alt="Logo del cliente"
                       referrerPolicy="no-referrer"
+                      onError={event => { if (event.currentTarget.parentElement) event.currentTarget.parentElement.style.display = 'none'; }}
                     />
                   ) : (
                     <BarChart2 className="h-5 w-5" />

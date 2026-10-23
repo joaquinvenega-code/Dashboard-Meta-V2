@@ -26,6 +26,9 @@ try {
         thumbnail: 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600"><rect width="600" height="600" fill="${['#1e3a8a', '#155e75', '#5b21b6'][i]}"/><text x="300" y="280" fill="white" text-anchor="middle" font-family="Arial" font-size="36">DATOS DE PRUEBA</text><text x="300" y="335" fill="white" text-anchor="middle" font-family="Arial" font-size="24">Anuncio ${i + 1}</text></svg>`), previewUrl: 'https://www.facebook.com/', dailySeries: daily })),
       activity: { logs: [], automatic: [], notice: '' },
     };
+    snapshot.account.revenue = 4100000;
+    snapshot.portfolio.settings[id].customLogo = 'data:image/png;base64,invalid';
+    snapshot.ads[0].name = 'Anuncio con nombre largo para comprobar que el indicador de orden no tapa el titulo del creativo';
     const context = await browser.newContext({ timezoneId: 'America/Argentina/Buenos_Aires', viewport: { width: 1280, height: 1000 } });
     const page = await context.newPage();
     const errors: string[] = [];
@@ -43,6 +46,15 @@ try {
     assert.equal(metaRequests, 0, 'Snapshots must not refetch Meta while printing');
     const metricsFit = await page.locator('.detail-metrics-content').evaluate(element => element.clientHeight >= element.scrollHeight - 1);
     assert.ok(metricsFit, 'Every KPI row must remain visible while printing during expansion');
+    const valuesFit = await page.locator('.print-metrics-grid .truncate').evaluateAll(elements => elements.every(el => el.scrollWidth <= el.clientWidth + 1));
+    assert.ok(valuesFit, 'Large amounts must print in full without horizontal truncation');
+    assert.equal(await page.locator('.report-print-logo').isVisible(), false, 'Broken logos must not print');
+    const rankDoesNotOverlap = await page.locator('.ad-card-print').evaluateAll(cards => cards.every(card => {
+      const rank = card.querySelector('.print-rank')!.getBoundingClientRect();
+      const layout = card.querySelector('.ad-card-print-layout')!.getBoundingClientRect();
+      return rank.bottom <= layout.top;
+    }));
+    assert.ok(rankDoesNotOverlap, 'Creative rank must not obscure titles');
     assert.deepEqual(errors, []);
     const pdf = await page.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true, path: `tmp/pdfs/weekly/${tracking}.pdf` });
     assert.ok(pdf.length > 10000);
