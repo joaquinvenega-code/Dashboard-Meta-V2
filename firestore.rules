@@ -20,6 +20,22 @@ service cloud.firestore {
       return request.resource.data;
     }
 
+    // Downloads are read-only for the owner. The isolated automation identity
+    // may publish/clean only the owner's archive, not their portfolio or sales.
+    function isReportPublisher(uid) {
+      return isSignedIn() && request.auth.uid == 'orion-weekly-publisher'
+        && request.auth.token.weeklyReportsOwner == uid;
+    }
+    match /orionUsers/{uid}/weeklyReports/{batchId} {
+      allow read: if (isSignedIn() && request.auth.uid == uid) || isReportPublisher(uid);
+      allow write: if isReportPublisher(uid);
+      match /chunks/{chunkId} {
+        allow read: if isReportPublisher(uid) || (isSignedIn() && request.auth.uid == uid
+          && get(/databases/$(database)/documents/orionUsers/$(uid)/weeklyReports/$(batchId)).data.status == 'ready');
+        allow write: if isReportPublisher(uid);
+      }
+    }
+
     // Rules for Client collections
     // Each Google-authenticated user owns exactly their portfolio. The private
     // runner reads the chosen owner with its server credential, never from Pages.

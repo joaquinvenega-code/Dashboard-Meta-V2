@@ -18,6 +18,7 @@ import {
 import { AdAccount, AccountGroup, AccountSettings, ClientCategory } from '../types';
 import { cn } from '../lib/utils';
 import { trackingMetrics } from '../lib/weeklyReports';
+import { WeeklyDownloads } from './WeeklyDownloads';
 
 type ManagementTab = 'visibility' | 'consolidation' | 'portfolios' | 'weekly';
 
@@ -249,6 +250,7 @@ export function AccountsManagement({
       </section>
 
       {activeTab === 'weekly' && <section className="space-y-4 rounded-2xl border border-white/10 bg-[#11161e] p-5">
+        <WeeklyDownloads />
         <h3 className="font-semibold text-white">PDF semanal de Detalle de cuentas</h3>
         <p className="text-xs leading-5 text-neutral-400">Elegí los clientes que reciben informe. Tener acceso a una cuenta de Meta o mostrarla en el tablero no la incluye automáticamente. Cada cliente consolidado genera un único PDF.</p>
         <p className="text-xs text-blue-200">Programación prevista: lunes 09:17, hora Argentina · período: lunes a domingo anterior. Requiere conectar la cartera y activar la tarea privada.</p>
