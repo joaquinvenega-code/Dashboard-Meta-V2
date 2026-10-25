@@ -33,6 +33,7 @@ import { AccountDetailView, RocketLoader } from './components/AccountDetailView'
 import { StrategyCanvas } from './components/StrategyCanvas';
 import { AlertsSection } from './components/AlertsSection';
 import { ReportsSection } from './components/ReportsSection';
+import { ReportsHub } from './components/ReportsHub';
 import { AccountsManagement } from './components/AccountsManagement';
 import { PortfolioCloudPanel, usePortfolioCloud } from './components/PortfolioCloud';
 import type { Portfolio } from './lib/weeklyReports';
@@ -1081,7 +1082,7 @@ export default function App() {
                  activePage === 'detail' ? 'Detalle de cuentas' :
                  activePage === 'accounts' ? 'Cuentas visibles' : 
                  activePage === 'alerts' ? 'Centro de Alertas' :
-                 activePage === 'reports' ? 'Informes Mensuales' :
+                 activePage === 'reports' ? 'Informes' :
                  activePage === 'user_settings' ? 'Perfil de Usuario' :
                  activePage === 'orion_settings' ? 'Configuración de Orión' :
                  activePage === 'strategy' ? 'Lienzo Estratégico' : activePage}
@@ -1615,6 +1616,9 @@ export default function App() {
 
               {activePage === 'reports' && (
                 <div className="animate-in fade-in duration-500">
+                  <ReportsHub accounts={accounts} groups={accountGroups} categories={clientCategories}
+                    settings={settings} visibleAccountIds={visibleAccountIds} cloud={portfolioCloud}
+                    onSettingsChange={handleSaveSettings} onManageClients={() => setActivePage('accounts')}>
                   <ReportsSection 
                     agencySettings={agencySettings}
                     onAgencySettingsChange={setAgencySettings}
@@ -1625,6 +1629,7 @@ export default function App() {
                     setDateRange={setDateRange}
                     onGeneratingChange={setIsGeneratingReport}
                   />
+                  </ReportsHub>
                 </div>
               )}
 
