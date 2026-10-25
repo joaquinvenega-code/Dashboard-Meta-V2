@@ -17,18 +17,9 @@ import {
 } from 'lucide-react';
 import { AdAccount, AccountGroup, AccountSettings, ClientCategory } from '../types';
 import { cn } from '../lib/utils';
-import { trackingMetrics } from '../lib/weeklyReports';
-import { WeeklyDownloads } from './WeeklyDownloads';
+import { buildClientEntities, clientAccountIdsMatch as idsMatch, isClientVisible } from '../lib/clientEntities';
 
-type ManagementTab = 'visibility' | 'consolidation' | 'portfolios' | 'weekly';
-
-type DashboardEntity = {
-  id: string;
-  name: string;
-  account: AdAccount;
-  memberAccounts: AdAccount[];
-  isConsolidated: boolean;
-};
+type ManagementTab = 'visibility' | 'consolidation' | 'portfolios';
 
 interface AccountsManagementProps {
   accounts: AdAccount[];
@@ -45,17 +36,7 @@ interface AccountsManagementProps {
   onSettingsChange: (entityId: string, settings: AccountSettings) => void;
 }
 
-const weeklyActionsUrl = import.meta.env.VITE_WEEKLY_ACTIONS_URL || '';
-
 const CATEGORY_COLORS = ['#60a5fa', '#a78bfa', '#2dd4bf', '#f59e0b', '#fb7185', '#22c55e'];
-
-const cleanId = (value: string | undefined) => (value || '').replace(/^act_/i, '').toLowerCase();
-
-const idsMatch = (first: string | undefined, second: string | undefined) => {
-  const left = cleanId(first);
-  const right = cleanId(second);
-  return Boolean(left && right && left === right);
-};
 
 export function AccountsManagement({
   accounts,
@@ -73,7 +54,6 @@ export function AccountsManagement({
 }: AccountsManagementProps) {
   const [activeTab, setActiveTab] = useState<ManagementTab>('visibility');
   const [search, setSearch] = useState('');
-  const [weeklyCategory, setWeeklyCategory] = useState('all');
   const [dialog, setDialog] = useState<{
     kind: 'group' | 'category';
     mode: 'create' | 'edit';
@@ -81,45 +61,7 @@ export function AccountsManagement({
     value: string;
   } | null>(null);
 
-  const groupedAccountIds = useMemo(() => {
-    return new Set(accountGroups.flatMap(group => group.accountIds.map(cleanId)));
-  }, [accountGroups]);
-
-  const dashboardEntities = useMemo<DashboardEntity[]>(() => {
-    const groups = accountGroups.map(group => {
-      const members = accounts.filter(account =>
-        group.accountIds.some(id => idsMatch(id, account.id) || idsMatch(id, account.account_id)),
-      );
-      const groupSettings = settings[group.id];
-      const account: AdAccount = {
-        id: group.id,
-        account_id: 'GRUPO',
-        name: groupSettings?.customName || group.name,
-        account_status: members.some(member => member.account_status === 1) ? 1 : 0,
-        currency: groupSettings?.currency || members[0]?.currency || 'ARS',
-      };
-
-      return {
-        id: group.id,
-        name: account.name,
-        account,
-        memberAccounts: members,
-        isConsolidated: true,
-      };
-    }).filter(entity => entity.memberAccounts.length > 0);
-
-    const standalone = accounts
-      .filter(account => !groupedAccountIds.has(cleanId(account.id)) && !groupedAccountIds.has(cleanId(account.account_id)))
-      .map(account => ({
-        id: account.id,
-        name: settings[account.id]?.customName || account.name,
-        account: { ...account, name: settings[account.id]?.customName || account.name },
-        memberAccounts: [account],
-        isConsolidated: false,
-      }));
-
-    return [...groups, ...standalone].sort((a, b) => a.name.localeCompare(b.name));
-  }, [accountGroups, accounts, groupedAccountIds, settings]);
+  const dashboardEntities = useMemo(() => buildClientEntities(accounts, accountGroups, settings), [accounts, accountGroups, settings]);
 
   const filteredEntities = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -134,9 +76,7 @@ export function AccountsManagement({
     );
   }, [dashboardEntities, search]);
 
-  const isEntityVisible = (entity: DashboardEntity) => entity.memberAccounts.some(account =>
-    visibleAccountIds.some(id => idsMatch(id, account.id) || idsMatch(id, account.account_id)),
-  );
+  const isEntityVisible = (entity: typeof dashboardEntities[number]) => isClientVisible(entity, visibleAccountIds);
 
   const visibleEntities = dashboardEntities.filter(isEntityVisible);
   const assignedEntities = dashboardEntities.filter(entity => Boolean(settings[entity.id]?.categoryId));
@@ -191,7 +131,6 @@ export function AccountsManagement({
     { id: 'visibility', label: 'Visibilidad', detail: 'Qué aparece en tableros', icon: Eye },
     { id: 'consolidation', label: 'Clientes consolidados', detail: 'Varias cuentas, una métrica', icon: Layers3 },
     { id: 'portfolios', label: 'Grupos de clientes', detail: 'Organizar la cartera', icon: FolderKanban },
-    { id: 'weekly', label: 'Informes semanales', detail: 'Clientes incluidos los lunes', icon: CheckCircle2 },
   ];
 
   return (
@@ -206,7 +145,7 @@ export function AccountsManagement({
               </div>
               <h3 className="text-xl font-semibold tracking-[-0.025em] text-white">Definí cómo se representan tus clientes</h3>
               <p className="mt-1.5 text-xs leading-5 text-neutral-400">
-                Primero consolidá las cuentas publicitarias que pertenecen al mismo cliente. Después elegí cuáles se ven y organizalos en grupos para filtrar Vista general y Detalle de cuentas.
+                Organizá tus clientes, su visibilidad y su estado activo en un solo lugar.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[500px]">
@@ -218,7 +157,7 @@ export function AccountsManagement({
           </div>
         </div>
 
-        <div className="grid gap-1 p-2 sm:grid-cols-4">
+        <div className="grid gap-1 p-2 sm:grid-cols-3">
           {tabs.map((tab, index) => {
             const Icon = tab.icon;
             const selected = activeTab === tab.id;
@@ -248,38 +187,6 @@ export function AccountsManagement({
           })}
         </div>
       </section>
-
-      {activeTab === 'weekly' && <section className="space-y-4 rounded-2xl border border-white/10 bg-[#11161e] p-5">
-        <WeeklyDownloads />
-        <h3 className="font-semibold text-white">PDF semanal de Detalle de cuentas</h3>
-        <p className="text-xs leading-5 text-neutral-400">Elegí los clientes que reciben informe. Tener acceso a una cuenta de Meta o mostrarla en el tablero no la incluye automáticamente. Cada cliente consolidado genera un único PDF.</p>
-        <p className="text-xs text-blue-200">Programación prevista: lunes 09:17, hora Argentina · período: lunes a domingo anterior. Requiere conectar la cartera y activar la tarea privada.</p>
-        <div className="flex flex-wrap gap-3 text-xs">
-          <select aria-label="Grupo de clientes para informes" className="rounded bg-neutral-900 p-2 text-white" value={weeklyCategory} onChange={e => setWeeklyCategory(e.target.value)}>
-            <option value="all">Todos los grupos</option>{clientCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <button className="rounded border border-white/15 px-3 py-2 text-blue-200" onClick={() => {
-            dashboardEntities.filter(e => weeklyCategory === 'all' || settings[e.id]?.categoryId === weeklyCategory).forEach(e => {
-              const s = settings[e.id]; if (s?.activeClient === true) onSettingsChange(e.id, { ...s, weeklyReportEnabled: true });
-            });
-          }}>Incluir los clientes activos del grupo</button>
-          {/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/actions(?:\/.*)?$/.test(weeklyActionsUrl) && <a className="rounded border border-white/15 px-3 py-2 text-blue-200" href={weeklyActionsUrl} target="_blank" rel="noreferrer">Descargar PDF / generar ahora en GitHub</a>}
-        </div>
-        <div className="divide-y divide-white/10">
-          {dashboardEntities.filter(e => weeklyCategory === 'all' || settings[e.id]?.categoryId === weeklyCategory).map(e => {
-            const s = settings[e.id] || { objective: 0, budget: 0, currency: e.account.currency, tracking: 'ecommerce' as const };
-            return <div key={e.id} className="flex flex-wrap items-center gap-4 py-4 text-xs text-neutral-200">
-              <div className="min-w-44 flex-1"><p className="font-semibold">{e.name}</p><p className="mt-1 text-neutral-500">{e.memberAccounts.length} cuenta(s) publicitaria(s)</p></div>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={s.activeClient === true} onChange={event => onSettingsChange(e.id, { ...s, activeClient: event.target.checked, weeklyReportEnabled: event.target.checked ? s.weeklyReportEnabled : false })} />Cliente activo</label>
-              <label className="flex items-center gap-2"><input type="checkbox" disabled={!s.activeClient} checked={s.activeClient === true && s.weeklyReportEnabled === true} onChange={event => onSettingsChange(e.id, { ...s, weeklyReportEnabled: event.target.checked })} />PDF los lunes</label>
-              <select aria-label={`Tipo de cliente ${e.name}`} className="rounded bg-neutral-900 p-2" value={s.tracking} onChange={event => {
-                const tracking = event.target.value as AccountSettings['tracking'];
-                onSettingsChange(e.id, { ...s, tracking, visibleMetrics: trackingMetrics(tracking), detailReport: undefined });
-              }}><option value="ecommerce">Compras web</option><option value="messaging">Mensajería</option><option value="both">Compras + mensajería</option><option value="leads">Clientes potenciales</option><option value="all">Multicanal</option></select>
-            </div>;
-          })}
-        </div>
-      </section>}
 
       {activeTab === 'visibility' && (
         <section className="overflow-hidden rounded-2xl border border-white/[0.07] bg-[#11161e]">
@@ -311,7 +218,7 @@ export function AccountsManagement({
               const visible = isEntityVisible(entity);
               const category = clientCategories.find(item => item.id === settings[entity.id]?.categoryId);
               return (
-                <article key={entity.id} className="grid gap-3 px-4 py-3.5 transition-colors hover:bg-white/[0.018] sm:px-6 lg:grid-cols-[minmax(0,1fr)_210px_120px] lg:items-center">
+                <article key={entity.id} className="grid gap-3 px-4 py-3.5 transition-colors hover:bg-white/[0.018] sm:px-6 lg:grid-cols-[minmax(0,1fr)_180px_180px] lg:items-center">
                   <button
                     type="button"
                     onClick={() => onSetAccountsVisibility(entity.memberAccounts.map(account => account.id), !visible)}
@@ -351,7 +258,13 @@ export function AccountsManagement({
                   </label>
 
                   <div className="flex items-center justify-between gap-2 lg:justify-end">
-                    <span className={cn('text-[9px] font-medium', visible ? 'text-emerald-400' : 'text-neutral-600')}>{visible ? 'Visible' : 'Oculto'}</span>
+                    <label className="flex items-center gap-2 text-[11px] text-neutral-300">
+                      <input type="checkbox" aria-label={`Cliente activo: ${entity.name}`} checked={settings[entity.id]?.activeClient === true}
+                        onChange={event => {
+                          const current = settings[entity.id] || { objective: 0, budget: 0, currency: entity.account.currency, tracking: 'ecommerce' as const };
+                          onSettingsChange(entity.id, { ...current, activeClient: event.target.checked, weeklyReportEnabled: event.target.checked ? current.weeklyReportEnabled : false });
+                        }} />Activo
+                    </label>
                     <button type="button" onClick={() => onConfigure(entity.account)} className="rounded-lg border border-white/[0.07] p-2 text-neutral-600 transition-colors hover:bg-white/[0.04] hover:text-white" title="Configurar cliente">
                       <Settings className="h-3.5 w-3.5" />
                     </button>
