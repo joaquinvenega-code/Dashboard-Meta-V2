@@ -14,7 +14,7 @@
     "reports:weekly": "tsx scripts/weekly-reports.ts",
     "reports:publish": "tsx scripts/publish-weekly-reports.ts",
     "test:downloads": "node --import tsx --test src/lib/weeklyDownloads.test.ts",
-    "test:weekly": "node --import tsx --test src/lib/weeklyReports.test.ts src/services/weeklyReportData.test.ts",
+    "test:weekly": "node --import tsx --test src/lib/weeklyReports.test.ts src/services/weeklyReportData.test.ts src/lib/clientEntities.test.ts",
     "test:weekly-print": "tsx scripts/test-weekly-print.ts"
   },
   "dependencies": {
