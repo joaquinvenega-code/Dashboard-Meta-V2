@@ -11,7 +11,7 @@ export function WeeklyDownloadsView({ batches, busy, downloading, message, conne
 }) {
   return <section className="space-y-4 rounded-xl border border-blue-400/20 bg-blue-500/[0.04] p-4" aria-label="Descargas semanales">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><h3 className="font-semibold text-white">Informes listos para descargar</h3><p className="mt-1 text-xs text-neutral-400">PDF de Detalle de cuentas · disponibles durante 28 días.</p></div>
+      <div><h3 className="font-semibold text-white">PDF disponibles</h3><p className="mt-1 text-xs text-neutral-400">Últimas cuatro semanas · resumen de Detalle de cuentas</p></div>
       {connected && <button type="button" disabled={busy || Boolean(downloading)} onClick={refresh} className="flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs text-blue-200 disabled:opacity-50"><RefreshCw className="h-3.5 w-3.5" />Actualizar</button>}
     </div>
     <p role="status" className="text-xs text-neutral-300">{!connected ? 'Conectá tu cartera con Google para ver tus informes privados.' : busy ? 'Buscando informes…' : message || (!batches.length ? 'Todavía no hay informes disponibles. Aparecerán aquí después de la próxima generación semanal.' : 'Elegí el cliente y descargá su PDF para enviarlo.')}</p>
