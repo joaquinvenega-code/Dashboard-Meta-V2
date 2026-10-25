@@ -9,6 +9,8 @@ export function usePortfolioCloud(portfolio: Portfolio, restore: (p: Portfolio) 
   const [status, setStatus] = useState('La cartera se guarda en este navegador.');
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [hasRemote, setHasRemote] = useState(false);
   const revision = useRef(0);
   const saved = useRef('');
   const latest = useRef(portfolio); latest.current = portfolio;
@@ -20,19 +22,21 @@ export function usePortfolioCloud(portfolio: Portfolio, restore: (p: Portfolio) 
 
   useEffect(() => watchPortfolioUser(setUid), []);
   useEffect(() => {
-    setReady(false); revision.current = 0; saved.current = '';
+    setReady(false); setHasRemote(false); setChecking(Boolean(uid)); revision.current = 0; saved.current = '';
     if (!uid) { setStatus('La cartera se guarda en este navegador.'); return; }
     let cancelled = false;
     setStatus('Consultando la cartera guardada…');
     readPortfolio(uid).then(remote => {
       if (cancelled) return;
+      setHasRemote(Boolean(remote));
       revision.current = remote?.revision || 0;
       if (remote && portfolioFingerprint(remote.portfolio) === portfolioFingerprint(latest.current)) {
         saved.current = portfolioFingerprint(remote.portfolio); setReady(true); setStatus('Cartera guardada en la nube.');
       } else {
         setStatus(remote ? 'Hay una cartera en la nube. Elegí cargarla o guardar la de este navegador.' : 'Guardá esta cartera para habilitar la sincronización automática.');
       }
-    }).catch(() => { if (!cancelled) setStatus('No se pudo leer la cartera. Revisá la conexión y los permisos de Firebase.'); });
+    }).catch(() => { if (!cancelled) setStatus('No se pudo leer la cartera. Revisá la conexión y los permisos de Firebase.'); })
+      .finally(() => { if (!cancelled) setChecking(false); });
     return () => { cancelled = true; };
   }, [uid]);
 
@@ -44,7 +48,7 @@ export function usePortfolioCloud(portfolio: Portfolio, restore: (p: Portfolio) 
       const nextRevision = await writePortfolio(uid, latest.current, revision.current);
       if (userRef.current !== uid) return;
       revision.current = nextRevision; saved.current = payload;
-      setReady(true); setStatus('Cartera guardada en la nube.');
+      setReady(true); setHasRemote(true); setStatus('Cartera guardada en la nube.');
     } catch (error) {
       if (userRef.current === uid) { setReady(false); setStatus(error instanceof Error ? error.message : 'No se pudo guardar. Los cambios siguen en este navegador.'); }
     } finally { lock.current = false; setBusy(false); setTick(t => t + 1); }
@@ -66,11 +70,11 @@ export function usePortfolioCloud(portfolio: Portfolio, restore: (p: Portfolio) 
       // Keep a recoverable local backup before replacing any local configuration.
       localStorage.setItem('cr_portfolio_before_cloud_load', JSON.stringify(latest.current));
       revision.current = remote.revision; saved.current = portfolioFingerprint(remote.portfolio);
-      restoreRef.current(remote.portfolio); setReady(true); setStatus('Cartera cargada. Los próximos cambios se guardarán automáticamente.');
+      restoreRef.current(remote.portfolio); setReady(true); setHasRemote(true); setStatus('Cartera cargada. Los próximos cambios se guardarán automáticamente.');
     } catch (error) { setStatus(error instanceof Error ? error.message : 'No se pudo cargar la cartera.'); }
     finally { lock.current = false; setBusy(false); }
   };
-  return { uid, status, busy, ready, save, load, setStatus };
+  return { uid, status, busy, ready, checking, hasRemote, synced: ready && json === saved.current, save, load, setStatus };
 }
 
 export function PortfolioCloudPanel({ cloud, portfolio, onImport }: {
