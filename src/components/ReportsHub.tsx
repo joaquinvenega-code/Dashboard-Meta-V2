@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import { connectPortfolio } from '../services/portfolioStore';
 import type { usePortfolioCloud } from './PortfolioCloud';
 import { WeeklyDownloads } from './WeeklyDownloads';
+import { WeeklyMetricPicker } from './WeeklyMetricPicker';
 
 type Props = {
   accounts: AdAccount[]; groups: AccountGroup[]; categories: ClientCategory[];
@@ -69,12 +70,15 @@ export function WeeklyReports({ accounts, groups, categories, settings, visibleA
         {categories.length > 0 && <select aria-label="Grupo de clientes" value={category} onChange={e => setCategory(e.target.value)} className="rounded-lg border border-white/10 bg-[#11161e] px-3 py-2 text-xs text-neutral-200"><option value="all">Todos los grupos</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}<option value="">Sin grupo</option></select>}
       </div>
       <div className="divide-y divide-white/10 px-4 sm:px-5">
-        {filtered.map(e => <div key={e.id} className="flex items-center justify-between gap-4 py-4">
+        {filtered.map(e => <div key={e.id} className="py-4">
+          <div className="flex items-center justify-between gap-4">
           <div className="min-w-0"><p className="break-words text-sm font-medium text-white">{e.name}</p>
             <p className="mt-1 text-xs text-neutral-500">{[categories.find(c => c.id === settings[e.id]?.categoryId)?.name, types[settings[e.id].tracking], e.isConsolidated ? `${e.memberAccounts.length} cuentas` : '', !isClientVisible(e, visibleAccountIds) ? 'Oculto en tableros' : ''].filter(Boolean).join(' · ')}</p>
           </div>
           <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-neutral-200"><input type="checkbox" role="switch" aria-label={`Automatizar informe de ${e.name}`} checked={settings[e.id]?.weeklyReportEnabled === true} disabled={disabled}
             onChange={event => onSettingsChange(e.id, { ...settings[e.id], weeklyReportEnabled: event.target.checked })} className="h-4 w-4 accent-blue-500 disabled:opacity-40" />Automatizar</label>
+          </div>
+          <WeeklyMetricPicker name={e.name} settings={settings[e.id]} disabled={disabled} onChange={next => onSettingsChange(e.id, next)} />
         </div>)}
         {!filtered.length && <p className="py-6 text-center text-sm text-neutral-400">{search || category !== 'all' ? 'No hay clientes que coincidan.' : 'Tus clientes activos y visibles aparecerán acá.'}</p>}
       </div>
