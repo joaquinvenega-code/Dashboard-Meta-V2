@@ -13,6 +13,8 @@ En **¿Para qué clientes automatizamos el informe?**, activá **Automatizar** j
 
 La selección se guarda automáticamente con tu cartera conectada. El estado **Cambios guardados** confirma que quedó aplicada. Si estás en otro navegador, podés cargar tu cartera guardada desde la misma pantalla.
 
+Abrí **Métricas del PDF** junto a un cliente para elegir sus métricas generales o esconder ese bloque completo. Es la misma selección de **Detalle de cuentas**: se guarda automáticamente y se aplica a los próximos PDF. Los archivos ya generados no cambian.
+
 La entrega prevista es los lunes a las 08:00, hora Argentina. La generación comienza de madrugada y tiene un segundo intento si faltan informes. GitHub puede demorar las ejecuciones, por lo que el horario no es una garantía exacta.
 
 Cada PDF abarca exclusivamente el lunes a domingo de la semana completa anterior. Por ejemplo, el lunes 2 de noviembre corresponde al 26 de octubre–1 de noviembre. En descargas se destaca la última semana completa y las anteriores quedan en «Semanas anteriores»; si la última todavía no está disponible, se indica expresamente.
