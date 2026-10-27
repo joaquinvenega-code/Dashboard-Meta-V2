@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { assembleReport, REPORT_CHUNK_BYTES, validateDownloadBatch, type DownloadBatch } from './weeklyDownloads';
+import { assembleReport, hasCompletedWeek, REPORT_CHUNK_BYTES, validateDownloadBatch, type DownloadBatch } from './weeklyDownloads';
 import { publishArchive, type ReportArchiveStore } from '../../scripts/publish-weekly-reports';
 
 const pdf = new Uint8Array(REPORT_CHUNK_BYTES + 50).fill(32);
@@ -18,6 +18,22 @@ function memoryStore(initial: DownloadBatch[] = []) {
   };
   return { store, records, parts };
 }
+test('scheduled retry skips only a ready, unexpired matching week with all selected clients', () => {
+  const b = batch();
+  const period = { since: b.since, until: b.until };
+  const now = Date.parse('2026-10-26T09:17:00Z');
+  const complete = (items: DownloadBatch[], ids = ['test']) => hasCompletedWeek(items, period, ids, now);
+  assert.equal(complete([b]), true);
+  assert.equal(complete([]), false);
+  assert.equal(complete([b], []), false);
+  assert.equal(complete([b], ['test', 'new-client']), false);
+  assert.equal(complete([{ ...b, status: 'uploading' }]), false);
+  assert.equal(complete([{ ...b, since: '2026-10-05' }]), false);
+  assert.equal(complete([{ ...b, until: '2026-10-19' }]), false);
+  assert.equal(complete([{ ...b, expiresAt: '2026-10-26T09:17:00Z' }]), false);
+  assert.equal(complete([{ ...b, reports: [{ ...b.reports[0], status: 'requiere_revision' }] }]), false);
+});
+
 test('reassembles the exact PDF and rejects missing, corrupted or reordered chunks', async () => {
   const r = batch().reports[0];
   const parts = [pdf.slice(0, REPORT_CHUNK_BYTES), pdf.slice(REPORT_CHUNK_BYTES)];
