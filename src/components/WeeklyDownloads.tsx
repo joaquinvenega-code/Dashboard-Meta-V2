@@ -3,26 +3,38 @@ import { Download, RefreshCw } from 'lucide-react';
 import { watchPortfolioUser } from '../services/portfolioStore';
 import { listWeeklyDownloads, downloadWeeklyReport } from '../services/weeklyDownloadsStore';
 import type { DownloadBatch } from '../lib/weeklyDownloads';
+import { previousWeek } from '../lib/weeklyReports';
 
 const dateLabel = (date: string) => date.slice(0, 10).split('-').reverse().join('/');
 export function WeeklyDownloadsView({ batches, busy, downloading, message, connected, refresh, download }: {
   batches: DownloadBatch[]; busy: boolean; downloading: string; message: string; connected: boolean;
   refresh: () => void; download: (batch: string, report: string) => void;
 }) {
+  const period = previousWeek();
+  const current = batches.filter(batch => batch.since === period.since && batch.until === period.until);
+  const history = batches.filter(batch => !current.includes(batch));
+  const renderBatch = (batch: DownloadBatch) => <div key={batch.id} className="space-y-2">
+    <h4 className="text-sm font-semibold text-blue-100">Lunes {dateLabel(batch.since)} a domingo {dateLabel(batch.until)}</h4>
+    <p className="text-[11px] text-neutral-500">Generado el {dateLabel(batch.generatedAt)} · disponible hasta el {dateLabel(batch.expiresAt)}</p>
+    <div className="divide-y divide-white/10">{batch.reports.map(report => <div key={report.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+      <span className="text-sm text-neutral-200">{report.name}</span>
+      {report.status === 'listo' ? <button type="button" disabled={Boolean(downloading)} onClick={() => download(batch.id, report.id)} className="flex items-center gap-2 rounded-lg bg-blue-500/15 px-3 py-2 text-xs font-medium text-blue-200 hover:bg-blue-500/25 disabled:opacity-50"><Download className="h-4 w-4" />{downloading === `${batch.id}/${report.id}` ? 'Descargando…' : 'Descargar PDF'}</button> : <span className="text-xs text-amber-200">Requiere revisión · PDF no disponible</span>}
+    </div>)}</div>
+  </div>;
   return <section className="space-y-4 rounded-xl border border-blue-400/20 bg-blue-500/[0.04] p-4" aria-label="Descargas semanales">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><h3 className="font-semibold text-white">PDF disponibles</h3><p className="mt-1 text-xs text-neutral-400">Últimas cuatro semanas · resumen de Detalle de cuentas</p></div>
       {connected && <button type="button" disabled={busy || Boolean(downloading)} onClick={refresh} className="flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs text-blue-200 disabled:opacity-50"><RefreshCw className="h-3.5 w-3.5" />Actualizar</button>}
     </div>
     <p role="status" className="text-xs text-neutral-300">{!connected ? 'Conectá tu cartera con Google para ver tus informes privados.' : busy ? 'Buscando informes…' : message || (!batches.length ? 'Todavía no hay informes disponibles. Aparecerán aquí después de la próxima generación semanal.' : 'Elegí el cliente y descargá su PDF para enviarlo.')}</p>
-    {connected && !busy && batches.map(batch => <div key={batch.id} className="space-y-2">
-      <h4 className="text-sm font-semibold text-blue-100">Semana del {dateLabel(batch.since)} al {dateLabel(batch.until)}</h4>
-      <p className="text-[11px] text-neutral-500">Generado el {dateLabel(batch.generatedAt)} · disponible hasta el {dateLabel(batch.expiresAt)}</p>
-      <div className="divide-y divide-white/10">{batch.reports.map(report => <div key={report.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-        <span className="text-sm text-neutral-200">{report.name}</span>
-        {report.status === 'listo' ? <button type="button" disabled={Boolean(downloading)} onClick={() => download(batch.id, report.id)} className="flex items-center gap-2 rounded-lg bg-blue-500/15 px-3 py-2 text-xs font-medium text-blue-200 hover:bg-blue-500/25 disabled:opacity-50"><Download className="h-4 w-4" />{downloading === `${batch.id}/${report.id}` ? 'Descargando…' : 'Descargar PDF'}</button> : <span className="text-xs text-amber-200">Requiere revisión · PDF no disponible</span>}
-      </div>)}</div>
-    </div>)}
+    {connected && !busy && <>
+      <p className="text-xs font-medium text-blue-200">Última semana completa</p>
+      {current.length ? current.map(renderBatch) : <p className="text-sm text-amber-200">Del {dateLabel(period.since)} al {dateLabel(period.until)}: todavía no disponible.</p>}
+      {history.length > 0 && <details className="border-t border-white/10 pt-3">
+        <summary className="cursor-pointer text-xs text-neutral-400">Semanas anteriores ({history.length})</summary>
+        <div className="mt-4 space-y-5">{history.map(renderBatch)}</div>
+      </details>}
+    </>}
   </section>;
 }
 
