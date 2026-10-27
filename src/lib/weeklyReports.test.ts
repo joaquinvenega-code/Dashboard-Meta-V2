@@ -13,6 +13,15 @@ test('previous full week uses Argentina date, including UTC Monday before local 
   assert.deepEqual(previousWeek(new Date('2024-03-04T12:17:00Z')), { since: '2024-02-26', until: '2024-03-03' });
 });
 
+test('Monday delivery and later retries keep the same complete Monday-Sunday period', () => {
+  for (const instant of ['2026-10-26T04:17:00Z', '2026-10-26T09:17:00Z', '2026-10-26T11:00:00Z', '2026-10-27T12:00:00Z', '2026-11-02T02:59:59Z']) {
+    assert.deepEqual(previousWeek(new Date(instant)), { since: '2026-10-19', until: '2026-10-25' });
+  }
+  for (const instant of ['2026-11-02T03:00:00Z', '2026-11-02T04:17:00Z', '2026-11-02T11:00:00Z']) {
+    assert.deepEqual(previousWeek(new Date(instant)), { since: '2026-10-26', until: '2026-11-01' });
+  }
+});
+
 test('visibility and Meta access alone never enroll a client; groups print once even when members were enabled before consolidation', () => {
   const p = portfolio(); p.visibleAccountIds = ['act_1', 'act_2'];
   p.settings = { act_1: settings(), act_2: settings({ activeClient: true }), act_3: settings({ weeklyReportEnabled: true }), act_4: settings({ activeClient: true, weeklyReportEnabled: true }) };
