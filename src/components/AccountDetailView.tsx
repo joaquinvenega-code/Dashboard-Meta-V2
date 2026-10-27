@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DashboardDateFilter } from './DashboardDateFilter';
 import { MetaActivityPanel } from './reports/MetaActivityPanel';
 import { detailOptions, trackingMetrics, offlineRevenueForPeriod } from '../lib/weeklyReports';
+import { DETAIL_METRICS as ALL_METRICS, detailVisibleMetrics } from '../lib/detailMetrics';
 import type { WeeklySnapshot } from '../lib/weeklySnapshot';
 import { 
   AdAccount, 
@@ -812,10 +813,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     }
   };
 
-  const defaultVisibleMetrics = trackingMetrics('ecommerce');
-  const messagingDefaultMetrics = trackingMetrics('messaging');
-  const leadsDefaultMetrics = trackingMetrics('leads');
-  const allDefaultMetrics = trackingMetrics(settings[selectedId || '']?.tracking || 'all');
   
   // Filter accounts for sidebar
   const sidebarAccounts = accounts.filter(acc => 
@@ -947,19 +944,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
   // Initialize local metrics - cuando cambia la cuenta o cuando los settings llegan por primera vez
   useEffect(() => {
-    if (Array.isArray(s?.visibleMetrics)) {
-      setLocalVisibleMetrics(s.visibleMetrics);
-    } else {
-      let defaults = defaultVisibleMetrics;
-      if (s?.tracking === 'leads' || sortBy === 'leads') {
-        defaults = leadsDefaultMetrics;
-      } else if (s?.tracking === 'messaging' || sortBy === 'messages') {
-        defaults = messagingDefaultMetrics;
-      } else if (s?.tracking === 'all' || s?.tracking === 'both') {
-        defaults = allDefaultMetrics;
-      }
-      setLocalVisibleMetrics(defaults);
-    }
+    setLocalVisibleMetrics(detailVisibleMetrics(s, sortBy as NonNullable<AccountSettings['detailReport']>['sortBy']));
   }, [selectedId, s?.visibleMetrics, s?.tracking, sortBy]);
 
   const loadAds = useCallback(async () => {
@@ -1078,30 +1063,6 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     return Math.round((acc.revenue / sAcc.objective) * 100);
   };
 
-  const ALL_METRICS = [
-    { id: 'spend', label: 'Inversión' },
-    { id: 'revenue', label: 'Facturación Ads' },
-    { id: 'manual_revenue', label: 'Ventas Offline' },
-    { id: 'total_revenue', label: 'Facturación Total' },
-    { id: 'roas', label: 'ROAS Real' },
-    { id: 'objective', label: 'Objetivo' },
-    { id: 'progress_revenue', label: '% Objetivo' },
-    { id: 'progress_budget', label: '% Presupuesto' },
-    { id: 'ctr', label: 'CTR' },
-    { id: 'clicks', label: 'Clics' },
-    { id: 'purchases', label: 'Compras' },
-    { id: 'atc', label: 'Agreg. carrito' },
-    { id: 'ic', label: 'Pagos iniciados' },
-    { id: 'cpp', label: 'Costo x compra' },
-    { id: 'messages', label: 'Mensajes' },
-    { id: 'cpm', label: 'Costo x mensaje' },
-    { id: 'messages_real', label: 'Mensajes Reales' },
-    { id: 'cpm_real', label: 'Costo Mensaje Real' },
-    { id: 'leads', label: 'Clientes Potenciales (Leads)' },
-    { id: 'cpl', label: 'Costo x Lead' },
-    { id: 'leads_real', label: 'Leads Reales' },
-    { id: 'cpl_real', label: 'Costo Lead Real' },
-  ];
 
   const visibleMetrics = localVisibleMetrics;
 
