@@ -13,6 +13,10 @@ En **¿Para qué clientes automatizamos el informe?**, activá **Automatizar** j
 
 La selección se guarda automáticamente con tu cartera conectada. El estado **Cambios guardados** confirma que quedó aplicada. Si estás en otro navegador, podés cargar tu cartera guardada desde la misma pantalla.
 
-Los PDF se generan los lunes a las 09:17, hora Argentina, con la semana completa anterior. La tarea puede comenzar con demora. Respetan las métricas y opciones de impresión de Detalle de cuentas. Las ventas manuales deben tener fecha para incluirse en la semana correspondiente.
+La entrega prevista es los lunes a las 08:00, hora Argentina. La generación comienza de madrugada y tiene un segundo intento si faltan informes. GitHub puede demorar las ejecuciones, por lo que el horario no es una garantía exacta.
+
+Cada PDF abarca exclusivamente el lunes a domingo de la semana completa anterior. Por ejemplo, el lunes 2 de noviembre corresponde al 26 de octubre–1 de noviembre. En descargas se destaca la última semana completa y las anteriores quedan en «Semanas anteriores»; si la última todavía no está disponible, se indica expresamente.
+
+Los PDF respetan las métricas y opciones de impresión de Detalle de cuentas. Las ventas manuales deben tener fecha para incluirse en la semana correspondiente.
 
 **Administrar clientes** lleva a la configuración de clientes activos, visibilidad y agrupaciones. Eso se define una sola vez para toda la aplicación.

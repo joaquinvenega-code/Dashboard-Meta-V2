@@ -23,6 +23,13 @@ export interface DownloadBatch {
   reports: DownloadReport[];
 }
 
+/** A retry may skip generation only when every selected client has a usable PDF. */
+export function hasCompletedWeek(batches: DownloadBatch[], period: { since: string; until: string }, clientIds: string[], now = Date.now()): boolean {
+  return clientIds.length > 0 && batches.some(batch => batch.status === 'ready'
+    && batch.since === period.since && batch.until === period.until && Date.parse(batch.expiresAt) > now
+    && clientIds.every(id => batch.reports.some(report => report.clientId === id && report.status === 'listo')));
+}
+
 export function validDownloadId(id: unknown): id is string {
   return typeof id === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(id);
 }

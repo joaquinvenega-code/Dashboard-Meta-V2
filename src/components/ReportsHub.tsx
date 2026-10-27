@@ -51,7 +51,7 @@ export function WeeklyReports({ accounts, groups, categories, settings, visibleA
           <h3 className="text-base font-semibold text-white">¿Para qué clientes automatizamos el informe?</h3>
           <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs text-blue-200">{enabled} {enabled === 1 ? 'seleccionado' : 'seleccionados'}</span>
         </div>
-        <p className="flex items-center gap-2 text-xs text-neutral-400"><CalendarDays className="h-4 w-4" />Lunes · 09:17 h Argentina · semana anterior</p>
+        <p className="flex items-center gap-2 text-xs text-neutral-400"><CalendarDays className="h-4 w-4" />Entrega prevista: lunes 08:00 h Argentina · lunes a domingo anterior</p>
         <div role="status" className="flex flex-wrap items-center gap-2 text-xs">
           {cloud.checking ? <span className="text-neutral-400">Cargando tu selección…</span> : cloud.ready ?
             <span className={cloud.synced && !cloud.busy ? 'flex items-center gap-1 text-emerald-300' : 'text-neutral-400'}>{cloud.synced && !cloud.busy ? <><Check className="h-3.5 w-3.5" />Cambios guardados</> : 'Guardando selección…'}</span> : <>
