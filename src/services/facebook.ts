@@ -1,4 +1,5 @@
 import { AdAccount, Ad, DailyMetric, Campaign, AdSet } from '../types';
+import { reportCampaignFilter } from '../lib/reportScope';
 import { AD_TRAFFIC_FIELDS, adTrafficMetrics } from '../lib/adTraffic';
 import { metaLeadCount } from '../lib/metaLeads';
 import { metaMessageCount } from '../lib/metaMessages';
@@ -540,13 +541,15 @@ const ensureHighResFbCdn = (urlStr: string | null) => {
   return urlStr; // Eliminamos la logica agresiva que rompía las url
 };
 
-export async function fetchTopAds(accountId: string, since: string, until: string, n: number, sortBy: string): Promise<Ad[]> {
+export async function fetchTopAds(accountId: string, since: string, until: string, n: number, sortBy: string, campaignIds?: string[]): Promise<Ad[]> {
+  const scope = reportCampaignFilter(campaignIds);
   const buster = Math.floor(Math.random() * 9000) + 1000;
   console.info(`%c*** [TopAds] V4.6 ENGINE ACTIVE (#${buster}) - ULTRA SHARP FIX ***`, "color: #ffff00; font-weight: bold; font-size: 14px; background: #000; padding: 4px; border: 1px solid #ffff00;");
   console.log(`[TopAds] Fetching account: ${accountId}`);
   const time_range = JSON.stringify({ since, until });
 
   const insRes = await graphApiCollection(`/${accountId}/insights`, {
+      ...scope,
       fields: `ad_id,ad_name,${AD_TRAFFIC_FIELDS},actions,action_values`,
       time_range,
       level: 'ad',
@@ -593,8 +596,9 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
   // A lead-focused report must not miss winners that have no purchases/ROAS.
   const topLeads = sortBy === 'leads' ? [...allAds].sort((a, b) => b.leads - a.leads).slice(0, n) : [];
 
+  const topMessages = sortBy === 'messages' ? [...allAds].sort((a, b) => b.messages - a.messages).slice(0, n) : [];
   const uniqueAdsMap = new Map();
-  [...topPurchases, ...topRevenue, ...topRoas, ...topSpend, ...topLeads].forEach(ad => {
+  [...topPurchases, ...topRevenue, ...topRoas, ...topSpend, ...topLeads, ...topMessages].forEach(ad => {
     if (!uniqueAdsMap.has(ad.id)) {
       uniqueAdsMap.set(ad.id, ad);
     }
@@ -943,9 +947,11 @@ export async function fetchReportPeriodTotals(accountId: string, since: string, 
   return response?.data?.[0] || null;
 }
 
-export async function fetchAccountDailyPerformance(accountId: string, since: string, until: string): Promise<any[]> {
+export async function fetchAccountDailyPerformance(accountId: string, since: string, until: string, campaignIds?: string[]): Promise<any[]> {
+  const scope = reportCampaignFilter(campaignIds);
   const time_range = JSON.stringify({ since, until });
   const response = await graphApiCollection(`/${accountId}/insights`, {
+      ...scope,
       fields: 'date_start,spend,actions,action_values,clicks,impressions',
       time_range,
       level: 'account',
@@ -982,9 +988,11 @@ export async function fetchAccountDailyPerformance(accountId: string, since: str
   }).sort((a: any, b: any) => a.date.localeCompare(b.date));
 }
 
-export async function fetchDemographics(accountId: string, since: string, until: string): Promise<any[]> {
+export async function fetchDemographics(accountId: string, since: string, until: string, campaignIds?: string[]): Promise<any[]> {
+  const scope = reportCampaignFilter(campaignIds);
   const time_range = JSON.stringify({ since, until });
-  const response = await graphApiGet(`/${accountId}/insights`, {
+  const response = await graphApiCollection(`/${accountId}/insights`, {
+      ...scope,
       fields: 'spend,actions,action_values',
       time_range,
       level: 'account',
@@ -992,14 +1000,16 @@ export async function fetchDemographics(accountId: string, since: string, until:
       limit: 1000,
   });
 
-  if (!response || response.error || !Array.isArray(response.data)) return [];
+  if (!Array.isArray(response.data)) return [];
 
   return response.data;
 }
 
-export async function fetchGeography(accountId: string, since: string, until: string): Promise<any[]> {
+export async function fetchGeography(accountId: string, since: string, until: string, campaignIds?: string[]): Promise<any[]> {
+  const scope = reportCampaignFilter(campaignIds);
   const time_range = JSON.stringify({ since, until });
-  const response = await graphApiGet(`/${accountId}/insights`, {
+  const response = await graphApiCollection(`/${accountId}/insights`, {
+      ...scope,
       fields: 'spend,actions,action_values',
       time_range,
       level: 'account',
@@ -1007,14 +1017,16 @@ export async function fetchGeography(accountId: string, since: string, until: st
       limit: 1000,
   });
 
-  if (!response || response.error || !Array.isArray(response.data)) return [];
+  if (!Array.isArray(response.data)) return [];
 
   return response.data;
 }
 
-export async function fetchPlacements(accountId: string, since: string, until: string): Promise<any[]> {
+export async function fetchPlacements(accountId: string, since: string, until: string, campaignIds?: string[]): Promise<any[]> {
+  const scope = reportCampaignFilter(campaignIds);
   const time_range = JSON.stringify({ since, until });
-  const response = await graphApiGet(`/${accountId}/insights`, {
+  const response = await graphApiCollection(`/${accountId}/insights`, {
+      ...scope,
       fields: 'spend,actions,action_values',
       time_range,
       level: 'account',
@@ -1022,8 +1034,23 @@ export async function fetchPlacements(accountId: string, since: string, until: s
       limit: 1000,
   });
 
-  if (!response || response.error || !Array.isArray(response.data)) return [];
+  if (!Array.isArray(response.data)) return [];
 
   return response.data;
 }
 
+
+/** Includes historical campaigns; active-only lists omit completed events. */
+export async function fetchReportCampaigns(accountId: string): Promise<{ id: string; name: string }[]> {
+  return fetchAllPages(`/${accountId}/campaigns`, { fields: 'id,name', limit: 500 });
+}
+
+export async function fetchSpecialReportTotals(accountId: string, since: string, until: string, campaignIds?: string[]) {
+  const response = await graphApiGet(`/${accountId}/insights`, {
+    ...reportCampaignFilter(campaignIds),
+    fields: 'spend,actions,action_values,clicks,impressions,reach',
+    time_range: JSON.stringify({ since, until }), level: 'account',
+  });
+  if (!Array.isArray(response?.data)) throw new Error('Meta no devolvió métricas válidas.');
+  return response.data[0] || null;
+}

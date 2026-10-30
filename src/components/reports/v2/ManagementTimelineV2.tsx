@@ -5,7 +5,7 @@ const categories: Record<string, string> = { observation: 'Observación', change
 export function ManagementTimelineV2({ logs, notice }: { logs: ReportLog[]; notice?: string }) {
   const rows = Array.from({ length: Math.ceil(logs.length / 2) }, (_, index) => logs.slice(index * 2, index * 2 + 2));
   return <section className="report-panel report-timeline">
-    <header className="report-panel-heading"><h3><CalendarDays size={16} /> Bitácora de gestión</h3><p>{logs.length ? `${logs.length} registros del mes. Seguí los números para recorrer los cambios en orden cronológico.` : 'Historial de cambios, revisiones y decisiones del mes.'}</p></header>
+    <header className="report-panel-heading"><h3><CalendarDays size={16} /> Bitácora de gestión</h3><p>{logs.length ? `${logs.length} registros del período. Seguí los números para recorrer los cambios en orden cronológico.` : 'Historial de cambios, revisiones y decisiones del período.'}</p></header>
     {notice && <p className="report-data-note">{notice}</p>}
     {logs.some(log => log.source?.startsWith('Meta')) && <p className="report-caption report-timeline-source">Los registros de Meta Ads muestran cambios registrados en la cuenta. Las notas de la agencia aportan el contexto y las decisiones.</p>}
     {logs.length ? <div className="report-timeline-path" role="list">{rows.map((row, rowIndex) => <div className={'report-timeline-row' + (rowIndex % 2 ? ' is-reversed' : '') + (rowIndex === rows.length - 1 ? ' is-last' : '')} key={rowIndex}>
@@ -19,6 +19,6 @@ export function ManagementTimelineV2({ logs, notice }: { logs: ReportLog[]; noti
           </div>
         </article>;
       })}
-    </div>)}</div> : <p className="report-empty">No se encontraron anotaciones ni cambios de gestión disponibles para esta cuenta y este mes. Las notas de voz, las notas guardadas y la actividad de Meta aparecen aquí con su fecha.</p>}
+    </div>)}</div> : <p className="report-empty">No se encontraron anotaciones ni cambios de gestión disponibles para esta cuenta y este período. Las notas de voz, las notas guardadas y la actividad de Meta aparecen aquí con su fecha.</p>}
   </section>;
 }

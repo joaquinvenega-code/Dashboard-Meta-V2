@@ -34,6 +34,7 @@ import { StrategyCanvas } from './components/StrategyCanvas';
 import { AlertsSection } from './components/AlertsSection';
 import { ReportsSection } from './components/ReportsSection';
 import { ReportsHub } from './components/ReportsHub';
+import { SpecialReports } from './components/SpecialReports';
 import { AccountsManagement } from './components/AccountsManagement';
 import { PortfolioCloudPanel, usePortfolioCloud } from './components/PortfolioCloud';
 import type { Portfolio } from './lib/weeklyReports';
@@ -1618,7 +1619,8 @@ export default function App() {
                 <div className="animate-in fade-in duration-500">
                   <ReportsHub accounts={accounts} groups={accountGroups} categories={clientCategories}
                     settings={settings} visibleAccountIds={visibleAccountIds} cloud={portfolioCloud}
-                    onSettingsChange={handleSaveSettings} onManageClients={() => setActivePage('accounts')}>
+                    onSettingsChange={handleSaveSettings} onManageClients={() => setActivePage('accounts')}
+                    specialReports={<SpecialReports accounts={accounts} visibleAccountIds={visibleAccountIds} settings={settings} notes={notes} agencySettings={agencySettings} />}>
                   <ReportsSection 
                     agencySettings={agencySettings}
                     onAgencySettingsChange={setAgencySettings}

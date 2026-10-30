@@ -14,7 +14,8 @@ function fullDate(value: unknown): string | undefined {
   if (match) return fullDate(`${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`);
 }
 /** Local notes are authoritative; deduplicate mirrored sources, not repeated actions. */
-export function collectReportLogs(notes: AccountNote[], remote: any[], accountId: string, month: string) {
+export function collectReportLogs(notes: AccountNote[], remote: any[], accountId: string, month: string, until?: string) {
+  const inPeriod = (day: string) => until ? day >= month && day <= until : day.startsWith(month);
   const local = notes.filter(note => accountKey(note.accountId) === accountKey(accountId));
   const localIds = new Set(local.map(note => note.id));
   const logs: ReportLog[] = [];
@@ -23,7 +24,7 @@ export function collectReportLogs(notes: AccountNote[], remote: any[], accountId
   for (const note of local) {
     const day = fullDate(note.timestamp);
     if (!day) { unresolved++; continue; }
-    if (!day.startsWith(month) || !note.text.trim()) continue;
+    if (!inPeriod(day) || !note.text.trim()) continue;
     const key = day + '|' + cleanText(note.text);
     mirrors.set(key, (mirrors.get(key) || 0) + 1);
     logs.push({ id: 'local-' + note.id, date: day.slice(8) + '/' + day.slice(5, 7), sortDate: day, description: note.text, category: note.category, source: note.tags?.some(tag => tag.toLowerCase() === 'voz') ? 'Voz' : 'Manual' });
@@ -40,7 +41,7 @@ export function collectReportLogs(notes: AccountNote[], remote: any[], accountId
       if (created) { const [d, m] = row.date.split('/'); day = fullDate(`${created.slice(0, 4)}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`); }
     }
     if (!day) { unresolved++; continue; }
-    if (!day.startsWith(month)) continue;
+    if (!inPeriod(day)) continue;
     const key = day + '|' + cleanText(description);
     if (mirrors.get(key)) { mirrors.set(key, mirrors.get(key)! - 1); continue; }
     logs.push({ id: 'api-' + (row.id || index), date: day.slice(8) + '/' + day.slice(5, 7), sortDate: day, description, category: row.category, source: row.source === 'voice' ? 'Voz' : 'Bitácora' });

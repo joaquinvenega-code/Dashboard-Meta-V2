@@ -26,7 +26,7 @@ function AdPreviewLink({ ad }: { ad: AdAsset }) {
     ? <a className="report-ad-preview" href={shareLink} target="_blank" rel="noopener noreferrer" aria-label={`Ver anuncio en Meta: ${ad.name}`}><ExternalLink aria-hidden="true" /><span>Ver anuncio en Meta</span></a>
     : <span className="report-ad-preview is-unavailable"><ExternalLink aria-hidden="true" /><span>Enlace no disponible</span></span>;
 }
-export function AssetPerformanceV2({ assets, mode = 'ecommerce', currency = 'ARS' }: { assets: AdAsset[]; mode?: ReportMode; currency?: string }) {
+export function AssetPerformanceV2({ assets, mode = 'ecommerce', currency = 'ARS', lockSort = false }: { assets: AdAsset[]; mode?: ReportMode; currency?: string; lockSort?: boolean }) {
   const event = REPORT_MODES[mode];
   const defaultSort = mode === 'ecommerce' ? 'roas' : event.key;
   const [sortBy, setSortBy] = useState<SortCriteria>(defaultSort);
@@ -39,7 +39,7 @@ export function AssetPerformanceV2({ assets, mode = 'ecommerce', currency = 'ARS
   const criteria: SortCriteria[] = mode !== 'ecommerce' ? [event.key, 'spend', 'ctr'] : ['roas', 'purchases', 'revenue'];
   return <section className="report-panel report-assets-gallery">
     <header className="report-panel-heading"><div><h3>Rendimiento de anuncios</h3><p>Hasta cinco anuncios destacados del período. Orden actual: {labels[sortBy].toLowerCase()}.</p></div>
-      <label className="report-screen-only report-sort-label">Ordenar <select value={sortBy} onChange={event => setSortBy(event.target.value as SortCriteria)}>{criteria.map(key => <option key={key} value={key}>{labels[key]}</option>)}</select></label>
+      {!lockSort && <label className="report-screen-only report-sort-label">Ordenar <select value={sortBy} onChange={event => setSortBy(event.target.value as SortCriteria)}>{criteria.map(key => <option key={key} value={key}>{labels[key]}</option>)}</select></label>}
     </header>
     {rows.length ? <ol className="report-ad-cards">{rows.map((ad, index) => {
         const results = ad[event.key] || 0;

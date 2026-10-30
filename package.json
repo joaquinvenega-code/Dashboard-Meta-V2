@@ -15,7 +15,9 @@
     "reports:publish": "tsx scripts/publish-weekly-reports.ts",
     "test:downloads": "node --import tsx --test src/lib/weeklyDownloads.test.ts",
     "test:weekly": "node --import tsx --test src/lib/weeklyReports.test.ts src/services/weeklyReportData.test.ts src/lib/clientEntities.test.ts",
-    "test:weekly-print": "tsx scripts/test-weekly-print.ts"
+    "test:weekly-print": "tsx scripts/test-weekly-print.ts",
+    "test:special": "node --import tsx --test src/lib/specialReports.test.tsx src/services/specialReportData.test.ts",
+    "test:special-print": "tsx scripts/test-special-reports.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

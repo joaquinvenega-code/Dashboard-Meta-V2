@@ -5,6 +5,10 @@
   line-height: 1.5; font-variant-numeric: tabular-nums; font-family: Inter, Arial, sans-serif;
 }
 .report-editorial * { box-sizing: border-box; }
+.report-special-context { margin-bottom: 22px; padding-bottom: 16px; border-bottom: 1px solid var(--report-border); overflow-wrap: anywhere; }
+.report-special-context h2 { font-size: 22px; line-height: 1.25; margin: 0 0 10px; }
+.report-special-context p { font-size: 11px; margin: 6px 0; white-space: pre-wrap; }
+.special-report-root .report-period { flex-shrink: 1; max-width: 250px; }
 .report-editorial .report-sheet { background: var(--report-paper); padding: 44px; margin: 0 0 28px; border-radius: 14px; box-shadow: 0 16px 40px #0002; }
 .report-sheet-header { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding-bottom: 22px; margin-bottom: 24px; border-bottom: 2px solid var(--report-ink); }
 .report-client { display: flex; flex: 1; align-items: center; gap: 14px; min-width: 0; }
@@ -226,6 +230,13 @@
   .report-next-list > div { grid-template-columns: 1fr; gap: 4px; }
 }
 @media print {
+  [role="tabpanel"][hidden] { display: none !important; }
+  .report-special-context { margin-bottom: 4mm; padding-bottom: 3mm; }
+  .report-special-context h2 { font-size: 17px; }
+  .report-special-context p { font-size: 9px; }
+  .special-report-root .report-conversion-block { break-inside: avoid; }
+  .special-report-root .report-funnel-svg { max-height: 50mm; }
+  .special-report-root .report-summary-reading { padding: 3mm 0; }
   /* Apply the named page to the whole report shell, so trailing wrappers do not
      create an extra anonymous blank page after the document. */
   body:has(.monthly-report-print-root) { page: reportMonthly; }

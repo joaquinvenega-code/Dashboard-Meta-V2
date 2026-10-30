@@ -13,29 +13,31 @@ type Props = {
   settings: Record<string, AccountSettings>; visibleAccountIds: string[];
   cloud: ReturnType<typeof usePortfolioCloud>;
   onSettingsChange: (id: string, settings: AccountSettings) => void;
-  onManageClients: () => void; children: React.ReactNode;
+  onManageClients: () => void; children: React.ReactNode; specialReports?: React.ReactNode;
 };
 const types: Record<AccountSettings['tracking'], string> = {
   ecommerce: 'Compras web', messaging: 'Mensajería', both: 'Compras + mensajería', leads: 'Clientes potenciales', all: 'Multicanal',
 };
 
-export function ReportsHub({ children, ...props }: Props) {
-  const [tab, setTab] = useState<'weekly' | 'monthly'>('weekly');
+export function ReportsHub({ children, specialReports, ...props }: Props) {
+  const [tab, setTab] = useState<'weekly' | 'monthly' | 'special'>('weekly');
   const [monthlyOpened, setMonthlyOpened] = useState(false);
+  const [specialOpened, setSpecialOpened] = useState(false);
   return <div className="space-y-5">
     <div role="tablist" aria-label="Tipo de informe" className="flex gap-2 rounded-xl border border-white/10 bg-[#11161e] p-1.5 print:hidden">
-      {([{ id: 'weekly', title: 'Semanales', detail: 'Resumen automático' }, { id: 'monthly', title: 'Mensuales', detail: 'Análisis completo' }] as const).map(t =>
+      {([{ id: 'weekly', title: 'Semanales', detail: 'Resumen automático' }, { id: 'monthly', title: 'Mensuales', detail: 'Análisis completo' }, { id: 'special', title: 'Especiales', detail: 'Eventos y períodos personalizados' }] as const).map(t =>
         <button key={t.id} type="button" role="tab" id={`reports-${t.id}-tab`} aria-controls={`reports-${t.id}`} aria-selected={tab === t.id}
-          onClick={() => { setTab(t.id); if (t.id === 'monthly') setMonthlyOpened(true); }} className={cn('flex-1 rounded-lg px-4 py-3 text-left', tab === t.id ? 'bg-blue-500/15 text-white ring-1 ring-blue-400/20' : 'text-neutral-400 hover:bg-white/5')}>
+          onClick={() => { setTab(t.id); if (t.id === 'monthly') setMonthlyOpened(true); if (t.id === 'special') setSpecialOpened(true); }} className={cn('min-w-0 flex-1 rounded-lg px-2 py-3 text-left sm:px-4', tab === t.id ? 'bg-blue-500/15 text-white ring-1 ring-blue-400/20' : 'text-neutral-400 hover:bg-white/5')}>
           <span className="block text-sm font-semibold">{t.title}</span><span className="mt-0.5 block text-xs text-neutral-400">{t.detail}</span>
         </button>)}
     </div>
     <div role="tabpanel" id="reports-weekly" aria-labelledby="reports-weekly-tab" hidden={tab !== 'weekly'} className={tab !== 'weekly' ? 'hidden' : ''}><WeeklyReports {...props} /></div>
     <div role="tabpanel" id="reports-monthly" aria-labelledby="reports-monthly-tab" hidden={tab !== 'monthly'} className={tab !== 'monthly' ? 'hidden' : ''}>{monthlyOpened && children}</div>
+    <div role="tabpanel" id="reports-special" aria-labelledby="reports-special-tab" hidden={tab !== 'special'} className={tab !== 'special' ? 'hidden' : ''}>{specialOpened && specialReports}</div>
   </div>;
 }
 
-export function WeeklyReports({ accounts, groups, categories, settings, visibleAccountIds, cloud, onSettingsChange, onManageClients }: Omit<Props, 'children'>) {
+export function WeeklyReports({ accounts, groups, categories, settings, visibleAccountIds, cloud, onSettingsChange, onManageClients }: Omit<Props, 'children' | 'specialReports'>) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const entities = useMemo(() => buildClientEntities(accounts, groups, settings), [accounts, groups, settings]);

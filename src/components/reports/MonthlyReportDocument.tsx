@@ -24,21 +24,25 @@ export interface MonthlyReportDocumentProps {
   texts: { narrative?: string; learnings?: string; actionPlan?: string; clientRequests?: string };
   onUpdate: (field: string, value: string) => void; isEditing: boolean;
   logs: ReportLog[]; logsNotice?: string;
+  special?: { title: string; objective: string; since: string; until: string; scope: string };
+  sections?: { performance: boolean; assets: boolean; geography: boolean; management: boolean };
 }
 
 export function MonthlyReportDocument(props: MonthlyReportDocumentProps) {
   const { name, logo, month, mode, metrics, texts, isEditing, onUpdate } = props;
   const [failedLogo, setFailedLogo] = useState<string>();
   const event = REPORT_MODES[mode];
+  const sections = props.sections || { performance: true, assets: true, geography: true, management: true };
   const results = metrics[event.key] || 0;
-  const hasManagement = props.logs.length > 0 || Boolean(texts.learnings?.trim() || texts.actionPlan?.trim() || texts.clientRequests?.trim());
-  const hasAds = props.assets.length > 0;
-  const titles = ['Resumen y conversión', 'Evolución y audiencias', ...(hasAds ? ['Creatividades y resultados'] : []), 'Mapa de actividad', ...(hasManagement ? ['Bitácora y próximos pasos'] : [])];
-  const geographyIndex = hasAds ? 3 : 2;
+  const hasManagement = sections.management && (props.logs.length > 0 || Boolean(texts.learnings?.trim() || texts.actionPlan?.trim() || texts.clientRequests?.trim()) || Boolean(props.special && isEditing));
+  const hasAds = sections.assets && props.assets.length > 0;
+  const titles = ['Resumen y conversión', ...(sections.performance ? ['Evolución y audiencias'] : []), ...(hasAds ? ['Creatividades y resultados'] : []), ...(sections.geography ? ['Mapa de actividad'] : []), ...(hasManagement ? ['Bitácora y próximos pasos'] : [])];
+  const geographyIndex = 1 + Number(sections.performance) + Number(hasAds);
+  const managementIndex = geographyIndex + Number(sections.geography);
   const header = (index: number) => <header className="report-sheet-header">
-    <div className="report-client">{logo && logo !== failedLogo && <img src={logo} alt={`Logo de ${name}`} referrerPolicy="no-referrer" onError={() => setFailedLogo(logo)} />}<div><span>Informe mensual · {event.label}</span><h1>{name}</h1></div></div>
+    <div className="report-client">{logo && logo !== failedLogo && <img src={logo} alt={`Logo de ${name}`} referrerPolicy="no-referrer" onError={() => setFailedLogo(logo)} />}<div><span>{props.special ? 'Informe especial' : 'Informe mensual'} · {event.label}</span><h1>{name}</h1></div></div>
     <ReportAgencyBrand name={props.agencyName} logo={props.agencyLogo} />
-    <div className="report-period"><strong>{format(parseISO(month + '-01'), 'MMMM yyyy', { locale: es })}</strong><span>{index + 1}. {titles[index]}</span></div>
+    <div className="report-period"><strong>{props.special ? `${format(parseISO(props.special.since), 'dd/MM/yyyy')} – ${format(parseISO(props.special.until), 'dd/MM/yyyy')}` : format(parseISO(month + '-01'), 'MMMM yyyy', { locale: es })}</strong><span>{index + 1}. {titles[index]}</span></div>
   </header>;
   const footer = (index: number) => <footer className="report-sheet-footer"><span>Orion · Informe privado</span><span>Bloque {index + 1} / {titles.length} · {titles[index]}</span></footer>;
   const timeline = <ManagementTimelineV2 logs={props.logs} notice={props.logsNotice} />;
@@ -46,7 +50,9 @@ export function MonthlyReportDocument(props: MonthlyReportDocumentProps) {
   return <article className={'report-editorial' + (props.theme === 'dark' ? ' report-editorial-dark' : '')}>
     <section className="report-sheet report-sheet-overview">
       {header(0)}
-      <ExecutiveSummaryV2 metrics={metrics} dataAvailable={props.dataAvailable} narrative={texts.narrative || ''} onNarrativeChange={value => onUpdate('narrative', value)} isEditing={isEditing} mode={mode} />
+      {props.special && <div className="report-special-context"><h2>{props.special.title}</h2>{props.special.objective && <p><strong>Objetivo del evento.</strong> {props.special.objective}</p>}<p><strong>Alcance.</strong> {props.special.scope}</p></div>}
+      <ExecutiveSummaryV2 metrics={metrics} dataAvailable={props.dataAvailable} narrative={texts.narrative || ''} onNarrativeChange={value => onUpdate('narrative', value)} isEditing={isEditing} mode={mode} special={Boolean(props.special)} />
+      <div className={props.special ? 'report-conversion-block' : undefined}>
       <div className="report-conversion-grid">
         <ReportFunnelBoard {...metrics} tracking={mode} />
         <PlacementsChartV2 data={props.placements} basis={props.placementBasis} currency={metrics.currency} />
@@ -56,31 +62,32 @@ export function MonthlyReportDocument(props: MonthlyReportDocumentProps) {
         <p><strong>{event.transition}.</strong> Relaciona {event.result.toLowerCase()} con clics en anuncios. No representa un seguimiento individual de usuarios.</p>
         <p><strong>{mode === 'leads' ? 'Costo por cliente potencial (CPL).' : 'Costo por resultado.'}</strong> Inversión dividida por {event.result.toLowerCase()}. {mode === 'leads' ? 'Un lead atribuido por Meta no equivale a una venta ni garantiza un contacto calificado.' : 'Es una medida de costo publicitario, no una conclusión sobre rentabilidad.'}</p>
       </div></aside>
+      </div>
       {footer(0)}
     </section>
-    <section className="report-sheet report-sheet-performance">
+    {sections.performance && <section className="report-sheet report-sheet-performance">
       {header(1)}
       <PerformanceChartV2 data={props.daily} currency={metrics.currency} mode={mode} expectedResults={results} />
       <DemographicsGeographyV2 demoData={props.demographics} currency={metrics.currency} />
-      {!hasAds && <AssetPerformanceV2 assets={props.assets} currency={metrics.currency} mode={mode} />}
+      {!hasAds && sections.assets && <AssetPerformanceV2 lockSort={Boolean(props.special)} assets={props.assets} currency={metrics.currency} mode={mode} />}
       {footer(1)}
-    </section>
-    {hasAds && <section className="report-sheet report-sheet-creatives">
-      {header(2)}
-      <AssetPerformanceV2 assets={props.assets} currency={metrics.currency} mode={mode} />
-      {footer(2)}
     </section>}
-    <section className="report-sheet report-sheet-geography">
+    {hasAds && <section className="report-sheet report-sheet-creatives">
+      {header(1 + Number(sections.performance))}
+      <AssetPerformanceV2 lockSort={Boolean(props.special)} assets={props.assets} currency={metrics.currency} mode={mode} />
+      {footer(1 + Number(sections.performance))}
+    </section>}
+    {sections.geography && <section className="report-sheet report-sheet-geography">
       {header(geographyIndex)}
       <GeographicSummary countries={props.countries} regions={props.regions} expectedResults={results} mode={mode} currency={metrics.currency} />
-      {!hasManagement && timeline}
-      {!hasManagement && <div className="report-screen-only"><RoadmapSectionV2 learnings="" actionPlan="" clientRequests="" onUpdate={onUpdate} isEditing={isEditing} /></div>}
+      {!hasManagement && sections.management && timeline}
+      {!hasManagement && sections.management && <div className="report-screen-only"><RoadmapSectionV2 learnings="" actionPlan="" clientRequests="" onUpdate={onUpdate} isEditing={isEditing} /></div>}
       {footer(geographyIndex)}
-    </section>
+    </section>}
     {hasManagement && <section className="report-sheet report-sheet-management">
-      {header(geographyIndex + 1)}{timeline}
+      {header(managementIndex)}{timeline}
       <RoadmapSectionV2 learnings={texts.learnings || ''} actionPlan={texts.actionPlan || ''} clientRequests={texts.clientRequests || ''} onUpdate={onUpdate} isEditing={isEditing} />
-      <ReportGlossaryV2 mode={mode} />{footer(geographyIndex + 1)}
+      <ReportGlossaryV2 mode={mode} />{footer(managementIndex)}
     </section>}
   </article>;
 }

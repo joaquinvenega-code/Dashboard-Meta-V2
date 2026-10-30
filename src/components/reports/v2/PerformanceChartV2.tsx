@@ -39,7 +39,7 @@ export function PerformanceChartV2({ data, currency, mode = 'ecommerce', expecte
   });
   if (segment) lineSegments.push(segment);
   return <section className="report-panel report-daily">
-    <header className="report-panel-heading"><h3>Evolución diaria</h3><p>Dos escalas independientes y las mismas fechas para comparar el comportamiento del mes.</p></header>
+    <header className="report-panel-heading"><h3>Evolución diaria</h3><p>Dos escalas independientes y las mismas fechas para comparar el comportamiento del período.</p></header>
     {reported ? <>
       <svg className="report-daily-svg" viewBox="0 0 700 327" role="img" aria-labelledby={uid + '-title'}>
         <title id={uid + '-title'}>{`${resultLabel} y ${moneyLabel.toLowerCase()} por día. Cada panel utiliza su propia escala.`}</title>
