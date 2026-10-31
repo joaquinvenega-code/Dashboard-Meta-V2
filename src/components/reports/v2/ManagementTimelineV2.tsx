@@ -14,7 +14,15 @@ export function ManagementTimelineV2({ logs, notice, concise = false }: { logs: 
     <header className="report-panel-heading"><h3><CalendarDays size={16} /> Bitácora de gestión</h3><p>{logs.length ? concise ? `${logs.length} acciones registradas en el período.` : `${logs.length} registros del período. Seguí los números para recorrer los cambios en orden cronológico.` : 'Historial de cambios, revisiones y decisiones del período.'}</p></header>
     {notice && <p className="report-data-note">{concise ? conciseManagementNotice(notice) : notice}</p>}
     {!concise && logs.some(log => log.source?.startsWith('Meta')) && <p className="report-caption report-timeline-source">Los registros de Meta Ads muestran cambios registrados en la cuenta. Las notas de la agencia aportan el contexto y las decisiones.</p>}
-    {logs.length ? <div className="report-timeline-path" role="list">{rows.map((row, rowIndex) => <div className={'report-timeline-row' + (rowIndex % 2 ? ' is-reversed' : '') + (rowIndex === rows.length - 1 ? ' is-last' : '')} key={rowIndex}>
+    {concise && logs.length > 0 && <table className="report-log-print" aria-label="Bitácora de gestión por fecha">
+      <thead><tr><th scope="col">Fecha</th><th scope="col">Acción</th><th scope="col">Registrado por</th></tr></thead>
+      <tbody>{logs.map(log => <tr key={log.id}>
+        <td><time>{log.date}</time></td>
+        <td><small>{categories[log.category || ''] || 'Gestión'} · {log.source || 'Gestión'}</small><p>{log.description}</p></td>
+        <td>{log.actor || '—'}</td>
+      </tr>)}</tbody>
+    </table>}
+    {logs.length ? <div className={'report-timeline-path' + (concise ? ' report-screen-only' : '')} role="list">{rows.map((row, rowIndex) => <div className={'report-timeline-row' + (rowIndex % 2 ? ' is-reversed' : '') + (rowIndex === rows.length - 1 ? ' is-last' : '')} key={rowIndex}>
       {row.map((log, index) => {
         const Icon = log.source === 'Voz' ? Mic : log.source === 'Manual' ? PenLine : SlidersHorizontal;
         return <article key={log.id} role="listitem" className="report-timeline-entry">

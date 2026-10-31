@@ -29,7 +29,10 @@ export function PerformanceChartV2({ data, currency, mode = 'ecommerce', expecte
   const left = 58, right = 680, panelHeight = 88;
   const x = (index: number) => left + (right - left) * (index + 0.5) / Math.max(1, data.length);
   const y = (value: number, top: number, max: number) => top + panelHeight - value / max * panelHeight;
-  const tickIndexes = data.map((_, index) => index).filter(index => index === 0 || index === data.length - 1 || index % Math.max(1, Math.ceil(data.length / 9)) === 0);
+  const tickCount = Math.min(data.length, data.some(row => row.date.length > 5) ? 6 : 8);
+  const tickIndexes = concise
+    ? Array.from({ length: tickCount }, (_, i) => Math.round(i * (data.length - 1) / Math.max(1, tickCount - 1)))
+    : data.map((_, index) => index).filter(index => index === 0 || index === data.length - 1 || index % Math.max(1, Math.ceil(data.length / 9)) === 0);
   const shortMoney = (value: number) => value === 0 ? '0' : value >= 1e6 ? (value / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' M' : value >= 1000 ? (value / 1000).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' mil' : formatDecimal(value, value < 10 ? 1 : 0);
   const lineSegments: string[] = [];
   let segment = '';

@@ -131,6 +131,7 @@
 .report-glossary dd { margin: 3px 0 0; color: var(--report-muted); }
 .report-sheet-footer { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--report-border); margin-top: 24px; padding-top: 10px; color: var(--report-muted); font-size: 9px; }
 .report-print-only { display: none !important; }
+.report-log-print { display: none; }
 .report-funnel-svg { display: block; width: 100%; max-height: 340px; margin: 0 auto; }
 .report-funnel-rates { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--report-border); }
 .report-funnel-rates span { display: block; font-size: 10px; color: var(--report-muted); }
@@ -391,4 +392,43 @@
   .report-sheet-footer { display: none; }
   .report-screen-only { display: none !important; }
   .report-print-only { display: block !important; }
+
+  /* Use the available A4 space for the labels the client actually reads. */
+  .special-report-root .report-sheet-overview,
+  .special-report-root .report-sheet-performance { font-size: 9pt; }
+  .special-report-root :is(.report-sheet-overview, .report-sheet-performance) .report-panel-heading h3 { font-size: 11pt; }
+  .special-report-root :is(.report-sheet-overview, .report-sheet-performance) :is(.report-special-context p, .report-kpi-heading span, .report-panel-heading p, .report-glossary dl,
+    .report-funnel-rates span, .report-funnel-frequency, .report-daily-notes, .report-placement-values small) { font-size: 8.5pt; }
+  .special-report-root .report-sheet-overview .report-caption,
+  .special-report-root .report-sheet-performance .report-caption { font-size: 8pt; }
+  .special-report-root .report-funnel-svg { max-height: 68mm; }
+  .special-report-root .report-funnel-svg text:first-of-type { font-size: 14px; }
+  .special-report-root .report-placement-donut .report-donut-svg { width: 31mm; }
+  .special-report-root .report-ranking-rows li > div:first-child { font-size: 9pt; }
+  .special-report-root .report-svg-tick { font-size: 13px; }
+  .special-report-root .report-svg-heading { font-size: 14px; }
+  .special-report-root .report-audiences { padding: 5mm; }
+  .special-report-root .report-audiences h4 { font-size: 10pt; }
+  .special-report-root .report-audience-rows > div { grid-template-columns: 14mm minmax(0, 1fr) 21mm; margin-bottom: 4.5mm; font-size: 9pt; }
+  .special-report-root .report-gender-chart { flex-direction: column; align-items: stretch; }
+  .special-report-root .report-gender-chart .report-donut-svg { width: 38mm; align-self: center; }
+  .special-report-root .report-gender-chart .report-ranking-rows { flex: none; }
+
+  .special-report-root .report-map-grid figure:only-child {
+    display: grid; width: 100%; grid-template-columns: 1fr 1fr; align-items: center; gap: 3mm 6mm; padding: 4mm;
+  }
+  .special-report-root .report-map-grid figure:only-child > :is(figcaption, .report-caption) { grid-column: 1 / -1; margin: 0; }
+  .special-report-root .report-map-grid figure:only-child .report-map-region-highlights { margin: 0; gap: 3mm; }
+  .special-report-root .report-map-grid figure:only-child .report-map-region-highlights > div,
+  .special-report-root .report-region-table :is(td, th) { font-size: 9pt; }
+  .special-report-root .report-region-table td { padding: 2mm 1mm; }
+  .special-report-root .report-geography .report-data-note { font-size: 8.5pt; }
+
+  .special-report-root .report-log-print { display: table; font-size: 9pt; line-height: 1.4; }
+  .special-report-root .report-log-print :is(th, td) { text-align: left; padding: 2.2mm 2mm; }
+  .special-report-root .report-log-print th { font-size: 8.5pt; }
+  .special-report-root .report-log-print th:first-child { width: 16mm; }
+  .special-report-root .report-log-print th:last-child { width: 35mm; }
+  .special-report-root .report-log-print small { display: block; color: var(--report-muted); font-size: 8pt; }
+  .special-report-root .report-log-print p { margin: .5mm 0 0; white-space: pre-wrap; }
 }

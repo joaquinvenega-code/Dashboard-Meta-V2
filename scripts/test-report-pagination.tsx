@@ -29,6 +29,17 @@ try {
       regions: [{ countryId: 'AR', regionId: 'AR_Santa Fe', regionName: 'Santa Fe · Argentina', spend: 574000, messages: results + 19, purchases: results + 19, leads: results + 19, revenue: 2000000 }, { countryId: 'AR', regionId: 'AR_Entre Rios', regionName: 'Entre Rios · Argentina', spend: 5997, messages: 4, purchases: 4, leads: 4, revenue: 0 }, { countryId: 'AR', regionId: 'AR_Unknown', regionName: 'Unknown · Argentina', spend: 2, messages: 0, purchases: 0, leads: 0, revenue: 0 }, { countryId: 'UNKNOWN', regionId: 'UNKNOWN_Unknown', regionName: 'Unknown · UNKNOWN', spend: 1, messages: 0, purchases: 0, leads: 0, revenue: 0 }],
       texts: {}, logs: [], onUpdate: () => {}, isEditing: false,
     };
+    if (special) {
+      props.sections = { performance: true, assets: true, geography: true, management: true };
+      props.daily = [30, 105, 90, 62, 40].map((n, i) => ({ date: (25 + i) + '/10', messages: n, purchases: n, leads: n, revenue: n * 1000, spend: n * 350 }));
+      props.demographics = ['25-34', '35-44', '45-54', '55-64', '65+', 'Unknown'].map(age => ({ age, rawValue: 100, female: 60 / 6, male: 38 / 6, unknown: 2 / 6 }));
+      props.assets = counts.slice(0, 5).map((n, i) => ({ id: String(i), name: 'Anuncio de muestra ' + (i + 1), thumbnail: '', messages: n, purchases: n, leads: n, revenue: n * 1000, spend: n * 350, roas: 2.85 }));
+      props.logs = Array.from({ length: 12 }, (_, i) => ({
+        id: String(i), date: i < 9 ? '25/10' : '29/10', source: 'Meta Ads', actor: 'Equipo de gestión', category: 'config',
+        description: (i === 6 ? 'Se revisaron los anuncios y sus ubicaciones. '.repeat(5) : 'Se ajustaron las ubicaciones del conjunto de anuncios del evento.') + ' Registro ' + (i + 1) + '.',
+      }));
+      props.logsNotice = 'La bitácora abarca toda la cuenta; las métricas, solo las campañas elegidas.';
+    }
     // Match the printable A4 content width; use the real app's report wrappers.
     const page = await browser.newPage({ viewport: { width: 699, height: 1100 } });
     await page.route('**/*', route => route.abort());
@@ -44,6 +55,14 @@ try {
     assert.doesNotMatch(text, /unknown/i);
     assert.match(text, /Región no informada · Argentina/);
     assert.match(text, /Ubicación no informada por Meta/);
+    if (special) {
+      assert.equal(await page.locator('.report-log-print tbody tr:visible').count(), 12);
+      assert.equal(await page.locator('.report-timeline-path:visible').count(), 0);
+      for (const sheet of ['performance', 'management']) {
+        const bounds = await page.locator('.report-sheet-' + sheet).boundingBox();
+        assert.ok(bounds && bounds.height <= limit, name + ': ' + sheet + ' exceeds one A4 page');
+      }
+    }
     await page.pdf({ path: `${directory}/${name}.pdf`, preferCSSPageSize: true, printBackground: true });
     await page.screenshot({ path: `${directory}/${name}.png`, fullPage: true });
     console.log(`${name}: overview fits A4 (${Math.round(overview!.height)}px); unspecified geography explained.`);
