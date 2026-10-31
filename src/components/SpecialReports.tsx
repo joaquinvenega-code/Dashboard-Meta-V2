@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Check, Copy, FileText, Loader2, Plus, Printer, Save } from 'lucide-react';
+import { ArrowLeft, Check, Copy, FileText, Loader2, Plus, Printer, Save, Trash2 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import type { AccountNote, AccountSettings, AdAccount } from '../types';
 import type { AgencyBrandSettings } from './reports/ReportBrandSettings';
 import { MonthlyReportDocument } from './reports/MonthlyReportDocument';
 import { REPORT_MODES, type ReportMode } from './reports/reportData';
-import { duplicateSpecialReport, finalizeSpecialReport, listSpecialReports, reportValidation, saveSpecialReport, SPECIAL_SECTIONS, type SpecialReport } from '../lib/specialReports';
+import { deleteSpecialDraft, duplicateSpecialReport, finalizeSpecialReport, listSpecialReports, reportValidation, saveSpecialReport, SPECIAL_SECTIONS, type SpecialReport } from '../lib/specialReports';
 import { fetchReportCampaigns } from '../services/facebook';
 import { loadSpecialReport } from '../services/specialReportData';
 import './reports/report-editorial.css';
@@ -140,6 +140,17 @@ export function SpecialReports({ accounts, visibleAccountIds, settings, notes, a
     catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
+  async function removeDraft(item: SpecialReport) {
+    const title = item.title.trim() || 'Informe sin título';
+    if (!window.confirm(`¿Eliminar el borrador «${title}»? Esta acción no se puede deshacer.`)) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      await deleteSpecialDraft(item.id);
+      setLibrary(current => current.filter(entry => entry.id !== item.id));
+      setMessage(`Se eliminó el borrador «${title}».`);
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
   async function print() {
     if (!report?.snapshot) return;
     setBusy(true); setError(''); setEditing(false);
@@ -176,7 +187,11 @@ export function SpecialReports({ accounts, visibleAccountIds, settings, notes, a
         <div className="flex items-start justify-between gap-3"><FileText className="text-blue-400" size={20} /><span className={'rounded-full px-2.5 py-1 text-xs ' + (item.status === 'final' ? 'bg-emerald-400/10 text-emerald-300' : 'bg-amber-400/10 text-amber-200')}>{item.status === 'final' ? 'Finalizado' : 'Borrador'}</span></div>
         <h3 className="mt-3 break-words text-base font-semibold text-white">{item.title || 'Informe sin título'}</h3><p className="mt-1 text-sm text-neutral-300">{item.clientName || 'Sin cliente'}</p>
         <p className="mt-2 text-xs text-neutral-500">{item.since && item.until ? periodLabel(item) : 'Período por definir'} · {REPORT_MODES[item.mode].label}</p>
-        <div className="mt-4 flex gap-2"><button type="button" onClick={() => open(item)} disabled={busy} className={button}>{item.status === 'final' ? 'Ver informe' : 'Continuar'}</button><button type="button" onClick={() => void duplicate(item)} disabled={busy} className={button} aria-label={`Duplicar ${item.title}`}><Copy size={15} />Duplicar</button></div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" onClick={() => open(item)} disabled={busy} className={button}>{item.status === 'final' ? 'Ver informe' : 'Continuar'}</button>
+          <button type="button" onClick={() => void duplicate(item)} disabled={busy} className={button} aria-label={`Duplicar ${item.title}`}><Copy size={15} />Duplicar</button>
+          {item.status === 'draft' && <button type="button" onClick={() => void removeDraft(item)} disabled={busy} className={button + ' text-red-300'} aria-label={`Eliminar borrador: ${item.title || 'Informe sin título'}`}><Trash2 size={15} />Eliminar borrador</button>}
+        </div>
       </article>)}
     </div>
     {ready && !library.length && <div className="rounded-xl border border-dashed border-white/15 p-10 text-center"><FileText className="mx-auto mb-3 text-neutral-500" size={30} /><p className="text-sm text-neutral-300">Tu primer análisis especial empieza acá.</p><p className="mt-1 text-xs text-neutral-500">Por ejemplo: Cyber Monday, una apertura o el lanzamiento de un producto.</p></div>}

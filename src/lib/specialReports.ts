@@ -66,28 +66,40 @@ export async function listSpecialReports(): Promise<SpecialReport[]> {
   const records = await transaction('readonly', store => store.getAll());
   return records.filter((r: SpecialReport) => r.version === 1).sort((a: SpecialReport, b: SpecialReport) => b.updatedAt.localeCompare(a.updatedAt));
 }
-let pendingSave: Promise<void> = Promise.resolve();
-export function saveSpecialReport(report: SpecialReport): Promise<void> {
-  const copy = structuredClone(report);
-  const save = pendingSave.catch(() => undefined).then(async () => {
+let pendingWrite: Promise<void> = Promise.resolve();
+function writeSpecialReport(id: string, report: SpecialReport | null): Promise<void> {
+  const write = pendingWrite.catch(() => undefined).then(async () => {
     const db = await database();
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction('reports', 'readwrite');
       const store = tx.objectStore('reports');
-      const previous = store.get(copy.id);
-      let locked = false;
+      const previous = store.get(id);
+      let reason = '';
       previous.onsuccess = () => {
-        // A stale draft open in another tab must not overwrite a final delivery.
-        if (previous.result?.status === 'final') { locked = true; tx.abort(); }
-        else store.put(copy);
+        const status = previous.result?.status;
+        if (status === 'final') {
+          reason = 'Este informe ya fue finalizado. Abrí su versión guardada o creá una copia.';
+        } else if (report && status === 'deleted') {
+          reason = 'Este borrador fue eliminado. Recargá la página para volver a la biblioteca.';
+        }
+        if (reason) { tx.abort(); return; }
+        if (report) store.put(report);
+        // Keep only the ID and deletion flag so another tab cannot autosave the draft back.
+        else if (status === 'draft') store.put({ id, status: 'deleted' });
       };
       tx.oncomplete = () => { db.close(); resolve(); };
       tx.onabort = tx.onerror = () => {
         db.close();
-        reject(new Error(locked ? 'Este informe ya fue finalizado. Abrí su versión guardada o creá una copia.' : 'No se pudo guardar el informe. Revisá el espacio y los permisos del navegador.'));
+        reject(new Error(reason || 'No se pudo actualizar el informe. Revisá el espacio y los permisos del navegador.'));
       };
     });
   });
-  pendingSave = save;
-  return save;
+  pendingWrite = write;
+  return write;
+}
+export function saveSpecialReport(report: SpecialReport): Promise<void> {
+  return writeSpecialReport(report.id, structuredClone(report));
+}
+export function deleteSpecialDraft(id: string): Promise<void> {
+  return writeSpecialReport(id, null);
 }

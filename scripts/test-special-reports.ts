@@ -132,6 +132,31 @@ try {
   await page.getByLabel('Conclusión del evento').waitFor();
   assert.equal(await reportDocument.locator('.report-sheet').count(), 1);
   assert.ok(scopes.slice(-3).every(scope => scope === ''), 'All-account report explicitly removes campaign filters');
+  await page.getByRole('button', { name: 'Biblioteca', exact: true }).click();
+  const remove = page.getByRole('button', { name: 'Eliminar borrador: Lanzamiento de verano (copia)', exact: true });
+  const staleDraft = await page.evaluate(async () => {
+    // @ts-expect-error Vite serves this browser-only import from the test origin.
+    const storage = await import('/src/lib/specialReports.ts');
+    return (await storage.listSpecialReports()).find((item: { status: string }) => item.status === 'draft');
+  });
+  page.once('dialog', async dialog => { assert.match(dialog.message(), /Lanzamiento de verano \(copia\)/); await dialog.dismiss(); });
+  await remove.click();
+  assert.ok(await remove.isVisible(), 'Cancel keeps the draft');
+  page.once('dialog', dialog => dialog.accept());
+  await remove.click();
+  await remove.waitFor({ state: 'detached' });
+  await page.reload();
+  await page.getByRole('tab', { name: /Especiales/ }).click();
+  await page.getByRole('button', { name: 'Ver informe', exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: /Eliminar borrador/ }).count(), 0);
+  const protectedLibrary = await page.evaluate(async draft => {
+    // @ts-expect-error Vite serves this browser-only import from the test origin.
+    const storage = await import('/src/lib/specialReports.ts');
+    const [final] = await storage.listSpecialReports();
+    const attempts = await Promise.allSettled([storage.saveSpecialReport(draft), storage.deleteSpecialDraft(final.id)]);
+    return [attempts.map(result => result.status), (await storage.listSpecialReports()).map((item: { id: string }) => item.id), final.id];
+  }, staleDraft);
+  assert.deepEqual(protectedLibrary.slice(0, 2), [['rejected', 'rejected'], [protectedLibrary[2]]]);
   assert.deepEqual(errors, []);
   console.log('Special reports: draft reload, scoped requests, final snapshot, duplication, selected sections, mobile and PDF OK.');
   await context.close();
