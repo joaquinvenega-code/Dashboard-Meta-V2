@@ -13,6 +13,8 @@ import {
   User,
   Bot,
   Sparkles,
+  PanelLeftClose,
+  PanelLeftOpen,
   Menu,
   X
 } from 'lucide-react';
@@ -42,7 +44,15 @@ export function Sidebar({
   isOrionEnabled = true, 
   onOrionToggle 
 }: SidebarProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [desktopExpanded, setDesktopExpanded] = useState(() => {
+    try { return localStorage.getItem('orion:sidebar:collapsed') !== 'true'; }
+    catch { return true; }
+  });
+  const toggleDesktop = () => {
+    setDesktopExpanded(!desktopExpanded);
+    try { localStorage.setItem('orion:sidebar:collapsed', String(desktopExpanded)); }
+    catch { /* The sidebar still works when the browser blocks storage. */ }
+  };
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const mobileMenu = useRef<HTMLDialogElement>(null);
   const menuId = useId();
@@ -90,7 +100,10 @@ export function Sidebar({
 
   const isConfigActive = ['accounts', 'alerts', 'user_settings', 'orion_settings'].includes(activePage);
 
-  const content = (
+  function renderSidebar(mobile: boolean) {
+    const isExpanded = mobile || desktopExpanded;
+    const toggleLabel = isExpanded ? 'Contraer panel lateral' : 'Expandir panel lateral';
+    return (
     <aside 
       className={cn(
         "orion-sidebar sticky top-0 h-dvh flex flex-col justify-between gap-8 overflow-y-auto p-4 bg-[#0c0d12] border-r border-white/10 shrink-0 z-40 transition-all duration-300 print:hidden select-none",
@@ -100,13 +113,12 @@ export function Sidebar({
       {/* HEADER: LOGO & ORION */}
       <div className="space-y-6 w-full">
         {/* Logo & Toggle */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 overflow-hidden">
+        <div className={cn("flex items-center gap-2", isExpanded ? "justify-between" : "justify-center")}>
+          {isExpanded && <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-600/30 ring-1 ring-blue-400/30">
               <BarChart3 className="w-5 h-5 text-white" />
             </div>
 
-            {isExpanded && (
               <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -121,9 +133,15 @@ export function Sidebar({
                   Meta Ads Dashboard
                 </div>
               </motion.div>
-            )}
-          </div>
-          <button type="button" aria-label="Cerrar menú" onClick={closeMenu} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-neutral-300 hover:bg-white/10 lg:hidden"><X className="h-5 w-5" /></button>
+          </div>}
+          {mobile ? (
+            <button type="button" aria-label="Cerrar menú" onClick={closeMenu} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-neutral-300 hover:bg-white/10"><X className="h-5 w-5" /></button>
+          ) : (
+            <button type="button" aria-label={toggleLabel} title={toggleLabel} aria-expanded={isExpanded} onClick={toggleDesktop}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-neutral-400 hover:bg-white/10 hover:text-white">
+              {isExpanded ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+            </button>
+          )}
         </div>
 
         {/* Assistant Toggle Card */}
@@ -156,6 +174,10 @@ export function Sidebar({
             </div>
           ) : (
             <button
+              type="button"
+              role="switch"
+              aria-checked={isOrionEnabled}
+              aria-label="Asistente Orión"
               onClick={() => onOrionToggle && onOrionToggle(!isOrionEnabled)}
               title={isOrionEnabled ? "Desactivar Asistente" : "Activar Asistente"}
               className="w-full flex justify-center text-neutral-400 hover:text-white"
@@ -175,6 +197,8 @@ export function Sidebar({
               <button
                 key={item.id}
                 onClick={() => navigate(item.id)}
+                title={isExpanded ? undefined : item.label}
+                aria-label={item.label}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all w-full text-left outline-none cursor-pointer group relative",
@@ -187,11 +211,6 @@ export function Sidebar({
                 {isExpanded && (
                   <span className="text-sm truncate">{item.label}</span>
                 )}
-                {!isExpanded && (
-                  <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#16161a] text-white text-xs font-medium rounded-lg shadow-xl border border-white/10 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                    {item.label}
-                  </div>
-                )}
               </button>
             );
           })}
@@ -200,6 +219,9 @@ export function Sidebar({
           <div className="pt-3 border-t border-white/5 space-y-1">
             <button
               onClick={() => setIsConfigOpen(!isConfigOpen)}
+              aria-label="Configuración"
+              aria-expanded={isConfigOpen}
+              title={isExpanded ? undefined : 'Configuración'}
               className={cn(
                 "flex items-center justify-between px-3 py-2.5 rounded-xl transition-all w-full text-left outline-none cursor-pointer group relative",
                 isConfigActive 
@@ -214,16 +236,11 @@ export function Sidebar({
               {isExpanded && (
                 <ChevronDown className={cn("w-4 h-4 text-neutral-500 transition-transform duration-200", isConfigOpen && "rotate-180")} />
               )}
-              {!isExpanded && (
-                <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#16161a] text-white text-xs font-medium rounded-lg shadow-xl border border-white/10 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                  Configuración
-                </div>
-              )}
             </button>
 
             {/* Config Sub-items */}
             <AnimatePresence>
-              {(isConfigOpen || !isExpanded) && (
+              {isConfigOpen && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
@@ -238,6 +255,8 @@ export function Sidebar({
                       <button
                         key={sub.id}
                         onClick={() => navigate(sub.id)}
+                        title={isExpanded ? undefined : sub.label}
+                        aria-label={sub.label}
                         aria-current={isSubActive ? 'page' : undefined}
                         className={cn(
                           "flex items-center gap-3 px-3 py-2 rounded-lg transition-all w-full text-left outline-none cursor-pointer group relative",
@@ -248,11 +267,6 @@ export function Sidebar({
                       >
                         <SubIcon className={cn("w-4 h-4 shrink-0", isSubActive ? "text-blue-400" : "text-neutral-500 group-hover:text-neutral-300")} />
                         {isExpanded && <span className="text-xs truncate">{sub.label}</span>}
-                        {!isExpanded && (
-                          <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#16161a] text-white text-xs font-medium rounded-lg shadow-xl border border-white/10 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                            {sub.label}
-                          </div>
-                        )}
                       </button>
                     );
                   })}
@@ -289,7 +303,7 @@ export function Sidebar({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-1.5">
+        <div className={cn("flex items-center gap-1.5", !isExpanded && "flex-col")}>
           <button
             onClick={onRefresh}
             disabled={loading}
@@ -313,16 +327,17 @@ export function Sidebar({
         </div>
       </div>
     </aside>
-  );
+    );
+  }
 
   return <>
-    <div className="hidden lg:block print:hidden">{content}</div>
+    <div className="hidden shrink-0 lg:block print:hidden">{renderSidebar(false)}</div>
     <header className="mobile-app-bar sticky top-0 z-[260] flex items-center gap-3 border-b border-white/10 bg-[#0c0d12]/95 px-4 py-2 backdrop-blur-lg lg:hidden print:hidden">
       <button type="button" aria-label="Abrir menú" aria-haspopup="dialog" aria-controls={menuId} aria-expanded={isMobileOpen} onClick={() => { mobileMenu.current?.showModal(); setIsMobileOpen(true); }} className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 text-white hover:bg-white/10"><Menu className="h-5 w-5" /></button>
       <div className="min-w-0"><p className="text-sm font-semibold text-white">Orion Metrics</p><p className="truncate text-xs text-neutral-400">{[...navItems, ...configItems].find(item => item.id === activePage)?.label}</p></div>
     </header>
     <dialog id={menuId} ref={mobileMenu} aria-label="Menú principal" onClose={() => setIsMobileOpen(false)} onClick={event => { if (event.target === event.currentTarget) closeMenu(); }} className="mobile-nav-dialog fixed inset-y-0 left-0 m-0 h-dvh max-h-dvh w-[min(320px,calc(100%-2rem))] max-w-none border-0 bg-[#0c0d12] p-0 text-white shadow-2xl backdrop:bg-black/65 backdrop:backdrop-blur-sm print:hidden">
-      {content}
+      {renderSidebar(true)}
     </dialog>
   </>;
 }
