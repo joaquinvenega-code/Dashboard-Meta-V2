@@ -81,7 +81,10 @@ try {
   const text = await reportDocument.innerText();
   assert.match(text, /30\/01\/2026.*02\/02\/2026/);
   assert.match(text, /Nota del evento conservada/); assert.doesNotMatch(text, /NOTA FUERA DEL PERIODO/);
-  assert.match(text, /bitácora corresponde a toda la cuenta/);
+  assert.match(text, /bitácora abarca toda la cuenta/);
+  assert.equal(await reportDocument.getByText('Claves de lectura', { exact: true }).count(), 1);
+  assert.doesNotMatch(text, /Cómo interpretar la conversión/);
+  assert.match(text, /Análisis revisado para el cliente/);
   assert.equal(await reportDocument.locator('textarea').count(), 0);
   assert.equal(await reportDocument.getByText('Ordenar', { exact: false }).count(), 0);
   await page.screenshot({ path: `${directory}/preview.png`, fullPage: true });

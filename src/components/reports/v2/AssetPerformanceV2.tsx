@@ -26,7 +26,7 @@ function AdPreviewLink({ ad }: { ad: AdAsset }) {
     ? <a className="report-ad-preview" href={shareLink} target="_blank" rel="noopener noreferrer" aria-label={`Ver anuncio en Meta: ${ad.name}`}><ExternalLink aria-hidden="true" /><span>Ver anuncio en Meta</span></a>
     : <span className="report-ad-preview is-unavailable"><ExternalLink aria-hidden="true" /><span>Enlace no disponible</span></span>;
 }
-export function AssetPerformanceV2({ assets, mode = 'ecommerce', currency = 'ARS', lockSort = false }: { assets: AdAsset[]; mode?: ReportMode; currency?: string; lockSort?: boolean }) {
+export function AssetPerformanceV2({ assets, mode = 'ecommerce', currency = 'ARS', lockSort = false, concise = false }: { assets: AdAsset[]; mode?: ReportMode; currency?: string; lockSort?: boolean; concise?: boolean }) {
   const event = REPORT_MODES[mode];
   const defaultSort = mode === 'ecommerce' ? 'roas' : event.key;
   const [sortBy, setSortBy] = useState<SortCriteria>(defaultSort);
@@ -64,6 +64,6 @@ export function AssetPerformanceV2({ assets, mode = 'ecommerce', currency = 'ARS
           <AdPreviewLink ad={ad} />
         </li>;
       })}</ol> : <p className="report-empty">No hay anuncios disponibles para este período.</p>}
-    <p className="report-caption">CTR: clics / impresiones. Se incluyen todos los clics, no solo los del enlace. Costo / clic: inversión / clics. —: dato no disponible o no calculable. Una posición alta no implica rentabilidad. {rows.length > 0 && 'Los botones abren la vista compartida de Meta desde el PDF; pueden requerir iniciar sesión.'}</p>
+    <p className="report-caption">{concise ? 'El total incluye clics en enlaces y en otras partes del anuncio. El guion indica que falta un dato o que no se pudo calcular.' : <>CTR: clics / impresiones. Se incluyen todos los clics, no solo los del enlace. Costo / clic: inversión / clics. —: dato no disponible o no calculable. Una posición alta no implica rentabilidad. {rows.length > 0 && 'Los botones abren la vista compartida de Meta desde el PDF; pueden requerir iniciar sesión.'}</>}</p>
   </section>;
 }

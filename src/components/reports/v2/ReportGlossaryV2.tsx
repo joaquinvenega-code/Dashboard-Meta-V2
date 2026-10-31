@@ -1,7 +1,11 @@
 import React from 'react';
 import { ReportMode } from '../reportData';
-export function ReportGlossaryV2({ mode = 'ecommerce' }: { mode?: ReportMode }) {
-  const terms = mode === 'leads' ? [
+export function ReportGlossaryV2({ mode = 'ecommerce', concise = false }: { mode?: ReportMode; concise?: boolean }) {
+  const terms = concise ? ({
+    messaging: [['Mensajes', 'Conversaciones iniciadas atribuidas a anuncios, no mensajes enviados.'], ['Costo / mensaje', 'Inversión dividida por conversaciones iniciadas.'], ['CTR', 'Porcentaje de clics sobre impresiones.']],
+    leads: [['Cliente potencial', 'Contacto atribuido por Meta; no equivale a una venta.'], ['CPL', 'Inversión dividida por clientes potenciales.'], ['CTR', 'Porcentaje de clics sobre impresiones.']],
+    ecommerce: [['ROAS', 'Ingresos atribuidos ÷ inversión publicitaria; no descuenta costos.'], ['Costo / compra', 'Inversión dividida por compras atribuidas.'], ['CTR', 'Porcentaje de clics sobre impresiones.']],
+  } satisfies Record<ReportMode, string[][]>)[mode] : mode === 'leads' ? [
     ['Cliente potencial', 'Evento lead atribuido por Meta. No equivale necesariamente a una persona única, un contacto calificado o una venta.'],
     ['CPL', 'Inversión dividida por clientes potenciales. Sin leads no se puede calcular este costo.'],
     ['CTR', 'Clics divididos por impresiones. Indica la tasa de clic, no la tasa de captación de clientes potenciales.'],

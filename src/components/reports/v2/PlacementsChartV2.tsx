@@ -5,9 +5,9 @@ import { ReportDonut, reportChartColors } from '../ReportDonut';
 
 interface PlacementsChartV2Props {
   data: { name: string; value: number; color?: string; rawValue?: number }[];
-  basis?: PlacementBasis; currency?: string;
+  basis?: PlacementBasis; currency?: string; concise?: boolean;
 }
-export function PlacementsChartV2({ data, basis = 'spend', currency = 'ARS' }: PlacementsChartV2Props) {
+export function PlacementsChartV2({ data, basis = 'spend', currency = 'ARS', concise = false }: PlacementsChartV2Props) {
   const rows = [...data].filter(row => row.value > 0).sort((a, b) => b.value - a.value);
   const label = basis === 'messages' ? 'mensajes' : basis === 'purchases' ? 'compras' : basis === 'leads' ? 'clientes potenciales' : 'inversión';
   return <section className="report-panel report-placement-ranking">
@@ -27,6 +27,6 @@ export function PlacementsChartV2({ data, basis = 'spend', currency = 'ARS' }: P
       </span></div>
       <div className="report-bar-track"><span style={{ width: Math.min(100, row.value) + '%', background: reportChartColors[index % reportChartColors.length] }} /></div>
     </li>)}</ol> : <p className="report-empty">No hay datos de ubicaciones para este período.</p>}
-    <p className="report-caption">{basis === 'spend' ? 'Base: inversión. No hay conversiones disponibles por ubicación.' : 'Base: resultados atribuidos por ubicación.'} Los porcentajes pueden diferir de 100% por redondeo.</p>
+    <p className="report-caption">{concise ? (basis === 'spend' ? 'Por inversión: no hay resultados disponibles por ubicación.' : 'Porcentajes redondeados.') : <>{basis === 'spend' ? 'Base: inversión. No hay conversiones disponibles por ubicación.' : 'Base: resultados atribuidos por ubicación.'} Los porcentajes pueden diferir de 100% por redondeo.</>}</p>
   </section>;
 }

@@ -60,7 +60,7 @@ function MapDrawing({ features, focus, values, label, maximum, countryOnly = fal
   </svg>;
 }
 
-export function ReportActivityMap({ countries, regions, mode, currency }: { countries: GeographicResult[]; regions: RegionResult[]; mode: ReportMode; currency: string }) {
+export function ReportActivityMap({ countries, regions, mode, currency, concise = false }: { countries: GeographicResult[]; regions: RegionResult[]; mode: ReportMode; currency: string; concise?: boolean }) {
   const resultKey = REPORT_MODES[mode].key;
   const totalResults = countries.reduce((sum, row) => sum + (row[resultKey] || 0), 0);
   const basis = totalResults > 0 ? resultKey : 'spend';
@@ -95,17 +95,17 @@ export function ReportActivityMap({ countries, regions, mode, currency }: { coun
           <figcaption><span>{name}<small>{regional ? 'Detalle regional' : 'Vista del país'}</small></span><strong>{valueText(map.country[basis])}<small>{total > 0 ? `${formatDecimal((map.country[basis] || 0) / total * 100, 1)}% del desglose geográfico` : 'Sin actividad registrada'}</small></strong></figcaption>
           {regional || map.outline.length > 0 ? <MapDrawing features={regional ? map.features : map.outline} focus={regional ? map.features : map.outline} values={regional ? map.values : new Map([[map.id, map.country[basis] || 0]])} maximum={maximum} countryOnly={!regional} label={`${regional ? 'Mapa regional' : 'Contorno'} de ${name} según ${label}`} /> : <div className="report-map-unavailable">Sin contorno disponible para {name}.</div>}
           <div className="report-map-region-highlights"><h4>Zonas con mayor {basis === 'spend' ? 'inversión' : 'actividad'}</h4>{topRegions.length ? topRegions.map(row => <div key={row.regionId}><span><i style={{ background: map.matched.has(row) ? activityColor(row[basis], maximum) : '#cbd5e1' }} />{regionLabel(row).split(' · ')[0]}{!map.matched.has(row) && <small>Sin ubicar en el mapa</small>}</span><strong>{valueText(row[basis])}</strong></div>) : <p>Sin desglose regional disponible.</p>}</div>
-          {identifiedRegions.length < map.countryRows.length && <p className="report-caption">Hay cifras sin región informada; se conservan en el detalle.</p>}
+          {!concise && identifiedRegions.length < map.countryRows.length && <p className="report-caption">Hay cifras sin región informada; se conservan en el detalle.</p>}
           {!regional ? <p className="report-caption">Sin cartografía regional. El azul identifica el país; no representa intensidad.</p> : missing > 0 ? <p className="report-caption">{missing} {missing === 1 ? 'región sin ubicar' : 'regiones sin ubicar'}. Sus cifras se conservan en el detalle.</p> : null}
         </figure>;
       })}
     </div>
     {maps.length > 0 && <><div className="report-heat-legend"><span>Menor actividad</span><span className="report-heat-scale">{activityPalette.map(color => <i key={color} style={{ background: color }} />)}</span><span>Mayor actividad</span><small>{maximum > 0 ? `Máximo regional: ${valueText(maximum)}` : 'Sin actividad regional registrada'}</small></div>
-    <p className="report-caption">Escala de color compartida: {label} por región. Gris: sin dato asociado. Blanco: cero registrado. Cada país se amplía por separado; los tamaños no comparan superficies.</p></>}
+    <p className="report-caption">{concise ? `Color: ${label} por región. Gris: sin dato; blanco: cero.` : <>Escala de color compartida: {label} por región. Gris: sin dato asociado. Blanco: cero registrado. Cada país se amplía por separado; los tamaños no comparan superficies.</>}</p></>}
     {unspecifiedCountries.length > 0 && <div className="report-geography-unspecified">
       <h4>Ubicación no informada por Meta</h4>
       <p><strong>{valueText(unspecifiedCountries.reduce((sum, row) => sum + (row[basis] || 0), 0))}</strong>{basis !== 'spend' && ` · Inversión: ${formatCurrency(unspecifiedCountries.reduce((sum, row) => sum + row.spend, 0), currency)}`}</p>
-      <p>Meta no indicó el país para estas cifras. Se incluyen en el desglose, sin representarlas en un mapa.</p>
+      {!concise && <p>Meta no indicó el país para estas cifras. Se incluyen en el desglose, sin representarlas en un mapa.</p>}
     </div>}
   </div>;
 }

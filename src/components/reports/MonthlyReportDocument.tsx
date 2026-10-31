@@ -32,6 +32,7 @@ export function MonthlyReportDocument(props: MonthlyReportDocumentProps) {
   const { name, logo, month, mode, metrics, texts, isEditing, onUpdate } = props;
   const [failedLogo, setFailedLogo] = useState<string>();
   const event = REPORT_MODES[mode];
+  const concise = Boolean(props.special);
   const sections = props.sections || { performance: true, assets: true, geography: true, management: true };
   const results = metrics[event.key] || 0;
   const hasManagement = sections.management && (props.logs.length > 0 || Boolean(texts.learnings?.trim() || texts.actionPlan?.trim() || texts.clientRequests?.trim()) || Boolean(props.special && isEditing));
@@ -45,7 +46,7 @@ export function MonthlyReportDocument(props: MonthlyReportDocumentProps) {
     <div className="report-period"><strong>{props.special ? `${format(parseISO(props.special.since), 'dd/MM/yyyy')} – ${format(parseISO(props.special.until), 'dd/MM/yyyy')}` : format(parseISO(month + '-01'), 'MMMM yyyy', { locale: es })}</strong><span>{index + 1}. {titles[index]}</span></div>
   </header>;
   const footer = (index: number) => <footer className="report-sheet-footer"><span>Orion · Informe privado</span><span>Bloque {index + 1} / {titles.length} · {titles[index]}</span></footer>;
-  const timeline = <ManagementTimelineV2 logs={props.logs} notice={props.logsNotice} />;
+  const timeline = <ManagementTimelineV2 concise={concise} logs={props.logs} notice={props.logsNotice} />;
   if (props.dataAvailable === false) return <article className="report-editorial"><section className="report-sheet">{header(0)}<section className="report-panel"><h3>No hay métricas disponibles</h3><p>Revisá la cuenta, el período y la conexión con Meta antes de exportar. La bitácora se conserva independientemente de las métricas.</p></section>{timeline}</section></article>;
   return <article className={'report-editorial' + (props.theme === 'dark' ? ' report-editorial-dark' : '')}>
     <section className="report-sheet report-sheet-overview">
@@ -54,32 +55,32 @@ export function MonthlyReportDocument(props: MonthlyReportDocumentProps) {
       <ExecutiveSummaryV2 metrics={metrics} dataAvailable={props.dataAvailable} narrative={texts.narrative || ''} onNarrativeChange={value => onUpdate('narrative', value)} isEditing={isEditing} mode={mode} special={Boolean(props.special)} />
       <div className={props.special ? 'report-conversion-block' : undefined}>
       <div className="report-conversion-grid">
-        <ReportFunnelBoard {...metrics} tracking={mode} />
-        <PlacementsChartV2 data={props.placements} basis={props.placementBasis} currency={metrics.currency} />
+        <ReportFunnelBoard concise={concise} {...metrics} tracking={mode} />
+        <PlacementsChartV2 concise={concise} data={props.placements} basis={props.placementBasis} currency={metrics.currency} />
       </div>
-      <aside className="report-reading-guide"><h3>Cómo interpretar la conversión</h3><div>
+      {concise ? <ReportGlossaryV2 mode={mode} concise /> : <aside className="report-reading-guide"><h3>Cómo interpretar la conversión</h3><div>
         <p><strong>{mode !== 'ecommerce' ? 'Alcance y frecuencia.' : 'Impresiones y clics.'}</strong> {mode !== 'ecommerce' ? 'El alcance corresponde a personas únicas del período. La frecuencia indica cuántas impresiones recibe cada persona, en promedio.' : 'Las impresiones cuentan exposiciones al anuncio. El CTR relaciona clics con impresiones.'}</p>
         <p><strong>{event.transition}.</strong> Relaciona {event.result.toLowerCase()} con clics en anuncios. No representa un seguimiento individual de usuarios.</p>
         <p><strong>{mode === 'leads' ? 'Costo por cliente potencial (CPL).' : 'Costo por resultado.'}</strong> Inversión dividida por {event.result.toLowerCase()}. {mode === 'leads' ? 'Un lead atribuido por Meta no equivale a una venta ni garantiza un contacto calificado.' : 'Es una medida de costo publicitario, no una conclusión sobre rentabilidad.'}</p>
-      </div></aside>
+      </div></aside>}
       </div>
       {footer(0)}
     </section>
     {sections.performance && <section className="report-sheet report-sheet-performance">
       {header(1)}
-      <PerformanceChartV2 data={props.daily} currency={metrics.currency} mode={mode} expectedResults={results} />
-      <DemographicsGeographyV2 demoData={props.demographics} currency={metrics.currency} />
-      {!hasAds && sections.assets && <AssetPerformanceV2 lockSort={Boolean(props.special)} assets={props.assets} currency={metrics.currency} mode={mode} />}
+      <PerformanceChartV2 concise={concise} data={props.daily} currency={metrics.currency} mode={mode} expectedResults={results} />
+      <DemographicsGeographyV2 concise={concise} demoData={props.demographics} currency={metrics.currency} />
+      {!hasAds && sections.assets && <AssetPerformanceV2 concise={concise} lockSort={Boolean(props.special)} assets={props.assets} currency={metrics.currency} mode={mode} />}
       {footer(1)}
     </section>}
     {hasAds && <section className="report-sheet report-sheet-creatives">
       {header(1 + Number(sections.performance))}
-      <AssetPerformanceV2 lockSort={Boolean(props.special)} assets={props.assets} currency={metrics.currency} mode={mode} />
+      <AssetPerformanceV2 concise={concise} lockSort={Boolean(props.special)} assets={props.assets} currency={metrics.currency} mode={mode} />
       {footer(1 + Number(sections.performance))}
     </section>}
     {sections.geography && <section className="report-sheet report-sheet-geography">
       {header(geographyIndex)}
-      <GeographicSummary countries={props.countries} regions={props.regions} expectedResults={results} mode={mode} currency={metrics.currency} />
+      <GeographicSummary concise={concise} countries={props.countries} regions={props.regions} expectedResults={results} mode={mode} currency={metrics.currency} />
       {!hasManagement && sections.management && timeline}
       {!hasManagement && sections.management && <div className="report-screen-only"><RoadmapSectionV2 learnings="" actionPlan="" clientRequests="" onUpdate={onUpdate} isEditing={isEditing} /></div>}
       {footer(geographyIndex)}
@@ -87,7 +88,7 @@ export function MonthlyReportDocument(props: MonthlyReportDocumentProps) {
     {hasManagement && <section className="report-sheet report-sheet-management">
       {header(managementIndex)}{timeline}
       <RoadmapSectionV2 learnings={texts.learnings || ''} actionPlan={texts.actionPlan || ''} clientRequests={texts.clientRequests || ''} onUpdate={onUpdate} isEditing={isEditing} />
-      <ReportGlossaryV2 mode={mode} />{footer(managementIndex)}
+      {!concise && <ReportGlossaryV2 mode={mode} />}{footer(managementIndex)}
     </section>}
   </article>;
 }

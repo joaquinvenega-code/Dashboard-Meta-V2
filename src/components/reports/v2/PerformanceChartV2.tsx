@@ -10,7 +10,7 @@ export function chartMaximum(values: Array<number | null | undefined>, integers 
   return integers ? Math.max(1, Math.ceil(step * power)) : step * power;
 }
 
-export function PerformanceChartV2({ data, currency, mode = 'ecommerce', expectedResults }: { data: DailyReportPoint[]; currency: string; mode?: ReportMode; expectedResults?: number }) {
+export function PerformanceChartV2({ data, currency, mode = 'ecommerce', expectedResults, concise = false }: { data: DailyReportPoint[]; currency: string; mode?: ReportMode; expectedResults?: number; concise?: boolean }) {
   const uid = React.useId().replace(/:/g, '');
   const event = REPORT_MODES[mode];
   const upperKey = event.key;
@@ -39,7 +39,7 @@ export function PerformanceChartV2({ data, currency, mode = 'ecommerce', expecte
   });
   if (segment) lineSegments.push(segment);
   return <section className="report-panel report-daily">
-    <header className="report-panel-heading"><h3>Evolución diaria</h3><p>Dos escalas independientes y las mismas fechas para comparar el comportamiento del período.</p></header>
+    <header className="report-panel-heading"><h3>Evolución diaria</h3><p>{concise ? `${resultLabel} y ${moneyLabel.toLowerCase()} por día. Escalas independientes.` : 'Dos escalas independientes y las mismas fechas para comparar el comportamiento del período.'}</p></header>
     {reported ? <>
       <svg className="report-daily-svg" viewBox="0 0 700 327" role="img" aria-labelledby={uid + '-title'}>
         <title id={uid + '-title'}>{`${resultLabel} y ${moneyLabel.toLowerCase()} por día. Cada panel utiliza su propia escala.`}</title>
@@ -61,7 +61,7 @@ export function PerformanceChartV2({ data, currency, mode = 'ecommerce', expecte
       </svg>
       <div className="report-daily-notes">
         <p><strong>Pico de {resultLabel.toLowerCase()}:</strong> {peak > 0 ? formatDecimal(peak, 0) + ' · ' + peakDays.slice(0, 3).join(', ') + (peakDays.length > 3 ? ' y ' + (peakDays.length - 3) + ' días más' : '') : 'Sin resultados registrados.'}</p>
-        <p>{reported} de {data.length} días con datos. Los días sin datos se muestran como huecos, no como ceros.</p>
+        {(!concise || reported < data.length) && <p>{reported} de {data.length} días con datos. {concise ? 'Los huecos indican datos faltantes.' : 'Los días sin datos se muestran como huecos, no como ceros.'}</p>}
       </div>
       {discrepancy && <p className="report-data-note">El histórico diario suma {formatDecimal(total, 0)} resultados; el resumen del período registra {formatDecimal(expectedResults!, 0)}. Son consultas separadas de Meta y la diferencia requiere revisión.</p>}
     </> : <p className="report-empty">No hay datos diarios disponibles para este período.</p>}
