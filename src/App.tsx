@@ -34,6 +34,7 @@ import { StrategyCanvas } from './components/StrategyCanvas';
 import { AlertsSection } from './components/AlertsSection';
 import { ReportsSection } from './components/ReportsSection';
 import { ReportsHub } from './components/ReportsHub';
+import type { ReportTab } from './lib/reportTabs';
 import { SpecialReports } from './components/SpecialReports';
 import { AccountsManagement } from './components/AccountsManagement';
 import { PortfolioCloudPanel, usePortfolioCloud } from './components/PortfolioCloud';
@@ -151,6 +152,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activePage, setActivePage] = useState('overview');
+  const [reportTab, setReportTab] = useState<ReportTab>('weekly');
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [overviewCategoryId, setOverviewCategoryId] = useState('all');
   const loadRequestIdRef = React.useRef(0);
@@ -1043,6 +1045,8 @@ export default function App() {
   return (
     <div className="dashboard-shell min-h-dvh bg-[#0a0a0a] flex flex-col lg:flex-row selection:bg-blue-600 selection:text-white">
       <Sidebar 
+        reportTab={reportTab}
+        onReportTabChange={setReportTab}
         activePage={activePage} 
         onPageChange={setActivePage} 
         user={user} 
@@ -1617,7 +1621,7 @@ export default function App() {
 
               {activePage === 'reports' && (
                 <div className="animate-in fade-in duration-500">
-                  <ReportsHub accounts={accounts} groups={accountGroups} categories={clientCategories}
+                  <ReportsHub tab={reportTab} onTabChange={setReportTab} accounts={accounts} groups={accountGroups} categories={clientCategories}
                     settings={settings} visibleAccountIds={visibleAccountIds} cloud={portfolioCloud}
                     onSettingsChange={handleSaveSettings} onManageClients={() => setActivePage('accounts')}
                     specialReports={<SpecialReports accounts={accounts} visibleAccountIds={visibleAccountIds} settings={settings} notes={notes} agencySettings={agencySettings} />}>

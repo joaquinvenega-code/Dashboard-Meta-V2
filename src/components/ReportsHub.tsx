@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Check, Search } from 'lucide-react';
 import type { AccountGroup, AccountSettings, AdAccount, ClientCategory } from '../types';
 import { buildClientEntities, isClientVisible, weeklyClientChoices } from '../lib/clientEntities';
@@ -7,6 +7,7 @@ import { connectPortfolio } from '../services/portfolioStore';
 import type { usePortfolioCloud } from './PortfolioCloud';
 import { WeeklyDownloads } from './WeeklyDownloads';
 import { WeeklyMetricPicker } from './WeeklyMetricPicker';
+import { REPORT_TABS, type ReportTab } from '../lib/reportTabs';
 
 type Props = {
   accounts: AdAccount[]; groups: AccountGroup[]; categories: ClientCategory[];
@@ -19,15 +20,18 @@ const types: Record<AccountSettings['tracking'], string> = {
   ecommerce: 'Compras web', messaging: 'Mensajería', both: 'Compras + mensajería', leads: 'Clientes potenciales', all: 'Multicanal',
 };
 
-export function ReportsHub({ children, specialReports, ...props }: Props) {
-  const [tab, setTab] = useState<'weekly' | 'monthly' | 'special'>('weekly');
+export function ReportsHub({ children, specialReports, tab, onTabChange, ...props }: Props & { tab: ReportTab; onTabChange: (tab: ReportTab) => void }) {
   const [monthlyOpened, setMonthlyOpened] = useState(false);
   const [specialOpened, setSpecialOpened] = useState(false);
+  useEffect(() => {
+    if (tab === 'monthly') setMonthlyOpened(true);
+    if (tab === 'special') setSpecialOpened(true);
+  }, [tab]);
   return <div className="space-y-5">
     <div role="tablist" aria-label="Tipo de informe" className="flex gap-2 rounded-xl border border-white/10 bg-[#11161e] p-1.5 print:hidden">
-      {([{ id: 'weekly', title: 'Semanales', detail: 'Resumen automático' }, { id: 'monthly', title: 'Mensuales', detail: 'Análisis completo' }, { id: 'special', title: 'Especiales', detail: 'Eventos y períodos personalizados' }] as const).map(t =>
+      {REPORT_TABS.map(t =>
         <button key={t.id} type="button" role="tab" id={`reports-${t.id}-tab`} aria-controls={`reports-${t.id}`} aria-selected={tab === t.id}
-          onClick={() => { setTab(t.id); if (t.id === 'monthly') setMonthlyOpened(true); if (t.id === 'special') setSpecialOpened(true); }} className={cn('min-w-0 flex-1 rounded-lg px-2 py-3 text-left sm:px-4', tab === t.id ? 'bg-blue-500/15 text-white ring-1 ring-blue-400/20' : 'text-neutral-400 hover:bg-white/5')}>
+          onClick={() => onTabChange(t.id)} className={cn('min-w-0 flex-1 rounded-lg px-2 py-3 text-left sm:px-4', tab === t.id ? 'bg-blue-500/15 text-white ring-1 ring-blue-400/20' : 'text-neutral-400 hover:bg-white/5')}>
           <span className="block text-sm font-semibold">{t.title}</span><span className="mt-0.5 block text-xs text-neutral-400">{t.detail}</span>
         </button>)}
     </div>

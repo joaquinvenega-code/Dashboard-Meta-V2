@@ -12,6 +12,8 @@ import React from 'react';
 import {createRoot} from 'react-dom/client';
 import {SpecialReports} from '../../src/components/SpecialReports';
 import {ReportsHub} from '../../src/components/ReportsHub';
+import {Sidebar} from '../../src/components/Sidebar';
+import type {ReportTab} from '../../src/lib/reportTabs';
 import {ReportsSection} from '../../src/components/ReportsSection';
 import {setFacebookAccessToken} from '../../src/services/facebook';
 import '../../src/index.css';
@@ -21,7 +23,15 @@ const settings = {act_1:{objective:0,budget:0,currency:'ARS',tracking:'ecommerce
 const notes = [{id:'inside',accountId:'act_1',timestamp:'2026-02-01T12:00:00',text:'Nota del evento conservada',category:'observation' as const}, {id:'outside',accountId:'act_1',timestamp:'2026-01-02T12:00:00',text:'NOTA FUERA DEL PERIODO',category:'observation' as const}];
 const props={accounts,settings,visibleAccountIds:['act_1'],notes,agencySettings:{agencyName:'Agencia de prueba',logoUrl:''}};
 const cloud={uid:'',ready:false,checking:false,busy:false,status:'',hasRemote:false,synced:false,load:async()=>{},save:async()=>{},setStatus:()=>{}};
-createRoot(document.getElementById('root')!).render(<div className="min-h-screen flex"><aside className="print:hidden">Orion QA</aside><main className="min-w-0 flex-1 p-4 sm:p-8"><div className="mx-auto max-w-6xl"><ReportsHub {...props} groups={[]} categories={[]} cloud={cloud} onSettingsChange={()=>{}} onManageClients={()=>{}} specialReports={<SpecialReports {...props}/>}><ReportsSection {...props}/></ReportsHub></div></main></div>);
+function Fixture() {
+  const [page,setPage] = React.useState('overview');
+  const [tab,setTab] = React.useState<ReportTab>('weekly');
+  return <div className="min-h-screen flex flex-col lg:flex-row">
+    <Sidebar activePage={page} onPageChange={setPage} reportTab={tab} onReportTabChange={setTab} user={null} lastSync={null} onLogout={()=>{}} onRefresh={()=>{}}/>
+    <main className="min-w-0 flex-1 p-4 sm:p-8"><div className="mx-auto max-w-6xl">{page==='reports' && <ReportsHub tab={tab} onTabChange={setTab} {...props} groups={[]} categories={[]} cloud={cloud} onSettingsChange={()=>{}} onManageClients={()=>{}} specialReports={<SpecialReports {...props}/>}><ReportsSection {...props}/></ReportsHub>}</div></main>
+  </div>;
+}
+createRoot(document.getElementById('root')!).render(<Fixture/>);
 `);
 const server = await createServer({ server: { host: '127.0.0.1', port: 4181, strictPort: true }, logLevel: 'warn' });
 await server.listen();
@@ -54,7 +64,18 @@ try {
   });
   await page.route('**/api/bitacora/**', route => route.fulfill({ json: { success: true, data: [] } }));
   await page.goto('http://127.0.0.1:4181/tmp/special-reports-qa/index.html');
-  await page.getByRole('tab', { name: /Especiales/ }).click();
+  const nav = (name: string) => page.getByRole('button', { name, exact: true });
+  async function enterSpecial() {
+    if (await nav('Abrir menú').isVisible()) await nav('Abrir menú').click();
+    await nav('Informes').click();
+    await nav('Especiales').click();
+    assert.equal(await page.getByRole('tab', { name: /Especiales/ }).getAttribute('aria-selected'), 'true');
+  }
+  await nav('Contraer panel lateral').click();
+  await enterSpecial();
+  await page.getByRole('tab', { name: /Semanales/ }).click();
+  assert.equal(await nav('Semanales').getAttribute('aria-current'), 'page');
+  await nav('Especiales').click();
   await page.getByRole('button', { name: 'Nuevo informe' }).click();
   await page.getByLabel('Nombre del informe').fill('Lanzamiento de verano');
   await page.getByLabel('Desde', { exact: true }).fill('2026-01-30');
@@ -65,7 +86,7 @@ try {
   // A pause in editing saves the draft automatically.
   await page.getByText('Borrador guardado', { exact: true }).waitFor();
   await page.reload();
-  await page.getByRole('tab', { name: /Especiales/ }).click();
+  await enterSpecial();
   await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   assert.equal(await page.getByLabel('Nombre del informe').inputValue(), 'Lanzamiento de verano');
   await page.screenshot({ path: `${directory}/configuration.png`, fullPage: true });
@@ -90,7 +111,7 @@ try {
   await page.screenshot({ path: `${directory}/preview.png`, fullPage: true });
   const beforeReload = metaRequests;
   await page.reload();
-  await page.getByRole('tab', { name: /Especiales/ }).click();
+  await enterSpecial();
   await page.getByRole('button', { name: 'Ver informe', exact: true }).click();
   assert.equal(await reportDocument.innerText(), text);
   assert.equal(metaRequests, beforeReload, 'Finalized reports must not refetch metrics');
@@ -107,7 +128,8 @@ try {
   await page.waitForFunction(() => Boolean((window as any).printedTitle));
   assert.equal(await page.evaluate(() => (window as any).printedTitle), 'Cliente de prueba - Lanzamiento de verano');
   // Mount the monthly tab, then return. Only the active document may print.
-  await page.getByRole('tab', { name: /Mensuales/ }).click();
+  await nav('Mensuales').click();
+  assert.equal(await page.getByRole('tab', { name: /Mensuales/ }).getAttribute('aria-selected'), 'true');
   await page.getByRole('tab', { name: /Especiales/ }).click();
   await page.emulateMedia({ media: 'print' });
   assert.equal(await page.locator('#reports-monthly').isVisible(), false);
@@ -146,7 +168,8 @@ try {
   await remove.click();
   await remove.waitFor({ state: 'detached' });
   await page.reload();
-  await page.getByRole('tab', { name: /Especiales/ }).click();
+  await enterSpecial();
+  assert.equal(await page.getByRole('dialog', { name: 'Menú principal' }).count(), 0);
   await page.getByRole('button', { name: 'Ver informe', exact: true }).waitFor();
   assert.equal(await page.getByRole('button', { name: /Eliminar borrador/ }).count(), 0);
   const protectedLibrary = await page.evaluate(async draft => {

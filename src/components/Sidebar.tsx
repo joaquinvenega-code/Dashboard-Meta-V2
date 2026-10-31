@@ -8,6 +8,9 @@ import {
   Settings2,
   Bell,
   FileText,
+  CalendarDays,
+  CalendarRange,
+  FilePenLine,
   Network,
   ChevronDown,
   User,
@@ -19,11 +22,16 @@ import {
   X
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { REPORT_TABS, type ReportTab } from '../lib/reportTabs';
 import { motion, AnimatePresence } from 'motion/react';
+
+const reportIcons = { weekly: CalendarDays, monthly: CalendarRange, special: FilePenLine };
 
 interface SidebarProps {
   activePage: string;
   onPageChange: (page: string) => void;
+  reportTab: ReportTab;
+  onReportTabChange: (tab: ReportTab) => void;
   user: any;
   onLogout: () => void;
   onRefresh: () => void;
@@ -36,6 +44,8 @@ interface SidebarProps {
 export function Sidebar({ 
   activePage, 
   onPageChange, 
+  reportTab,
+  onReportTabChange,
   user, 
   onLogout, 
   onRefresh, 
@@ -54,6 +64,7 @@ export function Sidebar({
     catch { /* The sidebar still works when the browser blocks storage. */ }
   };
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(activePage === 'reports');
   const mobileMenu = useRef<HTMLDialogElement>(null);
   const menuId = useId();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -88,7 +99,6 @@ export function Sidebar({
     { id: 'overview', label: 'Vista general', icon: LayoutDashboard },
     { id: 'detail', label: 'Detalle de cuentas', icon: BarChart3 },
     { id: 'strategy', label: 'Estrategia', icon: Network },
-    { id: 'reports', label: 'Informes', icon: FileText },
   ];
 
   const configItems = [
@@ -102,6 +112,7 @@ export function Sidebar({
 
   function renderSidebar(mobile: boolean) {
     const isExpanded = mobile || desktopExpanded;
+    const reportsMenuId = menuId + (mobile ? '-reports-mobile' : '-reports-desktop');
     const toggleLabel = isExpanded ? 'Contraer panel lateral' : 'Expandir panel lateral';
     return (
     <aside 
@@ -214,6 +225,30 @@ export function Sidebar({
               </button>
             );
           })}
+
+          <div className="space-y-1">
+            <button type="button" aria-label="Informes" title={isExpanded ? undefined : 'Informes'}
+              aria-expanded={reportsOpen} aria-controls={reportsMenuId} onClick={() => setReportsOpen(open => !open)}
+              className={cn("flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left",
+                activePage === 'reports' ? "bg-blue-600/10 font-semibold text-blue-400" : "text-neutral-400 hover:bg-white/5 hover:text-white")}>
+              <FileText className="h-5 w-5 shrink-0" />
+              {isExpanded && <><span className="flex-1 text-sm">Informes</span><ChevronDown className={cn("h-4 w-4 transition-transform", reportsOpen && "rotate-180")} /></>}
+            </button>
+            <div id={reportsMenuId} hidden={!reportsOpen} className={cn("space-y-1", isExpanded && "pl-4")}>
+              {REPORT_TABS.map(item => {
+                const Icon = reportIcons[item.id];
+                const selected = activePage === 'reports' && item.id === reportTab;
+                return <button type="button" key={item.id} aria-label={item.title} title={isExpanded ? undefined : item.title}
+                  aria-current={selected ? 'page' : undefined}
+                  onClick={() => { onReportTabChange(item.id); navigate('reports'); }}
+                  className={cn("flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left",
+                    selected ? "bg-blue-600/10 font-semibold text-blue-400" : "text-neutral-400 hover:bg-white/5 hover:text-white")}>
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {isExpanded && <span className="text-xs">{item.title}</span>}
+                </button>;
+              })}
+            </div>
+          </div>
 
           {/* Config Section */}
           <div className="pt-3 border-t border-white/5 space-y-1">
@@ -334,7 +369,7 @@ export function Sidebar({
     <div className="hidden shrink-0 lg:block print:hidden">{renderSidebar(false)}</div>
     <header className="mobile-app-bar sticky top-0 z-[260] flex items-center gap-3 border-b border-white/10 bg-[#0c0d12]/95 px-4 py-2 backdrop-blur-lg lg:hidden print:hidden">
       <button type="button" aria-label="Abrir menú" aria-haspopup="dialog" aria-controls={menuId} aria-expanded={isMobileOpen} onClick={() => { mobileMenu.current?.showModal(); setIsMobileOpen(true); }} className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 text-white hover:bg-white/10"><Menu className="h-5 w-5" /></button>
-      <div className="min-w-0"><p className="text-sm font-semibold text-white">Orion Metrics</p><p className="truncate text-xs text-neutral-400">{[...navItems, ...configItems].find(item => item.id === activePage)?.label}</p></div>
+      <div className="min-w-0"><p className="text-sm font-semibold text-white">Orion Metrics</p><p className="truncate text-xs text-neutral-400">{activePage === 'reports' ? `Informes · ${REPORT_TABS.find(item => item.id === reportTab)?.title}` : [...navItems, ...configItems].find(item => item.id === activePage)?.label}</p></div>
     </header>
     <dialog id={menuId} ref={mobileMenu} aria-label="Menú principal" onClose={() => setIsMobileOpen(false)} onClick={event => { if (event.target === event.currentTarget) closeMenu(); }} className="mobile-nav-dialog fixed inset-y-0 left-0 m-0 h-dvh max-h-dvh w-[min(320px,calc(100%-2rem))] max-w-none border-0 bg-[#0c0d12] p-0 text-white shadow-2xl backdrop:bg-black/65 backdrop:backdrop-blur-sm print:hidden">
       {renderSidebar(true)}
