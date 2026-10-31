@@ -21,9 +21,11 @@ export function PlacementsChartV2({ data, basis = 'spend', currency = 'ARS' }: P
       </div>
     </div>}
     {rows.length ? <ol className="report-ranking-rows">{rows.map((row, index) => <li key={row.name}>
-      <div><span>{row.name}</span><strong>{row.value < 0.1 ? '<0,1' : formatDecimal(row.value, 1)}%</strong></div>
+      <div><span>{row.name}</span><span className="report-placement-values">
+        {row.rawValue != null && <small>{basis === 'spend' ? formatCurrency(row.rawValue, currency) : formatDecimal(row.rawValue, 0) + ' ' + label}</small>}
+        <strong>{row.value < 0.1 ? '<0,1' : formatDecimal(row.value, 1)}%</strong>
+      </span></div>
       <div className="report-bar-track"><span style={{ width: Math.min(100, row.value) + '%', background: reportChartColors[index % reportChartColors.length] }} /></div>
-      {row.rawValue != null && <small>{basis === 'spend' ? formatCurrency(row.rawValue, currency) : formatDecimal(row.rawValue, 0) + ' ' + label}</small>}
     </li>)}</ol> : <p className="report-empty">No hay datos de ubicaciones para este período.</p>}
     <p className="report-caption">{basis === 'spend' ? 'Base: inversión. No hay conversiones disponibles por ubicación.' : 'Base: resultados atribuidos por ubicación.'} Los porcentajes pueden diferir de 100% por redondeo.</p>
   </section>;

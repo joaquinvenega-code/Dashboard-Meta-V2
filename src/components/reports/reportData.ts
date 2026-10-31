@@ -87,7 +87,20 @@ export function completeDailySeries(rows: any[], month: string): DailyReportPoin
   });
 }
 
+export function isUnspecifiedGeography(value: string | undefined) {
+  return !value?.trim() || /^(unknown|unspecified|undefined|null|n\/a|zz|zzz|país no informado|región no informada|ubicación no informada)$/i.test(value.trim());
+}
+
+/** Presentation-only normalization also applies to previously saved snapshots. */
+export function regionLabel(row: RegionResult) {
+  const [region, embeddedCountry] = row.regionName.split(' · ');
+  const country = row.countryId || embeddedCountry;
+  if (isUnspecifiedGeography(region)) return isUnspecifiedGeography(country) ? 'Ubicación no informada' : `Región no informada · ${countryLabel(country!)}`;
+  return country ? `${region} · ${countryLabel(country)}` : region;
+}
+
 export function countryLabel(code: string) {
+  if (isUnspecifiedGeography(code)) return 'País no informado';
   const alpha2: Record<string, string> = { ARG: 'AR', USA: 'US', BRA: 'BR', ESP: 'ES', MEX: 'MX', CAN: 'CA', GBR: 'GB', DEU: 'DE', FRA: 'FR', COL: 'CO', CHL: 'CL', PER: 'PE', JPN: 'JP', AUS: 'AU', IND: 'IN' };
   try { return new Intl.DisplayNames(['es'], { type: 'region' }).of(alpha2[code] || code) || code; } catch { return code || 'Sin especificar'; }
 }

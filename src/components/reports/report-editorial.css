@@ -150,6 +150,11 @@
 .report-placement-summary > strong { font-size: 24px; line-height: 1.2; }
 .report-placement-summary > .report-placement-name { font-size: 12px; font-weight: 600; color: var(--report-ink); }
 .report-placement-donut .report-donut-svg { width: 150px; }
+.report-placement-values { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 2px 8px; text-align: right; }
+.report-placement-values small { white-space: nowrap; }
+.report-geography-unspecified { margin-top: 16px; padding: 12px 14px; border: 1px solid var(--report-border); border-radius: 8px; background: var(--report-wash); }
+.report-geography-unspecified h4 { margin: 0 0 5px; }
+.report-geography-unspecified p { margin: 4px 0 0; font-size: 11px; }
 .report-gender-chart { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
 .report-gender-chart .report-ranking-rows { flex: 1 1 120px; min-width: 0; }
 .report-gender-chart .report-ranking-rows li > div { font-size: 10px; gap: 8px; }
@@ -237,6 +242,11 @@
   .special-report-root .report-conversion-block { break-inside: avoid; }
   .special-report-root .report-funnel-svg { max-height: 50mm; }
   .special-report-root .report-summary-reading { padding: 3mm 0; }
+  .special-report-root .report-placement-donut .report-donut-svg { width: 26mm; }
+  .special-report-root .report-placement-ranking .report-ranking-rows li { margin-bottom: 2mm; }
+  .report-geography-unspecified { margin-top: 3mm; padding: 3mm; break-inside: avoid; }
+  .report-geography-unspecified p { font-size: 9px; }
+  .report-activity-map:has(.report-geography-unspecified) .report-map-grid figure:only-child .report-activity-svg { max-height: 70mm; }
   /* Apply the named page to the whole report shell, so trailing wrappers do not
      create an extra anonymous blank page after the document. */
   body:has(.monthly-report-print-root) { page: reportMonthly; }

@@ -5,7 +5,7 @@ import regionsBRA from '../../assets/data/regions_BRA.json';
 import regionsUSA from '../../assets/data/regions_USA.json';
 import regionsESP from '../../assets/data/regions_ESP.json';
 import regionsPER from '../../assets/data/regions_PER.json';
-import { countryLabel, GeographicResult, RegionResult, ReportMode, REPORT_MODES } from './reportData';
+import { countryLabel, isUnspecifiedGeography, regionLabel, GeographicResult, RegionResult, ReportMode, REPORT_MODES } from './reportData';
 import { formatCurrency, formatDecimal } from '../../lib/utils';
 
 const alpha3: Record<string, string> = { AR: 'ARG', PE: 'PER', US: 'USA', BR: 'BRA', ES: 'ESP', MX: 'MEX', CO: 'COL', CL: 'CHL', UY: 'URY', PY: 'PRY', BO: 'BOL', EC: 'ECU', VE: 'VEN', CA: 'CAN', GB: 'GBR', FR: 'FRA', DE: 'DEU', AU: 'AUS', IN: 'IND', JP: 'JPN', CN: 'CHN', IT: 'ITA', PT: 'PRT', CR: 'CRI', PA: 'PAN', DO: 'DOM', GT: 'GTM', SV: 'SLV', HN: 'HND', NI: 'NIC', CU: 'CUB', PR: 'PRI', NZ: 'NZL', ZA: 'ZAF' };
@@ -67,7 +67,8 @@ export function ReportActivityMap({ countries, regions, mode, currency }: { coun
   const label = basis === 'messages' ? 'mensajes' : basis === 'purchases' ? 'compras' : basis === 'leads' ? 'clientes potenciales' : 'inversión';
   const ranked = [...countries].sort((a, b) => (b[basis] || 0) - (a[basis] || 0));
   const total = ranked.reduce((sum, row) => sum + (row[basis] || 0), 0);
-  const maps = ranked.map(country => {
+  const unspecifiedCountries = ranked.filter(country => isUnspecifiedGeography(country.countryId));
+  const maps = ranked.filter(country => !isUnspecifiedGeography(country.countryId)).map(country => {
     const id = mapCountryId(country.countryId);
     const features = regionalCartography[id] || [];
     const countryRows = regions.filter(row => mapCountryId(row.countryId || row.regionId.split(/[_-]/)[0]) === id);
@@ -87,17 +88,24 @@ export function ReportActivityMap({ countries, regions, mode, currency }: { coun
       {maps.map(map => {
         const name = countryLabel(map.country.countryId);
         const regional = map.features.length > 0;
-        const topRegions = [...map.countryRows].sort((a, b) => (b[basis] || 0) - (a[basis] || 0)).slice(0, 3);
-        const missing = map.countryRows.length - map.matched.size;
+        const identifiedRegions = map.countryRows.filter(row => !isUnspecifiedGeography(row.regionName.split(' · ')[0]));
+        const topRegions = [...identifiedRegions].sort((a, b) => (b[basis] || 0) - (a[basis] || 0)).slice(0, 3);
+        const missing = identifiedRegions.length - map.matched.size;
         return <figure className="report-country-map" key={map.id}>
           <figcaption><span>{name}<small>{regional ? 'Detalle regional' : 'Vista del país'}</small></span><strong>{valueText(map.country[basis])}<small>{total > 0 ? `${formatDecimal((map.country[basis] || 0) / total * 100, 1)}% del desglose geográfico` : 'Sin actividad registrada'}</small></strong></figcaption>
           {regional || map.outline.length > 0 ? <MapDrawing features={regional ? map.features : map.outline} focus={regional ? map.features : map.outline} values={regional ? map.values : new Map([[map.id, map.country[basis] || 0]])} maximum={maximum} countryOnly={!regional} label={`${regional ? 'Mapa regional' : 'Contorno'} de ${name} según ${label}`} /> : <div className="report-map-unavailable">Sin contorno disponible para {name}.</div>}
-          <div className="report-map-region-highlights"><h4>Zonas con mayor {basis === 'spend' ? 'inversión' : 'actividad'}</h4>{topRegions.length ? topRegions.map(row => <div key={row.regionId}><span><i style={{ background: map.matched.has(row) ? activityColor(row[basis], maximum) : '#cbd5e1' }} />{row.regionName.split(' · ')[0]}{!map.matched.has(row) && <small>Sin ubicar en el mapa</small>}</span><strong>{valueText(row[basis])}</strong></div>) : <p>Sin desglose regional disponible.</p>}</div>
+          <div className="report-map-region-highlights"><h4>Zonas con mayor {basis === 'spend' ? 'inversión' : 'actividad'}</h4>{topRegions.length ? topRegions.map(row => <div key={row.regionId}><span><i style={{ background: map.matched.has(row) ? activityColor(row[basis], maximum) : '#cbd5e1' }} />{regionLabel(row).split(' · ')[0]}{!map.matched.has(row) && <small>Sin ubicar en el mapa</small>}</span><strong>{valueText(row[basis])}</strong></div>) : <p>Sin desglose regional disponible.</p>}</div>
+          {identifiedRegions.length < map.countryRows.length && <p className="report-caption">Hay cifras sin región informada; se conservan en el detalle.</p>}
           {!regional ? <p className="report-caption">Sin cartografía regional. El azul identifica el país; no representa intensidad.</p> : missing > 0 ? <p className="report-caption">{missing} {missing === 1 ? 'región sin ubicar' : 'regiones sin ubicar'}. Sus cifras se conservan en el detalle.</p> : null}
         </figure>;
       })}
     </div>
-    <div className="report-heat-legend"><span>Menor actividad</span><span className="report-heat-scale">{activityPalette.map(color => <i key={color} style={{ background: color }} />)}</span><span>Mayor actividad</span><small>{maximum > 0 ? `Máximo regional: ${valueText(maximum)}` : 'Sin actividad regional registrada'}</small></div>
-    <p className="report-caption">Escala de color compartida: {label} por región. Gris: sin dato asociado. Blanco: cero registrado. Cada país se amplía por separado; los tamaños no comparan superficies.</p>
+    {maps.length > 0 && <><div className="report-heat-legend"><span>Menor actividad</span><span className="report-heat-scale">{activityPalette.map(color => <i key={color} style={{ background: color }} />)}</span><span>Mayor actividad</span><small>{maximum > 0 ? `Máximo regional: ${valueText(maximum)}` : 'Sin actividad regional registrada'}</small></div>
+    <p className="report-caption">Escala de color compartida: {label} por región. Gris: sin dato asociado. Blanco: cero registrado. Cada país se amplía por separado; los tamaños no comparan superficies.</p></>}
+    {unspecifiedCountries.length > 0 && <div className="report-geography-unspecified">
+      <h4>Ubicación no informada por Meta</h4>
+      <p><strong>{valueText(unspecifiedCountries.reduce((sum, row) => sum + (row[basis] || 0), 0))}</strong>{basis !== 'spend' && ` · Inversión: ${formatCurrency(unspecifiedCountries.reduce((sum, row) => sum + row.spend, 0), currency)}`}</p>
+      <p>Meta no indicó el país para estas cifras. Se incluyen en el desglose, sin representarlas en un mapa.</p>
+    </div>}
   </div>;
 }

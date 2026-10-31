@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { aggregateDemographics, aggregateGeography, aggregatePlacements, completeDailySeries, countryLabel, reportAction, reportPeriodMetrics, REPORT_MODES } from './reportData';
+import { aggregateDemographics, aggregateGeography, aggregatePlacements, completeDailySeries, countryLabel, regionLabel, reportAction, reportPeriodMetrics, REPORT_MODES } from './reportData';
 import { chartMaximum, PerformanceChartV2 } from './v2/PerformanceChartV2';
 import { AssetPerformanceV2 } from './v2/AssetPerformanceV2';
 import { GeographicSummary } from './GeographicSummary';
@@ -101,7 +101,7 @@ test('geography excludes empty countries and their regions from the entire repor
   assert.deepEqual(data.countries.map(country => country.countryId), ['AR']);
   assert.equal(data.regions.length, 2);
   const html = renderToStaticMarkup(<GeographicSummary {...data} expectedResults={5} currency="ARS" mode="messaging" />);
-  assert.ok(html.includes('1 país y 2 regiones'));
+  assert.ok(html.includes('1 país identificado y 2 regiones identificadas'));
   assert.ok(html.includes('Mapa regional de Argentina'));
   assert.ok(html.includes('Salta'));
   assert.ok(!html.includes('Paraguay'));
@@ -387,4 +387,31 @@ test('ad preview actions sit after the metrics, outside the thumbnail and conten
       assert.ok(card.indexOf('report-ad-preview') > card.indexOf('report-ad-traffic'));
     }
   }
+});
+
+
+test('unknown geography is explained without inventing a country or changing saved totals', () => {
+  // Legacy snapshots keep their original identifiers and names.
+  const countries = [{ countryId: 'AR', messages: 80, purchases: 0, revenue: 0, spend: 400 }, { countryId: 'UNKNOWN', messages: 20, purchases: 0, revenue: 0, spend: 2 }];
+  const regions = [{ countryId: 'AR', regionId: 'AR_Santa Fe', regionName: 'Santa Fe · Argentina', messages: 80, purchases: 0, revenue: 0, spend: 399 }, { countryId: 'AR', regionId: 'AR_Unknown', regionName: 'Unknown · Argentina', messages: 0, purchases: 0, revenue: 0, spend: 1 }, { countryId: 'UNKNOWN', regionId: 'UNKNOWN_Unknown', regionName: 'Unknown · UNKNOWN', messages: 20, purchases: 0, revenue: 0, spend: 2 }];
+  const before = JSON.stringify({ countries, regions });
+  const html = renderToStaticMarkup(<GeographicSummary countries={countries} regions={regions} expectedResults={100} currency="ARS" mode="messaging" />);
+  assert.ok(!/>[^<]*unknown[^<]*</i.test(html));
+  assert.equal((html.match(/class="report-country-map"/g) || []).length, 1);
+  for (const text of ['Ubicación no informada por Meta', 'Región no informada · Argentina', '80,0% del desglose geográfico', '20 mensajes', '$2', '$1', '1 país identificado', '1 región identificada']) assert.ok(html.includes(text), text);
+  assert.ok(!html.includes('Diferencia a revisar'));
+  assert.equal(JSON.stringify({ countries, regions }), before);
+  for (const code of ['unknown', 'UNKNOWN', 'ZZ', '']) assert.equal(countryLabel(code), 'País no informado');
+  assert.equal(regionLabel(regions[2]), 'Ubicación no informada');
+});
+
+test('all-unreported geography retains spend and results without an empty map or heat legend', () => {
+  const data = aggregateGeography([{ country: 'unknown', region: 'Unknown', spend: '0.5', actions: [{ action_type: 'lead', value: '3' }] }]);
+  const html = renderToStaticMarkup(<GeographicSummary {...data} expectedResults={3} currency="USD" mode="leads" />);
+  assert.ok(html.includes('3 clientes potenciales'));
+  assert.ok(html.includes('Ubicación no informada por Meta'));
+  assert.ok(!html.includes('report-country-map'));
+  assert.ok(!html.includes('report-heat-legend'));
+  assert.ok(!html.includes('Diferencia a revisar'));
+  assert.equal(data.countries[0].spend, 0.5);
 });
