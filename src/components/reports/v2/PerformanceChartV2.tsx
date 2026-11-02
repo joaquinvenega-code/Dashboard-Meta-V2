@@ -47,7 +47,7 @@ export function PerformanceChartV2({ data, currency, mode = 'ecommerce', expecte
       <svg className="report-daily-svg" viewBox="0 0 700 327" role="img" aria-labelledby={uid + '-title'}>
         <title id={uid + '-title'}>{`${resultLabel} y ${moneyLabel.toLowerCase()} por día. Cada panel utiliza su propia escala.`}</title>
         {[{ top: 40, max: maxUpper, label: resultLabel, color: '#059669', money: false }, { top: 202, max: maxLower, label: moneyLabel + ' (' + currency + ')', color: '#2563eb', money: true }].map(panel => <g key={panel.label}>
-          <text x={left} y={panel.top - 16} className="report-svg-heading" fill={panel.color}>{panel.label}</text>
+          <text x={left} y={panel.top - (concise ? 20 : 16)} className="report-svg-heading" fill={panel.color}>{panel.label}</text>
           {[0, panel.max / 2, panel.max].filter((value, index) => panel.money || Number.isInteger(value) || index !== 1).map(value => <g key={value}>
             <line x1={left} x2={right} y1={y(value, panel.top, panel.max)} y2={y(value, panel.top, panel.max)} stroke="#e2e8f0" strokeDasharray={value ? '3 4' : undefined} />
             <text x={left - 9} y={y(value, panel.top, panel.max) + 3} textAnchor="end" className="report-svg-tick">{panel.money ? shortMoney(value) : formatDecimal(value, 0)}</text>
@@ -57,7 +57,7 @@ export function PerformanceChartV2({ data, currency, mode = 'ecommerce', expecte
         {data.map((row, index) => row[upperKey] == null ? null : <g key={row.date}>
           <title>{`${row.date}: ${formatDecimal(row[upperKey]!, 0)} ${resultLabel.toLowerCase()}`}</title>
           <rect x={x(index) - Math.min(6, 230 / data.length)} y={y(row[upperKey]!, 40, maxUpper)} width={Math.min(12, 460 / data.length)} height={Math.max(1, (row[upperKey] || 0) / maxUpper * panelHeight)} rx="2" fill={row[upperKey] === peak ? '#059669' : '#6ee7b7'} />
-          {row[upperKey] === peak && peak > 0 && <text x={x(index)} y={y(peak, 40, maxUpper) - 5} textAnchor="middle" className="report-svg-tick" fill="#047857">{peak}</text>}
+          {row[upperKey] === peak && peak > 0 && (!concise || peakDays.length === 1) && <text x={x(index)} y={y(peak, 40, maxUpper) - 5} textAnchor="middle" className="report-svg-tick" fill="#047857">{peak}</text>}
         </g>)}
         {lineSegments.map((path, index) => <path key={index} d={path} fill="none" stroke="#2563eb" strokeWidth="2" strokeLinejoin="round" />)}
         {data.map((row, index) => row[lowerKey] == null ? null : <circle key={row.date} cx={x(index)} cy={y(row[lowerKey]!, 202, maxLower)} r="2.5" fill="#2563eb"><title>{`${row.date}: ${formatCurrency(row[lowerKey]!, currency)}`}</title></circle>)}

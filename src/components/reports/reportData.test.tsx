@@ -316,8 +316,11 @@ test('lead report renders its KPIs, funnel, ad ranking, glossary and intact mana
   const metrics = {...reportPeriodMetrics({spend:120,clicks:20,impressions:1000,reach:500,actions:[{action_type:'lead',value:4}]},[],'USD'),purchases:90,messages:50};
   const baseAd = {thumbnail:'',spend:60,roas:8,revenue:480,purchases:40,messages:10};
   const html = renderToStaticMarkup(<MonthlyReportDocument name="Cliente de leads" month="2026-08" mode="leads" metrics={metrics} daily={[]} assets={[{...baseAd,id:'a',name:'Menos leads',leads:1},{...baseAd,id:'b',name:'Más leads',leads:3}]} demographics={[]} countries={[]} regions={[]} placements={[]} placementBasis="leads" texts={{}} isEditing={false} onUpdate={()=>undefined} logs={[{id:'v',date:'02/08',source:'Voz',description:'Nota de voz conservada'},{id:'m',date:'03/08',source:'Manual',description:'Nota manual conservada'}]}/>);
-  for (const label of ['Informe mensual · Clientes potenciales','Costo por lead (CPL)','4 clientes potenciales','U$D 30','Clic a cliente potencial','Costo / lead (CPL)','report-funnel-svg','Nota de voz conservada','Nota manual conservada','Evento lead atribuido por Meta']) assert.ok(html.includes(label),label);
+  for (const label of ['Informe mensual · Clientes potenciales','Costo por lead (CPL)','4 clientes potenciales','U$D 30','Clic a cliente potencial','Costo / lead (CPL)','report-funnel-svg','Nota de voz conservada','Nota manual conservada','Contacto atribuido por Meta']) assert.ok(html.includes(label),label);
   assert.ok(html.indexOf('Más leads') < html.indexOf('Menos leads'));
+  assert.equal((html.match(/Claves de lectura/g) || []).length, 1);
+  assert.equal((html.match(/role="listitem"/g) || []).length, 2);
+  assert.ok(!html.includes('report-log-print'));
   assert.ok(!html.includes('ROAS')); assert.ok(!html.includes('Facturación')); assert.ok(!html.includes('Mensajes iniciados'));
 });
 
