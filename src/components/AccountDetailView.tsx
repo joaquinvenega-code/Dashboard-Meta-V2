@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { prepareAdImagesForPrint } from '../lib/adThumbnail';
 import { DashboardDateFilter } from './DashboardDateFilter';
 import { MetaActivityPanel } from './reports/MetaActivityPanel';
 import { detailOptions, trackingMetrics, offlineRevenueForPeriod } from '../lib/weeklyReports';
@@ -677,6 +678,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [adsLoading, setAdsLoading] = useState(false);
+  const [preparingPrint, setPreparingPrint] = useState(false);
   const [ads, setAds] = useState<Ad[]>(snapshot?.ads || []);
   const initialOptions = detailOptions(selectedId ? settings[selectedId] : undefined);
   const [sortBy, setSortBy] = useState<string>(initialOptions.sortBy);
@@ -980,12 +982,21 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
     loadAds();
   }, [loadAds]);
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    if (preparingPrint || adsLoading) return;
+    setPreparingPrint(true);
     const originalTitle = document.title;
     const accountName = settings[selectedId!]?.customName || selectedAccount?.name || 'ADS';
     document.title = `INFORME DE RENDIMIENTOS - ${accountName.toUpperCase()}`;
     
-    window.print();
+    try {
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      await prepareAdImagesForPrint(document);
+      await document.fonts.ready;
+      window.print();
+    } finally {
+      setPreparingPrint(false);
+    }
     
     // Restaurar después de un pequeño delay para que el driver de impresión tome el nombre
     setTimeout(() => {
@@ -1291,7 +1302,7 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
                     data-original={ad.originalThumbnailUrl || ad.thumbnail}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" 
                     referrerPolicy="no-referrer"
-                    loading="lazy"
+                    loading="eager"
                     onError={(e) => {
                       const img = e.target as HTMLImageElement;
                       if (!img.getAttribute('data-retried') && ad.originalThumbnailUrl && ad.originalThumbnailUrl !== ad.thumbnail) {
@@ -1668,10 +1679,11 @@ export const AccountDetailView: React.FC<AccountDetailViewProps> = ({
 
             <button 
              onClick={handlePrint}
+             disabled={preparingPrint || adsLoading}
              className="flex h-9 items-center gap-2 rounded-lg border border-white/[0.07] bg-[#12161d] px-3 text-xs font-medium text-neutral-300 transition-colors hover:bg-white/[0.05] hover:text-white"
            >
              <ArrowUpRight className="w-3.5 h-3.5 rotate-180" />
-             Exportar PDF
+             {preparingPrint ? 'Preparando imágenes…' : 'Exportar PDF'}
            </button>
         </div>
       </div>

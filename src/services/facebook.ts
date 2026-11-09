@@ -4,6 +4,7 @@ import { AD_TRAFFIC_FIELDS, adTrafficMetrics } from '../lib/adTraffic';
 import { metaLeadCount } from '../lib/metaLeads';
 import { metaMessageCount } from '../lib/metaMessages';
 import { fetchAdShareLink } from '../lib/adShareLink';
+import { resolveAdThumbnail } from '../lib/adThumbnail';
 
 declare global {
   interface Window {
@@ -630,6 +631,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
       if (adRes && !adRes.error && adRes.creative) {
         const creative = adRes.creative;
         const spec = creative.object_story_spec || {};
+        let storyVideoId: string | undefined;
 
         // BLOQUE 1.5: Instagram Native Media (Alta resolución Reels / Feed)
         if (!thumb && creative.effective_instagram_story_id) {
@@ -661,6 +663,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           const storyNode: any = await graphApiGetSafe(`/${storyId}`, { fields: 'thumbnail_url,full_picture,attachments{type,target{id},media{source,image{src,height,width}},subattachments{type,target{id},media{image{src,height,width}}}}' });
           
           if (storyNode && !storyNode.error) {
+            storyVideoId = storyNode.attachments?.data?.find((item: any) => String(item.type).includes('video'))?.target?.id;
             // Prioridad #1: metadata.thumbnail_url del post o full_picture nativo
             if (storyNode.thumbnail_url) {
                thumb = storyNode.thumbnail_url;
@@ -784,6 +787,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           if (thumb) winningStep = "emergency deep fallback";
         }
 
+        thumb = await resolveAdThumbnail(creative, thumb, accountId, graphApiGetSafe, undefined, storyVideoId);
         if (thumb) {
           console.log(`[TopAds][${adType.toUpperCase()}] Resolved Ad ${ad.id} via ${winningStep}`);
         }
