@@ -632,6 +632,7 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         const creative = adRes.creative;
         const spec = creative.object_story_spec || {};
         let storyVideoId: string | undefined;
+        const thumbnailCandidates: string[] = [];
 
         // BLOQUE 1.5: Instagram Native Media (Alta resolución Reels / Feed)
         if (!thumb && creative.effective_instagram_story_id) {
@@ -657,35 +658,24 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
         }
 
         // BLOQUE 1.6: Posteos de Redes / Reels FB (effective_object_story_id)
-        if (!thumb && creative.effective_object_story_id) {
+        if (creative.effective_object_story_id) {
           adType = "publicacion_redes";
           const storyId = creative.effective_object_story_id;
-          const storyNode: any = await graphApiGetSafe(`/${storyId}`, { fields: 'thumbnail_url,full_picture,attachments{type,target{id},media{source,image{src,height,width}},subattachments{type,target{id},media{image{src,height,width}}}}' });
+          const storyNode: any = await graphApiGetSafe(`/${storyId}`, { fields: 'full_picture,attachments{type,target{id},media{image{src,height,width}},subattachments{type,target{id},media{image{src,height,width}}}}' });
           
           if (storyNode && !storyNode.error) {
             storyVideoId = storyNode.attachments?.data?.find((item: any) => String(item.type).includes('video'))?.target?.id;
-            // Prioridad #1: metadata.thumbnail_url del post o full_picture nativo
-            if (storyNode.thumbnail_url) {
-               thumb = storyNode.thumbnail_url;
-               winningStep = "post object thumbnail_url";
-            } else if (storyNode.full_picture) {
-               thumb = storyNode.full_picture;
-               winningStep = "post object full_picture";
-            } else {
-               // Fallback a attachments deep scan
-               let hdCandidate: string | null = null;
-               
-               if (!hdCandidate && storyNode.attachments?.data) {
-                 const allMedia: any[] = [];
-                 const scan = (it: any[]) => it.forEach(i => { if (i.media?.image) allMedia.push(i.media.image); if (i.subattachments?.data) scan(i.subattachments.data); });
-                 scan(storyNode.attachments.data);
-                 allMedia.sort((a, b) => (b.width * b.height) - (a.width * a.height));
-                 hdCandidate = allMedia[0]?.src || null;
-               }
-
-               thumb = hdCandidate || creative.image_url;
-               if (thumb) winningStep = "story fallback attachments scan";
-            }
+            // Keep every source for measured selection. A small Instagram or
+            // post preview must not prevent trying the original attachment.
+            if (thumb) thumbnailCandidates.push(thumb);
+            if (storyNode.full_picture) thumbnailCandidates.push(storyNode.full_picture);
+            const collectImages = (items: any[]) => items.forEach(item => {
+              if (item.media?.image?.src) thumbnailCandidates.push(item.media.image.src);
+              if (item.subattachments?.data) collectImages(item.subattachments.data);
+            });
+            collectImages(storyNode.attachments?.data || []);
+            thumb = thumb || storyNode.full_picture || thumbnailCandidates[0] || null;
+            if (thumb) winningStep = "post full-size candidates";
           }
         }
 
@@ -787,7 +777,9 @@ export async function fetchTopAds(accountId: string, since: string, until: strin
           if (thumb) winningStep = "emergency deep fallback";
         }
 
-        thumb = await resolveAdThumbnail(creative, thumb, accountId, graphApiGetSafe, undefined, storyVideoId);
+        const previousThumb = thumb;
+        thumb = await resolveAdThumbnail(creative, thumb, accountId, graphApiGetSafe, undefined, storyVideoId, thumbnailCandidates);
+        if (thumb !== previousThumb) winningStep = "measured resolution selection";
         if (thumb) {
           console.log(`[TopAds][${adType.toUpperCase()}] Resolved Ad ${ad.id} via ${winningStep}`);
         }

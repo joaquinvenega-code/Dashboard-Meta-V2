@@ -19,6 +19,9 @@ export async function settlePrint(page: Page, targetId: string) {
     ]);
     await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
   });
+  // Run against the actual print layout, including object-fit cropping. A
+  // successfully decoded 64 px preview is still unsuitable for a PDF.
+  return page.evaluate(() => window.orionWeekly!.prepareImages());
 }
 
 export function reportFilename(name: string, id: string, since: string, until: string) {
@@ -47,7 +50,7 @@ async function main() {
   await mkdir(output, { recursive: true });
   const server = await preview({ preview: { host: '127.0.0.1', port: 4173, strictPort: true } });
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
-  const results: Array<{ clientId: string; name: string; status: string; file?: string; error?: string }> = [];
+  const results: Array<{ clientId: string; name: string; status: string; file?: string; error?: string; imageWarnings?: number }> = [];
   let totalBytes = 0;
   try {
     browser = await chromium.launch({ headless: true });
@@ -59,7 +62,7 @@ async function main() {
         await page.goto('http://127.0.0.1:4173/#weekly-print');
         await page.waitForFunction(() => Boolean(window.orionWeekly));
         await page.evaluate(async input => { await window.orionWeekly!.load(input); }, { portfolio, targetId: target.id, period, accessToken });
-        await settlePrint(page, target.id);
+        const imageIssues = await settlePrint(page, target.id);
         const name = (await page.locator('.report-print-account').innerText()).trim() || target.name;
         const file = reportFilename(name, target.id, period.since, period.until);
         const pdf = await page.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true });
@@ -67,7 +70,7 @@ async function main() {
         if (totalBytes + pdf.length > 60 * 1024 * 1024) throw new Error('El lote excede 60 MB. Reducí la cantidad de anuncios o dividí la cartera.');
         await writeFile(path.join(output, file), pdf);
         totalBytes += (await stat(path.join(output, file))).size;
-        results.push({ clientId: target.id, name, status: 'listo', file });
+        results.push({ clientId: target.id, name, status: 'listo', file, imageWarnings: imageIssues.length });
       } catch {
         // Never echo browser exceptions, URLs or credentials into Actions logs.
         results.push({ clientId: target.id, name: target.name, status: 'requiere_revision', error: 'No se emitió el PDF. Revisar acceso a Meta, datos de todas las cuentas, fechas de ventas manuales y límite de tamaño; volver a ejecutar.' });
@@ -80,6 +83,8 @@ async function main() {
   await writeFile(path.join(output, 'resultado.json'), JSON.stringify({ period, generatedAt: new Date().toISOString(), results }, null, 2));
   const failed = results.filter(r => r.status !== 'listo').length;
   console.log(`Informes listos: ${results.length - failed}. Requieren revisión: ${failed}.`);
+  const imageWarnings = results.reduce((sum, result) => sum + (result.imageWarnings || 0), 0);
+  if (imageWarnings) console.warn(`Miniaturas reemplazadas por un aviso de calidad: ${imageWarnings}. Revisar las imágenes disponibles en Meta.`);
   if (failed) process.exitCode = 1;
 }
 

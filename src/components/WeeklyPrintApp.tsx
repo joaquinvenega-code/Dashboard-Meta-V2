@@ -4,12 +4,14 @@ import { setFacebookAccessToken } from '../services/facebook';
 import { loadWeeklySnapshot } from '../services/weeklyReportData';
 import { validatePortfolio, type Portfolio } from '../lib/weeklyReports';
 import type { WeeklySnapshot } from '../lib/weeklySnapshot';
+import { prepareAdImagesForPrint, PRINT_THUMBNAIL_SCALE, type PrintImageIssue } from '../lib/adThumbnail';
 
 declare global {
   interface Window {
     orionWeekly?: {
       load: (input: { portfolio: Portfolio; targetId: string; period: WeeklySnapshot['period']; accessToken: string }) => Promise<void>;
       preview: (snapshot: WeeklySnapshot) => void;
+      prepareImages: () => Promise<PrintImageIssue[]>;
     };
   }
 }
@@ -25,6 +27,7 @@ export default function WeeklyPrintApp() {
         finally { setFacebookAccessToken(null); }
       },
       preview(value) { setSnapshot(value); },
+      prepareImages() { return prepareAdImagesForPrint(document, PRINT_THUMBNAIL_SCALE); },
     };
     return () => { delete window.orionWeekly; setFacebookAccessToken(null); };
   }, []);

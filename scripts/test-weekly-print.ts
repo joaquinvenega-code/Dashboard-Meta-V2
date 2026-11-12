@@ -10,7 +10,7 @@ import type { WeeklySnapshot } from '../src/lib/weeklySnapshot';
 
 await fs.mkdir('tmp/pdfs/weekly', { recursive: true });
 const server = await preview({ preview: { host: '127.0.0.1', port: 4173, strictPort: true } });
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined });
 try {
   for (const tracking of ['messaging', 'ecommerce', 'both'] as const) {
     const id = `fixture_${tracking}`;
@@ -38,7 +38,7 @@ try {
     await page.goto('http://127.0.0.1:4173/#weekly-print');
     await page.waitForFunction(() => Boolean(window.orionWeekly));
     await page.evaluate(data => window.orionWeekly!.preview(data), snapshot);
-    await settlePrint(page, id);
+    assert.deepEqual(await settlePrint(page, id), [], 'Sharp fixtures must pass print quality checks');
     const content = await page.locator('body').innerText();
     assert.match(content, /NOTA_DENTRO/); assert.doesNotMatch(content, /NOTA_FUERA/);
     assert.match(content, /12\/10\/2026 - 18\/10\/2026/);
@@ -51,8 +51,8 @@ try {
     assert.equal(await page.locator('.report-print-logo').isVisible(), false, 'Broken logos must not print');
     const rankDoesNotOverlap = await page.locator('.ad-card-print').evaluateAll(cards => cards.every(card => {
       const rank = card.querySelector('.print-rank')!.getBoundingClientRect();
-      const layout = card.querySelector('.ad-card-print-layout')!.getBoundingClientRect();
-      return rank.bottom <= layout.top;
+      const title = card.querySelector('.ad-card-print-info [title]')!.getBoundingClientRect();
+      return rank.right <= title.left || rank.left >= title.right || rank.bottom <= title.top || rank.top >= title.bottom;
     }));
     assert.ok(rankDoesNotOverlap, 'Creative rank must not obscure titles');
     assert.deepEqual(errors, []);
